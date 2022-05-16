@@ -17,6 +17,7 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+__debug_bin
 
 # Go workspace file
 go.work
@@ -40,3 +41,6 @@ bower_components
 psd
 thumb
 sketch
+
+### VsCode ###
+.vscode
