@@ -1,4 +1,4 @@
-package backend
+package combat
 
 import "math/rand"
 
@@ -47,23 +47,21 @@ func (a *Army) TakeHit(seige bool) {
 	}
 }
 
-func (a *Army) CombatRoll(effect CombatEffect) (combatResult []int, err error) {
+func (a *Army) CombatRoll() (combatResult []int, err error) {
 	combatResult = make([]int, 0, 5)
 	for i := 0; i < a.GetStrength(); i++ {
 		res := rand.Intn(6) + 1
 		combatResult = append(combatResult, res)
 	}
-	combatResult, err = effect.HandleCombatEffect(a, combatResult)
 	return
 }
 
-func (a *Army) LeaderRoll(missedCombat []int, effect CombatEffect) (finalResult []int, err error) {
+func (a *Army) LeaderRoll(missedCombat []int, effect CombatCard) (finalResult []int, err error) {
 	finalResult = make([]int, len(missedCombat))
 	for i := 0; i < len(missedCombat); i++ {
 		res := rand.Intn(6) + 1
 		finalResult[i] = res
 	}
-	finalResult, err = effect.HandleLeaderEffect(a, finalResult)
 	return
 }
 

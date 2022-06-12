@@ -1,4 +1,4 @@
-package backend
+package combat
 
 import (
 	"fmt"
@@ -51,31 +51,6 @@ func TestArmyTakeHitSeige(t *testing.T) {
 			test.start.TakeHit(true)
 			if !armyEquals(test.start, test.want) {
 				t.Errorf("got %+v, want %+v", test.start, test.want)
-			}
-		})
-	}
-}
-
-func TestArmyCombatRoll(t *testing.T) {
-	var tests = []struct {
-		tag     string
-		army    *Army
-		effect  CombatEffect
-		numDice int
-	}{
-		{"Null 5r", &Army{5, 0, 0}, &NoEffect{}, 5},
-		{"Null 5r 1e", &Army{5, 1, 0}, 5},
-		{"Null 4r 1e", &Army{4, 1, 0}, 5},
-		{"Null 3r 1e", &Army{3, 1, 0}, 4},
-		{"Null 2r 1e", &Army{2, 1, 0}, 3},
-	}
-
-	for _, test := range tests {
-		testname := fmt.Sprintf("%+v:%s", test.army, test.tag)
-		t.Run(testname, func(t *testing.T) {
-			test.army.CombatRoll(true)
-			if !armyEquals(test.army, test.want) {
-				t.Errorf("got %+v, want %+v", test.army, test.want)
 			}
 		})
 	}
