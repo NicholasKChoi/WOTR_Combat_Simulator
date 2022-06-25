@@ -28,15 +28,25 @@ func (a *Army) GetStrength() int {
 	}
 }
 
+func (a *Army) Copy() *Army {
+	return &Army{
+		Regulars: a.Regulars,
+		Elites:   a.Elites,
+		Leaders:  a.Leaders,
+	}
+}
+
 func (a *Army) GetUnits() int {
 	return a.Regulars + a.Elites
 }
 
-func (a *Army) TakeHit(seige bool) {
+func (a *Army) TakeHit(beseiging bool) {
 	units := a.GetUnits()
-	if units > MAX_STRENGTH {
+	if units == 0 {
+		return
+	} else if units > MAX_STRENGTH {
 		a.Regulars -= 1
-	} else if seige {
+	} else if beseiging {
 		if units > SEIGE_STRENGTH {
 			a.Regulars -= 1
 		} else {
@@ -47,7 +57,13 @@ func (a *Army) TakeHit(seige bool) {
 	}
 }
 
-func (a *Army) CombatRoll() (combatResult []int, err error) {
+func (a *Army) TakeHits(hits int, beseiging bool) {
+	for i := 0; i < hits; i++ {
+		a.TakeHit(beseiging)
+	}
+}
+
+func (a *Army) CombatRoll() (combatResult []int) {
 	combatResult = make([]int, 0, 5)
 	for i := 0; i < a.GetStrength(); i++ {
 		res := rand.Intn(6) + 1
@@ -56,7 +72,7 @@ func (a *Army) CombatRoll() (combatResult []int, err error) {
 	return
 }
 
-func (a *Army) LeaderRoll(missedCombat []int, effect CombatCard) (finalResult []int, err error) {
+func (a *Army) LeaderRoll(missedCombat []int, effect CombatCard) (finalResult []int) {
 	finalResult = make([]int, len(missedCombat))
 	for i := 0; i < len(missedCombat); i++ {
 		res := rand.Intn(6) + 1
