@@ -1,28 +1,26 @@
-import { useState } from 'react';
+import Head from 'next/head';
+import Layout, { siteTitle } from '../components/layout';
+import utilStyles from '../styles/utils.module.css';
 
-function Header({ title }) {
-  return <h1>{title ? title : 'Default title'}</h1>;
-}
-
-export default function HomePage() {
-  const names = ['Ada Lovelace', 'Grace Hopper', 'Margaret Hamilton'];
-
-  const [likes, setLikes] = useState(0);
-
-  function handleClick() {
-    setLikes(likes + 1);
-  }
-
+export default function Home() {
   return (
-    <div>
-      <Header title="Develop. Preview. Ship. 🚀" />
-      <ul>
-        {names.map((name) => (
-          <li key={name}>{name}</li>
-        ))}
-      </ul>
-
-      <button onClick={handleClick}>Like ({likes})</button>
-    </div>
+    <Layout home>
+      <Head>
+        <title>{siteTitle}</title>
+      </Head>
+      <section className={utilStyles.headingMd}>
+        <p>
+          This website is used for housing multiple War of the Ring Simulations. Each simulation
+          should  educate the theory behind playing War of the Ring and improving my skills in
+          making simple Single-Page-Applications
+        </p>
+      </section>
+      <section className={`${utilStyles.lightText} ${utilStyles.headingSm}`}>
+        <p>
+          This website is powered by{' '}
+          <a href="https://nextjs.org/learn">the Next.js tutorial</a>.
+        </p>
+      </section>
+    </Layout>
   );
 }
