@@ -1,4 +1,6 @@
 import Head from 'next/head';
+import cn from 'classnames'
+
 import Layout, { siteTitle } from '../components/layout';
 import utilStyles from '../styles/utils.module.css';
 
@@ -15,7 +17,7 @@ export default function Home() {
           making simple Single-Page-Applications
         </p>
       </section>
-      <section className={`${utilStyles.lightText} ${utilStyles.headingSm}`}>
+      <section className={cn(utilStyles.lightText, utilStyles.headingSm)}>
         <p>
           This website is powered by{' '}
           <a href="https://nextjs.org/learn">the Next.js tutorial</a>.
