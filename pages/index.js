@@ -1,7 +1,6 @@
 import cn from 'classnames'
 import Head from 'next/head';
 import Link from 'next/link';
-import Image from 'next/image';
 
 import Layout, { siteTitle } from '../components/layout';
 import utilStyles from '../styles/utils.module.css';
