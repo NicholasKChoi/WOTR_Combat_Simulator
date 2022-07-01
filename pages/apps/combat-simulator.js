@@ -1,6 +1,6 @@
 import utilStyles from '../../styles/utils.module.css';
 
-
+import { useState } from 'react';
 import Head from 'next/head';
 import cn from 'classnames'
 
@@ -9,37 +9,32 @@ import Army from '../../components/apps/combat-simulator/army';
 
 const pageTitle = 'Combat Simulator';
 
-var attackingArmy = {
-  regulars: 0,
-  elites: 0,
-  leaders: 0
-};
-
-var defendingArmy = {
-  regulars: 0,
-  elites: 0,
-  leaders: 0
-};
-
-function createArmyUpdater(army, value) {
-  return function(e) {
-    var armyObj;
-    if (army == "attack") {
-      armyObj = attackingArmy;
-    } else if (army == "defend") {
-      armyObj = defendingArmy;
-    } else {
-      throw "invalid army type";
-    }
-    if (!armyObj.hasOwnProperty(value)) {
-      throw "invalid key value for army updater";
-    }
-    armyObj[value] = Number(e.target.value);
-    console.log(army, armyObj);
-  }
-};
+var result = "";
 
 export default function CombatSimulator() {
+  
+  // functions
+  async function submitFight(e) {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    const payload = JSON.stringify(Object.fromEntries(data.entries()));
+    const response = await fetch("/api/fight", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: payload
+    });
+    console.log(response);
+  
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const fightResult = await response.json();
+    result = fightResult.text;
+  }
+
   return (
     <Layout>
       <Head>
@@ -47,29 +42,32 @@ export default function CombatSimulator() {
       </Head>
       <section className={cn(utilStyles.headingMd, "container")}>
         <h1>{pageTitle}</h1>
-        <div className='row'>
-          <div className="col-md">
-            <h3>Attacking Army</h3>
-            <Army 
-              createArmyUpdater={createArmyUpdater}
-              armyKey="attack" />
-          </div>
-          <div className="col-md">
-            <h3>Defending Army</h3>
-            <Army 
-              createArmyUpdater={createArmyUpdater}
-              armyKey="defend" />
-          </div>
-        </div>
-        <div className='row'>
-          <div className="col-md">
-            <h3>Controls</h3>
-            <button className='btn btn-primary'>Fight!</button>
-          </div>
-        </div>
+        <form 
+          className='row' 
+          id="fight-form" 
+          onSubmit={submitFight}>
+            <div className="col-md-6">
+              <h3>Attacking Army</h3>
+              <Army armyKey="attack" />
+            </div>
+            <div className="col-md-6">
+              <h3>Defending Army</h3>
+              <Army armyKey="defend" />
+            </div>
+            <div className="col-md">
+              <h3>Controls</h3>
+              <input 
+                type="submit"
+                className='btn btn-primary'
+                value="Fight" />
+            </div>
+        </form>
         <div className='row'>
           <div className="col-md">
             <h3>Results</h3>
+            <p>
+              {result}
+            </p>
           </div>
         </div>
       </section>
