@@ -6,12 +6,12 @@ import cn from 'classnames'
 
 import Layout from '../../components/layout';
 import Army from '../../components/apps/combat-simulator/army';
+import Results from '../../components/apps/combat-simulator/results';
 
 const pageTitle = 'Combat Simulator';
 
-var result = "";
-
 export default function CombatSimulator() {
+  const [result, setResult] = useState("");
   
   // functions
   async function submitFight(e) {
@@ -32,7 +32,7 @@ export default function CombatSimulator() {
       throw new Error(`Error: ${response.status}`);
     }
     const fightResult = await response.json();
-    result = fightResult.text;
+    setResult(fightResult);
   }
 
   return (
@@ -43,31 +43,32 @@ export default function CombatSimulator() {
       <section className={cn(utilStyles.headingMd, "container")}>
         <h1>{pageTitle}</h1>
         <form 
-          className='row' 
+          className='row mb-2 pb-3 border-bottom border-info'
           id="fight-form" 
           onSubmit={submitFight}>
-            <div className="col-md-6">
-              <h3>Attacking Army</h3>
-              <Army armyKey="attack" />
+            <div className='row mb-4'>
+              <div className="col-md-6">
+                <h3>Attacking Army</h3>
+                <Army armyKey="attack" />
+              </div>
+              <div className="col-md-6">
+                <h3>Defending Army</h3>
+                <Army armyKey="defend" />
+              </div>
             </div>
-            <div className="col-md-6">
-              <h3>Defending Army</h3>
-              <Army armyKey="defend" />
-            </div>
-            <div className="col-md">
-              <h3>Controls</h3>
-              <input 
-                type="submit"
-                className='btn btn-primary'
-                value="Fight" />
+            <div className='row'>
+              <div className="col">
+                <input 
+                  type="submit"
+                  className='btn btn-primary'
+                  value="Fight!" />
+              </div>
             </div>
         </form>
         <div className='row'>
           <div className="col-md">
-            <h3>Results</h3>
-            <p>
-              {result}
-            </p>
+            <h2 className='border-bottom'>Results</h2>
+            {result !== "" ? <Results {...result} /> : ""}
           </div>
         </div>
       </section>
