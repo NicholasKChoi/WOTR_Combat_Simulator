@@ -1,4 +1,7 @@
+import cn from 'classnames'
 import Head from 'next/head';
+import Link from 'next/link';
+
 import Layout, { siteTitle } from '../components/layout';
 import utilStyles from '../styles/utils.module.css';
 
@@ -15,7 +18,18 @@ export default function Home() {
           making simple Single-Page-Applications
         </p>
       </section>
-      <section className={`${utilStyles.lightText} ${utilStyles.headingSm}`}>
+      <section className={utilStyles.headingMd}>
+        <h2>Apps</h2>
+        <ul>
+          <li className={utilStyles.headingMd}>
+            ⚔️{' '}
+            <Link href="/apps/combat-simulator">
+              <a>Combat Simulator</a>
+            </Link>
+          </li>
+        </ul>
+      </section>
+      <section className={cn(utilStyles.lightText, utilStyles.headingSm)}>
         <p>
           This website is powered by{' '}
           <a href="https://nextjs.org/learn">the Next.js tutorial</a>.
