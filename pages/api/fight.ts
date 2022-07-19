@@ -77,13 +77,14 @@ function Battle(form: FormParseResult) {
   let defend = form.defendArmy;
   while (attack.isArmyAlive() && defend.isArmyAlive()) {
     // combat a
-    let attackCombat = rollDice(attack.getCombatStrength());
-    let attackCombatResult = getHits({results: attackCombat});
+    let attackCombatRoll = rollDice(attack.getCombatStrength());
+    let attackCombatResult = getHits({results: attackCombatRoll});
     // combat d
     let defenseCombat = rollDice(defend.getCombatStrength());
     let defendCombatResult = getHits({results: defenseCombat});
 
     // leader a
+    let attackLeaderRoll = rollDice(Math.min(attackCombatResult.misses.length, attack.leaders))
     // leader d
     
     // take combat hits
