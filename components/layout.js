@@ -9,7 +9,7 @@ export const siteTitle = 'War of the Ring Simulations';
 
 export default function Layout({ children, home }) {
   return (
-    <div className={styles.container}>
+    <div className="container">
       <Head>
         <meta
           name="description"

@@ -12,6 +12,65 @@ class FormParseResult {
   }
 }
 
+class BattleResult {
+  attackArmy: BaseArmy;
+  defendArmy: BaseArmy;
+
+  // data
+  rounds: number = 0;
+  attackHitsPerRound: number[];
+  defendHitsPerRound: number[];
+
+  constructor(attack: BaseArmy, defend: BaseArmy) {
+    this.attackArmy = attack;
+    this.defendArmy = defend;
+    this.attackHitsPerRound = [];
+    this.defendHitsPerRound = [];
+  }
+
+  recordRound(attackHits: number, defendHits: number) {
+    this.rounds++;
+    this.attackHitsPerRound.push(attackHits);
+    this.defendHitsPerRound.push(defendHits);
+  }
+
+  getSurvivor(): string {
+    if (this.attackArmy.isArmyAlive()) {
+      return "attack";
+    } else if (this.defendArmy.isArmyAlive()) {
+      return "defend";
+    }
+    return "n/a";
+  }
+
+  getStats(): BattleStats {
+    let survivor = this.getSurvivor();
+    let totalAHits = this.attackHitsPerRound.reduce((total, next) => total + next, 0);
+    let totalDHits = this.defendHitsPerRound.reduce((total, next) => total + next, 0);
+    let averageAttackHitsPerRound = totalAHits / this.rounds;
+    let averageDefendHitsPerRound = totalDHits / this.rounds;
+    let rounds = this.rounds;
+
+    return {
+      attack: this.attackArmy,
+      defend: this.defendArmy,
+      rounds,
+      averageAttackHitsPerRound,
+      averageDefendHitsPerRound,
+      survivor
+    }
+  }
+}
+
+interface BattleStats {
+  attack: BaseArmy;
+  defend: BaseArmy;
+  rounds: number;
+  averageAttackHitsPerRound: number;
+  averageDefendHitsPerRound: number;
+  survivor: string;
+}
+
 
 /**
  * 
@@ -42,62 +101,84 @@ function rollDice(numdice: number): number[] {
 
   for (let i = 0 ; i < numdice; i++) {
     let result = Math.floor(Math.random() * (max - min + 1)) + min;
-    results.concat(result);
+    results = results.concat(result);
   }
   return results;
 }
 
 
-interface HitOpts {
-  results: number[];
+interface CombatRollOps {
+  diceRoll: number[];
   threshold?: number;
 }
-interface HitResults {
+interface CombatRollResults {
   hits: number[];
   misses: number[];
 }
-function getHits(opts: HitOpts): HitResults {
+function calculateCombatRollResults(opts: CombatRollOps): CombatRollResults {
   let threshold = opts.threshold || 5;
   let hits: number[] = [];
   let misses: number[] = [];
-  for (let i = 0; i < opts.results.length; i++) {
-    let thisDice = opts.results[i];
+  for (let i = 0; i < opts.diceRoll.length; i++) {
+    let thisDice = opts.diceRoll[i];
     if (thisDice > threshold) {
-      hits.concat(thisDice);
+      hits = hits.concat(thisDice);
     } else {
-      misses.concat(thisDice);
+      misses = misses.concat(thisDice);
     }
   }
   return { hits: hits, misses: misses };
 }
 
 
-function Battle(form: FormParseResult) {
+function Battle(form: FormParseResult): BattleResult {
   let attack = form.attackArmy;
   let defend = form.defendArmy;
-  while (attack.isArmyAlive() && defend.isArmyAlive()) {
-    // combat a
-    let attackCombatRoll = rollDice(attack.getCombatStrength());
-    let attackCombatResult = getHits({results: attackCombatRoll});
-    // combat d
-    let defenseCombat = rollDice(defend.getCombatStrength());
-    let defendCombatResult = getHits({results: defenseCombat});
+  const battleResult = new BattleResult(attack, defend);
 
-    // leader a
-    let attackLeaderRoll = rollDice(Math.min(attackCombatResult.misses.length, attack.leaders))
-    // leader d
+  while (attack.isArmyAlive() && defend.isArmyAlive()) {
+    // combat
+    let attackCombatRoll = rollDice(attack.getCombatStrength());
+    let attackCombatResult = calculateCombatRollResults({diceRoll: attackCombatRoll});
+
+    let defenseCombat = rollDice(defend.getCombatStrength());
+    let defendCombatResult = calculateCombatRollResults({diceRoll: defenseCombat});
+
+    // leaders
+    let attackLeaderRoll = rollDice(Math.min(attackCombatResult.misses.length, attack.leaders));
+    let attackLeaderResult = calculateCombatRollResults({diceRoll: attackLeaderRoll});
+
+    let defendLeaderRoll = rollDice(Math.min(defendCombatResult.misses.length, defend.leaders));
+    let defendLeaderResult = calculateCombatRollResults({diceRoll: defendLeaderRoll});
     
     // take combat hits
-    // take combat hits
+    let attackHits = attackCombatResult.hits.length + attackLeaderResult.hits.length;
+    let defendHits = defendCombatResult.hits.length + defendLeaderResult.hits.length;
+    attack.takeHits(defendHits);
+    defend.takeHits(attackHits);
+
+    // record number of rounds in the battle
+    battleResult.recordRound(attackHits, defendHits);
+    console.log(
+      battleResult,
+      attackCombatRoll,
+      attackCombatResult,
+      attackLeaderRoll,
+      attackLeaderResult,
+      attackHits,
+      defenseCombat,
+      defendCombatResult,
+      defendLeaderRoll,
+      defendLeaderResult,
+      defendHits);
   }
+  console.log("Final result", battleResult);
+  return battleResult;
 }
 
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  let formParse = parseFightForm(req);
-  console.log(formParse);
-  res.status(200).json({
-    attackers: formParse.attackArmy,
-    defenders: formParse.defendArmy
-  });
+  const formParse = parseFightForm(req);
+  const results = Battle(formParse);
+  res.status(200).json(results.getStats());
 }
