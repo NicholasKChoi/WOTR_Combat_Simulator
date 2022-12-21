@@ -5,7 +5,7 @@ import styles from './layout.module.css';
 import utilStyles from '../styles/utils.module.css';
 import Link from 'next/link';
 
-export const siteTitle = 'War of the Ring Simulations';
+export const siteTitle = 'Helper Apps for Gaming';
 
 export default function Layout({ children, home }) {
   return (
@@ -13,7 +13,7 @@ export default function Layout({ children, home }) {
       <Head>
         <meta
           name="description"
-          content="Simulate War of the Ring Combat using Next.js"
+          content="Build and publish helper apps for gamign using Next.js"
         />
         <meta
           property="og:image"
