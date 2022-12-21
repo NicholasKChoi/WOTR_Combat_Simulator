@@ -33,21 +33,36 @@ function GetVsText() {
   return `${sortedResult[0]} vs. ${sortedResult[1]}`;
 }
 
+function getMapText() {
+  const mapArray = ['cosmic sapphire', 'data-c', 'inside & out', 'moondance',
+    'stargazers', 'tropical sacrifice', 'waterfall'];
+  shuffle(mapArray);
+  return mapArray[0];
+}
+
 let lastPartners = GetVsText();
+let lastMap = getMapText();
 
 export default function StarcraftHelper() {
-  const [partners, setPartnerState] = useState(
-    lastPartners
-  );
+  const [partners, setPartnerState] = useState(lastPartners);
+  const [maps, setMapState] = useState(lastMap)
 
   function SetPartners() {
     let newPartners = GetVsText();
     while (newPartners == lastPartners) {
       newPartners = GetVsText();
     }
-    console.log(lastPartners, newPartners);
     lastPartners = newPartners;
     setPartnerState(newPartners);
+  }
+
+  function SetMap() {
+    let newMap = getMapText();
+    while (newMap == lastMap) {
+      newMap = getMapText();
+    }
+    lastMap = newMap;
+    setMapState(newMap);
   }
 
   return (
@@ -63,7 +78,6 @@ export default function StarcraftHelper() {
           <div className='card'>
             <h5 className='card-header'>Fighter Select</h5>
             <div className="card-body">
-              <h5 className="card-title">Select Fighters</h5>
               <p className="card-text fs-6">
                 Two fighters will randomly be selected each time you 
                 click the button below! 
@@ -71,6 +85,19 @@ export default function StarcraftHelper() {
               <a className="btn btn-primary" onClick={SetPartners}>Randomize</a>
             </div>
             <h3 className='card-footer'>{partners}</h3>
+          </div> 
+        </div>
+        <div className='col-6'>
+          <div className='card'>
+            <h5 className='card-header'>Map Select</h5>
+            <div className="card-body">
+              <p className="card-text fs-6">
+                A map from the current map pool will be selected each time
+                you click the button below
+              </p>
+              <a className="btn btn-primary" onClick={SetMap}>Randomize</a>
+            </div>
+            <h3 className='card-footer'>{maps}</h3>
           </div> 
         </div>
         </div>
