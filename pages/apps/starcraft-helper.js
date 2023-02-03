@@ -34,8 +34,10 @@ function GetVsText() {
 }
 
 function getMapText() {
-  const mapArray = ['cosmic sapphire', 'data-c', 'inside & out', 'moondance',
-    'stargazers', 'tropical sacrifice', 'waterfall'];
+  const mapArray = [
+    'altitude', 'ancient cistern', 'babylon', 'dragon scales',
+    'gresvan', 'neohumanity', 'royal blood'
+  ];
   shuffle(mapArray);
   return mapArray[0];
 }
@@ -76,7 +78,7 @@ export default function StarcraftHelper() {
         <div className='row mb-2 pb-3 border-bottom border-info'>
         <div className='col-6'>
           <div className='card'>
-            <h5 className='card-header'>Fighter Select</h5>
+            <h5 className='card-header'>Fighter wapow!</h5>
             <div className="card-body">
               <p className="card-text fs-6">
                 Two fighters will randomly be selected each time you 
