@@ -1,4 +1,5 @@
 import utilStyles from '../../styles/utils.module.css';
+import { shuffle } from '../../utils/utils'
 import { useState } from 'react';
 
 import cn from "classnames";
@@ -6,42 +7,24 @@ import Head from "next/head";
 import Layout from "../../components/layout";
 
 const pageTitle = 'Starcraft Helper';
-const mapArray = [
-  'altitude', 'ancient cistern', 'babylon', 'dragon scales',
-  'gresvan', 'neohumanity', 'royal blood'
-];
+
 const partnerArray = ["matthew", "nick", "daniel"];
-
-function shuffle(array) {
-  const clone = [...array]
-  let currentIndex = array.length,  randomIndex;
-
-  // While there remain elements to shuffle.
-  while (currentIndex != 0) {
-
-    // Pick a remaining element.
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-
-    // And swap it with the current element.
-    [clone[currentIndex], clone[randomIndex]] = [
-      clone[randomIndex], clone[currentIndex]];
-  }
-
-  return clone;
-}
-
 function GetVsText() {
   const shuffled = shuffle(partnerArray);
   const sortedResult = shuffled.slice(0, 2).sort()
   return `${sortedResult[0]} vs. ${sortedResult[1]}`;
 }
 
-function getMapText(lastMap) {
+const mapArray = [
+  'altitude', 'ancient cistern', 'babylon', 'dragon scales',
+  'gresvan', 'neohumanity', 'royal blood'
+];
+let lastMap = "altitude";
+function getMapText(bannedMaps) {
   const shuffled = shuffle(mapArray);
   for (let i = 0; i < shuffled.length; i++)
   {
-    if (shuffled[i] == lastMap)
+    if (bannedMaps.indexOf(shuffled[i]) > -1)
     {
       continue;
     }
@@ -53,10 +36,28 @@ function getMapText(lastMap) {
   return "FAILURE"
 }
 
-export default function StarcraftHelper() {
-  const [partners, setPartnerState] = useState(`${partnerArray[0]} vs. ${partnerArray[1]}`);
-  const [maps, setMapState] = useState(mapArray[0]);
 
+export default function StarcraftHelper() {
+  const [checked, setChecked] = useState([]);
+  const handleCheck = (event) => {
+    var updatedList = [...checked];
+    if (event.target.checked) {
+      updatedList = [...checked, event.target.value];
+    } else {
+      updatedList.splice(checked.indexOf(event.target.value), 1);
+    }
+    setChecked(updatedList);
+  };
+  const isChecked = (item) => checked.includes(item) ? utilStyles.checkedItem : "";
+
+  const [maps, setMapState] = useState(mapArray[0]);
+  function SetMap() {
+    let newMap = getMapText([...checked, lastMap]);
+    lastMap = newMap;
+    setMapState(newMap);
+  }
+
+  const [partners, setPartnerState] = useState(`${partnerArray[0]} vs. ${partnerArray[1]}`);
   function SetPartners() {
     let newPartners = GetVsText();
     while (newPartners == lastPartners) {
@@ -64,12 +65,6 @@ export default function StarcraftHelper() {
     }
     lastPartners = newPartners;
     setPartnerState(newPartners);
-  }
-
-  function SetMap() {
-    let newMap = getMapText(lastMap);
-    lastMap = newMap;
-    setMapState(newMap);
   }
 
   return (
@@ -105,8 +100,17 @@ export default function StarcraftHelper() {
                 <div className="list-container">
                   {mapArray.map((item, index) => (
                     <div key={index}>
-                      <input class="form-check-input" value={item} id={item} type="checkbox" />
-                      <label class="form-check-label" >{item}</label>
+                      <input 
+                        className="form-check-input" 
+                        value={item}
+                        id={item}
+                        type="checkbox"
+                        disabled={checked.length > 2 && !checked.includes(item)}
+                        onChange={handleCheck} />
+                      <label
+                        className={cn("form-check-label", isChecked(item))} >
+                          {item}
+                      </label>
                     </div>
                   ))}
                 </div>
