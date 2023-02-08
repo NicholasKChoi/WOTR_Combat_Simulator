@@ -55,3 +55,8 @@
 .lightText {
   color: #666;
 }
+
+/* For Checklist */
+.checkedItem {
+  text-decoration: line-through;
+}
