@@ -15,7 +15,7 @@ export default function Home() {
         <p>
           This website is used for housing multiple apps that help you compete
           and have fun with games! These games are not popular and so this website
-          isn't expected to drive lotsa traffic. If that changes, lmk and I'll work
+          isn't expected to drive lots of traffic. If that changes, lmk and I'll work
           on it.
         </p>
       </section>
