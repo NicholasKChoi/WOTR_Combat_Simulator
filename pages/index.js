@@ -13,7 +13,7 @@ export default function Home() {
       </Head>
       <section className={utilStyles.headingMd}>
         <p>
-          This website is used for housing multiple apps that help you compete
+          This website is used for housing multiple apps that help you compete mess around to find out
           and have fun with games! These games are not popular and so this website
           isn't expected to drive lotsa traffic. If that changes, lmk and I'll work
           on it.
