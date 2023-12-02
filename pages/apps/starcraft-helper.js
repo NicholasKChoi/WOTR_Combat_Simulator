@@ -16,10 +16,11 @@ function GetVsText() {
 }
 
 const mapArray = [
-  'altitude', 'ancient cistern', 'babylon', 'dragon scales',
-  'gresvan', 'neohumanity', 'royal blood'
+  'Alcyone', 'Equilibrium', 'Goldenaura', 'Hard Lead',
+  'Hecate', 'Oceanborn', 'Radhuset Station', 'Site Delta',
+  'Solaris',
 ];
-let lastMap = "altitude";
+const DEFAULT_MAP_POSITION = 1;
 function getMapText(bannedMaps) {
   const shuffled = shuffle(mapArray);
   for (let i = 0; i < shuffled.length; i++)
@@ -36,6 +37,16 @@ function getMapText(bannedMaps) {
   return "FAILURE"
 }
 
+function GetNewPartners(lastPartners) {
+  let newPartners = GetVsText();
+  console.debug(newPartners);
+  while (newPartners == lastPartners) {
+    console.debug('no same matchups');
+    newPartners = GetVsText();
+  }
+  return newPartners;
+}
+
 
 export default function StarcraftHelper() {
   const [checked, setChecked] = useState([]);
@@ -50,23 +61,9 @@ export default function StarcraftHelper() {
   };
   const isChecked = (item) => checked.includes(item) ? utilStyles.checkedItem : "";
 
-  const [maps, setMapState] = useState(mapArray[0]);
-  function SetMap() {
-    let newMap = getMapText([...checked, lastMap]);
-    lastMap = newMap;
-    setMapState(newMap);
-  }
-
+  const [map, setMapState] = useState(mapArray[DEFAULT_MAP_POSITION]);
   const [partners, setPartnerState] = useState(`${partnerArray[0]} vs. ${partnerArray[1]}`);
-  function SetPartners() {
-    let newPartners = GetVsText();
-    while (newPartners == lastPartners) {
-      newPartners = GetVsText();
-    }
-    lastPartners = newPartners;
-    setPartnerState(newPartners);
-  }
-
+  
   return (
     <Layout>
       <Head>
@@ -84,7 +81,7 @@ export default function StarcraftHelper() {
                   Two fighters will randomly be selected each time you 
                   click the button below! 
                 </p>
-                <a className="btn btn-primary" onClick={SetPartners}>Randomize</a>
+                <a className="btn btn-primary" onClick={() => {setPartnerState(GetNewPartners(partners))}}>Randomize</a>
               </div>
               <h3 className='card-footer'>{partners}</h3>
             </div> 
@@ -126,9 +123,9 @@ export default function StarcraftHelper() {
                   A map from the current map pool will be selected each time
                   you click the button below
                 </p>
-                <a className="btn btn-primary" onClick={SetMap}>Randomize</a>
+                <a className="btn btn-primary" onClick={() => {setMapState(getMapText([...checked, map]))}}>Randomize</a>
               </div>
-              <h3 className='card-footer'>{maps}</h3>
+              <h3 className='card-footer'>{map}</h3>
             </div>
           </div>
         </div>
