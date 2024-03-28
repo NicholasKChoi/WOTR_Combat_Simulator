@@ -16,9 +16,9 @@ function GetVsText() {
 }
 
 const mapArray = [
-  'Alcyone', 'Equilibrium', 'Goldenaura', 'Hard Lead',
-  'Hecate', 'Oceanborn', 'Radhuset Station', 'Site Delta',
-  'Solaris',
+  'Alcyone', 'Amphion', 'Crimson Court', 'Dynasty',
+  'Ghost River', 'Goldenaura', 'Oceanborn', 'Post-Youth',
+  'Site Delta',
 ];
 const DEFAULT_MAP_POSITION = 1;
 function getMapText(bannedMaps) {
@@ -61,8 +61,8 @@ export default function StarcraftHelper() {
   };
   const isChecked = (item) => checked.includes(item) ? utilStyles.checkedItem : "";
 
-  const [map, setMapState] = useState(mapArray[DEFAULT_MAP_POSITION]);
-  const [partners, setPartnerState] = useState(`${partnerArray[0]} vs. ${partnerArray[1]}`);
+  const [map, setMapState] = useState('');
+  const [partners, setPartnerState] = useState('');
   
   return (
     <Layout>
