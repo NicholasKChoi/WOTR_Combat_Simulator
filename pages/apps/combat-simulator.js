@@ -12,27 +12,35 @@ const pageTitle = 'Combat Simulator';
 
 export default function CombatSimulator() {
   const [result, setResult] = useState("");
-  
+  const [error, setError] = useState(null);
+
   // functions
   async function submitFight(e) {
     e.preventDefault();
+    setError(null);
     const data = new FormData(e.target);
     const payload = JSON.stringify(Object.fromEntries(data.entries()));
-    const response = await fetch("/api/fight", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: payload
-    });
-    console.log(response);
-  
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+    try {
+      const response = await fetch("/api/fight", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: payload
+      });
+      console.log(response);
+
+      if (!response.ok) {
+        const errBody = await response.json();
+        setError(errBody.error || `Request failed with status ${response.status}`);
+        return;
+      }
+      const fightResult = await response.json();
+      setResult(fightResult);
+    } catch (err) {
+      setError("Network error: unable to reach the server. Please try again.");
     }
-    const fightResult = await response.json();
-    setResult(fightResult);
   }
 
   return (
@@ -58,12 +66,17 @@ export default function CombatSimulator() {
             </div>
             <div className='row'>
               <div className="col">
-                <input 
+                <input
                   type="submit"
                   className='btn btn-primary'
                   value="Fight!" />
               </div>
             </div>
+            {error && (
+              <div className="alert alert-danger mt-3" role="alert">
+                {error}
+              </div>
+            )}
         </form>
         <div className='row'>
           <div className="col-md">

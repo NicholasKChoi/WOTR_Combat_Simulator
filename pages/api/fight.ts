@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import Results from '../../components/apps/combat-simulator/results';
-import { Army, BaseArmy } from './models/army';
+import { Army, BaseArmy, Battleground } from './models/army';
 
 class FormParseResult {
   attackArmy: BaseArmy;
@@ -12,26 +12,52 @@ class FormParseResult {
   }
 }
 
+interface RoundLog {
+  round: number;
+  attackerDice: number[];
+  attackerHits: number;
+  defenderDice: number[];
+  defenderHits: number;
+  attackerAfter: { regulars: number; elites: number };
+  defenderAfter: { regulars: number; elites: number };
+}
+
 class BattleResult {
   attackArmy: BaseArmy;
   defendArmy: BaseArmy;
 
   // data
-  rounds: number = 0;
+  roundCount: number = 0;
   attackHitsPerRound: number[];
   defendHitsPerRound: number[];
+  roundLogs: RoundLog[];
 
   constructor(attack: BaseArmy, defend: BaseArmy) {
     this.attackArmy = attack;
     this.defendArmy = defend;
     this.attackHitsPerRound = [];
     this.defendHitsPerRound = [];
+    this.roundLogs = [];
   }
 
-  recordRound(attackHits: number, defendHits: number) {
-    this.rounds++;
+  recordRound(
+    attackHits: number,
+    defendHits: number,
+    attackerDice: number[],
+    defenderDice: number[]
+  ) {
+    this.roundCount++;
     this.attackHitsPerRound.push(attackHits);
     this.defendHitsPerRound.push(defendHits);
+    this.roundLogs.push({
+      round: this.roundCount,
+      attackerDice,
+      attackerHits: attackHits,
+      defenderDice,
+      defenderHits: defendHits,
+      attackerAfter: { regulars: this.attackArmy.regulars, elites: this.attackArmy.elites },
+      defenderAfter: { regulars: this.defendArmy.regulars, elites: this.defendArmy.elites },
+    });
   }
 
   getSurvivor(): string {
@@ -47,9 +73,9 @@ class BattleResult {
     let survivor = this.getSurvivor();
     let totalAHits = this.attackHitsPerRound.reduce((total, next) => total + next, 0);
     let totalDHits = this.defendHitsPerRound.reduce((total, next) => total + next, 0);
-    let averageAttackHitsPerRound = totalAHits / this.rounds;
-    let averageDefendHitsPerRound = totalDHits / this.rounds;
-    let rounds = this.rounds;
+    let averageAttackHitsPerRound = totalAHits / this.roundCount;
+    let averageDefendHitsPerRound = totalDHits / this.roundCount;
+    let rounds = this.roundCount;
 
     return {
       attack: this.attackArmy,
@@ -57,7 +83,8 @@ class BattleResult {
       rounds,
       averageAttackHitsPerRound,
       averageDefendHitsPerRound,
-      survivor
+      survivor,
+      roundLogs: this.roundLogs,
     }
   }
 }
@@ -69,23 +96,65 @@ interface BattleStats {
   averageAttackHitsPerRound: number;
   averageDefendHitsPerRound: number;
   survivor: string;
+  roundLogs: RoundLog[];
 }
 
 
 /**
- * 
- * @param req 
- * @returns 
+ * Validates an army's unit counts.
+ * Returns an error message string if invalid, or null if valid.
+ */
+function validateArmy(army: BaseArmy): string | null {
+  if (!Number.isInteger(army.regulars)) {
+    return "regulars must be an integer";
+  }
+  if (!Number.isInteger(army.elites)) {
+    return "elites must be an integer";
+  }
+  if (!Number.isInteger(army.leaders)) {
+    return "leaders must be an integer";
+  }
+  if (army.regulars < 0) {
+    return "regulars must be at least 0";
+  }
+  if (army.regulars > 10) {
+    return "regulars must be at most 10";
+  }
+  if (army.elites < 0) {
+    return "elites must be at least 0";
+  }
+  if (army.elites > 10) {
+    return "elites must be at most 10";
+  }
+  if (army.leaders < 0) {
+    return "leaders must be at least 0";
+  }
+  if (army.leaders > 5) {
+    return "leaders must be at most 5";
+  }
+  return null;
+}
+
+
+/**
+ *
+ * @param req
+ * @returns
  */
 function parseFightForm(req: NextApiRequest): FormParseResult {
+  const rawBattleground = req.body["battleground"];
+  const battleground: Battleground = rawBattleground === 'siege' ? 'siege' : 'open';
+
   let attackers = new BaseArmy(
     parseInt(req.body["attack-regs"]),
     parseInt(req.body["attack-elts"]),
-    parseInt(req.body["attack-ldrs"]));
+    parseInt(req.body["attack-ldrs"]),
+    battleground);
   let defenders = new BaseArmy(
     parseInt(req.body["defend-regs"]),
     parseInt(req.body["defend-elts"]),
-    parseInt(req.body["defend-ldrs"])
+    parseInt(req.body["defend-ldrs"]),
+    battleground
   );
 
   return new FormParseResult(attackers, defenders);
@@ -150,15 +219,20 @@ function Battle(form: FormParseResult): BattleResult {
 
     let defendLeaderRoll = rollDice(Math.min(defendCombatResult.misses.length, defend.leaders));
     let defendLeaderResult = calculateCombatRollResults({diceRoll: defendLeaderRoll});
-    
+
     // take combat hits
     let attackHits = attackCombatResult.hits.length + attackLeaderResult.hits.length;
     let defendHits = defendCombatResult.hits.length + defendLeaderResult.hits.length;
+
+    // Combine combat + leader dice for the log
+    const allAttackerDice = [...attackCombatRoll, ...attackLeaderRoll];
+    const allDefenderDice = [...defenseCombat, ...defendLeaderRoll];
+
     attack.takeHits(defendHits);
     defend.takeHits(attackHits);
 
-    // record number of rounds in the battle
-    battleResult.recordRound(attackHits, defendHits);
+    // record round in the battle (army state captured after hits are applied)
+    battleResult.recordRound(attackHits, defendHits, allAttackerDice, allDefenderDice);
     console.log(
       battleResult,
       attackCombatRoll,
@@ -178,7 +252,22 @@ function Battle(form: FormParseResult): BattleResult {
 
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   const formParse = parseFightForm(req);
+
+  const attackError = validateArmy(formParse.attackArmy);
+  if (attackError) {
+    return res.status(400).json({ error: `Attacker: ${attackError}` });
+  }
+
+  const defendError = validateArmy(formParse.defendArmy);
+  if (defendError) {
+    return res.status(400).json({ error: `Defender: ${defendError}` });
+  }
+
   const results = Battle(formParse);
   res.status(200).json(results.getStats());
 }
