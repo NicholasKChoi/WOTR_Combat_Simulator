@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import Results from '../../components/apps/combat-simulator/results';
 import { Army, BaseArmy } from './models/army';
 
 class FormParseResult {
@@ -92,7 +91,7 @@ function parseFightForm(req: NextApiRequest): FormParseResult {
 }
 
 
-function rollDice(numdice: number): number[] {
+export function rollDice(numdice: number): number[] {
   let min = 1;
   let max = 6;
   let results: number[] = [];
@@ -115,7 +114,7 @@ interface CombatRollResults {
   hits: number[];
   misses: number[];
 }
-function calculateCombatRollResults(opts: CombatRollOps): CombatRollResults {
+export function calculateCombatRollResults(opts: CombatRollOps): CombatRollResults {
   let threshold = opts.threshold || 5;
   let hits: number[] = [];
   let misses: number[] = [];
@@ -131,7 +130,7 @@ function calculateCombatRollResults(opts: CombatRollOps): CombatRollResults {
 }
 
 
-function Battle(form: FormParseResult): BattleResult {
+export function Battle(form: FormParseResult): BattleResult {
   let attack = form.attackArmy;
   let defend = form.defendArmy;
   const battleResult = new BattleResult(attack, defend);
