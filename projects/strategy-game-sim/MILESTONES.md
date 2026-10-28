@@ -2,31 +2,31 @@
 
 ## M1: Foundations, plus a working WOTR Monte Carlo simulator
 
-**Outcome:** Both existing apps have design docs that reviewers judge against, the repo has an
-acceptance harness, the WOTR simulator reports outcome frequencies over N battles, and the StarCraft
-helper's edge cases behave as its doc says.
+**Outcome:** The WOTR simulator has a design doc reviewers judge against, enforces the game's caps,
+reports outcome frequencies over N battles, and is covered by an acceptance harness. The StarCraft
+helper is frozen and out of this milestone.
 
 ### Exit criteria
 
 | id | criterion | kind | covered by | status |
 |----|-----------|------|------------|--------|
-| M1.1 | `docs/combat-simulator.md` states the WOTR combat rules the simulator implements, input bounds, and outcome reporting | code | | open |
-| M1.2 | `docs/starcraft-helper.md` states the helper's purpose, player list, map pool source, strike limits, and edge states | code | | open |
-| M1.3 | An acceptance harness drives `/api/fight` over HTTP and renders app pages with clicks, runnable by one command | code | | open |
-| M1.4 | REPO.md `acceptanceHarness` and `commands.acceptance` point at the harness | ops | | open |
-| M1.5 | `/api/fight` validates and caps inputs, rejects bad methods, and never returns NaN (S3) | code | | open |
-| M1.6 | `/api/fight` runs N independent battles and returns outcome frequencies; the page shows them (W2) | code | | open |
-| M1.7 | The API surface is documented and reviewable: request and response shapes written down and listed in CONTEXT.md Key surfaces | code | | open |
-| M1.8 | StarCraft helper meets H1 and H2: bounded re-roll, plain message when all maps are struck | code | | open |
+| M1.1 | `docs/combat-simulator.md` states the WOTR combat rules the simulator implements, input bounds, and outcome reporting | code | SGS-001 | open |
+| M1.2 | `docs/starcraft-helper.md` (dropped: StarCraft helper frozen) | code | | dropped |
+| M1.3 | An acceptance harness drives `/api/fight` over HTTP and the WOTR page and landing page with clicks, runnable by one command | code | SGS-002 | open |
+| M1.4 | REPO.md `acceptanceHarness` and `commands.acceptance` point at the harness | ops | human (after SGS-002) | open |
+| M1.5 | `/api/fight` accepts only POST, caps an army at 10 units, rejects 0-unit armies, and never returns NaN (S3) | code | SGS-003 | open |
+| M1.6 | `/api/fight` runs N independent battles (default 1000, max 100,000) and returns outcome frequencies, round counts, and surviving units; the page shows them (W2) | code | SGS-005 | open |
+| M1.7 | The API surface is documented and reviewable: request and response shapes written down and listed in CONTEXT.md Key surfaces | code | SGS-006 + human (CONTEXT Key surfaces) | open |
+| M1.8 | StarCraft helper H1/H2 fixes (dropped: StarCraft helper frozen) | code | | dropped |
+| M1.9 | Combat applies the published caps: at most 5 combat dice and the leadership-reroll cap, as written in `docs/combat-simulator.md` (W1) | code | SGS-004 | open |
 
 ### Delivery sequence
 
-1. Design docs (M1.1, M1.2). Owner supplies the rules; everything else is judged against these.
-2. Acceptance harness (M1.3), then point REPO.md at it (M1.4).
-3. `/api/fight` input hardening (M1.5).
+1. WOTR design doc (M1.1) and acceptance harness (M1.3), in parallel. Then point REPO.md at the harness (M1.4).
+2. `/api/fight` input hardening (M1.5).
+3. Combat caps (M1.9).
 4. Monte Carlo over N battles (M1.6).
-5. StarCraft helper edge cases (M1.8). Can run in parallel with steps 3–4.
-6. Follow-up: document the API surface (M1.7).
+5. Follow-up: document the API surface (M1.7).
 
 ### Safety and contracts
 

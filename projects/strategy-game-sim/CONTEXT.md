@@ -8,7 +8,7 @@ with randomness, either to estimate odds or to make fair random picks. A landing
 - **WOTR Combat Simulator.** It estimates battle outcomes in *War of the Ring*. Combat odds depend on
   how the armies change from round to round, so they're hard to work out exactly. The app runs a battle
   N times and reports how often each outcome occurs. Status: unfinished; it runs one battle today.
-- **StarCraft Helper.** It handles matchmaking for a small group of friends: random 1v1 pairings, and
+- **StarCraft Helper.** (Frozen: no changes in this project.) It handles matchmaking for a small group of friends: random 1v1 pairings, and
   a map from the current pool that skips maps players have struck.
 - **AoE4 Build Order Simulator.** It simulates an *Age of Empires IV* build order step by step
   (villager production, gathering, building, age-ups) to estimate macro timings. Ottomans only at first.
@@ -39,7 +39,7 @@ The current surfaces are:
 | Topic | Doc | Authoritative for |
 |-------|-----|-------------------|
 | WOTR combat rules | `docs/combat-simulator.md` (TODO, M1.1) | Dice, leaders, casualties, round loop, input bounds, outcome reporting |
-| StarCraft helper | `docs/starcraft-helper.md` (TODO, M1.2) | Player list, map pool source, strike limits, edge states |
+| StarCraft helper | `docs/starcraft-helper.md` (deferred; app frozen) | Player list, map pool source, strike limits, edge states |
 | AoE4 build order | `docs/aoe4-build-order.md` (TODO, M2) | Simulation model, data source, timing outputs |
 
 ## Open questions
@@ -48,9 +48,21 @@ The current surfaces are:
   such as aoe4world or hand-entered values? TODO
 - AoE4: should the simulation be fixed (one answer per build order), or vary walking time and idle
   villagers and report a spread of results? TODO
-- WOTR: the default and maximum number of simulated battles (N). TODO
+
+## Decisions
+
+- WOTR N: default 1000 battles, maximum 100,000 (owner, 2026-10-28).
+- WOTR rules: the published game's combat-dice cap (5) and leadership-reroll cap are genuine rules and
+  must be implemented. The fixed casualty order is intentional: it stands in for the human player's
+  choice of losses.
+- WOTR inputs: an army is capped at 10 units in total. A side starting with 0 units is invalid.
+- WOTR outcome frequencies: should include round counts and surviving units as well as who wins. The
+  design doc (SGS-001) proposes the exact statistics for the owner to confirm.
+- Superseded PRs #11 (input validation) and #12 (Jest suite) were closed.
 
 ## Out of scope
 
 - `golang/` (Go prototype and its create-react-app frontend). Not deployed, and no Go toolchain.
 - AoE4 civilizations other than Ottomans.
+- StarCraft Helper: frozen. No tickets touch `pages/apps/starcraft-helper.js`. Its invariants (H1–H3) still
+  apply if a shared-code change affects it.

@@ -8,3 +8,9 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 
 | id | title | milestone | criteria | component | risk | dependsOn | relatesTo | branch | branchTip | status | reworkCount | pr | ticket |
 |----|-------|-----------|----------|-----------|------|-----------|-----------|--------|-----------|--------|-------------|----|--------|
+| SGS-001 | Draft WOTR combat design doc | M1 | M1.1 | wotr-combat-simulator | high | | | | | draft | 0 | | tickets/SGS-001-wotr-combat-design-doc.md |
+| SGS-002 | Playwright acceptance harness | M1 | M1.3 | site | standard | | | | | draft | 0 | | tickets/SGS-002-playwright-acceptance-harness.md |
+| SGS-003 | Validate and cap /api/fight inputs | M1 | M1.5 | wotr-combat-simulator | high | SGS-001, SGS-002 | | | | draft | 0 | | tickets/SGS-003-validate-fight-inputs.md |
+| SGS-004 | Apply combat dice and leadership-reroll caps | M1 | M1.9 | wotr-combat-simulator | high | SGS-001, SGS-003 | | | | draft | 0 | | tickets/SGS-004-wotr-combat-caps.md |
+| SGS-005 | Run N battles and report outcome frequencies | M1 | M1.6 | wotr-combat-simulator | high | SGS-001, SGS-004 | | | | draft | 0 | | tickets/SGS-005-n-battle-outcome-frequencies.md |
+| SGS-006 | Document /api/fight contract and export shared types | M1 | M1.7 | wotr-combat-simulator | standard | SGS-005 | | | | draft | 0 | | tickets/SGS-006-fight-api-contract.md |
