@@ -50,6 +50,7 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-1. Does the 10-unit total include leaders? CONTEXT.md says "an army is capped at 10 units in total" without saying which fields count. The published game counts leaders as army units, but the existing UI treats leaders (0-5) separately. The implementer should not choose. Until the owner answers, SGS-001's doc should state it; this ticket assumes the total is regulars + elites + leaders only if the owner confirms that reading, otherwise regulars + elites. Either way the "at least one regular or elite" rule stands.
-2. Is the existing 0-5 leaders-per-army cap an owner decision to keep? It is enforced today only by the UI, and S3 wants it server-side. This ticket proposes enforcing "leaders <= 5" with a 400, but the owner has not said it.
-3. Error body shape `{ error: string }` is a new public contract (documented later under M1.7); confirm that is acceptable.
+Resolved by the owner (2026-10-28):
+1. Leaders do not count toward the 10-unit cap: regulars + elites <= 10 per side.
+2. Leaders <= 5 per side is enforced by the server with a 400.
+3. The `{ error: string }` body for 400 and 405 is accepted as the public error format for now.

@@ -13,4 +13,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-003 | Validate and cap /api/fight inputs | M1 | M1.5 | wotr-combat-simulator | high | SGS-001, SGS-002 | | | | draft | 0 | | tickets/SGS-003-validate-fight-inputs.md |
 | SGS-004 | Apply combat dice and leadership-reroll caps | M1 | M1.9 | wotr-combat-simulator | high | SGS-001, SGS-003 | | | | draft | 0 | | tickets/SGS-004-wotr-combat-caps.md |
 | SGS-005 | Run N battles and report outcome frequencies | M1 | M1.6 | wotr-combat-simulator | high | SGS-001, SGS-004 | | | | draft | 0 | | tickets/SGS-005-n-battle-outcome-frequencies.md |
-| SGS-006 | Document /api/fight contract and export shared types | M1 | M1.7 | wotr-combat-simulator | standard | SGS-005 | | | | draft | 0 | | tickets/SGS-006-fight-api-contract.md |
+| SGS-006 | Publish /api/fight OpenAPI spec, shared types, and contract check | M1 | M1.7 | wotr-combat-simulator | high | SGS-002, SGS-005 | | | | draft | 0 | | tickets/SGS-006-fight-api-contract.md |

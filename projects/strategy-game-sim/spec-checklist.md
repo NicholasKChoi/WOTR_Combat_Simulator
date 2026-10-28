@@ -37,6 +37,6 @@ the diff touches its paths (see INVARIANTS.md).
 
 ## AoE4 Build Order Simulator (A1–A3)
 
-- [ ] A1: no cost, time, or rate literal in simulation code; every one comes from `data/aoe4/**` with a patch label.
+- [ ] A1: no cost, time, or rate literal in simulation code; every one comes from `data/aoe4-build-order/**` with a patch label.
 - [ ] A2: every spend checks affordability first, and waiting time feeds into the reported timings.
 - [ ] A3: no `Math.random`, `Date.now`, or timer-dependent value in the simulation path.

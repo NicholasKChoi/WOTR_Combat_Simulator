@@ -21,11 +21,12 @@ In `pages/api/fight.ts`, `Battle()` (lines ~139-158 on `main`, shifted by SGS-00
 - Combat roll: replace `rollDice(attack.getCombatStrength())` and `rollDice(defend.getCombatStrength())` with a roll of `min(getCombatStrength(), <dice cap from doc>)` dice. The cap is 5 per CONTEXT.md Decisions; take the value and wording from the doc.
 - Leader reroll: replace `Math.min(<side>CombatResult.misses.length, <side>.leaders)` with the same expression additionally bounded by the doc's reroll cap (at most 5 per the owner decision).
 - Do not change `BaseArmy.getCombatStrength()` in `pages/api/models/army.ts`: it also drives `isArmyAlive()` and `takeHit()`'s ">5 units" casualty branch, which must keep using the real army size.
+- Casualty edge case (owner decision 2026-10-28): in `BaseArmy.takeHit()` in `pages/api/models/army.ts`, when the army has more than 5 units and 0 regulars, a hit downgrades an elite to a regular instead of decrementing regulars below 0. The rest of the casualty order is unchanged.
 - Hit threshold (`> 5`, i.e. hit on 6 only), simultaneous hit application, and `console.log` are untouched.
 
 Observation for the implementer and reviewer: because misses come from at most 5 dice, `min(misses, leaders)` is already at most 5 once the dice cap is in. So the reroll cap of 5 adds no extra behavior unless the doc states a different cap or a different rule (see Open questions). A round's hits (combat hits plus leader hits) can therefore never exceed 5 per side, since rerolls only replace misses.
 
-**Out of scope:** Casualty order in `takeHit()` (intentional, stands in for player choice); the N-battle loop and any response-shape change (SGS-005); input validation and 10-unit army cap (SGS-003); hit threshold; leadership from characters/Nazgul; removing the debug `console.log`; any edit to `docs/combat-simulator.md` beyond what its owner-confirmed content already states.
+**Out of scope:** Any other change to the casualty order in `takeHit()` (intentional, stands in for player choice); the N-battle loop and any response-shape change (SGS-005); input validation and 10-unit army cap (SGS-003); hit threshold; leadership from characters/Nazgul; removing the debug `console.log`; any edit to `docs/combat-simulator.md` beyond what its owner-confirmed content already states.
 
 ## Diagrams
 
@@ -60,13 +61,20 @@ Rule wording and constants cited from `docs/combat-simulator.md`; if the doc dif
 - [ ] A one-round battle (e.g. 10 regulars with 0 leaders vs 1 regular, run until a request ends in `rounds` of 1) reports `averageAttackHitsPerRound` of at most 5, an integer.
 - [ ] Armies of 5 or fewer units are unaffected: the mean hits per round for 5 regulars vs 5 regulars with 0 leaders stays at the 1/6-per-die expectation (about 0.83 per round, checked within a stated tolerance over many requests).
 - [ ] Leader rerolls never exceed the doc's cap, the side's leaders, or that round's misses (assertable in a unit-level seam if one exists; otherwise covered by the bound in the first two criteria).
-- [ ] Casualty behavior unchanged: an army of more than 5 units still loses a regular per hit (covers `takeHit()` still using the real army size).
+- [ ] Casualty behavior otherwise unchanged: an army of more than 5 units with at least one regular still loses a regular per hit (covers `takeHit()` still using the real army size).
+- [ ] An army of more than 5 units with 0 regulars (e.g. 7 elites) that takes a hit has one elite downgraded to a regular; no unit count in any response is ever negative.
 - [ ] `npx tsc --noEmit` and `npx next build` pass.
 - [ ] No INVARIANTS.md regressions (W1: the caps now match the doc; W2 and S3 not affected).
 
 ## Open questions
 
-1. The doc `docs/combat-simulator.md` does not exist on `main` yet. Its final text must state: the combat-dice cap value (owner decision: 5), the leadership-reroll cap value and wording (owner decision: at most 5, bounded by misses and leaders), and whether leader rerolls can ever exceed `min(misses, leaders)`. If the doc and the owner's decision differ, owner settles before implementation.
-2. The task framing suggested "5 combat hits plus capped leader hits per round". Under the stated rule, rerolls only replace missed dice, so total hits per side per round are at most 5. Owner confirms this reading (criteria above assume it).
-3. Does the doc define the leadership value as the army's `leaders` count only, or does it include other sources (e.g. characters, Nazgul)? The ticket assumes `leaders` only; anything else is a separate ticket.
-4. The response does not expose per-round hits (`attackHitsPerRound` stays inside `BattleResult`), so the cap is observable only through averages and `rounds`. Owner or SGS-005 decides whether a test seam (exported `Battle`/round function) is wanted; this ticket does not change the response shape.
+Resolved by the owner (2026-10-28):
+1. Combat roll uses min(regulars + elites, 5) dice. Leader rerolls = min(misses, leaders, 5).
+2. Confirmed: a side scores at most 5 hits per round.
+3. Leadership comes from `leaders` only. Character and Nazgul leadership is a later milestone.
+4. Casualty order with more than 5 units and 0 regulars: a hit downgrades an elite to a regular. In scope
+   for this ticket (see Scope).
+
+Still open (non-blocking):
+- Whether a per-round test seam is wanted. Default: no response-shape change in this ticket; acceptance
+  uses the averages as written.

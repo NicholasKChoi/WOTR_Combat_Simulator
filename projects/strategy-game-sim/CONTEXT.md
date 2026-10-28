@@ -21,7 +21,7 @@ with randomness, either to estimate odds or to make fair random picks. A landing
 | site | `pages/index.js`, `pages/_app.js`, `components/layout.*`, `utils/**`, `styles/**` | Landing page and routing, shared Layout, shared helpers and styles |
 | wotr-combat-simulator | `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `pages/api/fight.ts`, `pages/api/models/army.ts` | Army input form, `/api/fight` battle simulation, results view |
 | starcraft-helper | `pages/apps/starcraft-helper.js` | Partner pairing, map strike and map pick, all client-side |
-| aoe4-build-order | TODO: proposed `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `data/aoe4/**` | Build order input, simulation, timing report, versioned game data |
+| aoe4-build-order | TODO: proposed `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `lib/aoe4-build-order/**`, `pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**` | Build order input, simulation, timing report, versioned game data |
 
 The apps don't depend on each other. The only shared code is the site component.
 
@@ -58,11 +58,21 @@ The current surfaces are:
 - WOTR inputs: an army is capped at 10 units in total. A side starting with 0 units is invalid.
 - WOTR outcome frequencies: should include round counts and surviving units as well as who wins. The
   design doc (SGS-001) proposes the exact statistics for the owner to confirm.
+- WOTR caps: regulars + elites <= 10 per side; leaders do not count toward it and are capped at 5.
+  Leader rerolls = min(misses, leaders, 5), so a side scores at most 5 hits per round.
+- WOTR casualties: with more than 5 units and 0 regulars, a hit downgrades an elite to a regular.
+- WOTR outcomes: attacker win / defender win / tie (both eliminated) frequencies; rounds mean, median,
+  p10, p90; surviving-unit distribution; hits per round.
+- WOTR time budget: N = 100,000 completes within 10 seconds.
+- Error responses: `{ error: string }` with 400 or 405, accepted for now.
+- `/api/models/army`: stays where it is, documented as not part of the API.
+- API documentation: an OpenAPI (Swagger) JSON spec in the repo that agents can read with `jq`.
 - Superseded PRs #11 (input validation) and #12 (Jest suite) were closed.
 
 ## Out of scope
 
 - `golang/` (Go prototype and its create-react-app frontend). Not deployed, and no Go toolchain.
 - AoE4 civilizations other than Ottomans.
+- WOTR character and Nazgul leadership (a later milestone).
 - StarCraft Helper: frozen. No tickets touch `pages/apps/starcraft-helper.js`. Its invariants (H1–H3) still
   apply if a shared-code change affects it.

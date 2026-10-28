@@ -108,6 +108,9 @@ flowchart TD
 
 ## Open questions
 
-1. **Time budget for N = 100,000 on a Vercel serverless function.** Neither the doc (not yet merged), CONTEXT.md, nor the plan sets one, and the repo has no `vercel.json` or function `maxDuration` config. The platform timeout depends on the owner's Vercel plan, which is not recorded. Owner decides one of: accept the measured runtime as is, set a lower effective cap, or add a function duration setting. Until answered, implementers must not invent a timeout or a lower cap. The measured numbers (Scope item 4) are the input to this decision.
-2. **Statistic set and field names.** Not decided here. They come from `docs/combat-simulator.md` (SGS-001), which the owner is still to confirm per CONTEXT.md. If still unconfirmed when this ticket is picked up, it goes to `needs_spec`.
-3. **Mutual elimination label.** Today `getSurvivor()` returns `"n/a"` when both sides die. The doc should name this outcome; the results view should use that name, not `n/a`.
+Resolved by the owner (2026-10-28):
+1. Time budget: N = 100,000 with maximum legal armies must finish within 10 seconds. If the measured
+   runtime exceeds it, report the number and stop; do not lower the cap on your own.
+2. Statistic set: as proposed in `docs/combat-simulator.md` section 8 (attacker win / defender win / tie
+   frequencies; rounds mean, median, p10, p90; surviving-unit distribution; hits per round).
+3. The mutual-elimination outcome is named "tie".

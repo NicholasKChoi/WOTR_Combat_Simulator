@@ -106,8 +106,8 @@ Paths: `utils/**`, `components/layout.*`, `styles/**`, `pages/_app.js`, `pages/i
 
 - Bootstrap 5 utility classes plus CSS modules (`styles/utils.module.css`, `components/layout.module.css`)
   for styling; `classnames` as `cn` for combining them.
-- New pages should be `.tsx` so `tsc --noEmit` covers them (tsconfig only includes `.ts`/`.tsx`).
-- Each app lives at `pages/apps/<name>.js` with its components under `components/apps/<name>/`, wrapped in
-  `Layout`, and is linked from `pages/index.js`.
+- File placement follows `ARCHITECTURE.md` ("Where files go"). New apps use `lib/<app>/` for logic,
+  `pages/api/<app>/` for routes, `data/<app>/` for game data, and `docs/<app>.md` for the design doc. New
+  files are `.ts`/`.tsx`. A route change updates `docs/api/openapi.json` in the same diff.
 - The `code-factory-state` branch is factory bookkeeping. Commit and push to it directly; never open a
   PR against it, and never merge it into `main` or `main` into it.

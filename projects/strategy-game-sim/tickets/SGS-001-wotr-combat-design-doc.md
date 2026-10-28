@@ -99,17 +99,17 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-1. **Leadership-reroll cap value.** CONTEXT.md says a cap exists but gives no number. Plan Outline A hints
-   at 5 ("no cap of 5"). Owner confirms the number and whether it applies per side per round. The
-   implementer writes "TBD: owner to confirm" for the value until answered; do not invent it.
-2. **Do leaders count toward the 10-unit cap?** "10 units in total" is settled; in the published game leaders
-   are not units, but the UI offers 0-5 leaders next to 0-9 regs/elites. Owner decides: cap on regulars +
-   elites only, or regs + elites + leaders; and the per-field leader limit.
-3. **Casualty order when an army has more than 5 units but 0 regulars** (reachable once up to 10 elites are
-   allowed, e.g. 6 elites + 0 regulars): the current branch removes a regular that is not there. The fixed
-   order is settled but silent on this case. Owner decides what a hit does here (for example, an elite is
-   downgraded to a regular). Doc states the chosen rule once answered; until then it flags the gap.
-4. **Outcome statistics proposal (flagged by decision).** Owner confirms or edits the proposed set in
-   section 8 (frequencies, round-count summary, surviving-unit distribution, hits-per-round).
-5. **Remaining departures** (fight-to-elimination, no cards, no sieges, Shadow/Free hard-coded, no
-   Nazgul/character leadership): owner confirms each as intended or asks for a follow-up ticket.
+Resolved by the owner (2026-10-28); the doc states these as settled rules:
+- Leadership-reroll cap: rerolls per side per round = min(misses, leaders, 5). With the 5-die combat cap,
+  a side scores at most 5 hits per round.
+- Leaders do not count toward the 10-unit cap (cap is regulars + elites). Leaders are capped at 5 per army.
+- Leadership comes from the `leaders` count only. Character and Nazgul leadership is a later milestone;
+  the doc lists it as not modeled.
+- Casualty order with more than 5 units and 0 regulars: a hit downgrades an elite to a regular.
+- Outcome statistics proposal is confirmed as written in section 8. The mutual-elimination outcome is
+  named "tie".
+- Time budget: N = 100,000 must complete within 10 seconds.
+
+Still open:
+1. Remaining departures (fight-to-elimination, no cards, no sieges, Shadow/Free hard-coded): owner confirms
+   each as intended or asks for a follow-up ticket. The doc keeps them tagged "owner to confirm".
