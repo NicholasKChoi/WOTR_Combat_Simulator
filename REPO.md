@@ -109,3 +109,5 @@ Paths: `utils/**`, `components/layout.*`, `styles/**`, `pages/_app.js`, `pages/i
 - New pages should be `.tsx` so `tsc --noEmit` covers them (tsconfig only includes `.ts`/`.tsx`).
 - Each app lives at `pages/apps/<name>.js` with its components under `components/apps/<name>/`, wrapped in
   `Layout`, and is linked from `pages/index.js`.
+- The `code-factory-state` branch is factory bookkeeping. Commit and push to it directly; never open a
+  PR against it, and never merge it into `main` or `main` into it.
