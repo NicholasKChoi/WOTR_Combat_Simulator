@@ -51,8 +51,15 @@ prAuthor: "@me"
 
 ## CI behavior
 
-No GitHub Actions workflows. The only PR check is the Vercel preview deployment (`vercel` bot comment
-with a preview URL). A failed Vercel build is the signal that `next build` broke. No documented flakes.
+No GitHub Actions workflows. The only PR check is the Vercel preview deployment, reported as the commit
+status `Vercel – wotr-combat-simulator` (project `nicholas-chois-projects/wotr-combat-simulator`, linked
+2026-10-29), plus a `vercel` bot comment with the preview URL. A failed Vercel build is the signal that
+`next build` broke. Builds take about a minute. No documented flakes.
+
+- A failure that flips from pending to failed within a few seconds is not a build failure: Vercel
+  rejected the deploy before building (wrong project, or a commit author email not on the Vercel team).
+  Commits must be authored as `choinickolas@gmail.com`. Escalate instead of rerunning.
+- Any other Vercel project reporting on this repo (for example `wotr-combat-simulator-6syo`) is stale; ignore it.
 
 ## Tooling gaps
 
