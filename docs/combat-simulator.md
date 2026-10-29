@@ -94,16 +94,13 @@ Each side is submitted as three whole numbers: regulars, elites, and leaders. Pe
 - Leaders are 0 to 5 and do not count toward the 10.
 - Regulars + elites = 0 is invalid. An army of only leaders is invalid.
 
-A request that breaks any of these is rejected and no battle is run. That covers a side with more than
-10 regulars + elites, more than 5 leaders, 0 regulars + elites, or a value that is negative or not a
-whole number.
+A request that breaks any of these is rejected with a 400 status and no battle is run. That covers a side with
+more than 10 regulars + elites, more than 5 leaders, 0 regulars + elites, or a value that is negative
+or not a whole number.
 
-The army form offers 0 to 10 regulars, 0 to 10 elites, and 0 to 5 leaders per side. The form does not
-stop a combination the server rejects, such as 10 regulars and 10 elites.
-
-**Current code:** the form offers 0 to 9 regulars, 0 to 9 elites, and 0 to 5 leaders, and the server
-checks none of these bounds. A side with 0 regulars + elites today produces a battle of 0 rounds and
-non-numeric average hits.
+The army form offers 0 to 10 regulars, 0 to 10 elites, and 0 to 5 leaders per side. It disables
+options that would take a side over 10 regulars + elites: with 6 regulars selected, elites 5 to 10 are
+disabled. Leaders stay 0 to 5.
 
 ## Number of battles N
 
