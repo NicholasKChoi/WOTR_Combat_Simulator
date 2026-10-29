@@ -1,6 +1,6 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 
-const FIELDS = [
+export const FIELDS = [
   'attack-regs',
   'attack-elts',
   'attack-ldrs',
@@ -25,8 +25,6 @@ export async function fillArmies(page: Page, armies: Armies) {
     await page.locator(`select[name="${field}"]`).selectOption(armies[field])
   }
 }
-
-export const FIELD_KEYS = FIELDS
 
 export type FightBody = Partial<Record<typeof FIELDS[number], unknown>> & Record<string, unknown>
 

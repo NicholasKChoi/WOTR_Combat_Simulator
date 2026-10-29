@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext, type APIResponse } from '@playwright/test'
-import { FIELD_KEYS, armies, postFight, type FightBody } from './helpers'
+import { FIELDS, armies, postFight, type FightBody } from './helpers'
 
 const VALID = armies([5, 2, 1], [3, 3, 0])
 
@@ -117,7 +117,7 @@ test.describe('field errors', () => {
     ['an array', [3]],
   ]
 
-  for (const key of FIELD_KEYS) {
+  for (const key of FIELDS) {
     test(`${key} missing`, async ({ request }) => {
       await expectRejected(await postFight(request, without(VALID, key)), key)
     })
