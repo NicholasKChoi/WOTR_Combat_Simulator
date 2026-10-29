@@ -148,3 +148,9 @@ launch Chromium is environmental; scope item 6 says what to do and that a failur
 - LOC estimate ~130 -> ~140 for the now-mandatory helper module.
 
 **Existing branch work:** none. Branch `sgs-002-playwright-acceptance-harness` has not been created.
+
+## Manager note - 2026-10-28
+
+SGS-007 merged first (Vitest is on `main` at 3934ff8). Before review, rebase this branch onto `main`, regenerate
+the lockfile with `npm install --lockfile-version 2`, and confirm the top-level `name` is still
+`"WOTR_Combat_Simulator"`.

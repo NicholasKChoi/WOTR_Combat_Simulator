@@ -12,7 +12,7 @@ worktreeRoot: worktrees
 commands:
   build: "npm ci && npx next build"   # no build script in package.json; Vercel runs next build
   lint: "npx tsc --noEmit"            # no ESLint config at the root; typecheck is the only static gate
-  unit: ""                            # no root test runner; golang/ has go tests but no Go toolchain here
+  unit: "npm test"                    # Vitest (vitest run); golang/ is out of scope
   codegen: ""
   acceptance: ""
   acceptanceSetup: ""

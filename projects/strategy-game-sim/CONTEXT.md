@@ -66,6 +66,10 @@ The current surfaces are:
 - JSON field names for the response are set by the Monte Carlo ticket; the design doc describes the
   statistics' meaning without naming fields, and the OpenAPI spec copies the names from the code.
 - Malformed JSON keeps Next's plain-text 400 for now; the OpenAPI spec notes the exception.
+- WOTR departures confirmed (owner, 2026-10-28): fight to elimination, no combat cards, no sieges or
+  sorties, attacker labeled Shadow and defender Free.
+- WOTR survivor shares: each (regulars, elites) combination's frequency is out of that side's wins
+  (owner, 2026-10-28).
 - Testing: WOTR battle logic moves to `lib/combat-simulator/` (per ARCHITECTURE.md) and is unit-tested
   directly with a new unit test runner. The runner is its own ticket; tickets that unit-test logic depend on it.
 - WOTR time budget: N = 100,000 completes within 10 seconds.
