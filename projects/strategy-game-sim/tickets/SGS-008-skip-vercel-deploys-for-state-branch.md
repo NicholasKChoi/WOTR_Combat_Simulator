@@ -80,3 +80,9 @@ Single-component change outside the core control loop; no diagram required.
 - Vercel docs do not state whether `git.deploymentEnabled` is read from the pushed commit or the production branch. The pin (file on the state branch) rests on that gap and is verified only by the acceptance check. If it fails, should the owner set an Ignored Build Step in project settings, or accept the failed deploys?
 - Does the owner want a `vercel.json` also on `main` as defence in depth (a new code PR, not required here)?
 - The graph and worktree flow assume code PRs; this ticket commits directly to the state branch. Manager to confirm it gets no PR and only the nominal branch name in TASK-GRAPH.
+
+## Resolved - 2026-10-29 (manager, spec gate)
+
+- (a) If the state-branch `vercel.json` does not stop the build, stop with a blocker; the owner sets the Vercel Ignored Build Step.
+- (b) No `vercel.json` on main.
+- (c) No PR; the branch name is nominal. Commit directly onto `code-factory-state` as `choinickolas@gmail.com`, with no ticket id in the message. Record the `vercel ls` baseline before pushing.
