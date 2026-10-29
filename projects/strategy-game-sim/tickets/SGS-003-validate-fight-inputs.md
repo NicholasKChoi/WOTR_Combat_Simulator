@@ -95,8 +95,8 @@ Single-component change outside the core control loop; no diagram required.
 
 Over HTTP (Playwright `request` fixture against the harness server). In these criteria, "no battle runs" means the response is not 200 and its body has neither a `rounds` nor a `survivor` key (respec 1).
 
-- [ ] (respec 1) `GET`, `PUT`, `DELETE`, `PATCH`, and `OPTIONS` to `/api/fight` each return 405 with header `Allow: POST`, a JSON body whose `error` is a non-empty string, and no `rounds` or `survivor` key. `HEAD` returns 405 with `Allow: POST`.
-- [ ] (respec 1) A POST with valid fields returns 200 with the existing `BattleStats` keys, and `Number.isFinite` holds for both `averageAttackHitsPerRound` and `averageDefendHitsPerRound`. Covered combinations:
+- [x] (respec 1) `GET`, `PUT`, `DELETE`, `PATCH`, and `OPTIONS` to `/api/fight` each return 405 with header `Allow: POST`, a JSON body whose `error` is a non-empty string, and no `rounds` or `survivor` key. `HEAD` returns 405 with `Allow: POST`.
+- [x] (respec 1) A POST with valid fields returns 200 with the existing `BattleStats` keys, and `Number.isFinite` holds for both `averageAttackHitsPerRound` and `averageDefendHitsPerRound`. Covered combinations:
   - 5/2/1 vs 3/3/0;
   - 10/0/5 vs 0/10/5;
   - 10/0/0 vs 1/0/0;
@@ -104,42 +104,42 @@ Over HTTP (Playwright `request` fixture against the harness server). In these cr
   - all six sent as digit strings;
   - a mix of the two;
   - `"007"`-style leading zeros.
-- [ ] (respec 1) Field errors: each case below returns 400 with a JSON `error` containing the offending field key, and no `rounds`/`survivor` key. The cases are applied to at least one attack field and one defend field, and each field key appears in at least one case:
+- [x] (respec 1) Field errors: each case below returns 400 with a JSON `error` containing the offending field key, and no `rounds`/`survivor` key. The cases are applied to at least one attack field and one defend field, and each field key appears in at least one case:
   - field missing;
   - `"abc"`, `"3abc"`, `"2.5"`, `""`, `"-1"`, `"1e2"`;
   - JSON `2.5`, `-1`, `true`, `null`.
-- [ ] (respec 1) Body-shape errors: a JSON body of `null`, `[]`, `true`, `3`, or `"x"`, or a `text/plain` body, each returns 400 with a JSON `error`. An empty `application/json` body returns 400 whose `error` contains `attack-regs`.
-- [ ] (respec 1) Malformed JSON (for example `{"attack-regs":`) returns 400 and no `rounds`/`survivor`. The body is Next's plain-text response, and the spec asserts only status and absence of those keys.
-- [ ] (respec 1) Range boundaries on each side:
+- [x] (respec 1) Body-shape errors: a JSON body of `null`, `[]`, `true`, `3`, or `"x"`, or a `text/plain` body, each returns 400 with a JSON `error`. An empty `application/json` body returns 400 whose `error` contains `attack-regs`.
+- [x] (respec 1) Malformed JSON (for example `{"attack-regs":`) returns 400 and no `rounds`/`survivor`. The body is Next's plain-text response, and the spec asserts only status and absence of those keys.
+- [x] (respec 1) Range boundaries on each side:
   - regulars 10 with elites 0 is 200;
   - elites 10 with regulars 0 is 200;
   - leaders 5 is 200;
   - leaders 6 is 400 with `error` containing that leaders field key;
   - regulars 11 is 400 with `error` containing that regulars field key.
-- [ ] (respec 1) Side cap: 10 regulars + 1 elite (leaders any 0-5) returns 400 with `error` containing the side name. Tested for attack and for defend separately, with the other side valid. 6 regulars + 4 elites + 5 leaders is 200, which shows leaders are not counted.
-- [ ] (respec 1) Zero fighters: 0/0/0 and 0/0/5 each return 400 with `error` containing the side name, for attack and for defend.
-- [ ] (respec 1) Error precedence:
+- [x] (respec 1) Side cap: 10 regulars + 1 elite (leaders any 0-5) returns 400 with `error` containing the side name. Tested for attack and for defend separately, with the other side valid. 6 regulars + 4 elites + 5 leaders is 200, which shows leaders are not counted.
+- [x] (respec 1) Zero fighters: 0/0/0 and 0/0/5 each return 400 with `error` containing the side name, for attack and for defend.
+- [x] (respec 1) Error precedence:
   - a PUT with an invalid body returns 405, not 400;
   - with `attack-elts: "abc"` and `defend-regs` missing, the `error` names `attack-elts`;
   - with attack at 0/0/0 and `defend-ldrs: 6`, the `error` names `defend-ldrs`, because field checks run before side checks;
   - with attack at 0/0/0 and defend at 11/0/0 given as numbers, the `error` names `defend-regs` (range check);
   - with attack at 0/0/0 and defend at 6/5/0, the `error` contains `attack`.
-- [ ] (respec 1) Large values `1e9`, `"999999999"`, and a 400-digit string each return 400 within the Playwright request timeout set to 1 second.
+- [x] (respec 1) Large values `1e9`, `"999999999"`, and a 400-digit string each return 400 within the Playwright request timeout set to 1 second.
 
 In the UI (`/apps/combat-simulator`):
 
-- [ ] (respec 1) The regulars and elites selects each offer 0-10, and leaders offers 0-5. With elites at 0, regulars 10 is selectable. With regulars at 0, elites 10 is selectable.
-- [ ] (respec 1) With attack regulars at 6, the attack elites options 5-10 are disabled and 0-4 are enabled. With attack elites at 7, attack regulars options 4-10 are disabled. At regulars + elites = 10, every attack leaders option 0-5 stays enabled and selectable. Setting attack values does not disable any defend option, and the reverse also holds.
-- [ ] (respec 1) Submitting with attack 10/0/5 vs defend 0/10/5 renders the "Army Results" heading and no `role="alert"` element.
-- [ ] (respec 1) Clicking Fight! with a side at 0 regulars and 0 elites shows an element with `role="alert"` whose text equals the server's `error` string for that request. The spec captures that string from the intercepted response. The "Army Results" heading is absent, even when a successful result was shown before this submit, and the page emits no `pageerror` event.
-- [ ] (respec 1) After that error, a valid submit removes the `role="alert"` element and renders the "Army Results" heading.
-- [ ] (respec 1) With `/api/fight` aborted via `page.route(...).abort()`, clicking Fight! shows a `role="alert"` element with non-empty text, no "Army Results" heading, and no `pageerror` event.
+- [x] (respec 1) The regulars and elites selects each offer 0-10, and leaders offers 0-5. With elites at 0, regulars 10 is selectable. With regulars at 0, elites 10 is selectable.
+- [x] (respec 1) With attack regulars at 6, the attack elites options 5-10 are disabled and 0-4 are enabled. With attack elites at 7, attack regulars options 4-10 are disabled. At regulars + elites = 10, every attack leaders option 0-5 stays enabled and selectable. Setting attack values does not disable any defend option, and the reverse also holds.
+- [x] (respec 1) Submitting with attack 10/0/5 vs defend 0/10/5 renders the "Army Results" heading and no `role="alert"` element.
+- [x] (respec 1) Clicking Fight! with a side at 0 regulars and 0 elites shows an element with `role="alert"` whose text equals the server's `error` string for that request. The spec captures that string from the intercepted response. The "Army Results" heading is absent, even when a successful result was shown before this submit, and the page emits no `pageerror` event.
+- [x] (respec 1) After that error, a valid submit removes the `role="alert"` element and renders the "Army Results" heading.
+- [x] (respec 1) With `/api/fight` aborted via `page.route(...).abort()`, clicking Fight! shows a `role="alert"` element with non-empty text, no "Army Results" heading, and no `pageerror` event.
 
 General:
 
-- [ ] `git diff` shows no changes to `Battle`, `rollDice`, `calculateCombatRollResults`, `pages/api/models/army.ts`, the `BattleStats` interface, `docs/`, or `golang/`.
-- [ ] `npx tsc --noEmit` and `npx next build` pass, and `npm run acceptance` passes with the new cases.
-- [ ] No INVARIANTS.md regressions:
+- [x] `git diff` shows no changes to `Battle`, `rollDice`, `calculateCombatRollResults`, `pages/api/models/army.ts`, the `BattleStats` interface, `docs/`, or `golang/`.
+- [x] `npx tsc --noEmit` and `npx next build` pass, and `npm run acceptance` passes with the new cases.
+- [x] No INVARIANTS.md regressions:
   - S3 is now enforced for every current numeric input, before `Battle` runs;
   - W1 holds, because the bounds match CONTEXT.md Decisions and combat logic is unchanged;
   - W2 is untouched.
