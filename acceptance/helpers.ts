@@ -1,6 +1,6 @@
 import type { APIRequestContext, Page } from '@playwright/test'
 
-export const FIELDS = [
+const FIELDS = [
   'attack-regs',
   'attack-elts',
   'attack-ldrs',
