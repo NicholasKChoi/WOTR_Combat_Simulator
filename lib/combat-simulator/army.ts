@@ -28,7 +28,12 @@ export class BaseArmy {
       return false;
     }
     if (this.getCombatStrength() > 5) {
-      this.regulars--;
+      if (this.regulars > 0) {
+        this.regulars--;
+      } else {
+        this.elites--;
+        this.regulars++;
+      }
     } else if (this.elites > 0) {
       this.elites--;
       this.regulars++;

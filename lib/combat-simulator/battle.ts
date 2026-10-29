@@ -80,6 +80,10 @@ export interface BattleStats {
 
 export type DiceRoller = (numDice: number) => number[];
 
+// Separate from the army-size threshold in BaseArmy.takeHit, which is also 5 but means something else.
+export const MAX_COMBAT_DICE = 5;
+export const MAX_LEADER_REROLLS = 5;
+
 export function rollDice(numdice: number): number[] {
   let min = 1;
   let max = 6;
@@ -124,17 +128,17 @@ export function resolveRound(battle: BattleResult, roll: DiceRoller): void {
   let defend = battle.defendArmy;
 
   // combat
-  let attackCombatRoll = roll(attack.getCombatStrength());
+  let attackCombatRoll = roll(Math.min(attack.getCombatStrength(), MAX_COMBAT_DICE));
   let attackCombatResult = calculateCombatRollResults({diceRoll: attackCombatRoll});
 
-  let defenseCombat = roll(defend.getCombatStrength());
+  let defenseCombat = roll(Math.min(defend.getCombatStrength(), MAX_COMBAT_DICE));
   let defendCombatResult = calculateCombatRollResults({diceRoll: defenseCombat});
 
   // leaders
-  let attackLeaderRoll = roll(Math.min(attackCombatResult.misses.length, attack.leaders));
+  let attackLeaderRoll = roll(Math.min(attackCombatResult.misses.length, attack.leaders, MAX_LEADER_REROLLS));
   let attackLeaderResult = calculateCombatRollResults({diceRoll: attackLeaderRoll});
 
-  let defendLeaderRoll = roll(Math.min(defendCombatResult.misses.length, defend.leaders));
+  let defendLeaderRoll = roll(Math.min(defendCombatResult.misses.length, defend.leaders, MAX_LEADER_REROLLS));
   let defendLeaderResult = calculateCombatRollResults({diceRoll: defendLeaderRoll});
   
   // take combat hits
