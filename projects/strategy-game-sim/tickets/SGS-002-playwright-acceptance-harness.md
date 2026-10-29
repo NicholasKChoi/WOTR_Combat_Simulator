@@ -40,9 +40,10 @@ Add `@playwright/test` as a devDependency (update `package-lock.json`, keeping `
 
 1. `playwright.config.ts` at the repo root (respec 1):
    - `testDir: 'acceptance'`. Chromium project only.
-   - Port pinned to **3100** (not 3000, so it does not collide with a developer's `npm run dev`). `use.baseURL`
-     is `http://localhost:3100`; `webServer.command` is `next dev -p 3100` (or `npx next dev -p 3100`);
-     `webServer.url` (or `port`) points at the same port.
+   - Port derived per checkout (follow-up 1): `3100 + (sha1(config dir) % 900)`, so each worktree (one per
+     branch) gets its own port in 3100-3999 and never collides with a developer's `npm run dev` on 3000;
+     `ACCEPTANCE_PORT` overrides it. `use.baseURL`, `webServer.command` (`npx next dev -p <port>`), and
+     `webServer.url` all use that port.
    - `webServer.reuseExistingServer: false`, so the run always starts and stops its own server.
    - `webServer.timeout` generous enough for the first `next dev` compile (Next 12; there is no `start` script
      and `next build` is not needed to serve).
@@ -106,8 +107,9 @@ flowchart LR
 
 ## Acceptance criteria
 
-- [x] After `npm ci` and `npm run acceptance:setup`, a single `npm run acceptance` starts its own server on port 3100, runs all specs, stops the server, and exits 0 on a clean checkout. (respec 1)
-- [x] With another process already listening on port 3100, `npm run acceptance` fails rather than reusing it (`reuseExistingServer: false`). (respec 1)
+- [x] After `npm ci` and `npm run acceptance:setup`, a single `npm run acceptance` starts its own server on its per-checkout port, runs all specs, stops the server, and exits 0 on a clean checkout. (follow-up 1)
+- [x] With another process already listening on the run's port, `npm run acceptance` fails rather than reusing it (`reuseExistingServer: false`). (respec 1)
+- [x] Two worktrees on different branches can run `npm run acceptance` concurrently without sharing a port or a server. (follow-up 1)
 - [x] `npm run acceptance:setup` installs the Chromium browser needed by the specs; if it or the browser launch cannot succeed on the host, the implementer reports a blocker with the error, not a pass. (respec 1)
 - [x] The landing spec fails if either app link is removed from `pages/index.js`, if its `href` changes from the route, if `GET` of the route does not return 200, or if clicking it does not land on that route with the expected exact `<h1>`. (respec 1)
 - [x] The API spec posts the default armies (each side >= 1 regular or elite, values as strings) as a JSON object and fails if `POST /api/fight` stops returning 200 JSON, or if the body lacks a `survivor` string or numeric `rounds`. (respec 1)
@@ -158,3 +160,19 @@ the lockfile with `npm install --lockfile-version 2`, and confirm the top-level 
 ## Manager note - 2026-10-29 (gates)
 
 Review approved 78048f7. Acceptance-test gate skipped: this ticket is the harness, and its own specs (6/6, plus 30/30 under `--repeat-each=5` in review) are its acceptance evidence; REPO.md has no `acceptanceHarness` until this merges.
+
+## Follow-up 1 - 2026-10-29 (owner review on the PR)
+
+**Finding:** the port was pinned to 3100 (`playwright.config.ts`), so the acceptance port repeated across
+branches. Acceptance runs in two worktrees could not run in parallel; with `reuseExistingServer: false` the
+second run failed loudly. Reusing a server is not the fix, because a running `next dev` serves the worktree it
+started in, so a reused server would test another branch's code.
+
+**Fix (done directly by the manager at the owner's request, not re-sent through spec-gate or review; config
+only, no spec or production change):** derive the port from the checkout path (3100-3999), with
+`ACCEPTANCE_PORT` as an override. `reuseExistingServer: false` stays. Scope item 1 and ACs 1-2 are updated, and
+the parallel-run AC is new; all are tagged `(follow-up 1)`. `reworkCount` is unchanged.
+
+**Evidence:** commit 4ea5992 on top of 34bcd91, which review had approved. `tsc --noEmit` is clean. 6/6 passed in
+this worktree (port 3302) and 6/6 in a second worktree at the same base (port 3251), run concurrently.
+PR description updated.
