@@ -16,4 +16,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-006 | Publish /api/fight OpenAPI spec, shared types, and contract check | M1 | M1.7 | wotr-combat-simulator | high | SGS-002, SGS-005 | | | | spec_ready | 0 | | tickets/SGS-006-fight-api-contract.md |
 | SGS-007 | Add unit test runner | M1 | M1.10 | site | standard | | | sgs-007-unit-test-runner | e2ce61d | integrated | 1 | 15 | tickets/SGS-007-unit-test-runner.md |
 | SGS-008 | Skip Vercel deploys for the state branch | M1 | | site | standard | | | sgs-008-skip-vercel-deploys-for-state-branch | 2a8b73e | integrated | 0 | | tickets/SGS-008-skip-vercel-deploys-for-state-branch.md |
-| SGS-009 | Update combat doc for SGS-003 input validation | M1 | | wotr-combat-simulator | low | SGS-003 | | sgs-009-combat-doc-input-bounds-current | | in_progress | 0 | | tickets/SGS-009-combat-doc-input-bounds-current.md |
+| SGS-009 | Update combat doc for SGS-003 input validation | M1 | | wotr-combat-simulator | low | SGS-003 | | sgs-009-combat-doc-input-bounds-current | 97cae74 | tested | 0 | | tickets/SGS-009-combat-doc-input-bounds-current.md |

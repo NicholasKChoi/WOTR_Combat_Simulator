@@ -1,0 +1,2 @@
+# SGS-009 implementer report
+Branch sgs-009-combat-doc-input-bounds-current, worktree worktrees/sgs-009-combat-doc-input-bounds-current. Docs-only change to docs/combat-simulator.md "Input bounds": replaced the stale form sentence and removed the "Current code" note; named the 400 status. Bounds list and other Current-code notes untouched. Tests/build/lint not run (prose only). Author choinickolas@gmail.com. Status: needs_review. Tip SHA is in the summary.
