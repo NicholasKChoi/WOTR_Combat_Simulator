@@ -1,5 +1,29 @@
 import { BaseArmy } from './army';
 
+export const OUTCOME_KINDS = ['attacker', 'defender', 'tie'] as const;
+export type OutcomeKind = typeof OUTCOME_KINDS[number];
+
+const SURVIVOR_LABELS: Record<OutcomeKind, string> = {
+  attacker: "attack",
+  defender: "defend",
+  tie: "n/a",
+};
+
+export function battleOutcome(attack: BaseArmy, defend: BaseArmy): OutcomeKind {
+  const attackAlive = attack.isArmyAlive();
+  const defendAlive = defend.isArmyAlive();
+  if (attackAlive && defendAlive) {
+    throw new Error('battle is not finished: both armies are still alive');
+  }
+  if (attackAlive) {
+    return 'attacker';
+  }
+  if (defendAlive) {
+    return 'defender';
+  }
+  return 'tie';
+}
+
 export class BattleResult {
   attackArmy: BaseArmy;
   defendArmy: BaseArmy;
@@ -23,12 +47,7 @@ export class BattleResult {
   }
 
   getSurvivor(): string {
-    if (this.attackArmy.isArmyAlive()) {
-      return "attack";
-    } else if (this.defendArmy.isArmyAlive()) {
-      return "defend";
-    }
-    return "n/a";
+    return SURVIVOR_LABELS[battleOutcome(this.attackArmy, this.defendArmy)];
   }
 
   getStats(): BattleStats {
@@ -100,44 +119,58 @@ function calculateCombatRollResults(opts: CombatRollOps): CombatRollResults {
 }
 
 
-export function Battle(attack: BaseArmy, defend: BaseArmy, roll: DiceRoller = rollDice): BattleResult {
+export function resolveRound(battle: BattleResult, roll: DiceRoller): void {
+  let attack = battle.attackArmy;
+  let defend = battle.defendArmy;
+
+  // combat
+  let attackCombatRoll = roll(attack.getCombatStrength());
+  let attackCombatResult = calculateCombatRollResults({diceRoll: attackCombatRoll});
+
+  let defenseCombat = roll(defend.getCombatStrength());
+  let defendCombatResult = calculateCombatRollResults({diceRoll: defenseCombat});
+
+  // leaders
+  let attackLeaderRoll = roll(Math.min(attackCombatResult.misses.length, attack.leaders));
+  let attackLeaderResult = calculateCombatRollResults({diceRoll: attackLeaderRoll});
+
+  let defendLeaderRoll = roll(Math.min(defendCombatResult.misses.length, defend.leaders));
+  let defendLeaderResult = calculateCombatRollResults({diceRoll: defendLeaderRoll});
+  
+  // take combat hits
+  let attackHits = attackCombatResult.hits.length + attackLeaderResult.hits.length;
+  let defendHits = defendCombatResult.hits.length + defendLeaderResult.hits.length;
+  attack.takeHits(defendHits);
+  defend.takeHits(attackHits);
+
+  // record number of rounds in the battle
+  battle.recordRound(attackHits, defendHits);
+  console.log(
+    battle,
+    attackCombatRoll,
+    attackCombatResult,
+    attackLeaderRoll,
+    attackLeaderResult,
+    attackHits,
+    defenseCombat,
+    defendCombatResult,
+    defendLeaderRoll,
+    defendLeaderResult,
+    defendHits);
+}
+
+// Later termination rules, such as a round limit, are added as fields here.
+export type BattleOptions = {};
+
+export function shouldStop(battle: BattleResult, options: BattleOptions): boolean {
+  return !battle.attackArmy.isArmyAlive() || !battle.defendArmy.isArmyAlive();
+}
+
+export function Battle(attack: BaseArmy, defend: BaseArmy, roll: DiceRoller = rollDice, options: BattleOptions = {}): BattleResult {
   const battleResult = new BattleResult(attack, defend);
 
-  while (attack.isArmyAlive() && defend.isArmyAlive()) {
-    // combat
-    let attackCombatRoll = roll(attack.getCombatStrength());
-    let attackCombatResult = calculateCombatRollResults({diceRoll: attackCombatRoll});
-
-    let defenseCombat = roll(defend.getCombatStrength());
-    let defendCombatResult = calculateCombatRollResults({diceRoll: defenseCombat});
-
-    // leaders
-    let attackLeaderRoll = roll(Math.min(attackCombatResult.misses.length, attack.leaders));
-    let attackLeaderResult = calculateCombatRollResults({diceRoll: attackLeaderRoll});
-
-    let defendLeaderRoll = roll(Math.min(defendCombatResult.misses.length, defend.leaders));
-    let defendLeaderResult = calculateCombatRollResults({diceRoll: defendLeaderRoll});
-    
-    // take combat hits
-    let attackHits = attackCombatResult.hits.length + attackLeaderResult.hits.length;
-    let defendHits = defendCombatResult.hits.length + defendLeaderResult.hits.length;
-    attack.takeHits(defendHits);
-    defend.takeHits(attackHits);
-
-    // record number of rounds in the battle
-    battleResult.recordRound(attackHits, defendHits);
-    console.log(
-      battleResult,
-      attackCombatRoll,
-      attackCombatResult,
-      attackLeaderRoll,
-      attackLeaderResult,
-      attackHits,
-      defenseCombat,
-      defendCombatResult,
-      defendLeaderRoll,
-      defendLeaderResult,
-      defendHits);
+  while (!shouldStop(battleResult, options)) {
+    resolveRound(battleResult, roll);
   }
   console.log("Final result", battleResult);
   return battleResult;
