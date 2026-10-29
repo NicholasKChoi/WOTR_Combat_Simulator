@@ -1,11 +1,5 @@
 {
-  "lastBaseSha": "3934ff8",
-  "openPRs": {
-    "14": {
-      "task": "SGS-001",
-      "head": "7b26c65",
-      "rerunTally": 0
-    }
-  },
+  "lastBaseSha": "8532a0b",
+  "openPRs": {},
   "retro": {}
 }

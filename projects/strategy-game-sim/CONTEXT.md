@@ -38,7 +38,7 @@ The current surfaces are:
 
 | Topic | Doc | Authoritative for |
 |-------|-----|-------------------|
-| WOTR combat rules | `docs/combat-simulator.md` (TODO, M1.1) | Dice, leaders, casualties, round loop, input bounds, outcome reporting |
+| WOTR combat rules | `docs/combat-simulator.md` (on `main`, SGS-001) | Dice, leaders, casualties, round loop, input bounds, outcome reporting |
 | StarCraft helper | `docs/starcraft-helper.md` (deferred; app frozen) | Player list, map pool source, strike limits, edge states |
 | AoE4 build order | `docs/aoe4-build-order.md` (TODO, M2) | Simulation model, data source, timing outputs |
 
@@ -85,3 +85,7 @@ The current surfaces are:
 - WOTR character and Nazgul leadership (a later milestone).
 - StarCraft Helper: frozen. No tickets touch `pages/apps/starcraft-helper.js`. Its invariants (H1–H3) still
   apply if a shared-code change affects it.
+- WOTR extensibility (owner, 2026-10-28): leave seams for later termination rules (max rounds, retreat)
+  without building them. The battle splits into a per-round step and a loop with a stop check; `Battle`
+  takes an options argument (empty in M1); the response and OpenAPI spec allow outcome kinds beyond
+  attacker, defender, and tie. Max rounds itself is a later ticket.
