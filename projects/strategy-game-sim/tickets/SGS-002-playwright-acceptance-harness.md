@@ -106,19 +106,19 @@ flowchart LR
 
 ## Acceptance criteria
 
-- [ ] After `npm ci` and `npm run acceptance:setup`, a single `npm run acceptance` starts its own server on port 3100, runs all specs, stops the server, and exits 0 on a clean checkout. (respec 1)
-- [ ] With another process already listening on port 3100, `npm run acceptance` fails rather than reusing it (`reuseExistingServer: false`). (respec 1)
-- [ ] `npm run acceptance:setup` installs the Chromium browser needed by the specs; if it or the browser launch cannot succeed on the host, the implementer reports a blocker with the error, not a pass. (respec 1)
-- [ ] The landing spec fails if either app link is removed from `pages/index.js`, if its `href` changes from the route, if `GET` of the route does not return 200, or if clicking it does not land on that route with the expected exact `<h1>`. (respec 1)
-- [ ] The API spec posts the default armies (each side >= 1 regular or elite, values as strings) as a JSON object and fails if `POST /api/fight` stops returning 200 JSON, or if the body lacks a `survivor` string or numeric `rounds`. (respec 1)
-- [ ] The simulator spec waits for hydration before filling, waits for the `/api/fight` response around the "Fight!" click and asserts it is 200, and fails if the exact headings "Army Results" and "Fighting Stats" do not render. (respec 1)
-- [ ] No spec interacts with controls on `/apps/starcraft-helper`; loading it via the landing link (and a `GET` of its route) and reading its `<h1>` is allowed. (respec 1)
-- [ ] The default armies and the fill/post helpers live in `acceptance/helpers.ts` and are used by both the API and simulator specs. (respec 1)
-- [ ] Specs assert no more of the response/DOM shape than listed above, so adding input fields or changing `BattleStats` fields other than `survivor` and `rounds` does not break them.
-- [ ] `npx tsc --noEmit` passes with the new `.ts` files, and `npx next build` still succeeds.
-- [ ] `git status` after a run shows no untracked Playwright output (ignored via `.gitignore`).
-- [ ] No files under `pages/`, `components/`, `utils/`, or `styles/` change.
-- [ ] No INVARIANTS.md regressions
+- [x] After `npm ci` and `npm run acceptance:setup`, a single `npm run acceptance` starts its own server on port 3100, runs all specs, stops the server, and exits 0 on a clean checkout. (respec 1)
+- [x] With another process already listening on port 3100, `npm run acceptance` fails rather than reusing it (`reuseExistingServer: false`). (respec 1)
+- [x] `npm run acceptance:setup` installs the Chromium browser needed by the specs; if it or the browser launch cannot succeed on the host, the implementer reports a blocker with the error, not a pass. (respec 1)
+- [x] The landing spec fails if either app link is removed from `pages/index.js`, if its `href` changes from the route, if `GET` of the route does not return 200, or if clicking it does not land on that route with the expected exact `<h1>`. (respec 1)
+- [x] The API spec posts the default armies (each side >= 1 regular or elite, values as strings) as a JSON object and fails if `POST /api/fight` stops returning 200 JSON, or if the body lacks a `survivor` string or numeric `rounds`. (respec 1)
+- [x] The simulator spec waits for hydration before filling, waits for the `/api/fight` response around the "Fight!" click and asserts it is 200, and fails if the exact headings "Army Results" and "Fighting Stats" do not render. (respec 1)
+- [x] No spec interacts with controls on `/apps/starcraft-helper`; loading it via the landing link (and a `GET` of its route) and reading its `<h1>` is allowed. (respec 1)
+- [x] The default armies and the fill/post helpers live in `acceptance/helpers.ts` and are used by both the API and simulator specs. (respec 1)
+- [x] Specs assert no more of the response/DOM shape than listed above, so adding input fields or changing `BattleStats` fields other than `survivor` and `rounds` does not break them.
+- [x] `npx tsc --noEmit` passes with the new `.ts` files, and `npx next build` still succeeds.
+- [x] `git status` after a run shows no untracked Playwright output (ignored via `.gitignore`).
+- [x] No files under `pages/`, `components/`, `utils/`, or `styles/` change.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -154,3 +154,7 @@ launch Chromium is environmental; scope item 6 says what to do and that a failur
 SGS-007 merged first (Vitest is on `main` at 3934ff8). Before review, rebase this branch onto `main`, regenerate
 the lockfile with `npm install --lockfile-version 2`, and confirm the top-level `name` is still
 `"WOTR_Combat_Simulator"`.
+
+## Manager note - 2026-10-29 (gates)
+
+Review approved 78048f7. Acceptance-test gate skipped: this ticket is the harness, and its own specs (6/6, plus 30/30 under `--repeat-each=5` in review) are its acceptance evidence; REPO.md has no `acceptanceHarness` until this merges.

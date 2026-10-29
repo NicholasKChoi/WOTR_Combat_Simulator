@@ -201,3 +201,7 @@ Re-spec 1, from `reports/SGS-003-spec-gate.md`.
 
 **Existing branch work that still stands**
 - None. The branch `sgs-003-validate-fight-inputs` has not been created.
+
+## Manager note - 2026-10-29 (from SGS-002 review, non-blocking)
+
+`acceptance/helpers.ts:12` types `Armies` as a strict record of six string fields. Widen `postFight`'s input type (or add a raw-body helper) so boundary cases can send missing keys and non-string values.
