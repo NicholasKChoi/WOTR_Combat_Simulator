@@ -59,6 +59,8 @@ status `Vercel – wotr-combat-simulator` (project `nicholas-chois-projects/wotr
 - A failure that flips from pending to failed within a few seconds is not a build failure: Vercel
   rejected the deploy before building (wrong project, or a commit author email not on the Vercel team).
   Commits must be authored as `choinickolas@gmail.com`. Escalate instead of rerunning.
+- `gh pr edit` fails here (GraphQL error about deprecated classic Projects). Edit PR titles and bodies
+  with `gh api -X PATCH repos/NicholasKChoi/WOTR_Combat_Simulator/pulls/<n> -F body=@file`.
 - Any other Vercel project reporting on this repo (for example `wotr-combat-simulator-6syo`) is stale; ignore it.
 
 ## Tooling gaps
