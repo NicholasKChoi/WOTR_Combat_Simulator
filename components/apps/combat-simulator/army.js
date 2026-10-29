@@ -1,21 +1,32 @@
+import { useState } from 'react';
 import cn from 'classnames'
 
+const MAX_FIGHTERS = 10;
+const MAX_LEADERS = 5;
+
+function countOptions(max) {
+  return Array.from({ length: max + 1 }, (_, i) => i);
+}
+
 export default function Army({ armyKey }) {
-  let unitOptions = [];
-  for (let i = 0; i < 10; i ++) {
-    unitOptions.push(i);
-  }
+  const [regulars, setRegulars] = useState(0);
+  const [elites, setElites] = useState(0);
+  const fighterOptions = countOptions(MAX_FIGHTERS);
+  const leaderOptions = countOptions(MAX_LEADERS);
   return (
     <div className='row small-font-size'>
       <div className='col-md-4'>
         <label htmlFor={`${armyKey}-regs`}>Regulars</label>
-        <select 
+        <select
           name={`${armyKey}-regs`}
-          className="form-select" >
-            {unitOptions.map((item, _)=>{
-              return <option 
-                key={item} 
-                value={item}>{item}</option>
+          className="form-select"
+          value={regulars}
+          onChange={(e) => setRegulars(Number(e.target.value))} >
+            {fighterOptions.map((item, _)=>{
+              return <option
+                key={item}
+                value={item}
+                disabled={item + elites > MAX_FIGHTERS}>{item}</option>
             })}
         </select>
       </div>
@@ -23,9 +34,14 @@ export default function Army({ armyKey }) {
         <label htmlFor={`${armyKey}-elts`}>Elites</label>
         <select
           className="form-select"
-          name={`${armyKey}-elts`} >
-            {unitOptions.map((item, _)=>{
-              return <option key={item} value={item}>{item}</option>
+          name={`${armyKey}-elts`}
+          value={elites}
+          onChange={(e) => setElites(Number(e.target.value))} >
+            {fighterOptions.map((item, _)=>{
+              return <option
+                key={item}
+                value={item}
+                disabled={regulars + item > MAX_FIGHTERS}>{item}</option>
             })}
         </select>
       </div>
@@ -34,8 +50,7 @@ export default function Army({ armyKey }) {
         <select
           className="form-select"
           name={`${armyKey}-ldrs`} >
-            {unitOptions.map((item, _)=>{
-              if (item < 6)
+            {leaderOptions.map((item, _)=>{
               return <option key={item} value={item}>{item}</option>
             })}
         </select>

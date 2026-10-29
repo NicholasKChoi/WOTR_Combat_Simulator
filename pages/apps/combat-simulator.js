@@ -10,29 +10,47 @@ import Results from '../../components/apps/combat-simulator/results';
 
 const pageTitle = 'Combat Simulator';
 
+async function errorMessage(response) {
+  try {
+    const body = await response.json();
+    if (typeof body?.error === "string") {
+      return body.error;
+    }
+  } catch {}
+  return `The fight could not be run (HTTP ${response.status}).`;
+}
+
 export default function CombatSimulator() {
   const [result, setResult] = useState("");
+  const [error, setError] = useState("");
   
   // functions
   async function submitFight(e) {
     e.preventDefault();
+    setError("");
     const data = new FormData(e.target);
     const payload = JSON.stringify(Object.fromEntries(data.entries()));
-    const response = await fetch("/api/fight", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: payload
-    });
-    console.log(response);
-  
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+    try {
+      const response = await fetch("/api/fight", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: payload
+      });
+
+      if (!response.ok) {
+        setResult("");
+        setError(await errorMessage(response));
+        return;
+      }
+      const fightResult = await response.json();
+      setResult(fightResult);
+    } catch {
+      setResult("");
+      setError("The fight could not be run. Please try again.");
     }
-    const fightResult = await response.json();
-    setResult(fightResult);
   }
 
   return (
@@ -64,6 +82,13 @@ export default function CombatSimulator() {
                   value="Fight!" />
               </div>
             </div>
+            {error !== "" ? (
+              <div className='row mt-3'>
+                <div className="col">
+                  <div role="alert" className="alert alert-danger mb-0">{error}</div>
+                </div>
+              </div>
+            ) : ""}
         </form>
         <div className='row'>
           <div className="col-md">
