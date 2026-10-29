@@ -67,13 +67,13 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `code-factory-state` contains a root `vercel.json` that is valid JSON, sets `git.deploymentEnabled."code-factory-state"` to `false`, and has no other keys besides `$schema`.
-- [ ] Baseline recorded before the push: the deployment count from `vercel ls -m githubCommitRef=code-factory-state` (currently 6 Error deploys).
-- [ ] After the push of the `vercel.json` commit, and again after the next normal factory-state push, `vercel ls -m githubCommitRef=code-factory-state` shows no new deployment (count unchanged from baseline), and the GitHub commit status on the new state-branch commit carries no failing `Vercel` status.
+- [x] `code-factory-state` contains a root `vercel.json` that is valid JSON, sets `git.deploymentEnabled."code-factory-state"` to `false`, and has no other keys besides `$schema`.
+- [x] Baseline recorded before the push: the deployment count from `vercel ls -m githubCommitRef=code-factory-state` (currently 6 Error deploys).
+- [x] After the push of the `vercel.json` commit, and again after the next normal factory-state push, `vercel ls -m githubCommitRef=code-factory-state` shows no new deployment (count unchanged from baseline), and the GitHub commit status on the new state-branch commit carries no failing `Vercel` status.
 - [ ] A subsequent push to `main` (or a PR branch off main) still creates a deployment: the PR shows the `Vercel – wotr-combat-simulator` status and `vercel ls` shows a new Ready deploy for it. If no main push is planned in the window, check the next PR's preview deploy and say so in the handoff.
-- [ ] `main` is untouched: no `vercel.json` exists on `main` and this ticket changes nothing there.
-- [ ] If any criterion above fails because Vercel still builds the state branch, the implementer stops, reports a blocker, and does not edit `main` or project settings; the manager routes the Ignored Build Step to a human.
-- [ ] No INVARIANTS.md regressions (no app code touched).
+- [x] `main` is untouched: no `vercel.json` exists on `main` and this ticket changes nothing there.
+- [x] If any criterion above fails because Vercel still builds the state branch, the implementer stops, reports a blocker, and does not edit `main` or project settings; the manager routes the Ignored Build Step to a human.
+- [x] No INVARIANTS.md regressions (no app code touched).
 
 ## Open questions
 

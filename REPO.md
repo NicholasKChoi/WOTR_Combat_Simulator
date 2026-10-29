@@ -62,6 +62,7 @@ status `Vercel – wotr-combat-simulator` (project `nicholas-chois-projects/wotr
 - `gh pr edit` fails here (GraphQL error about deprecated classic Projects). Edit PR titles and bodies
   with `gh api -X PATCH repos/NicholasKChoi/WOTR_Combat_Simulator/pulls/<n> -F body=@file`.
 - Any other Vercel project reporting on this repo (for example `wotr-combat-simulator-6syo`) is stale; ignore it.
+- The state branch carries a root `vercel.json` with `git.deploymentEnabled."code-factory-state": false`, so state pushes create no Vercel deployment. Keep it; deleting it brings back a failed preview per push. Older Error previews on `code-factory-state` predate it.
 
 ## Tooling gaps
 
