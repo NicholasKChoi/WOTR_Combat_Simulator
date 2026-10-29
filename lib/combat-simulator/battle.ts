@@ -28,7 +28,6 @@ export class BattleResult {
   attackArmy: BaseArmy;
   defendArmy: BaseArmy;
 
-  // data
   rounds: number = 0;
   attackHitsPerRound: number[];
   defendHitsPerRound: number[];
@@ -127,27 +126,23 @@ export function resolveRound(battle: BattleResult, roll: DiceRoller): void {
   let attack = battle.attackArmy;
   let defend = battle.defendArmy;
 
-  // combat
   let attackCombatRoll = roll(Math.min(attack.getCombatStrength(), MAX_COMBAT_DICE));
   let attackCombatResult = calculateCombatRollResults({diceRoll: attackCombatRoll});
 
   let defenseCombat = roll(Math.min(defend.getCombatStrength(), MAX_COMBAT_DICE));
   let defendCombatResult = calculateCombatRollResults({diceRoll: defenseCombat});
 
-  // leaders
   let attackLeaderRoll = roll(Math.min(attackCombatResult.misses.length, attack.leaders, MAX_LEADER_REROLLS));
   let attackLeaderResult = calculateCombatRollResults({diceRoll: attackLeaderRoll});
 
   let defendLeaderRoll = roll(Math.min(defendCombatResult.misses.length, defend.leaders, MAX_LEADER_REROLLS));
   let defendLeaderResult = calculateCombatRollResults({diceRoll: defendLeaderRoll});
-  
-  // take combat hits
+
   let attackHits = attackCombatResult.hits.length + attackLeaderResult.hits.length;
   let defendHits = defendCombatResult.hits.length + defendLeaderResult.hits.length;
   attack.takeHits(defendHits);
   defend.takeHits(attackHits);
 
-  // record number of rounds in the battle
   battle.recordRound(attackHits, defendHits);
   console.log(
     battle,
