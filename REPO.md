@@ -82,8 +82,8 @@ the current code.
   changed lines.
 
 ### Combat simulator
-Paths: `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `pages/api/fight.ts`,
-`pages/api/models/army.ts`. Design doc: `docs/combat-simulator.md` (pending ticket).
+Paths: `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `lib/combat-simulator/**`,
+`pages/api/fight.ts`, `pages/api/models/army.ts`. Design doc: `docs/combat-simulator.md` (pending ticket).
 - Trace each changed field across the whole round trip: form `name` in `army.js` → `parseFightForm`
   key → `BaseArmy` → `getStats()` → `Results` props. A change on one hop needs the matching change on
   every other hop.

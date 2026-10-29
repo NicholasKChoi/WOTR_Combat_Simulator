@@ -19,7 +19,7 @@ with randomness, either to estimate odds or to make fair random picks. A landing
 | Component | Paths | Owns |
 |-----------|-------|------|
 | site | `pages/index.js`, `pages/_app.js`, `components/layout.*`, `utils/**`, `styles/**` | Landing page and routing, shared Layout, shared helpers and styles |
-| wotr-combat-simulator | `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `pages/api/fight.ts`, `pages/api/models/army.ts` | Army input form, `/api/fight` battle simulation, results view |
+| wotr-combat-simulator | `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `lib/combat-simulator/**`, `pages/api/fight.ts`, `pages/api/models/army.ts` | Army input form, `/api/fight` battle simulation, results view |
 | starcraft-helper | `pages/apps/starcraft-helper.js` | Partner pairing, map strike and map pick, all client-side |
 | aoe4-build-order | TODO: proposed `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `lib/aoe4-build-order/**`, `pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**` | Build order input, simulation, timing report, versioned game data |
 
@@ -56,13 +56,18 @@ The current surfaces are:
   must be implemented. The fixed casualty order is intentional: it stands in for the human player's
   choice of losses.
 - WOTR inputs: an army is capped at 10 units in total. A side starting with 0 units is invalid.
-- WOTR outcome frequencies: should include round counts and surviving units as well as who wins. The
-  design doc (SGS-001) proposes the exact statistics for the owner to confirm.
 - WOTR caps: regulars + elites <= 10 per side; leaders do not count toward it and are capped at 5.
   Leader rerolls = min(misses, leaders, 5), so a side scores at most 5 hits per round.
 - WOTR casualties: with more than 5 units and 0 regulars, a hit downgrades an elite to a regular.
 - WOTR outcomes: attacker win / defender win / tie (both eliminated) frequencies; rounds mean, median,
-  p10, p90; surviving-unit distribution; hits per round.
+  p10, p90; surviving units as the winning side's distribution of (regulars, elites) combinations, kept
+  separate; hits per round as each side's distribution of hit counts 0-5 (share of all rounds with each count).
+- `/api/fight` response carries results only, not the submitted armies; the page shows its own form values.
+- JSON field names for the response are set by the Monte Carlo ticket; the design doc describes the
+  statistics' meaning without naming fields, and the OpenAPI spec copies the names from the code.
+- Malformed JSON keeps Next's plain-text 400 for now; the OpenAPI spec notes the exception.
+- Testing: WOTR battle logic moves to `lib/combat-simulator/` (per ARCHITECTURE.md) and is unit-tested
+  directly with a new unit test runner. The runner is its own ticket; tickets that unit-test logic depend on it.
 - WOTR time budget: N = 100,000 completes within 10 seconds.
 - Error responses: `{ error: string }` with 400 or 405, accepted for now.
 - `/api/models/army`: stays where it is, documented as not part of the API.

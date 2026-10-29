@@ -20,7 +20,7 @@ Every numeric input and scenario count has a cap, enforced where the simulation 
 Likely break: a new input that's an unbounded number.
 
 ## WOTR Combat Simulator
-Paths: `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `pages/api/fight.ts`, `pages/api/models/army.ts`.
+Paths: `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `lib/combat-simulator/**`, `pages/api/fight.ts`, `pages/api/models/army.ts`.
 
 ### W1. Combat follows the rules in docs/combat-simulator.md
 Dice, leader rerolls, casualties, and round order match the design doc.
