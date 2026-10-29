@@ -1,6 +1,11 @@
+import { createHash } from 'crypto'
 import { defineConfig, devices } from '@playwright/test'
 
-const PORT = 3100
+// Each checkout (one worktree per branch) gets its own port in 3100-3999, so parallel runs on different
+// branches never collide or share a server. ACCEPTANCE_PORT overrides it.
+const PORT =
+  Number(process.env.ACCEPTANCE_PORT) ||
+  3100 + (createHash('sha1').update(__dirname).digest().readUInt16BE(0) % 900)
 
 export default defineConfig({
   testDir: 'acceptance',
