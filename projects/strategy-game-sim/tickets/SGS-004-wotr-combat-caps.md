@@ -187,58 +187,58 @@ flowchart TD
 Rule values and wording come from `docs/combat-simulator.md` as merged by SGS-001. "Unit" means a test in the Vitest runner that injects a scripted roller. The first face in a list is the first die of that call.
 
 Combat dice cap (unit):
-- [ ] (respec 1) Attack 10 regulars / 0 leaders vs defend 10 regulars / 0 leaders, with a roller that returns all 1s on round 1. Round 1's first two roller calls (attack combat, defend combat) each receive `numDice` 5. This fails on today's code, which passes 10.
-- [ ] (respec 1) Attack 3 regulars + 2 elites vs defend 1 regular: the first call receives 5. Attack 3 regulars vs defend 1 regular: the first call receives 3. This shows armies of 5 or fewer units are unchanged.
+- [x] (respec 1) Attack 10 regulars / 0 leaders vs defend 10 regulars / 0 leaders, with a roller that returns all 1s on round 1. Round 1's first two roller calls (attack combat, defend combat) each receive `numDice` 5. This fails on today's code, which passes 10.
+- [x] (respec 1) Attack 3 regulars + 2 elites vs defend 1 regular: the first call receives 5. Attack 3 regulars vs defend 1 regular: the first call receives 3. This shows armies of 5 or fewer units are unchanged.
 
 Leader rerolls (unit):
-- [ ] (respec 1) With combat faces scripted to give the attacker m misses on round 1, the attack leader call (third call of the round) receives min(m, leaders) for each of these cases:
+- [x] (respec 1) With combat faces scripted to give the attacker m misses on round 1, the attack leader call (third call of the round) receives min(m, leaders) for each of these cases:
   - m = 5, leaders = 5: receives 5;
   - m = 5, leaders = 2: receives 2;
   - m = 3, leaders = 5: receives 3;
   - m = 0, leaders = 5: receives 0.
-- [ ] (respec 1) The `MAX_LEADER_REROLLS` bound is checked by the reviewer reading the diff, with no automated test. Once combat dice are capped at 5, misses are at most 5, so the reroll cap cannot change any outcome. It is defensive, and the named constant makes it reviewable.
+- [x] (respec 1) The `MAX_LEADER_REROLLS` bound is checked by the reviewer reading the diff, with no automated test. Once combat dice are capped at 5, misses are at most 5, so the reroll cap cannot change any outcome. It is defensive, and the named constant makes it reviewable.
 
 Hits per round (unit):
-- [ ] (respec 1) Attack 10 regulars / 5 leaders vs defend 10 regulars / 5 leaders, with a roller that always returns 6s. Round 1's `attackHitsPerRound[0]` and `defendHitsPerRound[0]` each equal 5, and every entry of both arrays is at most 5. This fails today, where round 1 records 10.
-- [ ] (respec 1) Same armies, with combat dice all 1s and leader dice all 6s on round 1. Round 1 records 5 hits per side, all of them from leader rerolls, and no entry exceeds 5.
+- [x] (respec 1) Attack 10 regulars / 5 leaders vs defend 10 regulars / 5 leaders, with a roller that always returns 6s. Round 1's `attackHitsPerRound[0]` and `defendHitsPerRound[0]` each equal 5, and every entry of both arrays is at most 5. This fails today, where round 1 records 10.
+- [x] (respec 1) Same armies, with combat dice all 1s and leader dice all 6s on round 1. Round 1 records 5 hits per side, all of them from leader rerolls, and no entry exceeds 5.
 
 Round step, stop check, and outcome (unit) (respec 2):
-- [ ] (respec 2) `resolveRound` runs exactly one round. Setup: a `BattleResult` over attack 3 regulars / 0 elites / 0 leaders and defend 2 regulars / 0 elites / 0 leaders, and a roller scripted with attack combat [6, 6, 1], then defend combat [6, 1], then empty leader rolls. After one call:
+- [x] (respec 2) `resolveRound` runs exactly one round. Setup: a `BattleResult` over attack 3 regulars / 0 elites / 0 leaders and defend 2 regulars / 0 elites / 0 leaders, and a roller scripted with attack combat [6, 6, 1], then defend combat [6, 1], then empty leader rolls. After one call:
   - the roller received exactly four calls, with `numDice` 3, 2, 0, 0 in that order;
   - `battle.rounds` is 1;
   - `attackHitsPerRound` is [2] and `defendHitsPerRound` is [1];
   - the attack army is 2/0 (regulars/elites) and the defend army is 0/0;
   - no fifth roller call happens, even though the defender is now eliminated.
-- [ ] (respec 2) `resolveRound` applies casualties simultaneously. Setup: attack 1 regular vs defend 1 regular, 0 leaders each, with combat faces [6] and [6]. After one call both armies are 0/0 and both sides record 1 hit. A version that applied the attacker's hits before the defender rolled would record 0 defend hits.
-- [ ] (respec 2) `shouldStop(battle, {})` returns false when both armies have regulars + elites above 0. It returns true when exactly one army is at 0, for each side, and true when both are at 0.
-- [ ] (respec 2) `battleOutcome` returns:
+- [x] (respec 2) `resolveRound` applies casualties simultaneously. Setup: attack 1 regular vs defend 1 regular, 0 leaders each, with combat faces [6] and [6]. After one call both armies are 0/0 and both sides record 1 hit. A version that applied the attacker's hits before the defender rolled would record 0 defend hits.
+- [x] (respec 2) `shouldStop(battle, {})` returns false when both armies have regulars + elites above 0. It returns true when exactly one army is at 0, for each side, and true when both are at 0.
+- [x] (respec 2) `battleOutcome` returns:
   - `'attacker'` for attack 1/0 vs defend 0/0;
   - `'defender'` for attack 0/0 vs defend 1/0;
   - `'tie'` for attack 0/0 vs defend 0/0;
   - and throws for attack 1/0 vs defend 1/0.
   Every value it returns is a member of `OUTCOME_KINDS`.
-- [ ] (respec 2) `Battle` loops `resolveRound` until `shouldStop` is true. Attack 1 regular vs defend 1 regular, 0 leaders each, scripted so round 1 is [1] and [1] and round 2 is [6] and [1]: `Battle(attack, defend, roller)` returns `rounds` 2, the roller receives exactly 8 calls, and `getStats().survivor` is `"attack"`. With round 1 scripted [6] and [6], `rounds` is 1 and `survivor` is `"n/a"`. With round 1 scripted [1] and [6], `survivor` is `"defend"`.
-- [ ] (respec 2) `Battle(attack, defend)` and `Battle(attack, defend, roller)` both compile and run with no options argument. `BattleOptions` is exported and has no fields (`npx tsc --noEmit`).
+- [x] (respec 2) `Battle` loops `resolveRound` until `shouldStop` is true. Attack 1 regular vs defend 1 regular, 0 leaders each, scripted so round 1 is [1] and [1] and round 2 is [6] and [1]: `Battle(attack, defend, roller)` returns `rounds` 2, the roller receives exactly 8 calls, and `getStats().survivor` is `"attack"`. With round 1 scripted [6] and [6], `rounds` is 1 and `survivor` is `"n/a"`. With round 1 scripted [1] and [6], `survivor` is `"defend"`.
+- [x] (respec 2) `Battle(attack, defend)` and `Battle(attack, defend, roller)` both compile and run with no options argument. `BattleOptions` is exported and has no fields (`npx tsc --noEmit`).
 
 Casualties (unit, directly on `BaseArmy`):
-- [ ] (respec 1) 0 regulars / 7 elites taking one hit at a time passes through these states (regulars/elites): 1/6, then 0/6, then 1/5, then 0/5, then 1/4. The first step fails today, where it gives -1/7.
-- [ ] (respec 1) 6 regulars / 0 elites taking one hit becomes 5/0. 0 regulars / 3 elites taking one hit becomes 1/2. 2 regulars / 0 elites taking one hit becomes 1/0. Together these show the rest of the casualty order is unchanged.
-- [ ] (respec 1) For every starting army with regulars + elites from 1 to 10, applying `takeHit` until `isArmyAlive()` is false gives these results:
+- [x] (respec 1) 0 regulars / 7 elites taking one hit at a time passes through these states (regulars/elites): 1/6, then 0/6, then 1/5, then 0/5, then 1/4. The first step fails today, where it gives -1/7.
+- [x] (respec 1) 6 regulars / 0 elites taking one hit becomes 5/0. 0 regulars / 3 elites taking one hit becomes 1/2. 2 regulars / 0 elites taking one hit becomes 1/0. Together these show the rest of the casualty order is unchanged.
+- [x] (respec 1) For every starting army with regulars + elites from 1 to 10, applying `takeHit` until `isArmyAlive()` is false gives these results:
   - `regulars` and `elites` are never negative after any hit;
   - the army ends at 0/0;
   - `leaders` never changes.
 
 Docs (respec 2):
-- [ ] (respec 2) `docs/combat-simulator.md` has an "Extension points" subsection that names `shouldStop`, `BattleOptions`, and `OUTCOME_KINDS` and says no extra termination rule is modeled. The two Current code notes for the dice/reroll caps and for negative regulars are gone. A diff of the doc shows no other change. A reviewer checks this by reading the diff.
+- [x] (respec 2) `docs/combat-simulator.md` has an "Extension points" subsection that names `shouldStop`, `BattleOptions`, and `OUTCOME_KINDS` and says no extra termination rule is modeled. The two Current code notes for the dice/reroll caps and for negative regulars are gone. A diff of the doc shows no other change. A reviewer checks this by reading the diff.
 
 Layout and behavior preserved (respec 1):
-- [ ] `lib/combat-simulator/*.ts` imports nothing from `next`, `react`, `pages/`, or `components/`. A grep in review is enough.
-- [ ] HTTP check using the SGS-002 harness, which is on `main` through SGS-003. `npm run acceptance` passes with no spec files changed, on the final commit and on commit 2 (respec 2). That includes `acceptance/fight-api.spec.ts` and SGS-003's specs, which assert that a valid `POST /api/fight` returns 200 with the `BattleStats` keys (`attack`, `defend`, `rounds`, `averageAttackHitsPerRound`, `averageDefendHitsPerRound`, `survivor`), and the 400 and 405 cases.
-- [ ] `GET /api/models/army` under `npm run dev` returns the same status code on this branch as on its base commit. The reviewer records both codes in the review report.
-- [ ] Clicking Fight! on `/apps/combat-simulator` with 10/0/5 vs 0/10/5 still renders the "Army Results" table.
-- [ ] `npm test`, `npx tsc --noEmit`, and `npx next build` pass.
-- [ ] (respec 2) The first commit is a pure move. `git diff --color-moved` shows no logic change apart from the roller parameter and the import paths. The second commit changes no dice counts, casualty logic, or response values.
-- [ ] No INVARIANTS.md regressions:
+- [x] `lib/combat-simulator/*.ts` imports nothing from `next`, `react`, `pages/`, or `components/`. A grep in review is enough.
+- [x] HTTP check using the SGS-002 harness, which is on `main` through SGS-003. `npm run acceptance` passes with no spec files changed, on the final commit and on commit 2 (respec 2). That includes `acceptance/fight-api.spec.ts` and SGS-003's specs, which assert that a valid `POST /api/fight` returns 200 with the `BattleStats` keys (`attack`, `defend`, `rounds`, `averageAttackHitsPerRound`, `averageDefendHitsPerRound`, `survivor`), and the 400 and 405 cases.
+- [x] `GET /api/models/army` under `npm run dev` returns the same status code on this branch as on its base commit. The reviewer records both codes in the review report.
+- [x] Clicking Fight! on `/apps/combat-simulator` with 10/0/5 vs 0/10/5 still renders the "Army Results" table.
+- [x] `npm test`, `npx tsc --noEmit`, and `npx next build` pass.
+- [x] (respec 2) The first commit is a pure move. `git diff --color-moved` shows no logic change apart from the roller parameter and the import paths. The second commit changes no dice counts, casualty logic, or response values.
+- [x] No INVARIANTS.md regressions:
   - W1: the caps and the downgrade rule match the doc, and the hit threshold and round order are unchanged;
   - W2: `Battle` still runs on the armies the handler builds for this request;
   - S3: not affected. The stop check still ends every battle on elimination. (respec 2)
