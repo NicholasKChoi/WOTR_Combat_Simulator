@@ -14,10 +14,10 @@ commands:
   lint: "npx tsc --noEmit"            # no ESLint config at the root; typecheck is the only static gate
   unit: "npm test"                    # Vitest (vitest run); golang/ is out of scope
   codegen: ""
-  acceptance: ""
-  acceptanceSetup: ""
+  acceptance: "npm run acceptance"     # Playwright; starts its own next dev on a per-checkout port
+  acceptanceSetup: "npm ci && npm run acceptance:setup"   # Chromium; system libs once per machine: npx playwright install-deps chromium
 
-acceptanceHarness: ""             # none yet; adding one is a pending ticket (see Review checklist)
+acceptanceHarness: "Playwright (@playwright/test, Chromium) in acceptance/, config playwright.config.ts; shared helpers in acceptance/helpers.ts. Port derived per checkout (3100-3999), ACCEPTANCE_PORT overrides. Needs Node 20+."
 
 reviewBot:
   cli: ""
