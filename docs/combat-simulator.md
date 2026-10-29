@@ -150,15 +150,15 @@ and both armies as they stand at the end of the battle.
 
 ## Departures from the published game
 
-The simulator differs from the published *War of the Ring* rules in these ways. Each is tagged until the
-owner confirms it as intended.
+The simulator differs from the published *War of the Ring* rules in these ways. The owner has confirmed
+each one as intended.
 
-- **Fight to elimination** (owner to confirm). Battles always continue until a side is eliminated. There
+- **Fight to elimination**. Battles always continue until a side is eliminated. There
   is no retreat and no choice for the attacker to stop attacking between rounds.
-- **No combat cards** (owner to confirm). Neither side plays combat cards.
-- **No sieges or sorties** (owner to confirm). Every battle is a field battle; strongholds, sieges, and
+- **No combat cards**. Neither side plays combat cards.
+- **No sieges or sorties**. Every battle is a field battle; strongholds, sieges, and
   sorties are not modeled.
-- **Shadow attacks, Free Peoples defend** (owner to confirm). The results view always labels the attacker
+- **Shadow attacks, Free Peoples defend**. The results view always labels the attacker
   as Shadow and the defender as Free, whatever the actual sides.
 
 ## Not modeled
