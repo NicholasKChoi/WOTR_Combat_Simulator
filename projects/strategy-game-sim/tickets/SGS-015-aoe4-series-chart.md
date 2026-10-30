@@ -119,3 +119,15 @@ None.
   legend wiring explicitly left to the recorded manual check and SGS-022; gating moved to Depends on (On merge none);
   Risk kept `standard` under a <150-line business-logic criterion; lock criterion narrowed to existing versions + exact pin.
 - No branch work exists.
+
+## Rework 1 - 2026-10-30 (review)
+
+Bounced by review at 7f57bdc (report: reports/SGS-015-review.md). No earlier gate had passed this branch.
+
+Findings:
+- `package-lock.json:2`: root `"name"` changed from `"WOTR_Combat_Simulator"` to `"sgs-015-aoe4-series-chart"` because
+  `package.json` has no `name` and npm used the worktree folder name. Leaks the branch name into a shipped file and churns.
+
+Required fixes:
+- [ ] Set `package-lock.json` line 2 back to `"name": "WOTR_Combat_Simulator",`; no other lockfile change.
+- [ ] (rework 1) Acceptance: `git diff 43a0331 -- package-lock.json | grep '"name": "sgs-'` prints nothing.

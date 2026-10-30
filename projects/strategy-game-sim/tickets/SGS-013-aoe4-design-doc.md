@@ -200,3 +200,31 @@ None.
   labels (doc points to the rules files for per-node values), Decisions coverage and A1-A3/S3 sentences; hygiene grep made
   case-insensitive and widened; On merge keeps "AoE4 interface" as a decided line.
 - No branch work exists.
+
+## Rework 1 - 2026-10-30 (review)
+
+Bounced by review at b9c9dc4 (report: reports/SGS-013-review.md). No earlier gate had passed this branch.
+design/M2.md has since gained an "Issue codes" table and a "Sampling" paragraph (both now authoritative).
+
+Findings:
+- `docs/aoe4-build-order.md:94-95`: omits that trip walk and drop-off defaults are tuned so effective rates land near the
+  calculator's net values; "never a source" reads as covering the trip seeds, which SGS-014 derives from the calculator.
+- `docs/aoe4-build-order.md:77-79`, `172-178`: names only the farm bonus and the 5 s walk as unverified; the deleted
+  "AoE4 auto-houses" and "AoE4 v1 coverage" Decisions also label supply, starting state, overlay rows (landmark effects)
+  and trip walk/drop-off defaults unverified.
+- `docs/aoe4-build-order.md:308-311`: defines `syntax` as paste-only and `invalid` as "a well-formed step that breaks a
+  rule", an invented split that leaves JSON shape errors without a code.
+
+Required fixes:
+- [ ] Add one sentence: trip walk and drop-off defaults are tuned so effective rates land near the calculator's net
+      values (a cross-check, labeled unverified); limit "never a source" to raw gather rates.
+- [ ] Add one sentence naming supply, starting state, overlay rows and trip walk/drop-off defaults as unverified, while
+      keeping the owner-verified sheep/deer/boar carry capacities verified (still never "all hand values unverified").
+- [ ] Replace the issue-code definitions with design/M2.md's "Issue codes" table (all seven codes, same for JSON and
+      paste; JSON shape or unknown `action` is `syntax`; villager `produce` without `rally` is `invalid`).
+- [ ] State design/M2.md's "Sampling" rule for `times` (0, s, 2s, … including `durationSeconds`; last sample is
+      `durationSeconds` when not a multiple; t=0 reflects zero-time steps started at t=0).
+- [ ] Non-blocking fixes from the review: use `forestry-1` consistently; do not call overlay effect rows `HandValue`s
+      (they carry `source` and `unverified` fields of their own); make examples consistent with English starting in a
+      `capital-town-center` (examples may still build a `town-center`).
+- [ ] (rework 1) Criterion 12 (Decisions coverage) now also requires the two sentences above.
