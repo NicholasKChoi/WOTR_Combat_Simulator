@@ -51,7 +51,8 @@ This file says where things go. It does not list every file; use `git ls-files` 
 
 These files work as they are. Move them only as part of a change that already touches them.
 
-- The WOTR combat simulator keeps its logic and model inside `pages/api/fight.ts` and
-  `pages/api/models/army.ts`, rather than `lib/combat-simulator/`. Because it sits under `pages/api/`,
-  `/api/models/army` is served as a route. It is not part of the API.
+- The WOTR combat simulator's logic and army model live in `lib/combat-simulator/`, and
+  `pages/api/fight.ts` is its route handler. `pages/api/models/army.ts` only re-exports the model, but
+  because it sits under `pages/api/` it is still served as `/api/models/army`. That route is not part
+  of the API.
 - The existing pages and components are `.js`.

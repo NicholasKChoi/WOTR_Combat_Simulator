@@ -49,10 +49,6 @@ The battle ends with one of three outcomes:
 - **Defender win:** the attacker has combat strength 0 and the defender does not.
 - **Tie:** both sides reach combat strength 0 in the same round.
 
-**Current code:** each side rolls one die per regular and elite with no cap of 5, and re-rolls
-min(misses, leaders) dice with no cap of 5. A side can therefore score more than 5 hits in a round
-today.
-
 ```mermaid
 flowchart TD
     start(["Start battle from the submitted armies"]) --> roll
@@ -81,10 +77,6 @@ A side takes its hits one at a time. For each hit, with units = regulars + elite
 - **5 or fewer units:** downgrade an elite to a regular if the side has one. Otherwise remove a regular.
 
 Hits beyond what it takes to eliminate a side are discarded. Leaders are never casualties.
-
-**Current code:** with more than 5 units the code always removes a regular, so a side with more than
-5 units and 0 regulars (6 or more elites only) drops to a negative number of regulars. That path is a
-defect, not a rule.
 
 ## Input bounds
 
@@ -160,6 +152,13 @@ each one as intended.
   sorties are not modeled.
 - **Shadow attacks, Free Peoples defend**. The results view always labels the attacker
   as Shadow and the defender as Free, whatever the actual sides.
+
+### Extension points
+
+Later termination rules, such as a round limit or the attacker retreating, plug in at three places in
+`lib/combat-simulator/battle.ts`: the stop check `shouldStop`, the `BattleOptions` argument to
+`Battle`, and the outcome list `OUTCOME_KINDS`. None of these rules is modeled today; every battle
+still ends only on elimination.
 
 ## Not modeled
 
