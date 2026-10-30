@@ -17,7 +17,7 @@ commands:
   acceptance: "npm run acceptance"     # Playwright; starts its own next dev on a per-checkout port
   acceptanceSetup: "npm ci && npm run acceptance:setup"   # Chromium; system libs once per machine: npx playwright install-deps chromium
 
-acceptanceHarness: "Playwright (@playwright/test, Chromium) in acceptance/, config playwright.config.ts; shared helpers in acceptance/helpers.ts. Port derived per checkout (3100-3999), ACCEPTANCE_PORT overrides. Needs Node 20+."
+acceptanceHarness: "Playwright (@playwright/test, Chromium) in acceptance/, config playwright.config.ts; shared helpers in acceptance/helpers.ts. Port derived per checkout (3100-3999), ACCEPTANCE_PORT overrides. Needs Node 24.x."
 
 reviewBot:
   cli: ""

@@ -108,9 +108,6 @@ None.
   houses, starting state, pop cap. Hand-entered values (starting resources/units, supply, landmark effects,
   farm bonus, walk and drop-off defaults) are labeled unverified. Later: Council Hall longbow speed, Network of
   Castles, Abbey of Kings. Out: sacred sites, relics, trade, fishing, cattle, depletion.
-- Dependency upgrade (owner, 2026-10-30): before M2 feature work, upgrade all npm dependencies to current
-  stable majors so M2 can use the latest Recharts and other libraries. M2 design approved the same day,
-  including the mixed-tech rule (supported effects applied, combat effects ignored and noted).
 - WOTR N: default 1000 battles, maximum 100,000 (owner, 2026-10-28).
 - WOTR rules: the published game's combat-dice cap (5) and leadership-reroll cap are genuine rules and
   must be implemented. The fixed casualty order is intentional: it stands in for the human player's

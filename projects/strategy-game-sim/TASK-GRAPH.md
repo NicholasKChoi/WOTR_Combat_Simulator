@@ -19,8 +19,8 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-009 | Update combat doc for SGS-003 input validation | M1 | | wotr-combat-simulator | low | SGS-003 | | sgs-009-combat-doc-input-bounds-current | 97cae74 | integrated | 0 | 18 | tickets/SGS-009-combat-doc-input-bounds-current.md |
 | SGS-011 | Remove stray /api/models/army route | M1 | | wotr-combat-simulator | high | | | sgs-011-api-models-army-resolver-error | 9336369 | integrated | 0 | 23 | tickets/SGS-011-api-models-army-resolver-error.md |
 | SGS-010 | Fix malformed-JSON acceptance test path | M1 | | wotr-combat-simulator | low | | | sgs-010-malformed-json-test-wrong-path | 8bdd45d | integrated | 0 | 22 | tickets/SGS-010-malformed-json-test-wrong-path.md |
-| SGS-012 | Upgrade npm dependencies to current stable | M2 | M2.10 | site | high | | | sgs-012-upgrade-dependencies | da77a09 | tested | 1 | 24 | tickets/SGS-012-upgrade-dependencies.md |
-| SGS-013 | Write the AoE4 build order design doc | M2 | M2.1 | aoe4-build-order | high | SGS-012 | | | | spec_ready | | | tickets/SGS-013-aoe4-design-doc.md |
-| SGS-014 | Add the English aoe4world snapshot, rules files, model types and data loader | M2 | M2.2 | aoe4-build-order | high | SGS-012 | | | | spec_ready | | | tickets/SGS-014-aoe4-data-model-loader.md |
+| SGS-012 | Upgrade npm dependencies to current stable | M2 | M2.10 | site | high | | | sgs-012-upgrade-dependencies | da77a09 | integrated | 1 | 24 | tickets/SGS-012-upgrade-dependencies.md |
+| SGS-013 | Write the AoE4 build order design doc | M2 | M2.1 | aoe4-build-order | high | SGS-012 | | sgs-013-aoe4-design-doc | | in_progress | | | tickets/SGS-013-aoe4-design-doc.md |
+| SGS-014 | Add the English aoe4world snapshot, rules files, model types and data loader | M2 | M2.2 | aoe4-build-order | high | SGS-012 | | sgs-014-aoe4-data-model-loader | | in_progress | | | tickets/SGS-014-aoe4-data-model-loader.md |
 | SGS-015 | Add the Recharts series chart component | M2 | M2.6 | aoe4-build-order | standard | SGS-012 | | | | spec_ready | | | tickets/SGS-015-aoe4-series-chart.md |
-| SGS-023 | Update ARCHITECTURE.md stack versions after the dependency upgrade | M2 | M2.10 | site | low | SGS-012 | | | | spec_ready | | | tickets/SGS-023-architecture-stack-versions.md |
+| SGS-023 | Update ARCHITECTURE.md stack versions after the dependency upgrade | M2 | M2.10 | site | low | SGS-012 | | sgs-023-architecture-stack-versions | | in_progress | | | tickets/SGS-023-architecture-stack-versions.md |
