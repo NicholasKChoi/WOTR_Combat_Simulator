@@ -11,7 +11,7 @@
   `tsconfig.json` options plus one `include` entry, two `.gitignore` lines, a `vitest.config.ts` -> `vitest.config.mts`
   rename; the rest is `package.json` and a regenerated `package-lock.json`)
 - **Depends on**: none
-- **On merge**: REPO.md `acceptanceHarness`: change "Needs Node 20+" to the Node floor this ticket sets (22.12+).
+- **On merge**: REPO.md `acceptanceHarness`: change "Needs Node 20+" to "Needs Node 24.x" (rework 1: engines pinned to 24.x).
   design/M2.md: the designer switches the Recharts section from `2.15.4` to `3.10.1` and re-verifies its chart test
   selectors (`path.recharts-line-curve[data-series]`, `li.recharts-legend-item.inactive`) on 3.x; CONTEXT.md
   Decisions: delete the "Dependency upgrade (owner, 2026-10-30)" line. REPO.md `commands.*` are unchanged.
@@ -174,8 +174,8 @@ Findings:
   Node.js Version "26.x" will be used instead", and the range auto-upgrades on each new Node major. No gate ran on Node 26.
 
 Required fixes:
-- [ ] Set `engines.node` to `"24.x"` (owner decision 2026-10-30). The only lockfile change allowed is the root
+- [x] Set `engines.node` to `"24.x"` (owner decision 2026-10-30). The only lockfile change allowed is the root
       package entry's `engines` field (run `npm install --package-lock-only`); no resolved version changes.
-- [ ] `npm ci` (local Node 22 prints an EBADENGINE warning only, since `engine-strict` is unset; confirm it still installs),
+- [x] `npm ci` (local Node 22 prints an EBADENGINE warning only, since `engine-strict` is unset; confirm it still installs),
       `npx tsc --noEmit`, `npm test` pass on the branch.
 - [ ] Push is done by the manager/tech-lead; after the push the Vercel log must show Node 24.x with no override warning.
