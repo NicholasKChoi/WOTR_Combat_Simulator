@@ -62,13 +62,27 @@ None.
 - AoE4 game data (owner, 2026-10-29): costs, build times and technology modifiers come from a pinned
   aoe4world data snapshot (data.aoe4world.com, github.com/aoe4world/data), committed under `data/aoe4-build-order/`
   with its source commit and game patch recorded.
-- AoE4 base villager gather rates (owner, 2026-10-29): use the values in SichYuriy/aoe4-production-calculator
-  `src/data/BaseGatheringRates.ts` (resources/min) as provisional data, labeled in the data file as unverified,
-  patch unknown, source repo has no license; replace them once measured or otherwise sourced.
+- AoE4 gather rates (owner, 2026-10-30; replaces the 2026-10-29 calculator decision): raw per-resource rates
+  from the fandom wiki (Resource and Villager pages, e.g. sheep/farm/gold/stone/wood 0.75/s, berry 0.69/s since
+  update 12.0.1974) plus carry capacity (10; 25 for hunted meat), combined in a trip model: cycle = capacity /
+  rate + walk + drop-off, with walk and drop-off seconds per resource as named inputs. Defaults are tuned so
+  effective rates land near SichYuriy/aoe4-production-calculator's (net) values, which are kept only as a
+  labeled cross-check in a test. Wiki values are labeled unverified with no patch stated (reports/M2-research-1.md).
 - AoE4 builder scaling (owner, 2026-10-30): build time with N builders = base build time x 3/(N+2), i.e. each
   extra builder adds +33% build speed (1 builder 100%, 2 75%, 4 50%, 8 30%). Source: Age of Empires fandom wiki,
   "Villager (Age of Empires IV)", Building construction section (no patch stated). The data file records the
   formula with that source and labels it unverified, patch unknown.
+- AoE4 auto-houses (owner, 2026-10-30): the house start is computed from time (house build time, builder walk
+  time and the combined production rate), so supply never blocks production. Builder count and source
+  resource are named inputs (default 1 from wood). The model must allow houses to be built continually: when
+  production outpaces one house at a time, a builder stays on houses back-to-back (or more builders are used)
+  rather than production stalling. An explicit house build step overrides auto-houses. Supply values (start,
+  per house, max 200) are hand-entered and labeled unverified (reports/M2-research-2.md).
+- AoE4 triggers (owner, 2026-10-30): v1 supports time (`@m:ss`, meaning "not before") and villager count
+  (`at N vils`). Steps run in list order; a step arms when its trigger holds and earlier steps have started,
+  then waits until affordable; a trigger never reached is reported as "not reached". In JSON a trigger is a
+  tagged object (`{"kind":"villagers","count":17}`) so resource and event kinds can be added later; v1 rejects
+  unknown kinds (reports/M2-research-3.md).
 - WOTR N: default 1000 battles, maximum 100,000 (owner, 2026-10-28).
 - WOTR rules: the published game's combat-dice cap (5) and leadership-reroll cap are genuine rules and
   must be implemented. The fixed casualty order is intentional: it stands in for the human player's
