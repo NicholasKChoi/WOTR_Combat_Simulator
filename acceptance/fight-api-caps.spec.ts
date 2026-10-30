@@ -128,7 +128,7 @@ test('Fight! with 10/0/5 vs 0/10/5 renders the Army Results table', async ({ pag
   await expect(page.locator('table').first()).toBeVisible()
 })
 
-test('the army model route keeps the status it had before the logic moved', async ({ request }) => {
+test('the army model is not served as an API route', async ({ request }) => {
   const response = await request.get('/api/models/army')
-  expect(response.status()).toBe(500)
+  expect(response.status()).toBe(404)
 })

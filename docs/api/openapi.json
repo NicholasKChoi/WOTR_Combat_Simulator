@@ -3,7 +3,7 @@
   "info": {
     "title": "Strategy Game Simulator API",
     "version": "1.0.0",
-    "description": "HTTP API of the strategy game simulator site. /api/models/army is also served, only because its file sits under pages/api/; it is not part of the API, is not listed here, and may change or disappear."
+    "description": "HTTP API of the strategy game simulator site."
   },
   "paths": {
     "/api/fight": {
