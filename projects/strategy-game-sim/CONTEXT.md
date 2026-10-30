@@ -44,13 +44,16 @@ this list only names the surfaces.
 
 ## Open questions
 
-- AoE4: where do game numbers (costs, build times, gather rates) come from, a community data set
-  such as aoe4world or hand-entered values? TODO
+- AoE4: costs, build times and technology modifiers: take them from a pinned aoe4world data snapshot
+  (data.aoe4world.com; recommended, not yet confirmed by the owner)? TODO
 - AoE4: should the simulation be fixed (one answer per build order), or vary walking time and idle
   villagers and report a spread of results? TODO
 
 ## Decisions
 
+- AoE4 base villager gather rates (owner, 2026-10-29): use the values in SichYuriy/aoe4-production-calculator
+  `src/data/BaseGatheringRates.ts` (resources/min) as provisional data, labeled in the data file as unverified,
+  patch unknown, source repo has no license; replace them once measured or otherwise sourced.
 - WOTR N: default 1000 battles, maximum 100,000 (owner, 2026-10-28).
 - WOTR rules: the published game's combat-dice cap (5) and leadership-reroll cap are genuine rules and
   must be implemented. The fixed casualty order is intentional: it stands in for the human player's
