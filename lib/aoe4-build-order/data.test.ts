@@ -165,6 +165,11 @@ describe('loadGameData', () => {
         expect(() => {
             data.base.gatherNodes.wood.rate.value = 1
         }).toThrow(TypeError)
+        const writable = data as { base: BaseRules }
+        expect(() => {
+            writable.base = structuredClone(baseRules) as unknown as BaseRules
+        }).toThrow(TypeError)
+        expect(loadGameData('english').base.walkSeconds.value).toBe(5)
     })
 
     it('finds nothing for prototype names', () => {
@@ -184,6 +189,16 @@ describe('buildGameData', () => {
         const { snapshot, base, civData } = freshInputs()
         snapshot.upgrades.push({ ...snapshot.technologies[0] })
         expect(() => buildGameData('english', snapshot, base, civData)).toThrow(snapshot.technologies[0].id)
+    })
+
+    it('orders each baseId by ascending age whatever the input order', () => {
+        const { snapshot, base, civData } = freshInputs()
+        const isManAtArms = (e: SnapshotEntry) => e.baseId === 'man-at-arms'
+        const reversed = snapshot.units.filter(isManAtArms).reverse()
+        snapshot.units = [...snapshot.units.filter((e) => !isManAtArms(e)), ...reversed]
+        expect(reversed.map((e) => e.age)).not.toEqual([...reversed.map((e) => e.age)].sort((a, b) => a - b))
+        const ages = buildGameData('english', snapshot, base, civData).byBaseId.get('man-at-arms').map((e) => e.age)
+        expect(ages).toEqual([...ages].sort((a, b) => a - b))
     })
 
     it('rejects a starting unit that is not in the snapshot', () => {

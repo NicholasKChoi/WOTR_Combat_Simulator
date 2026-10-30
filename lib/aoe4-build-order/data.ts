@@ -111,7 +111,8 @@ function checkStartingUnits(civData: CivData, byBaseId: ReadonlyMap<string, read
 }
 
 // The engine shares one GameData across requests, so everything reachable from it is frozen: a stray
-// write would otherwise leak into later runs and break same-input, same-timings.
+// write would otherwise leak into later runs and break same-input, same-timings. The snapshot, base and
+// civData passed in are frozen in place; pass copies to keep them writable.
 export function buildGameData(civ: CivId, snapshot: Snapshot, base: BaseRules, civData: CivData): GameData {
   const entries = [...snapshot.units, ...snapshot.buildings, ...snapshot.technologies, ...snapshot.upgrades];
   const byId = new Map<string, SnapshotEntry>();
@@ -133,7 +134,7 @@ export function buildGameData(civ: CivId, snapshot: Snapshot, base: BaseRules, c
   deepFreeze(snapshot.source);
   entries.forEach(deepFreeze);
   byBaseId.forEach(deepFreeze);
-  return {
+  return Object.freeze({
     civ,
     source: snapshot.source,
     byId,
@@ -142,7 +143,7 @@ export function buildGameData(civ: CivId, snapshot: Snapshot, base: BaseRules, c
     civData: deepFreeze(civData),
     supply: new Map(Object.entries(civData.supply)),
     upgradeTargets: new Map(Object.entries(civData.upgradeTargets)),
-  };
+  });
 }
 
 export function loadGameData(civ: CivId): GameData {
