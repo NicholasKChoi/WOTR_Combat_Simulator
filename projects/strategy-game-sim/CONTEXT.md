@@ -83,6 +83,12 @@ None.
   then waits until affordable; a trigger never reached is reported as "not reached". In JSON a trigger is a
   tagged object (`{"kind":"villagers","count":17}`) so resource and event kinds can be added later; v1 rejects
   unknown kinds (reports/M2-research-3.md).
+- AoE4 outputs (owner, 2026-10-30): the result is a set of graphs over time: units produced, gather rates, and
+  floating (banked, unspent) resources.
+- AoE4 interface (owner, 2026-10-30): a web page in v1. Whether it also gets an API route is left to the M2
+  technical design.
+- AoE4 patch policy (owner, 2026-10-30): no per-patch support; the data reflects the current game only, with
+  its source commit/patch recorded per A1.
 - WOTR N: default 1000 battles, maximum 100,000 (owner, 2026-10-28).
 - WOTR rules: the published game's combat-dice cap (5) and leadership-reroll cap are genuine rules and
   must be implemented. The fixed casualty order is intentional: it stands in for the human player's
