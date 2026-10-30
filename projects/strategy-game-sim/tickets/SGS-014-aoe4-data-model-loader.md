@@ -349,9 +349,9 @@ Findings:
   because upstream entries are already in age order; deleting the sort at `data.ts:128-130` still passes.
 
 Required fixes:
-- [ ] Return `Object.freeze({ ... })` from `buildGameData` (shallow: the four Maps stay unfrozen, typed `ReadonlyMap`).
-- [ ] Extend the `freezes the shared data` test (data.test.ts:157) with a top-level write (e.g. assigning `base`) that
+- [x] Return `Object.freeze({ ... })` from `buildGameData` (shallow: the four Maps stay unfrozen, typed `ReadonlyMap`).
+- [x] Extend the `freezes the shared data` test (data.test.ts:157) with a top-level write (e.g. assigning `base`) that
       throws `TypeError`; mutation check: removing the new `Object.freeze` fails it.
-- [ ] Add a `buildGameData` test with a baseId's entries supplied in reverse age order, asserting `byBaseId` returns
+- [x] Add a `buildGameData` test with a baseId's entries supplied in reverse age order, asserting `byBaseId` returns
       them ascending; mutation check: deleting the sort fails it.
-- [ ] Document in `data.ts` (one short comment) that `buildGameData` freezes the objects passed to it.
+- [x] Document in `data.ts` (one short comment) that `buildGameData` freezes the objects passed to it.

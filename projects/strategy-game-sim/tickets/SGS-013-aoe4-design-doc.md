@@ -228,6 +228,6 @@ Required fixes:
       (they carry `source` and `unverified` fields of their own); make examples consistent with English starting in a
       `capital-town-center` (examples may still build a `town-center`).
 - [x] (rework 1) Criterion 12 (Decisions coverage) now also requires the two sentences above.
-- [ ] (added after the first rework pass) `docs/aoe4-build-order.md:318`: design/M2.md's issue table wrongly listed a
+- [x] (added after the first rework pass) `docs/aoe4-build-order.md:318`: design/M2.md's issue table wrongly listed a
       `none` trigger kind (the `Trigger` type has only `time` and `villagers`; an omitted trigger means no condition).
       The design row is fixed; make the doc row match it.
