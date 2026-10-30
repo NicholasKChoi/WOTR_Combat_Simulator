@@ -99,7 +99,9 @@ None.
   villager per farm, mill coverage as an input, English farm bonus near a mill, wiki values +20/25/30/30% by
   age); generic military production (any production building queues any unit from data, continuous/pause/switch
   orders, no combat); age-ups to all four ages via any landmark; every English tech whose effects use supported
-  properties (gather rate, carry capacity, move speed, production speed), others rejected with a clear error;
+  properties (gather rate, carry capacity, move speed, production speed); combat-only techs (Blacksmith,
+  University: hitpoints, attack etc.) are accepted for cost and queue time with the effect ignored, and techs
+  whose effects aoe4world lists as `unknown` (e.g. forestry-1) are rejected with a clear error (owner 2026-10-30);
   unit veterancy upgrades (e.g. Veteran/Elite tiers, owner 2026-10-30): researched at their building from data,
   costing resources and occupying that building's queue for the research time; units produced afterwards are the
   upgraded tier, and the units-produced graph distinguishes tiers;
