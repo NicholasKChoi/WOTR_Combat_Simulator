@@ -35,13 +35,13 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] (respec 2) `pages/api/models/army.ts` no longer exists, and `git grep "models/army"` over `pages/`, `lib/`, `components/`, `acceptance/`, `docs/`, `ARCHITECTURE.md` finds exactly two matches: the request URL in the 404 test in `acceptance/fight-api-caps.spec.ts`, and the not-contain assertion in `acceptance/fight-api-spec-surface.spec.ts`. The caps test's title does not contain the path.
-- [ ] (respec 1) `GET /api/models/army` returns 404: the caps acceptance test asserts it under `npm run acceptance`, and against a manual `npm run dev`, `curl -s -o /dev/null -w '%{http_code}' localhost:3000/api/models/army` prints `404`.
-- [ ] `docs/api/openapi.json` `info.description` no longer mentions `/api/models/army`, still parses as OpenAPI 3.1, and `paths` still lists only `/api/fight`
-- [ ] The spec-surface acceptance test and the caps acceptance test are updated as above and pass
-- [ ] `npx tsc --noEmit`, `npm test`, and `npm run acceptance` pass
-- [ ] `POST /api/fight` responses are unchanged
-- [ ] (respec 1) W1, W2, S3 hold: no file under `lib/combat-simulator/` or `pages/api/fight.ts` changes, and every other test in `acceptance/fight-api-caps.spec.ts` is unchanged and passes
+- [x] (respec 2) `pages/api/models/army.ts` no longer exists, and `git grep "models/army"` over `pages/`, `lib/`, `components/`, `acceptance/`, `docs/`, `ARCHITECTURE.md` finds exactly two matches: the request URL in the 404 test in `acceptance/fight-api-caps.spec.ts`, and the not-contain assertion in `acceptance/fight-api-spec-surface.spec.ts`. The caps test's title does not contain the path.
+- [x] (respec 1) `GET /api/models/army` returns 404: the caps acceptance test asserts it under `npm run acceptance`, and against a manual `npm run dev`, `curl -s -o /dev/null -w '%{http_code}' localhost:3000/api/models/army` prints `404`.
+- [x] `docs/api/openapi.json` `info.description` no longer mentions `/api/models/army`, still parses as OpenAPI 3.1, and `paths` still lists only `/api/fight`
+- [x] The spec-surface acceptance test and the caps acceptance test are updated as above and pass
+- [x] `npx tsc --noEmit`, `npm test`, and `npm run acceptance` pass
+- [x] `POST /api/fight` responses are unchanged
+- [x] (respec 1) W1, W2, S3 hold: no file under `lib/combat-simulator/` or `pages/api/fight.ts` changes, and every other test in `acceptance/fight-api-caps.spec.ts` is unchanged and passes
 
 ## Open questions
 

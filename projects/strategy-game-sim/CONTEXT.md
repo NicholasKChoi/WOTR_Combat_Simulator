@@ -19,7 +19,7 @@ with randomness, either to estimate odds or to make fair random picks. A landing
 | Component | Paths | Owns |
 |-----------|-------|------|
 | site | `pages/index.js`, `pages/_app.js`, `components/layout.*`, `utils/**`, `styles/**` | Landing page and routing, shared Layout, shared helpers and styles |
-| wotr-combat-simulator | `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `lib/combat-simulator/**`, `pages/api/fight.ts`, `pages/api/models/army.ts` | Army input form, `/api/fight` battle simulation, results view |
+| wotr-combat-simulator | `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `lib/combat-simulator/**`, `pages/api/fight.ts` | Army input form, `/api/fight` battle simulation, results view |
 | starcraft-helper | `pages/apps/starcraft-helper.js` | Partner pairing, map strike and map pick, all client-side |
 | aoe4-build-order | TODO: proposed `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `lib/aoe4-build-order/**`, `pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**` | Build order input, simulation, timing report, versioned game data |
 
@@ -31,7 +31,7 @@ The request and response contract for every route under `pages/api/` lives in `d
 on `main` (SGS-006), with shared types in `lib/combat-simulator/fight-api.ts`. That spec is authoritative;
 this list only names the surfaces.
 
-- `POST /api/fight`: WOTR combat simulator (`operationId: runFight`). `/api/models/army` is served but not part of the API.
+- `POST /api/fight`: WOTR combat simulator (`operationId: runFight`).
 - Routes: `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`.
 
 ## Design docs
@@ -74,7 +74,6 @@ this list only names the surfaces.
   directly with a new unit test runner. The runner is its own ticket; tickets that unit-test logic depend on it.
 - WOTR time budget: N = 100,000 completes within 10 seconds.
 - Error responses: `{ error: string }` with 400 or 405, accepted for now.
-- `/api/models/army`: owner 2026-10-29: delete `pages/api/models/army.ts` so the path 404s (SGS-011); the model lives in `lib/combat-simulator/army.ts`.
 - API documentation: an OpenAPI (Swagger) JSON spec in the repo that agents can read with `jq`.
 - Superseded PRs #11 (input validation) and #12 (Jest suite) were closed.
 
