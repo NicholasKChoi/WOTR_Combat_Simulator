@@ -23,6 +23,7 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "**/*.mts",
     "pages/apps/combat-simulator.js"
   ],
   "exclude": [
