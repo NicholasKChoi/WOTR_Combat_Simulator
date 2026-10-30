@@ -89,6 +89,20 @@ None.
   technical design.
 - AoE4 patch policy (owner, 2026-10-30): no per-patch support; the data reflects the current game only, with
   its source commit/patch recorded per A1.
+- AoE4 v1 coverage and structure (owner, 2026-10-30; reports/M2-research-4.md): a generic engine reads the
+  pinned aoe4world data filtered by civ, plus a hand-entered per-civ overlay file in the aoe4world `effects`
+  schema (extended only with a conditional effect, e.g. "near a mill" or "by age"). Per-civ code hooks
+  (`CivRules`: gatherRateModifier, productionModifier, supplyProvider, villagerProducer, onBuildingComplete,
+  dropOffRule, startingState, onAgeAdvance) are documented seams that default to no-op; English v1 needs none.
+  The engine keys on ids, never names. In v1: villager production (town center, King's Palace +10%); gathering
+  sheep, berries, hunt, farms, wood, gold, stone; mill/lumber camp/mining camp drop-offs; farms (cost, one
+  villager per farm, mill coverage as an input, English farm bonus near a mill, wiki values +20/25/30/30% by
+  age); generic military production (any production building queues any unit from data, continuous/pause/switch
+  orders, no combat); age-ups to all four ages via any landmark; every English tech whose effects use supported
+  properties (gather rate, carry capacity, move speed, production speed), others rejected with a clear error;
+  houses, starting state, pop cap. Hand-entered values (starting resources/units, supply, landmark effects,
+  farm bonus, walk and drop-off defaults) are labeled unverified. Later: Council Hall longbow speed, Network of
+  Castles, Abbey of Kings. Out: sacred sites, relics, trade, fishing, cattle, depletion.
 - WOTR N: default 1000 battles, maximum 100,000 (owner, 2026-10-28).
 - WOTR rules: the published game's combat-dice cap (5) and leadership-reroll cap are genuine rules and
   must be implemented. The fixed casualty order is intentional: it stands in for the human player's
