@@ -1,0 +1,424 @@
+# AoE4 Build Order Simulator
+
+The model the build order simulator follows, the data it reads, the build order format it accepts, its
+input limits, and what it reports. Reviews judge the simulator's behavior against this doc. Each section
+states the rule; the code and its tests implement it.
+
+## Purpose and model
+
+The simulator plays an *Age of Empires IV* build order step by step for the English civilization: villager
+production, gathering, construction, research and age-ups. It returns one deterministic result per build
+order and data set: when each step started and finished, and graphs over time of units produced, gather
+rates and floating resources. English is the only civilization; other civilizations are a later extension
+through the seams in Extension points.
+
+The model treats the game as a small set of ordinary rules:
+
+- Town centers and landmarks are ordinary buildings. They are built, produce and research like any other
+  building.
+- Villager producers (town center, King's Palace) are production buildings. By default each one produces
+  villagers continuously ("optimal villagers") until a step changes its order.
+- An age-up is a landmark build. There is no separate age-up action.
+- Every construction pulls its builders off their resource for the whole build time; they gather nothing
+  while walking and building. Build time depends on the builder count.
+- Resources are infinite: a resource node never runs out.
+
+Every quantity that could vary between games (walk time, idle time, distance to each resource) is a named
+simulator input, never a constant inside the step logic. The result and the API response are additive: a
+later spread of outcomes is a new field beside the existing ones, not a change to them.
+
+## Determinism, bounds and resources
+
+- **Same input, same result.** The simulator uses no randomness and never reads the clock, so the same
+  build order, inputs and data always give an identical result.
+- **Game numbers come from data.** Every game number (cost, build time, gather rate, supply) is read from a
+  versioned data file that records its source; no game number is written into the simulation code.
+- **Resources never go negative.** A step that cannot be afforded waits until it can, and the wait shows
+  in its timing as `waitSeconds > 0`.
+- **Every request finishes in bounded time.** Every numeric input has a bound in `SIM_INPUT_BOUNDS`, and an
+  input outside its bound is an `out-of-range` issue; nothing is simulated.
+
+A non-integer where an integer is required, and a non-finite number, are also `out-of-range`. The bounds
+apply to JSON and paste input alike: a paste line is checked after it is parsed.
+
+| field | type | min..max | default |
+|---|---|---|---|
+| text / steps | | 20,000 chars / 200 steps | |
+| `durationSeconds` | int | 60..3600 | 1200 |
+| `Trigger.seconds` | int | 0..3600 (the largest `durationSeconds`) | |
+| `Trigger.count` (villagers) | int | 1..200 (the population cap) | |
+| `produce.count`, `move.count` | int | 1..200 | continuous (produce) |
+| `builders`, `houseBuilders` | int | 1..200 | 1 |
+| `instance` | int | 1..200 | every instance |
+| `walkSeconds` (`SimInputs`) and per-step `walkSeconds` (`produce`, `build`, `move`) | number | 0..60 | `rules/base.json`; step: inherit |
+| `walkSecondsCamp`, `walkSecondsTownCenter` | number | 0..60 | `rules/base.json` |
+| `dropOffSeconds` | number | 0..30 | `rules/base.json` |
+| `influenceCoverage` values | number | 0..1 | `{ mill: 1 }` |
+
+The result is sampled every `sampleSeconds` = 5 seconds.
+
+## Data sources
+
+**Game data snapshot.** Costs, build times, production times and technology effects come from a pinned
+snapshot of aoe4world data (github.com/aoe4world/data), committed as
+`data/aoe4-build-order/aoe4world/english.json`. Its entries are copied verbatim and filtered to those whose
+`civs` contain `en`; the file holds `{ source, units, buildings, technologies, upgrades }`. Its
+`SnapshotSource` records `repo`, `commit`, `committedAt`, `fetchedAt`, `patch` (the game patch live on
+`committedAt`, since upstream files carry none) and `patchSource` (the URL stating that patch).
+
+**Hand-entered rules.** Values the snapshot lacks are entered by hand in two files:
+
+- `data/aoe4-build-order/rules/base.json`, civilization-agnostic: `gatherNodes` (per-node rate, carry
+  capacity, the effect properties that modify them, drop-off buildings and trip seconds), `builderScaling`,
+  `maxPopCap` (200) and `walkSeconds`.
+- `data/aoe4-build-order/rules/english.json`, the English overlay: `startingState`, `supply`, `effects`
+  and `upgradeTargets`.
+
+Every hand-entered value is a `HandValue` that carries its own `source` and its own `unverified` label.
+Some values, such as some carry capacities, are observed in game and are not labeled unverified; the rules
+files are the record of which value is which.
+
+**Gather rates.** Raw per-resource rates come from the *Age of Empires* fandom wiki (Resource and Villager
+pages): for example 0.75/s for sheep, farms, gold, stone and wood, and 0.69/s for berries since update
+12.0.1974. Carry capacity is 10, and 25 for hunted meat. The trip model below combines rate and capacity.
+Every node's rate and capacity (deer and boar included) and each one's source and label live in
+`rules/base.json`; this doc does not restate them. The wiki-sourced gather rates are unverified, with no
+patch stated.
+
+**Builder scaling.** The construction formula comes from the wiki Villager page, Building construction
+section, with no patch stated; it is unverified.
+
+**Task-switch walk.** The base walk of 5 seconds per task switch (`walkSeconds` in `rules/base.json`) is an
+unverified, unmeasured assumption: about 5-6 tiles at villager speed 1.12 tiles/s.
+
+**Cross-check.** Effective gather rates from SichYuriy/aoe4-production-calculator are used as a labeled
+cross-check in a test only. They are never a source of data.
+
+**Loading.** `loadGameData(civ)` is synchronous. It builds its `GameData` indexes (`byId`, `byBaseId` in
+ascending age, `supply`, `upgradeTargets`) once per civilization and returns the same deep-frozen instance
+on every call. It throws for a civilization with no data and for a duplicate `id`. Every id lookup goes
+through those maps, so a user id such as `__proto__` finds nothing.
+
+**Ids.** Build orders and rules reference aoe4world `baseId`s (`villager`, `town-center`, `house`,
+`wheelbarrow`, `veteran-longbowmen`), never display names. The engine resolves a `baseId` to the
+civilization's entry for the current age or tier.
+
+**Patch policy.** The data reflects the current game only. There is no per-patch support: refreshing the
+snapshot replaces it and records the new commit and patch. Effects the snapshot states only in description
+text are listed in `data/aoe4-build-order/README.md` under Known data gaps.
+
+## Model rules
+
+**Starting state and population.** `startingState` in `rules/english.json` has exactly the fields `age`,
+`resources`, `villagers`, `units` and `buildings`. `villagers` maps each gather node to the villagers on
+it at t=0. `units` maps a unit `baseId` to the count of non-villager units present at t=0; English starts
+with one scout. Starting units count toward population, so English starts at 7/10 (6 villagers and 1
+scout), but they are not produced. Sheep are not units: sheep are the `sheep` gather node. The
+`startingState` hook of `CivRules` may override the whole object. The starting values themselves live in
+`rules/english.json`.
+
+**Ordering and triggers.** Steps run in list order. A trigger is either a time (`@m:ss`, meaning "not
+before" that time) or a villager count (`at N vils`, counting villagers alive). A step arms when its
+trigger holds and every earlier step has started; a step without a trigger arms as soon as the earlier
+steps have started. Once armed, it waits until it is affordable and supply allows it, then starts.
+`waitSeconds = startedAt - armedAt`. At the horizon, a step that never armed is `not-reached`, and a step
+that armed but never started is `waiting`.
+
+**Queues.** Each building instance has one queue, shared by production and research. A `produce` step on
+a busy producer replaces its order (a switch); `pause` clears the order. A step names a building by
+`baseId`, which applies to every instance, or by `instance` (1-based) for one.
+
+**Tiers.** A produced unit is the entry for the highest tier whose upgrade has been researched, else the
+lowest-age entry for its `baseId`. `upgradeTargets` maps an upgrade `baseId` to the unit `baseId` it
+upgrades, because aoe4world's `unlocks` is empty; the target tier is the unit entry whose `age` equals the
+upgrade's `age`. A veterancy upgrade occupies its building's queue for its research time, and units
+produced afterwards are the upgraded tier.
+
+**Ages and landmarks.** A building whose `classes` match `^age[1-3]_landmark\d$` advances the age from its
+`age` to `age + 1` when it completes, so any landmark reaches the next of the four ages. Entries whose
+`age` is above the current age are unavailable.
+
+**Trip model.** A gathering villager repeats a cycle:
+
+`cycle = capacity / rate + walk / moveSpeedMultiplier + dropOffSeconds`, and effective rate = `capacity / cycle`.
+
+`rate` and `capacity` are the node's values after technology effects. `walk` is the node's
+`walkSecondsCamp` when a building in the node's `dropOffs` exists (mill, lumber camp, mining camp), else
+`walkSecondsTownCenter`. `moveSpeedMultiplier` is the villager `moveSpeed` multiplier from technology
+effects (Wheelbarrow raises it). Income is credited continuously at the effective rate, not per trip.
+
+**Task-switch walk.** Moving villagers between tasks costs one generic base walk, `SimInputs.walkSeconds`
+(default from `rules/base.json`). A step's own `walkSeconds`, when present, overrides it for every villager
+movement that step causes. The effective walk is
+`(step.walkSeconds ?? inputs.walkSeconds) / moveSpeedMultiplier`, the same villager `moveSpeed` multiplier
+the trip model uses, read when the walk starts. The villager is idle and gathers nothing while walking. The
+walk is paid:
+
+- once per villager on `move`, from `from` to `to`;
+- twice on `build`: once to the site, then once from the site to `then`;
+- once on `produce` with `rally`, from spawn to the node;
+- for both legs by auto-house builders, at `inputs.walkSeconds` (no step to override it).
+
+The trip model's per-node `walkSecondsCamp`, `walkSecondsTownCenter` and `dropOffSeconds` model the gather
+cycle, not task switches.
+
+**Construction.** Build time with N builders = base build time x 3 / (N + 2), the `builderScaling`
+numerator 3 and offset 2 in `rules/base.json`:
+
+| builders | 1 | 2 | 4 | 8 |
+|---|---|---|---|---|
+| share of base build time | 100% | 75% | 50% | 30% |
+
+**Houses and supply.** `supply` in `rules/english.json` gives the supply each building provides; total
+supply is capped at `maxPopCap`, 200. With `autoHouses` on (the default), the simulator builds houses on
+its own so supply never blocks production. It computes each house's start from the house build time, the
+builders' walk and the combined production rate of all producers. `houseBuilders` and `houseBuilderSource`
+are inputs, default 1 builder taken from `wood`. When production outpaces one house at a time, builders
+build houses back to back, or more builders are used, rather than production stalling. An explicit
+`build house` step overrides auto-houses.
+
+**Farms and mill coverage.** A farm costs its snapshot cost and holds one villager. `influenceCoverage`
+gives, per building `baseId`, the share of gatherers inside that building's influence once one exists;
+the default is `{ mill: 1 }`.
+
+**Overlay effects.** `effects` in `rules/english.json` are `OverlayEffect` rows in the aoe4world effect
+schema, each active once its `grantedBy` (`civ`, or a building or technology `baseId`) is built or
+researched, and each with its own `source` and `unverified` label. An optional `condition` holds only when
+all its present fields hold:
+
+- `age`: the current age is exactly this age.
+- `nearBuilding`: the effect applies to the `influenceCoverage` share of gatherers for that building.
+- `producer`: holds only when the modified value is a production time at an instance of that building.
+
+`productionSpeed` is a speed: production time = `costs.time` divided by the product of its multipliers.
+The English farm bonus near a mill is four rows, one per age, with the wiki values +20%, +25%, +30% and
++30% by age, unverified. The King's Palace villager production bonus, +10%, is a `productionSpeed`
+`multiply 1.1` row on `villager`, granted by `kings-palace` and conditioned on `producer: 'kings-palace'`.
+
+**Coverage.** Modeled:
+
+- villager production (town center, King's Palace +10%);
+- gathering sheep, berries, hunt (deer and boar), farms, wood, gold and stone;
+- mill, lumber camp and mining camp drop-offs;
+- farms (cost, one villager per farm, mill coverage as an input, English farm bonus near a mill, wiki
+  values +20/25/30/30% by age);
+- generic military production: any production building queues any unit from the data, with continuous,
+  pause and switch orders, and no combat;
+- age-ups to all four ages via any landmark;
+- every English technology whose effects use supported properties (gather rate, carry capacity, move
+  speed, production speed);
+- combat-only technologies (Blacksmith, University: hitpoints, attack and similar), accepted for cost and
+  queue time with the effect ignored; technologies whose effects aoe4world lists as `unknown` (such as
+  `forestry`) are rejected with a clear error;
+- unit veterancy upgrades, researched at their building from data, after which produced units are the
+  upgraded tier and the units-produced graph shows tiers apart;
+- houses, starting state and the population cap.
+
+Later: Council Hall longbow production speed, Network of Castles, Abbey of Kings. Out: sacred sites,
+relics, trade, fishing, cattle, and resource depletion.
+
+## Technologies
+
+`SUPPORTED_EFFECT_PROPERTIES` are `foodGatherRate`, `woodGatherRate`, `goldGatherRate`, `stoneGatherRate`,
+`farmGatherRate`, `berryGatherRate`, `huntGatherRate`, `carryCapacity`, `huntCarryCapacity`, `moveSpeed`
+and `productionSpeed`. `IGNORED_EFFECT_PROPERTIES` are the combat properties (`hitpoints`, `meleeAttack`,
+`rangedArmor` and others), enumerated from the snapshot's English technologies in `effects.ts`.
+
+`classifyTech` returns a `TechSupport` by checking, in this order:
+
+1. Any effect `property` is `unknown` (`forestry-1`): rejected as `unknown-tech-effect`.
+2. Any property in neither set, or a supported property whose `effect` is not `change` or `multiply` or
+   whose `type` is not `passive`: rejected as `unsupported-tech`. `buildTime` is in neither set, so
+   `military-academy` and `lightweight-beams` are rejected rather than silently mis-timed.
+3. Any property in `IGNORED_EFFECT_PROPERTIES`: `effects-ignored`. The technology costs resources and
+   queue time and applies its supported effects. Each research step of it gets one `tech-effect-ignored`
+   note naming the ignored properties, reached or not, in step order.
+4. Empty or absent `effects` (`shaft-mining`) and no `OverlayEffect` with `grantedBy` equal to its
+   `baseId`: `effects-unmodeled`. It costs resources and queue time like any technology, and each research
+   step of it gets one `tech-effect-unmodeled` note with empty `properties`, worded so the user sees its
+   effect is not simulated. With such an overlay row it is `supported`.
+5. Otherwise: `supported`.
+
+An upgrade (`type: 'upgrade'`) is supported if and only if `upgradeTargets` lists it; otherwise it is
+rejected as `unsupported-tech` with `property: 'upgradeTargets'`. A rejection is a `BuildOrderIssue`
+naming the technology and the property.
+
+Effects stated only in a technology's description text, beside non-empty `effects`, are not detected.
+
+## Build order input
+
+**JSON.** A `BuildOrder` is `{ civ, name, source?, steps }` with `civ` = `english`. Each `BuildStep` has
+an optional `trigger` and one `action`:
+
+| action | fields |
+|---|---|
+| `produce` | `producer`, `instance?`, `unit`, `count?` (absent = continuous), `rally?` (required for villagers), `walkSeconds?` (only with `rally`) |
+| `pause` | `producer`, `instance?` |
+| `build` | `building`, `builders?` (default 1), `from`, `then?` (default `from`), `walkSeconds?` |
+| `research` | `tech`, `at?` (technologies and veterancy upgrades) |
+| `move` | `count`, `from`, `to`, `walkSeconds?` |
+
+A trigger is a tagged object: `{ "kind": "time", "seconds": 90 }` or `{ "kind": "villagers", "count": 17 }`.
+An unknown `kind` is an `unknown-trigger-kind` issue. Gather nodes (`GatherNodeId`) are `sheep`, `berry`,
+`deer`, `boar`, `farm`, `wood`, `gold` and `stone`.
+
+**Paste format.** One step per line. `#` comment lines and blank lines are ignored. An optional trigger
+prefix comes first, then the action:
+
+| line prefix | trigger | action syntax |
+|---|---|---|
+| `@m:ss ` | time | `produce <unit> from <producer>[#k] [xN] [-> <node>] [walk Ns]` |
+| `at N vils ` | villagers | `pause <producer>[#k]` |
+| none | none | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move N <node> to <node> [walk Ns]` |
+
+One example per action; each line stands alone:
+
+```text
+# opening
+produce villager from town-center x3 -> sheep walk 4s
+@0:45 build house with 2 from wood then wood walk 6s
+at 9 vils build mill from sheep then berry
+research wheelbarrow at mill
+move 3 sheep to berry walk 5s
+@6:00 build council-hall with 4 from wood then gold
+produce longbowman from archery-range#1 x5
+research veteran-longbowmen
+pause town-center#1
+```
+
+Grammar details:
+
+- `@m:ss` is `@\d+:\d\d`: any number of minute digits and exactly two seconds digits, `00` to `59`.
+  `@1:61` is a `syntax` issue; `@75:00` parses, then fails the 3600 s bound as `out-of-range`; `@60:00`
+  is valid.
+- On a `produce` line the suffixes are ordered `[xN]`, `[-> node]`, `[walk Ns]`; any other order is a
+  `syntax` issue.
+- `walk Ns` is always last on `produce`, `build` and `move` lines: the keyword `walk`, a space, an
+  integer, and `s` with no space (`walk 6s`).
+- A `produce` walk without `-> node` (in JSON, `walkSeconds` without `rally`) is an `invalid` issue.
+- Walk values in paste text are integers; JSON may use decimals.
+- `xN` takes no space (`x5`), `#k` follows the producer with no space (`town-center#1`), and `->` is
+  delimited by whitespace.
+- Ids (unit, producer, building, technology) and node names are lowercase kebab-case
+  `[a-z0-9]+(-[a-z0-9]+)*` and case-sensitive. Uppercase or other characters are a `syntax` issue; input
+  is never lowercased for the user.
+- Keywords are lowercase. Numbers are unsigned decimal integers, with no sign and no decimals.
+
+**Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line? }`. A paste
+error carries the 1-based `line`; a step error carries `step`. The codes are `syntax` (paste text that
+does not match the grammar), `unknown-trigger-kind`, `unknown-id` (an id or node the data does not have),
+`unsupported-tech`, `unknown-tech-effect`, `out-of-range` (a bound in `SIM_INPUT_BOUNDS`) and `invalid`
+(a well-formed step that breaks a rule above). A message names the step or line and the offending id,
+kind or property. Any issue stops the request; nothing is simulated.
+
+```mermaid
+flowchart LR
+  text["paste text"] --> parse["parseBuildOrderText"]
+  json["BuildOrder JSON"] --> validate
+  parse --> validate["validateBuildOrder + resolveSimInputs"]
+  data["loadGameData: aoe4world/english.json + rules/*.json"] --> validate & simulate
+  validate -->|"issues"| error["400: SimulateError"]
+  validate -->|"valid"| simulate["simulateBuildOrder"]
+  simulate --> result["SimulationResult"]
+  result --> units["graph: units produced"]
+  result --> rates["graph: gather rates"]
+  result --> floating["graph: floating resources"]
+```
+
+## Route
+
+`POST /api/aoe4-build-order/simulate` (`operationId: simulateBuildOrder`) runs one simulation. The request
+is a `SimulateRequest` with exactly one of `text` (paste format, at most 20,000 characters) or
+`buildOrder` (JSON, at most 200 steps), and optional `inputs`, a partial `SimInputs` whose missing fields
+take their defaults.
+
+- **200:** the `SimulationResult`.
+- **400:** `SimulateError` `{ error, issues }`, where `issues` lists every `BuildOrderIssue` and `error` is
+  the first issue's message.
+- **405:** `{ error }` with an `Allow: POST` header, for any other method.
+- A body that is not valid JSON keeps Next's plain-text 400.
+
+`docs/api/openapi.json` is the authoritative request and response contract, with schema names equal to the
+TypeScript names in `lib/aoe4-build-order/api.ts` and `model.ts`; this doc does not copy its field lists.
+
+## Outputs
+
+A `SimulationResult` holds:
+
+- `civ`, `durationSeconds` and `sampleSeconds` (5).
+- `times`: the sample times in seconds, every `sampleSeconds` up to the horizon. Every series below is
+  aligned with it.
+- `unitsProduced`: one `UnitSeries` per unit entry and tier (`unitId`, `baseId`, `name`, `tier`, the
+  entry's age), with cumulative `counts` of produced units. Starting units are not produced and never
+  appear in it, so every series starts at 0.
+- `gatherRates`: per `ResourceKind` (`food`, `wood`, `gold`, `stone`), the income rate per minute.
+- `floating`: per `ResourceKind`, the banked, unspent amount.
+- `steps`: one `StepTiming` per step with `status`, `armedAt`, `startedAt`, `completedAt` and
+  `waitSeconds`. `status` is one of `completed`, `in-progress`, `waiting` or `not-reached`.
+- `ages`: each age reached and its `reachedAt` time.
+- `notes`: `BuildOrderNote`s, non-fatal, one per research step of a technology whose effects are not all
+  simulated: `tech-effect-ignored` (ignored combat properties listed) and `tech-effect-unmodeled` (empty
+  `properties`).
+
+The page draws three graphs over time from it: units produced (by unit and tier), gather rates, and
+floating resources. The charting component and its test selectors are documented with that component and
+its tests.
+
+The life of one step is shown below. The diagram is conceptual: its states are not values in the result.
+At the horizon each state maps to a `StepTiming.status`:
+
+```mermaid
+stateDiagram-v2
+  [*] --> Unarmed
+  Unarmed --> Armed: trigger holds and every earlier step started (armedAt)
+  Armed --> Waiting: unaffordable or supply-blocked
+  Waiting --> Started: affordable and supply allows (startedAt)
+  Armed --> Started: affordable and supply allows (startedAt)
+  Started --> Completed: work done (completedAt)
+  Completed --> [*]
+```
+
+| state at the horizon | `StepTiming.status` |
+|---|---|
+| Unarmed (trigger not met, or an earlier step not started) | `not-reached` |
+| Armed or Waiting, not started | `waiting` |
+| Started, not completed | `in-progress` |
+| Completed | `completed` |
+
+## CivRules seams
+
+`CivRules` in `lib/aoe4-build-order/civ-rules.ts` is the set of per-civilization code hooks, all
+optional:
+
+| hook | kind |
+|---|---|
+| `gatherRateModifier` | value |
+| `productionModifier` | value |
+| `supplyProvider` | value |
+| `villagerProducer` | value |
+| `dropOffRule` | value |
+| `startingState` | value |
+| `onBuildingComplete` | event |
+| `onAgeAdvance` | event |
+
+A value hook is `(defaultValue, ctx) => value`; an event hook is `(state, ctx) => void`. The engine calls
+every hook as `rules.hook?.(...) ?? default`, so an absent hook leaves the default behavior. English needs
+none: `civRules('english')` returns `NO_CIV_RULES`, which is `{}`. English bonuses that the data can
+express, such as the farm bonus and the King's Palace bonus, are `OverlayEffect` rows, not hooks.
+
+## Extension points
+
+Each direction below is additive: it adds data, a field or a branch at the named seam and leaves existing
+fields and results unchanged.
+
+| direction | seam |
+|---|---|
+| Other civilizations | a new `CivId` value with `aoe4world/<civ>.json` and `rules/<civ>.json`; the engine keys on ids only; `CivRules` hooks for rules the data cannot express |
+| Event or resource triggers, combinators | a new `Trigger.kind`, handled in one `triggerHolds(trigger, state)` switch in `simulate.ts`; validation keeps rejecting unknown kinds |
+| A spread of outcomes | every variable quantity is already in `SimInputs` and the simulator uses no randomness or clock; a `spread` field on `SimulationResult` and `runs` and `seed` on `SimulateRequest` |
+| New step kinds (idle, sacred sites, trade) | `BuildStep` is tagged on `action`; one handler per action |
+| More technology effects (`buildTime`, `influence`), combat | move a property into `SUPPORTED_EFFECT_PROPERTIES` and the interpreter; `IGNORED_EFFECT_PROPERTIES` shrinks |
+| More English bonuses (Council Hall, Network of Castles, Abbey of Kings) | `OverlayEffect` rows in `rules/english.json`; no code |
+| Depletion, positions, per-trip deposits | `gatherNodes` data and `TripInputs`; rates and crediting live only in `gather.ts` |
+| More series or notes (rates by node, idle villagers) | new `SimulationResult` fields; new `BuildOrderNote` codes |
+| Community build order formats | a new parser beside `parseBuildOrderText` that produces a `BuildOrder` |
