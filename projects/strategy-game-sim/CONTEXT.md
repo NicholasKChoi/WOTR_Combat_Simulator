@@ -44,13 +44,14 @@ this list only names the surfaces.
 
 ## Open questions
 
-- AoE4: costs, build times and technology modifiers: take them from a pinned aoe4world data snapshot
-  (data.aoe4world.com; recommended, not yet confirmed by the owner)? TODO
 - AoE4: should the simulation be fixed (one answer per build order), or vary walking time and idle
   villagers and report a spread of results? TODO
 
 ## Decisions
 
+- AoE4 game data (owner, 2026-10-29): costs, build times and technology modifiers come from a pinned
+  aoe4world data snapshot (data.aoe4world.com, github.com/aoe4world/data), committed under `data/aoe4-build-order/`
+  with its source commit and game patch recorded.
 - AoE4 base villager gather rates (owner, 2026-10-29): use the values in SichYuriy/aoe4-production-calculator
   `src/data/BaseGatheringRates.ts` (resources/min) as provisional data, labeled in the data file as unverified,
   patch unknown, source repo has no license; replace them once measured or otherwise sourced.
