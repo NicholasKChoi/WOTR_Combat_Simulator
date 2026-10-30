@@ -45,7 +45,7 @@ function SurvivorTable({ label, survivors }) {
 
 /**
  * @param submitted - the form values posted for this fight
- * @param summary - the /api/fight response
+ * @param {import('../../../lib/combat-simulator/fight-api').FightResponse} summary - the /api/fight response
  */
 export default function Results({ submitted, summary }) {
   const { battles, outcomes, rounds, survivors, hitsPerRound } = summary;

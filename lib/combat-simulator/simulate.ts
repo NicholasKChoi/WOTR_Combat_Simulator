@@ -1,5 +1,6 @@
 import { Army, BaseArmy } from './army';
 import { Battle, BattleOptions, DiceRoller, OUTCOME_KINDS, battleOutcome, rollDice } from './battle';
+import type { FightOutcomes, FightResponse, OutcomeTally, RoundStats, SurvivorCombination } from './fight-api';
 
 export const DEFAULT_BATTLES = 1000;
 export const MAX_BATTLES = 100000;
@@ -7,33 +8,6 @@ export const MAX_HITS_PER_ROUND = 5;
 
 const SIDES = ['attacker', 'defender'] as const;
 type Side = typeof SIDES[number];
-
-export interface OutcomeTally {
-  count: number;
-  frequency: number;
-}
-
-export interface SurvivorTally {
-  regulars: number;
-  elites: number;
-  count: number;
-  frequency: number;
-}
-
-export interface RoundStats {
-  mean: number;
-  median: number;
-  p10: number;
-  p90: number;
-}
-
-export interface SimulationSummary {
-  battles: number;
-  outcomes: Record<string, OutcomeTally>;
-  rounds: RoundStats;
-  survivors: Record<Side, SurvivorTally[]>;
-  hitsPerRound: Record<Side, number[]>;
-}
 
 export interface BattleRecord {
   outcome: string;
@@ -61,7 +35,7 @@ export class OutcomeAccumulator {
   private readonly outcomeCounts = new Map<string, number>();
   private readonly roundCounts: number[] = [];
   private totalRounds = 0;
-  private readonly survivorTallies: Record<Side, Map<string, SurvivorTally>> = {
+  private readonly survivorTallies: Record<Side, Map<string, SurvivorCombination>> = {
     attacker: new Map(),
     defender: new Map(),
   };
@@ -127,7 +101,7 @@ export class OutcomeAccumulator {
     }
   }
 
-  summary(): SimulationSummary {
+  summary(): FightResponse {
     const battles = this.roundCounts.length;
     if (battles === 0) {
       throw new Error('no battles recorded');
@@ -149,7 +123,7 @@ export class OutcomeAccumulator {
 
     return {
       battles,
-      outcomes,
+      outcomes: outcomes as FightOutcomes,
       rounds,
       survivors: {
         attacker: this.survivorSummary('attacker'),
@@ -162,7 +136,7 @@ export class OutcomeAccumulator {
     };
   }
 
-  private survivorSummary(side: Side): SurvivorTally[] {
+  private survivorSummary(side: Side): SurvivorCombination[] {
     const tallies = Array.from(this.survivorTallies[side].values());
     const wins = tallies.reduce((total, tally) => total + tally.count, 0);
     return tallies.map((tally) => ({
@@ -178,7 +152,7 @@ export function simulateBattles(
   battles: number,
   roll: DiceRoller = rollDice,
   options: BattleOptions = {},
-): SimulationSummary {
+): FightResponse {
   if (!Number.isSafeInteger(battles) || battles < 1 || battles > MAX_BATTLES) {
     throw new RangeError(`battles must be a whole number between 1 and ${MAX_BATTLES}`);
   }

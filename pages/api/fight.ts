@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { DEFAULT_BATTLES, MAX_BATTLES, simulateBattles } from '../../lib/combat-simulator/simulate';
+import type { FightError, FightRequest, FightResponse } from '../../lib/combat-simulator/fight-api';
 
 const MAX_FIGHTERS_PER_SIDE = 10;
 const MAX_LEADERS_PER_SIDE = 5;
@@ -98,14 +99,14 @@ function validateFightForm(body: unknown): ValidationResult {
 }
 
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default function handler(req: NextApiRequest, res: NextApiResponse<FightResponse | FightError>) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     res.status(405).json({ error: `method ${req.method} is not allowed; use POST` });
     return;
   }
 
-  const validation = validateFightForm(req.body);
+  const validation = validateFightForm(req.body as FightRequest);
   if ('error' in validation) {
     res.status(400).json({ error: validation.error });
     return;
