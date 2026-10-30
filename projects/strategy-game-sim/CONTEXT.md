@@ -27,11 +27,11 @@ The apps don't depend on each other. The only shared code is the site component.
 
 ## Key surfaces
 
-TODO: these have not been declared stable. Making the API surface reviewable is a follow-up ticket (M1.7).
-The current surfaces are:
+The request and response contract for every route under `pages/api/` lives in `docs/api/openapi.json`
+on `main` (SGS-006), with shared types in `lib/combat-simulator/fight-api.ts`. That spec is authoritative;
+this list only names the surfaces.
 
-- `POST /api/fight`: form fields `attack-regs`, `attack-elts`, `attack-ldrs`, `defend-regs`,
-  `defend-elts`, `defend-ldrs`. The response is the `BattleStats` returned by `getStats()` in `pages/api/fight.ts`.
+- `POST /api/fight`: WOTR combat simulator (`operationId: runFight`). `/api/models/army` is served but not part of the API.
 - Routes: `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`.
 
 ## Design docs
@@ -74,7 +74,7 @@ The current surfaces are:
   directly with a new unit test runner. The runner is its own ticket; tickets that unit-test logic depend on it.
 - WOTR time budget: N = 100,000 completes within 10 seconds.
 - Error responses: `{ error: string }` with 400 or 405, accepted for now.
-- `/api/models/army`: stays where it is, documented as not part of the API.
+- `/api/models/army`: owner 2026-10-29: delete `pages/api/models/army.ts` so the path 404s (SGS-011); the model lives in `lib/combat-simulator/army.ts`.
 - API documentation: an OpenAPI (Swagger) JSON spec in the repo that agents can read with `jq`.
 - Superseded PRs #11 (input validation) and #12 (Jest suite) were closed.
 

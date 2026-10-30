@@ -1,0 +1,11 @@
+# SGS-010 implementer report
+- Branch sgs-010-malformed-json-test-wrong-path, tip 8bdd45d4bf7f848967a9a1f47c272e85064cdd55 (base origin/main 96d2602), author choinickolas@gmail.com
+- Worktree: /home/choin/git/WOTR_Combat_Simulator/.claude/code-factory/worktrees/sgs-010-malformed-json-test-wrong-path
+- File: acceptance/fight-api-validation.spec.ts (+3/-1): Buffer body, one-line comment, negative assertion on 'request body must be a JSON object'. Status 400 and expectNoBattle kept; no exact 'Invalid JSON' assertion.
+- Mutation 1 (bodyParser: false appended to pages/api/fight.ts): test FAILED on the negative assertion (received {"error":"request body must be a JSON object"}). Reverted.
+- Mutation 2 (pre-fix string body + negative assertion): test FAILED on the same assertion. Reverted.
+- Final diff vs origin/main is one file.
+- Results: fight-api-validation spec 80 passed; npm run acceptance 209 passed; npm test 57 passed; npx tsc --noEmit clean. Build not run (test-only change). No codegen.
+- No dev server left running (Playwright webServer self-managed).
+- Out-of-scope findings: none.
+- Status: needs_review
