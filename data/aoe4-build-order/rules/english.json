@@ -1,0 +1,245 @@
+{
+  "startingState": {
+    "age": {
+      "value": 1,
+      "source": "fandom \"English\" and \"Early Economy (Age of Empires IV)\", \"Sheep\" (read 2026-10-30); AoE forum \"Start with more villager than 6?\" https://forums.ageofempires.com/t/start-with-more-villager-than-6/226457; diamondlobby English build guides",
+      "unverified": true
+    },
+    "resources": {
+      "value": {
+        "food": 200,
+        "wood": 200,
+        "gold": 100,
+        "stone": 0
+      },
+      "source": "fandom \"English\" starting resources 200/200/100 (read 2026-10-30); stone 0 is the owner's answer, no source lists it",
+      "unverified": true
+    },
+    "villagers": {
+      "value": {
+        "sheep": 6,
+        "berry": 0,
+        "deer": 0,
+        "boar": 0,
+        "farm": 0,
+        "wood": 0,
+        "gold": 0,
+        "stone": 0
+      },
+      "source": "fandom \"English\" and \"Early Economy (Age of Empires IV)\", \"Sheep\" (read 2026-10-30); AoE forum \"Start with more villager than 6?\" https://forums.ageofempires.com/t/start-with-more-villager-than-6/226457; diamondlobby English build guides",
+      "unverified": true
+    },
+    "units": {
+      "value": {
+        "scout": 1
+      },
+      "source": "fandom \"Scout (Age of Empires IV)\": every player starts with one Scout (read 2026-10-30)",
+      "unverified": true
+    },
+    "buildings": {
+      "value": [
+        "capital-town-center"
+      ],
+      "source": "fandom \"Capital Town Center\" (read 2026-10-30); snapshot capital-town-center-1 has class town_center_capital",
+      "unverified": true
+    }
+  },
+  "supply": {
+    "capital-town-center": {
+      "value": 10,
+      "source": "fandom \"Capital Town Center\": provides ten population (read 2026-10-30)",
+      "unverified": true
+    },
+    "town-center": {
+      "value": 10,
+      "source": "fandom \"Town Center (Age of Empires IV)\": provides ten population (read 2026-10-30)",
+      "unverified": true
+    },
+    "house": {
+      "value": 10,
+      "source": "fandom \"House (Age of Empires IV)\": increases unit population by 10 (read 2026-10-30)",
+      "unverified": true
+    },
+    "kings-palace": {
+      "value": 10,
+      "source": "fandom \"King's Palace\" infobox Pop 10 (read 2026-10-30)",
+      "unverified": true
+    }
+  },
+  "effects": [
+    {
+      "property": "farmGatherRate",
+      "select": {
+        "id": [
+          "villager"
+        ]
+      },
+      "effect": "multiply",
+      "value": 1.2,
+      "type": "passive",
+      "grantedBy": "civ",
+      "condition": {
+        "age": 1,
+        "nearBuilding": "mill"
+      },
+      "source": "snapshot influences of farm-1 and mill-1: \"Farm harvest rate increased +20%/+25%/+30%/+30% by Age while within the influence of a Mill.\"",
+      "unverified": true
+    },
+    {
+      "property": "farmGatherRate",
+      "select": {
+        "id": [
+          "villager"
+        ]
+      },
+      "effect": "multiply",
+      "value": 1.25,
+      "type": "passive",
+      "grantedBy": "civ",
+      "condition": {
+        "age": 2,
+        "nearBuilding": "mill"
+      },
+      "source": "snapshot influences of farm-1 and mill-1: \"Farm harvest rate increased +20%/+25%/+30%/+30% by Age while within the influence of a Mill.\"",
+      "unverified": true
+    },
+    {
+      "property": "farmGatherRate",
+      "select": {
+        "id": [
+          "villager"
+        ]
+      },
+      "effect": "multiply",
+      "value": 1.3,
+      "type": "passive",
+      "grantedBy": "civ",
+      "condition": {
+        "age": 3,
+        "nearBuilding": "mill"
+      },
+      "source": "snapshot influences of farm-1 and mill-1: \"Farm harvest rate increased +20%/+25%/+30%/+30% by Age while within the influence of a Mill.\"",
+      "unverified": true
+    },
+    {
+      "property": "farmGatherRate",
+      "select": {
+        "id": [
+          "villager"
+        ]
+      },
+      "effect": "multiply",
+      "value": 1.3,
+      "type": "passive",
+      "grantedBy": "civ",
+      "condition": {
+        "age": 4,
+        "nearBuilding": "mill"
+      },
+      "source": "snapshot influences of farm-1 and mill-1: \"Farm harvest rate increased +20%/+25%/+30%/+30% by Age while within the influence of a Mill.\"",
+      "unverified": true
+    },
+    {
+      "property": "productionSpeed",
+      "select": {
+        "id": [
+          "villager"
+        ]
+      },
+      "effect": "multiply",
+      "value": 1.1,
+      "type": "passive",
+      "grantedBy": "kings-palace",
+      "condition": {
+        "producer": "kings-palace"
+      },
+      "source": "snapshot description of kings-palace-2: \"Acts as a Town Center. Produces Villagers +10% faster.\"",
+      "unverified": true
+    },
+    {
+      "property": "goldGatherRate",
+      "select": {
+        "id": [
+          "villager"
+        ]
+      },
+      "effect": "multiply",
+      "value": 1.15,
+      "type": "passive",
+      "grantedBy": "shaft-mining",
+      "source": "snapshot description of shaft-mining-3 (\"Increase Villagers' gathering rate for Gold and Stone by 15%.\", its effects are empty); fandom \"Shaft Mining\", read 2026-10-30",
+      "unverified": true
+    },
+    {
+      "property": "stoneGatherRate",
+      "select": {
+        "id": [
+          "villager"
+        ]
+      },
+      "effect": "multiply",
+      "value": 1.15,
+      "type": "passive",
+      "grantedBy": "shaft-mining",
+      "source": "snapshot description of shaft-mining-3 (\"Increase Villagers' gathering rate for Gold and Stone by 15%.\", its effects are empty); fandom \"Shaft Mining\", read 2026-10-30",
+      "unverified": true
+    }
+  ],
+  "upgradeTargets": {
+    "early-men-at-arms": {
+      "value": "man-at-arms",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "men-at-arms": {
+      "value": "man-at-arms",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "elite-men-at-arms": {
+      "value": "man-at-arms",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "veteran-spearmen": {
+      "value": "spearman",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "elite-spearmen": {
+      "value": "spearman",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "veteran-horsemen": {
+      "value": "horseman",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "elite-horsemen": {
+      "value": "horseman",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "veteran-longbowmen": {
+      "value": "longbowman",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "elite-longbowmen": {
+      "value": "longbowman",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "elite-crossbowmen": {
+      "value": "crossbowman",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    },
+    "elite-knights-or-lancers": {
+      "value": "knight",
+      "source": "snapshot upgrade entry description and the unit entry at the same age",
+      "unverified": true
+    }
+  }
+}
