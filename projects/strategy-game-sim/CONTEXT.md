@@ -85,8 +85,8 @@ None.
   unknown kinds (reports/M2-research-3.md).
 - AoE4 outputs (owner, 2026-10-30): the result is a set of graphs over time: units produced, gather rates, and
   floating (banked, unspent) resources.
-- AoE4 interface (owner, 2026-10-30): a web page in v1. Whether it also gets an API route is left to the M2
-  technical design.
+- AoE4 interface (owner, 2026-10-30): a web page in v1, backed by `POST /api/aoe4-build-order/simulate`
+  (chosen in the M2 design, owner-approved 2026-10-30; documented in `docs/api/openapi.json`).
 - AoE4 patch policy (owner, 2026-10-30): no per-patch support; the data reflects the current game only, with
   its source commit/patch recorded per A1.
 - AoE4 v1 coverage and structure (owner, 2026-10-30; reports/M2-research-4.md): a generic engine reads the
