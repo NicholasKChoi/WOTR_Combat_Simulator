@@ -44,11 +44,14 @@ this list only names the surfaces.
 
 ## Open questions
 
-- AoE4: should the simulation be fixed (one answer per build order), or vary walking time and idle
-  villagers and report a spread of results? TODO
 
 ## Decisions
 
+- AoE4 simulation (owner, 2026-10-29): fixed for v1 (one deterministic result per build order and data), with two
+  requirements so a spread can be added later without a rewrite: (1) every quantity that could vary (walk time,
+  idle time, distance to each resource) is an explicit named input to the simulator, never a constant inside the
+  step logic; (2) the result and any API response are additive: v1 returns timings, and a later spread is a new
+  field beside them, not a change to existing fields. A3 stays (deterministic; with a seed once spread exists).
 - AoE4 game data (owner, 2026-10-29): costs, build times and technology modifiers come from a pinned
   aoe4world data snapshot (data.aoe4world.com, github.com/aoe4world/data), committed under `data/aoe4-build-order/`
   with its source commit and game patch recorded.
