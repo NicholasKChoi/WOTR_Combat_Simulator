@@ -34,9 +34,9 @@ helper is frozen and out of this milestone.
 - The site is deployed on Vercel from `main`. Every PR gets a preview deploy; check it before merging.
 - `/api/fight` response shape changes in M1.6. The only consumer is `components/apps/combat-simulator/results.js`.
 
-## M2: AoE4 Build Order Simulator (Ottomans)
+## M2: AoE4 Build Order Simulator (English)
 
-**Outcome:** A new app simulates an Ottoman build order and reports macro timings.
+**Outcome:** A new app simulates an English build order and reports macro timings.
 
 ### Exit criteria
 

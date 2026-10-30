@@ -11,7 +11,7 @@ with randomness, either to estimate odds or to make fair random picks. A landing
 - **StarCraft Helper.** (Frozen: no changes in this project.) It handles matchmaking for a small group of friends: random 1v1 pairings, and
   a map from the current pool that skips maps players have struck.
 - **AoE4 Build Order Simulator.** It simulates an *Age of Empires IV* build order step by step
-  (villager production, gathering, building, age-ups) to estimate macro timings. Ottomans only at first.
+  (villager production, gathering, building, age-ups) to estimate macro timings. English only at first (owner, 2026-10-29: simpler than Ottomans).
   Status: new.
 
 ## Component model
@@ -80,7 +80,7 @@ this list only names the surfaces.
 ## Out of scope
 
 - `golang/` (Go prototype and its create-react-app frontend). Not deployed, and no Go toolchain.
-- AoE4 civilizations other than Ottomans.
+- AoE4 civilizations other than English.
 - WOTR character and Nazgul leadership (a later milestone).
 - StarCraft Helper: frozen. No tickets touch `pages/apps/starcraft-helper.js`. Its invariants (H1–H3) still
   apply if a shared-code change affects it.
