@@ -216,15 +216,18 @@ Findings:
   rule", an invented split that leaves JSON shape errors without a code.
 
 Required fixes:
-- [ ] Add one sentence: trip walk and drop-off defaults are tuned so effective rates land near the calculator's net
+- [x] Add one sentence: trip walk and drop-off defaults are tuned so effective rates land near the calculator's net
       values (a cross-check, labeled unverified); limit "never a source" to raw gather rates.
-- [ ] Add one sentence naming supply, starting state, overlay rows and trip walk/drop-off defaults as unverified, while
+- [x] Add one sentence naming supply, starting state, overlay rows and trip walk/drop-off defaults as unverified, while
       keeping the owner-verified sheep/deer/boar carry capacities verified (still never "all hand values unverified").
-- [ ] Replace the issue-code definitions with design/M2.md's "Issue codes" table (all seven codes, same for JSON and
+- [x] Replace the issue-code definitions with design/M2.md's "Issue codes" table (all seven codes, same for JSON and
       paste; JSON shape or unknown `action` is `syntax`; villager `produce` without `rally` is `invalid`).
-- [ ] State design/M2.md's "Sampling" rule for `times` (0, s, 2s, … including `durationSeconds`; last sample is
+- [x] State design/M2.md's "Sampling" rule for `times` (0, s, 2s, … including `durationSeconds`; last sample is
       `durationSeconds` when not a multiple; t=0 reflects zero-time steps started at t=0).
-- [ ] Non-blocking fixes from the review: use `forestry-1` consistently; do not call overlay effect rows `HandValue`s
+- [x] Non-blocking fixes from the review: use `forestry-1` consistently; do not call overlay effect rows `HandValue`s
       (they carry `source` and `unverified` fields of their own); make examples consistent with English starting in a
       `capital-town-center` (examples may still build a `town-center`).
-- [ ] (rework 1) Criterion 12 (Decisions coverage) now also requires the two sentences above.
+- [x] (rework 1) Criterion 12 (Decisions coverage) now also requires the two sentences above.
+- [ ] (added after the first rework pass) `docs/aoe4-build-order.md:318`: design/M2.md's issue table wrongly listed a
+      `none` trigger kind (the `Trigger` type has only `time` and `villagers`; an omitted trigger means no condition).
+      The design row is fixed; make the doc row match it.

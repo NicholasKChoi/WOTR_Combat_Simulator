@@ -337,3 +337,21 @@ None.
   not frozen at runtime (manager decision), A3 rationale reworded; `classifyTech` throws on unit/building; `as unknown as`
   allowed for JSON imports; `professional-scouts-2` `select.id` note for the interpreter ticket.
 - Branch work: none (no branch yet).
+
+## Rework 1 - 2026-10-30 (review)
+
+Bounced by review at d0845e5 (report: reports/SGS-014-review.md). No earlier gate had passed this branch.
+
+Findings:
+- `lib/aoe4-build-order/data.ts:136-145` (A3): the `GameData` object `buildGameData` returns and `loadGameData` caches
+  is not frozen; only its children are. `loadGameData('english').base = {...}` succeeds and later calls see the change.
+- `lib/aoe4-build-order/data.test.ts` (non-blocking, folded in): the ascending-age test on `byBaseId` cannot fail,
+  because upstream entries are already in age order; deleting the sort at `data.ts:128-130` still passes.
+
+Required fixes:
+- [ ] Return `Object.freeze({ ... })` from `buildGameData` (shallow: the four Maps stay unfrozen, typed `ReadonlyMap`).
+- [ ] Extend the `freezes the shared data` test (data.test.ts:157) with a top-level write (e.g. assigning `base`) that
+      throws `TypeError`; mutation check: removing the new `Object.freeze` fails it.
+- [ ] Add a `buildGameData` test with a baseId's entries supplied in reverse age order, asserting `byBaseId` returns
+      them ascending; mutation check: deleting the sort fails it.
+- [ ] Document in `data.ts` (one short comment) that `buildGameData` freezes the objects passed to it.

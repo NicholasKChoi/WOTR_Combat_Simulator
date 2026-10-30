@@ -75,36 +75,36 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] (respec 1) `package.json` `dependencies` has `"recharts": "3.10.1"` (no `^` or `~`); `package-lock.json` resolves
+- [x] (respec 1) `package.json` `dependencies` has `"recharts": "3.10.1"` (no `^` or `~`); `package-lock.json` resolves
       `recharts` to 3.10.1; `npm ci` succeeds. `git grep -n recharts -- package.json` prints the one dependency line
       (it prints nothing today). Every dependency and devDependency already in `package.json` keeps its version string;
       new lock entries pulled in by recharts (e.g. `react-is`) are allowed.
-- [ ] `npx tsc --noEmit` exits 0 and `npx next build` succeeds on the SGS-012 stack.
-- [ ] `toChartRows([0, 5, 10], [{ key: 'a', name: 'A', values: [1, 2, 3] }, { key: 'b', name: 'B', values: [4, 5, 6] }])`
+- [x] `npx tsc --noEmit` exits 0 and `npx next build` succeeds on the SGS-012 stack.
+- [x] `toChartRows([0, 5, 10], [{ key: 'a', name: 'A', values: [1, 2, 3] }, { key: 'b', name: 'B', values: [4, 5, 6] }])`
       returns `[{ t: 0, a: 1, b: 4 }, { t: 5, a: 2, b: 5 }, { t: 10, a: 3, b: 6 }]`; with no series it returns rows with only
       `t`; with empty `times` it returns `[]`.
-- [ ] `formatMinSec` returns `0:00` for 0, `0:05` for 5, `1:05` for 65 and `60:00` for 3600.
-- [ ] (respec 1) Palette, unit-tested in `chart-rows.test.ts`: `PALETTE.length >= 15`; `new Set(PALETTE).size === PALETTE.length`;
+- [x] `formatMinSec` returns `0:00` for 0, `0:05` for 5, `1:05` for 65 and `60:00` for 3600.
+- [x] (respec 1) Palette, unit-tested in `chart-rows.test.ts`: `PALETTE.length >= 15`; `new Set(PALETTE).size === PALETTE.length`;
       `seriesColor(i)` for `i` in `0..PALETTE.length-1` returns `PALETTE.length` distinct values; `seriesColor(PALETTE.length) === seriesColor(0)`
       and `seriesColor(PALETTE.length + 1) === seriesColor(1)`.
-- [ ] (respec 1) `toggleHidden`, unit-tested in `chart-rows.test.ts`: `toggleHidden(new Set(['a']), 'b')` equals `{a, b}`;
+- [x] (respec 1) `toggleHidden`, unit-tested in `chart-rows.test.ts`: `toggleHidden(new Set(['a']), 'b')` equals `{a, b}`;
       `toggleHidden(new Set(['a', 'b']), 'a')` equals `{b}`; `toggleHidden(new Set(), 'a')` equals `{a}`; the input set is
       unchanged after each call.
-- [ ] (respec 1) `npm test` runs the new `components/**` tests (the `include` change in `vitest.config.mts` is what makes
+- [x] (respec 1) `npm test` runs the new `components/**` tests (the `include` change in `vitest.config.mts` is what makes
       them run), all existing tests still pass, and the repo has no `vitest.config.ts` (`git ls-files 'vitest.config.*'`
       prints only `vitest.config.mts`).
-- [ ] Rendering `SeriesChart` to a string in node does not throw and the output contains `data-testid="<testId>"` and the
+- [x] Rendering `SeriesChart` to a string in node does not throw and the output contains `data-testid="<testId>"` and the
       title text, with and without series (SSR note in design/M2.md: `ResponsiveContainer` server-renders an empty div).
-- [ ] (respec 1) Manual selector check, not unit-tested: on Recharts 3.10.1, render the component in a throwaway page under
+- [x] (respec 1) Manual selector check, not unit-tested: on Recharts 3.10.1, render the component in a throwaway page under
       `npm run dev` with 3 series, hide one by clicking its legend entry, and record in the PR description the observed
       selectors (`path.recharts-line-curve[data-series]`, `li.recharts-legend-item.inactive`, `.recharts-legend-item-text`,
       or whatever design/M2.md's 3.x "Charts" section names), that the clicked series' curve disappears while the other two
       remain, that lines have no dots and distinct strokes. If the selectors differ from design/M2.md, stop and report back
       to the designer; do not change the selector in this ticket. The throwaway page is not committed.
-- [ ] (respec 1) Non-test business logic (`chart-rows.ts` + `line-chart.tsx`, excluding blank lines and `*.test.ts`)
+- [x] (respec 1) Non-test business logic (`chart-rows.ts` + `line-chart.tsx`, excluding blank lines and `*.test.ts`)
       stays under 150 lines; if it cannot, report back so the ticket is re-tiered `high` rather than merging at `standard`.
-- [ ] The diff does not touch `lib/aoe4-build-order/`, `pages/`, `acceptance/` or design docs.
-- [ ] No INVARIANTS.md regressions (S1: nothing imports another app's code; the component is under `components/apps/aoe4-build-order/` only).
+- [x] The diff does not touch `lib/aoe4-build-order/`, `pages/`, `acceptance/` or design docs.
+- [x] No INVARIANTS.md regressions (S1: nothing imports another app's code; the component is under `components/apps/aoe4-build-order/` only).
 
 ## Open questions
 
@@ -129,5 +129,5 @@ Findings:
   `package.json` has no `name` and npm used the worktree folder name. Leaks the branch name into a shipped file and churns.
 
 Required fixes:
-- [ ] Set `package-lock.json` line 2 back to `"name": "WOTR_Combat_Simulator",`; no other lockfile change.
-- [ ] (rework 1) Acceptance: `git diff 43a0331 -- package-lock.json | grep '"name": "sgs-'` prints nothing.
+- [x] Set `package-lock.json` line 2 back to `"name": "WOTR_Combat_Simulator",`; no other lockfile change.
+- [x] (rework 1) Acceptance: `git diff 43a0331 -- package-lock.json | grep '"name": "sgs-'` prints nothing.
