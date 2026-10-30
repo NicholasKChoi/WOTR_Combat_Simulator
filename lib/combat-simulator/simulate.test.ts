@@ -88,7 +88,7 @@ describe('rounds', () => {
         expect(roundsOf([4])).toEqual({ mean: 4, median: 4, p10: 4, p90: 4 })
     })
 
-    it('computes the rank with integer arithmetic for N = 30', () => {
+    it('gives p10 3, median 15 and p90 27 for N = 30', () => {
         const rounds = roundsOf(Array.from({ length: 30 }, (_, i) => 30 - i))
         expect([rounds.p10, rounds.median, rounds.p90]).toEqual([3, 15, 27])
     })

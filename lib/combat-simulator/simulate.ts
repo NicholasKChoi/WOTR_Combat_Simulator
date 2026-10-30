@@ -48,7 +48,6 @@ function isSide(kind: string): kind is Side {
   return (SIDES as readonly string[]).includes(kind);
 }
 
-// Nearest-rank: integer p keeps the rank exact (0.1 * 30 is 3.0000000000000004, whose ceiling is 4).
 function nearestRank(sorted: Int32Array, p: number): number {
   return sorted[Math.ceil((p * sorted.length) / 100) - 1];
 }
