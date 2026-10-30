@@ -7,12 +7,12 @@
 - **Risk**: high
   <!-- strongModelTriggers: defines cross-module contracts (model.ts types, GameData, classifyTech, rules-file schema) that
        every later AoE4 ticket reads; adjacent invariant A1 (game numbers only from patch-labeled data files). -->
-- **LOC estimate**: ~310 business logic (model.ts types ~120, data.ts ~100, effects.ts classification ~90), plus
+- **LOC estimate**: ~320 business logic (model.ts types ~120, data.ts ~110, effects.ts classification ~90), plus
   ~310 KB of data files (English snapshot, two rules files) and tests
 - **Depends on**: SGS-012
 - **On merge**: none
 - **Source**: M2.2; design/M2.md Modules, Contracts (`model.ts` block, "Rules files and loader" block, Engine rules
-  `classifyTech` bullet); reports/M2-plan.md outline B; reports/M2-research-1.md, -2.md, -4.md, -5.md; owner answers 2026-10-30
+  `classifyTech` bullet, "Starting units" paragraph); reports/M2-plan.md outline B; reports/M2-research-1.md, -2.md, -4.md, -5.md; owner answers 2026-10-30
 
 ## Context
 
@@ -104,7 +104,11 @@ table), which are `unverified: false` with `source` "owner, in-game observation 
     answer, no source lists it; the `source` text says so).
   - `villagers`: `{ sheep: 6, berry: 0, deer: 0, boar: 0, farm: 0, wood: 0, gold: 0, stone: 0 }`.
   - `buildings`: `['capital-town-center']` (the starting town center is the capital entry; see the Scope exploration note).
-  - The starting scout (1) and owned sheep (5) have no field in `CivData.startingState`; see Open questions and Known data gaps.
+  - (respec 2) `units`: `{ scout: 1 }` (unit `baseId` -> count of non-villager units at t=0; design "Starting units"). At
+    `e89f01e` the English snapshot has exactly one scout entry, `scout-1`, `baseId` `scout`, age 1, `costs.popcap` 1. The
+    engine counts these toward population (English starts 7/10: 6 villagers + 1 scout) and never lists them in
+    `unitsProduced`; this ticket only writes and checks the data. Sheep are not units: the five starting sheep stay the `sheep`
+    gather node.
 - (respec 1) `supply: Record<baseId, HandValue<number>>`, all `unverified: true` (the snapshot carries no supply):
   `capital-town-center` 10 and `town-center` 10 (fandom "Town Center (Age of Empires IV)" and "Capital Town Center": "provides
   ten population"; both are keyed because an English player starts with the capital and can build further town centers),
@@ -152,7 +156,9 @@ path to trace on Vercel; `resolveJsonModule` is already on), cast through those 
 - `loadGameData` is synchronous, builds the indexes once per civ at first call, returns the same deep-frozen instance every
   time (the engine must not be able to mutate shared data between requests; A3), and throws `Error` for a civ with no data or
   for a duplicate `id` across the four arrays.
-- No validation of rules content beyond that; reference checks live in the tests below.
+- (respec 2) It also throws `Error` when a `civData.startingState.units` key does not resolve in `byBaseId` to an entry with `type: 'unit'`
+  (design "Starting units": the loader fails on an unknown id); the message names the key.
+- No validation of rules content beyond that; the other reference checks live in the tests below.
 
 ### 6. Tech classification: `lib/aoe4-build-order/effects.ts`
 
@@ -191,8 +197,8 @@ is added to this file by a later ticket; this ticket adds classification only.
   x1.15; classified from `effects` (supported), so the +5 is not simulated. A per-resource capacity property would be needed.
 - (respec 1) `shaft-mining-3`: `effects` is empty upstream; its +15% gold and stone gather rate comes from the two overlay rows
   in `rules/english.json`.
-- (respec 1) The starting scout and the five starting sheep are not represented in `startingState` (no field), so the scout's
-  1 population is not counted and sheep food is not depleted.
+- (respec 2) The five starting sheep are not units; they are the `sheep` gather node with unlimited food, so sheep food is not
+  depleted and no herding is modeled.
 
 ### Tests (Vitest, `lib/aoe4-build-order/*.test.ts`, covered by the existing `lib/**/*.test.ts` include)
 
@@ -203,7 +209,8 @@ is added to this file by a later ticket; this ticket adds classification only.
   drops values fails); `unverified` is `false` for exactly the sheep, deer and boar `capacity` values and `true` for every other.
 - (respec 1) References: every `dropOffs` baseId, `supply` key, `startingState.buildings` entry, `condition.nearBuilding`,
   `condition.producer` and building/tech `grantedBy` resolves in `byBaseId`; every `upgradeTargets` key resolves to an upgrade
-  entry and its value to a unit with an entry whose `age` equals the upgrade's; every overlay `property` is in
+  entry and its value to a unit with an entry whose `age` equals the upgrade's; (respec 2) every `startingState.units` key
+  resolves to a `unit` entry and `startingState.units.value` equals `{ scout: 1 }`; every overlay `property` is in
   `SUPPORTED_EFFECT_PROPERTIES`; every `startingState.buildings` entry has a `supply` row.
 - Drift guard: the set of properties used across English technology `effects` is a subset of supported + ignored +
   `{unknown, buildTime}`, so a refreshed snapshot with a new property fails until it is classified.
@@ -218,6 +225,8 @@ is added to this file by a later ticket; this ticket adds classification only.
 - Loader: `byBaseId.get('man-at-arms')` ages ascend; two calls return the same instance; assigning to a nested field of the
   returned object throws `TypeError`; `loadGameData('x' as CivId)` throws; `byId.get('constructor')` is `undefined`. Duplicate-id
   rejection is tested through whatever seam the implementer gives the index builder (an exported or injected entry list).
+  (respec 2) Through the same seam, a `CivData` whose `startingState.units` is `{ scoutx: 1 }` throws an `Error` naming `scoutx`,
+  and one keyed by a building baseId (`house`) throws.
 
 **Out of scope:** the effect interpreter (`modifiedValue`), gather and construction math, validation, the paste parser, the
 engine, `civ-rules.ts`, `SIM_INPUT_BOUNDS`, `resolveSimInputs`, the API types, any page or chart, `docs/aoe4-build-order.md`,
@@ -242,8 +251,8 @@ Single-component change outside the core control loop; no diagram required.
       5, `maxPopCap.value` 200), and `gatherNodes` has exactly the eight `GatherNodeId` keys with the rates, capacities, property
       mappings, drop-offs and trip seeds in Scope 3 (boar 5.67 s).
 - [ ] (respec 1) `rules/english.json` has exactly `startingState, supply, effects, upgradeTargets`: `startingState` age 1,
-      resources `{food 200, wood 200, gold 100, stone 0}`, villagers 6 on `sheep` and 0 elsewhere, buildings
-      `['capital-town-center']`; `supply` keys exactly `capital-town-center, town-center, house, kings-palace`, each 10; `effects`
+      resources `{food 200, wood 200, gold 100, stone 0}`, villagers 6 on `sheep` and 0 elsewhere, (respec 2) units
+      `{ scout: 1 }`, buildings `['capital-town-center']`; `supply` keys exactly `capital-town-center, town-center, house, kings-palace`, each 10; `effects`
       exactly the seven rows in Scope 3 (four farm, one King's Palace, two Shaft Mining); the 11 `upgradeTargets` rows listed.
 - [ ] (respec 1) Every rules value is a `HandValue` or an `OverlayEffect` with a non-empty `source`; `unverified` is `false` only
       for the sheep, deer and boar `capacity` values, whose `source` is "owner, in-game observation 2026-10-30".
@@ -258,7 +267,8 @@ Single-component change outside the core control loop; no diagram required.
       7 `rejected/unknown-tech-effect`, 3 `rejected/unsupported-tech`, 4 `effects-unmodeled`, 41 `effects-ignored`, 14
       `supported` (including `shaft-mining` and `wheelbarrow`); a Blacksmith tech is `effects-ignored` naming its properties.
 - [ ] `loadGameData('english')` returns indexes that resolve `wheelbarrow-1` by id and `villager` by baseId, the same instance
-      on every call, deep-frozen (a write throws `TypeError`); an unknown civ throws; a duplicate id throws.
+      on every call, deep-frozen (a write throws `TypeError`); an unknown civ throws; a duplicate id throws; (respec 2) a
+      `startingState.units` key that is unknown (`scoutx`) or not a unit (`house`) throws an `Error` naming it.
 - [ ] A1: `git grep -nE "\b(0\.75|0\.69|0\.825|0\.9|1\.15)\b" -- lib/aoe4-build-order ':!*.test.ts'` prints nothing (no gather
       rate or modifier constant in code); `git grep -nE "(from|import\()\s*['\"].*(components|pages)/apps/" -- lib/aoe4-build-order`
       prints nothing (S1).
@@ -266,20 +276,15 @@ Single-component change outside the core control loop; no diagram required.
       `SUPPORTED_EFFECT_PROPERTIES` fails the `wheelbarrow-1` test and the drift guard; deleting one `source` string from either
       rules file fails the hand-value walk; deleting an `upgradeTargets` row fails the reference test; deleting the two Shaft
       Mining overlay rows fails the `shaft-mining-3` supported test and the classification-count test; flipping the sheep
-      capacity to `unverified: true` fails the hand-value walk; removing the deep freeze fails the `TypeError` test.
+      capacity to `unverified: true` fails the hand-value walk; removing the deep freeze fails the `TypeError` test; (respec 2)
+      removing the `startingState.units` check from `loadGameData` fails the `scoutx` loader test.
 - [ ] `npx tsc --noEmit`, `npm test` and `npx next build` pass; the build output lists no new route (nothing imports the new
       modules yet).
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
 
-Designer (design/M2.md is silent; the implementer does not add a field on its own):
-
-1. (respec 1) The owner's starting state includes 1 scout and 5 sheep, but `CivData.startingState` has only `age, resources,
-   villagers, buildings`. The scout occupies 1 population (7/10 at start), so leaving it out lets the sim produce one more
-   villager before the first house. Add a field such as `startingState.units: HandValue<Record<unit baseId, number>>` counted in
-   population (and decide whether the 5 sheep need modeling at all given no depletion)? Until decided this ticket writes no
-   such field and lists the gap in the README.
+None.
 
 ## Re-spec 2026-10-30
 
@@ -288,4 +293,11 @@ Designer (design/M2.md is silent; the implementer does not add a field on its ow
 - Changed: folded in owner answers and the revised design (ratified names, single `walkSeconds` 5, `effects-unmodeled`,
   `condition.producer` King's Palace row, Shaft Mining rows, supply on `capital-town-center` and `town-center`); classification
   counts now 7/3/4/41/14; owner-observed capacities are `unverified: false`. New designer question: the scout in `startingState`.
+- Branch work: none (no branch yet).
+
+## Re-spec 2026-10-30 (2)
+
+- Underspecified: `CivData.startingState` had no field for the starting scout, so its 1 population was dropped.
+- Changed: design adds `startingState.units`; Scope writes `{ scout: 1 }` (baseId `scout` verified at `e89f01e`), the loader
+  throws on a key that is not a unit, tests and criteria cover both; README gap now covers sheep only; open question removed.
 - Branch work: none (no branch yet).

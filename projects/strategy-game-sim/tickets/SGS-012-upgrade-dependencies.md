@@ -104,39 +104,39 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `npm ci` succeeds from the committed `package-lock.json`, and the lockfile is regenerated (`lockfileVersion` 3) with
+- [x] `npm ci` succeeds from the committed `package-lock.json`, and the lockfile is regenerated (`lockfileVersion` 3) with
       `next` resolving to 16.x, `react` and `react-dom` to 19.x, `typescript` to 7.x, `vitest` to 5.x.
-- [ ] (respec 1) `package.json` `dependencies`/`devDependencies` match the target table, with `@types/node` at `^24`
+- [x] (respec 1) `package.json` `dependencies`/`devDependencies` match the target table, with `@types/node` at `^24`
       (lockfile resolves 24.x), `@types/react-dom` is in `devDependencies`, and `engines.node` is `>=22.12.0`.
-- [ ] `npx next build` succeeds and lists `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`, `/api/fight`.
-- [ ] `npx tsc --noEmit` exits 0.
-- [ ] `npm test` passes with the same 57 tests (no test removed, skipped or edited).
-- [ ] (respec 1) Two consecutive full `npm run acceptance` runs, the first from a cold start (no `.next/` directory), are
+- [x] `npx next build` succeeds and lists `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`, `/api/fight`.
+- [x] `npx tsc --noEmit` exits 0.
+- [x] `npm test` passes with the same 57 tests (no test removed, skipped or edited).
+- [x] (respec 1) Two consecutive full `npm run acceptance` runs, the first from a cold start (no `.next/` directory), are
       both green with all 209 specs passing on the first attempt; the PR description states both runs and their counts.
-- [ ] (respec 2) No file under `acceptance/` or `playwright.config.ts` changes for the flake, and `git grep -nE
+- [x] (respec 2) No file under `acceptance/` or `playwright.config.ts` changes for the flake, and `git grep -nE
       "retries|test\.(skip|fixme)" -- acceptance playwright.config.ts` prints nothing.
 - [ ] (respec 2) The PR description records the cold-run flake reproduction attempts and evidence from item 4 (8 cold full
       runs, CPU-loaded runs, `--repeat-each=10`, throttled clicks, cold `/api/fight` latency) and states that no harness
       change was made for it.
-- [ ] (respec 2) `git ls-files next-env.d.ts` prints nothing, `.gitignore` lists `next-env.d.ts`, `npx next build` and
+- [x] (respec 2) `git ls-files next-env.d.ts` prints nothing, `.gitignore` lists `next-env.d.ts`, `npx next build` and
       `npm run dev` each regenerate `next-env.d.ts` without it showing in `git status`, and `npx tsc --noEmit` exits 0 both
       with and without the file present.
-- [ ] (respec 2) `.gitignore` lists `/AGENTS.md`; after an `npm run dev` or `npm run acceptance` run, `git status --porcelain`
+- [x] (respec 2) `.gitignore` lists `/AGENTS.md`; after an `npm run dev` or `npm run acceptance` run, `git status --porcelain`
       shows no `AGENTS.md`, and `git ls-files AGENTS.md` prints nothing.
-- [ ] (respec 2) `vitest.config.ts` is renamed to `vitest.config.mts` with unchanged content, `tsconfig.json` `include` has
+- [x] (respec 2) `vitest.config.ts` is renamed to `vitest.config.mts` with unchanged content, `tsconfig.json` `include` has
       `"**/*.mts"`, `npm test` output contains no "loaded as CommonJS" warning (`npm test 2>&1 | grep -c "CommonJS"` prints
       0; 1 today), and `npx tsc --listFilesOnly | grep -c vitest.config.mts` prints 1.
-- [ ] The OpenAPI contract check still passes: `npx playwright test fight-api-contract fight-api-spec-surface` is green and
+- [x] The OpenAPI contract check still passes: `npx playwright test fight-api-contract fight-api-spec-surface` is green and
       `docs/api/openapi.json` is unchanged.
-- [ ] `git grep -n -A1 "<Link" -- pages components | grep -c "<a"` prints 0, and the landing page renders both app links as
+- [x] `git grep -n -A1 "<Link" -- pages components | grep -c "<a"` prints 0, and the landing page renders both app links as
       single anchors (no nested `<a>`), with the header link on app pages still going to `/`.
-- [ ] No behavior change: `POST /api/fight` with the example request from `docs/api/openapi.json` returns the same status and
+- [x] No behavior change: `POST /api/fight` with the example request from `docs/api/openapi.json` returns the same status and
       response shape as on `main`; the combat simulator form, Fight! button and results, and the StarCraft Randomize buttons
       work when clicked through under `npm run dev`; no new browser console errors or React hydration warnings on `/`,
       `/apps/combat-simulator`, `/apps/starcraft-helper`.
-- [ ] No `app/` directory is created and no `next.config.*` is added unless the build requires it (state why in the PR).
+- [x] No `app/` directory is created and no `next.config.*` is added unless the build requires it (state why in the PR).
 - [ ] The Vercel check "Vercel – wotr-combat-simulator" is green on the PR, building on Node 24.x.
-- [ ] No INVARIANTS.md regressions (S2 links still present, H1-H3 and W1-W2 unchanged).
+- [x] No INVARIANTS.md regressions (S2 links still present, H1-H3 and W1-W2 unchanged).
 
 ## Open questions
 
