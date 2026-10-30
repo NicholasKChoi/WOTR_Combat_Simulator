@@ -7,9 +7,10 @@ This file says where things go. It does not list every file; use `git ls-files` 
 
 ## Stack
 
-- Next.js 12, Pages Router. Deployed on Vercel from `main`; every PR gets a preview deploy.
-- React 18. TypeScript 4.7 with `strict: false`. `tsconfig.json` only type-checks `.ts`/`.tsx`, so write
+- Next.js 16, Pages Router. Deployed on Vercel from `main`; every PR gets a preview deploy.
+- React 19. TypeScript 7 with `strict: false`. `tsconfig.json` only type-checks `.ts`/`.tsx`, so write
   new files as `.ts`/`.tsx`.
+- Node 24.x (`engines.node` in `package.json`).
 - Styling: Bootstrap 5 utility classes plus CSS modules. Combine class names with `classnames` (`cn`).
 - `golang/` is a retired prototype. It is not deployed and not maintained.
 
