@@ -40,8 +40,16 @@ helper is frozen and out of this milestone.
 
 ### Exit criteria
 
-TODO: write after the AoE4 open questions in CONTEXT.md are decided and `docs/aoe4-build-order.md` exists.
+Confirmed by the owner 2026-10-30.
 
 | id | criterion | kind | covered by | status |
 |----|-----------|------|------------|--------|
-| M2.1 | `docs/aoe4-build-order.md` defines the model, data source, and outputs | code | | open |
+| M2.1 | `docs/aoe4-build-order.md` defines the model, data sources, per-civ `CivRules` hooks, and outputs | code | | open |
+| M2.2 | `data/aoe4-build-order/` holds an English-filtered aoe4world snapshot with its source commit and patch, plus a per-civ overlay whose hand-entered values each carry a source and an "unverified" label (A1) | code | | open |
+| M2.3 | `lib/aoe4-build-order/` simulates a build order covering the v1 list in CONTEXT.md, including veterancy upgrades (they occupy the building's queue; units produced afterwards are the upgraded tier); unit tests cover A2 (no negative resources, waits in timings), A3 (determinism), builder scaling 3/(N+2), the gather trip model, a calculator cross-check of effective rates, and an upgrade delaying production and changing the produced tier | code | | open |
+| M2.4 | The build-order input is a JSON model with tagged triggers (time = "not before", villager count) plus a line-based paste format that parses into it; unknown trigger kinds and unsupported techs are rejected with clear errors | code | | open |
+| M2.5 | At least one prebuilt English build order in `data/aoe4-build-order/builds/` loads in the app | code | | open |
+| M2.6 | `pages/apps/aoe4-build-order` graphs units produced (by unit and tier), gather rates, and floating resources over time, and is linked from `pages/index.js` | code | | open |
+| M2.7 | If the design adds an API route, it is in `docs/api/openapi.json` and passes the contract check | code | | open |
+| M2.8 | Playwright acceptance tests: paste a build order, run it, and see all three graphs | code | | open |
+| M2.9 | CONTEXT.md Key surfaces and Design docs row, and INVARIANTS.md AoE4 Paths, updated from proposed to actual | code | | open |
