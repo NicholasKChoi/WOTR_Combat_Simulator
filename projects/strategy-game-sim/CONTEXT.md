@@ -100,6 +100,9 @@ None.
   age); generic military production (any production building queues any unit from data, continuous/pause/switch
   orders, no combat); age-ups to all four ages via any landmark; every English tech whose effects use supported
   properties (gather rate, carry capacity, move speed, production speed), others rejected with a clear error;
+  unit veterancy upgrades (e.g. Veteran/Elite tiers, owner 2026-10-30): researched at their building from data,
+  costing resources and occupying that building's queue for the research time; units produced afterwards are the
+  upgraded tier, and the units-produced graph distinguishes tiers;
   houses, starting state, pop cap. Hand-entered values (starting resources/units, supply, landmark effects,
   farm bonus, walk and drop-off defaults) are labeled unverified. Later: Council Hall longbow speed, Network of
   Castles, Abbey of Kings. Out: sacred sites, relics, trade, fishing, cattle, depletion.
