@@ -5,19 +5,23 @@
         "acceptance": "playwright test",
         "acceptance:setup": "playwright install chromium"
     },
+    "engines": {
+        "node": "24.x"
+    },
     "dependencies": {
-        "bootstrap": "^5.1.3",
-        "classnames": "^2.3.1",
-        "next": "^12.1.6",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0"
+        "bootstrap": "^5.3.8",
+        "classnames": "^2.5.1",
+        "next": "^16.4.3",
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1"
     },
     "devDependencies": {
         "@playwright/test": "^1.64.1",
-        "@types/node": "^18.0.0",
-        "@types/react": "^18.0.14",
+        "@types/node": "^24",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
         "ajv": "^8.20.0",
-        "typescript": "^4.7.4",
-        "vitest": "^1.6.0"
+        "typescript": "^7.0.2",
+        "vitest": "^5.0.5"
     }
 }

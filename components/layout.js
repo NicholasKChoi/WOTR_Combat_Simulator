@@ -40,20 +40,18 @@ export default function Layout({ children, home }) {
         ) : (
           <>
             <Link href="/">
-              <a>
-                <Image
-                  priority
-                  src="/images/theme_photo.jpg"
-                  className={utilStyles.borderCircle}
-                  height={108}
-                  width={108}
-                  alt={siteTitle}
-                />
-              </a>
+              <Image
+                priority
+                src="/images/theme_photo.jpg"
+                className={utilStyles.borderCircle}
+                height={108}
+                width={108}
+                alt={siteTitle}
+              />
             </Link>
             <h2 className={utilStyles.headingLg}>
-              <Link href="/">
-                <a className={utilStyles.colorInherit}>{siteTitle}</a>
+              <Link href="/" className={utilStyles.colorInherit}>
+                {siteTitle}
               </Link>
             </h2>
           </>

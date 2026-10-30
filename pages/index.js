@@ -24,15 +24,11 @@ export default function Home() {
         <ul>
           <li className={utilStyles.headingMd}>
             ⚔️{' '}
-            <Link href="/apps/combat-simulator">
-              <a>Combat Simulator</a>
-            </Link>
+            <Link href="/apps/combat-simulator">Combat Simulator</Link>
           </li>
           <li className={utilStyles.headingMd}>
             🚀{' '}
-            <Link href="/apps/starcraft-helper">
-              <a>Starcraft Helper</a>
-            </Link>
+            <Link href="/apps/starcraft-helper">Starcraft Helper</Link>
           </li>
         </ul>
       </section>
