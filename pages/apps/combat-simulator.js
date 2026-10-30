@@ -45,6 +45,7 @@ export default function CombatSimulator() {
         setError(await errorMessage(response));
         return;
       }
+      /** @type {import('../../lib/combat-simulator/fight-api').FightResponse} */
       const summary = await response.json();
       setResult({ submitted, summary });
     } catch {

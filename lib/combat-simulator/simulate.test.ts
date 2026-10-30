@@ -58,7 +58,7 @@ describe('outcomes', () => {
             kinds,
         )
         expect(Object.keys(summary.outcomes)).toEqual(kinds)
-        expect(summary.outcomes.extra).toEqual({ count: 2, frequency: 0.4 })
+        expect(summary.outcomes['extra']).toEqual({ count: 2, frequency: 0.4 })
         expect(summary.outcomes.attacker.count).toBe(1)
         expect(summary.outcomes.defender.count).toBe(1)
         expect(summary.outcomes.tie.count).toBe(1)

@@ -1,0 +1,546 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Strategy Game Simulator API",
+    "version": "1.0.0",
+    "description": "HTTP API of the strategy game simulator site. /api/models/army is also served, only because its file sits under pages/api/; it is not part of the API, is not listed here, and may change or disappear."
+  },
+  "paths": {
+    "/api/fight": {
+      "post": {
+        "operationId": "runFight",
+        "summary": "Simulate a War of the Ring battle many times and report outcome statistics.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FightRequest"
+              },
+              "example": {
+                "attack-regs": "3",
+                "attack-elts": "1",
+                "attack-ldrs": "1",
+                "defend-regs": "3",
+                "defend-elts": "1",
+                "defend-ldrs": "1",
+                "battles": 20
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Statistics over the simulated battles.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FightResponse"
+                },
+                "example": {
+                  "battles": 20,
+                  "outcomes": {
+                    "attacker": {
+                      "count": 6,
+                      "frequency": 0.3
+                    },
+                    "defender": {
+                      "count": 14,
+                      "frequency": 0.7
+                    },
+                    "tie": {
+                      "count": 0,
+                      "frequency": 0
+                    }
+                  },
+                  "rounds": {
+                    "mean": 5.65,
+                    "median": 5,
+                    "p10": 3,
+                    "p90": 7
+                  },
+                  "survivors": {
+                    "attacker": [
+                      {
+                        "regulars": 4,
+                        "elites": 0,
+                        "count": 3,
+                        "frequency": 0.5
+                      },
+                      {
+                        "regulars": 3,
+                        "elites": 0,
+                        "count": 2,
+                        "frequency": 0.3333333333333333
+                      },
+                      {
+                        "regulars": 2,
+                        "elites": 0,
+                        "count": 1,
+                        "frequency": 0.16666666666666666
+                      }
+                    ],
+                    "defender": [
+                      {
+                        "regulars": 3,
+                        "elites": 0,
+                        "count": 6,
+                        "frequency": 0.42857142857142855
+                      },
+                      {
+                        "regulars": 2,
+                        "elites": 0,
+                        "count": 6,
+                        "frequency": 0.42857142857142855
+                      },
+                      {
+                        "regulars": 1,
+                        "elites": 0,
+                        "count": 2,
+                        "frequency": 0.14285714285714285
+                      }
+                    ]
+                  },
+                  "hitsPerRound": {
+                    "attacker": [
+                      0.5309734513274337,
+                      0.336283185840708,
+                      0.11504424778761062,
+                      0.017699115044247787,
+                      0,
+                      0
+                    ],
+                    "defender": [
+                      0.4424778761061947,
+                      0.39823008849557523,
+                      0.1504424778761062,
+                      0.008849557522123894,
+                      0,
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was rejected; no battle ran. One exception does not match FightError: a body that is not valid JSON is rejected by the framework before the handler runs, with status 400 and the plain-text body Invalid JSON (no JSON content type).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FightError"
+                },
+                "examples": {
+                  "fieldOutOfRange": {
+                    "summary": "attack-ldrs is 6",
+                    "value": {
+                      "error": "attack-ldrs must be between 0 and 5"
+                    }
+                  },
+                  "emptySide": {
+                    "summary": "defend has no regulars or elites",
+                    "value": {
+                      "error": "defend army needs at least one regular or elite"
+                    }
+                  },
+                  "invalidBattles": {
+                    "summary": "battles is 0",
+                    "value": {
+                      "error": "battles must be a whole number between 1 and 100000"
+                    }
+                  },
+                  "notAnObject": {
+                    "summary": "body is a JSON array",
+                    "value": {
+                      "error": "request body must be a JSON object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not POST.",
+            "headers": {
+              "Allow": {
+                "description": "The only allowed method.",
+                "schema": {
+                  "type": "string",
+                  "const": "POST"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FightError"
+                },
+                "example": {
+                  "error": "method GET is not allowed; use POST"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FightRequest": {
+        "type": "object",
+        "description": "The two armies and the number of battles to run. Cross-field rules, checked by the server rather than this schema: for each side, regulars + elites must be at most 10 (leaders are not counted), and regulars + elites = 0 is invalid. Validation order, where the first failure is the one reported: the method must be POST; the body must be a JSON object; the six army fields in the order attack-regs, attack-elts, attack-ldrs, defend-regs, defend-elts, defend-ldrs; the per-side rules, attack then defend; then battles. The server ignores unknown extra keys; this schema is deliberately stricter and rejects them.",
+        "required": [
+          "attack-regs",
+          "attack-elts",
+          "attack-ldrs",
+          "defend-regs",
+          "defend-elts",
+          "defend-ldrs"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "attack-regs": {
+            "description": "Regular units in the attacking army. Sent as a JSON integer or as a string of decimal digits (leading zeros allowed); either form must be between 0 and 10.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "x-minimum": 0,
+                "x-maximum": 10
+              }
+            ]
+          },
+          "attack-elts": {
+            "description": "Elite units in the attacking army. Sent as a JSON integer or as a string of decimal digits (leading zeros allowed); either form must be between 0 and 10.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "x-minimum": 0,
+                "x-maximum": 10
+              }
+            ]
+          },
+          "attack-ldrs": {
+            "description": "Leaders in the attacking army. Leaders do not count toward the army's unit limit. Sent as a JSON integer or as a string of decimal digits (leading zeros allowed); either form must be between 0 and 5.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "x-minimum": 0,
+                "x-maximum": 5
+              }
+            ]
+          },
+          "defend-regs": {
+            "description": "Regular units in the defending army. Sent as a JSON integer or as a string of decimal digits (leading zeros allowed); either form must be between 0 and 10.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "x-minimum": 0,
+                "x-maximum": 10
+              }
+            ]
+          },
+          "defend-elts": {
+            "description": "Elite units in the defending army. Sent as a JSON integer or as a string of decimal digits (leading zeros allowed); either form must be between 0 and 10.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "x-minimum": 0,
+                "x-maximum": 10
+              }
+            ]
+          },
+          "defend-ldrs": {
+            "description": "Leaders in the defending army. Leaders do not count toward the army's unit limit. Sent as a JSON integer or as a string of decimal digits (leading zeros allowed); either form must be between 0 and 5.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "x-minimum": 0,
+                "x-maximum": 5
+              }
+            ]
+          },
+          "battles": {
+            "description": "Number of independent battles to simulate. Sent as a JSON integer or as a string of decimal digits (leading zeros allowed); either form must be between 1 and 100000.",
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              {
+                "type": "string",
+                "pattern": "^[0-9]+$",
+                "x-minimum": 1,
+                "x-maximum": 100000
+              }
+            ],
+            "default": 1000
+          }
+        }
+      },
+      "FightResponse": {
+        "type": "object",
+        "description": "Statistics over all simulated battles. The submitted armies are not echoed back.",
+        "required": [
+          "battles",
+          "outcomes",
+          "rounds",
+          "survivors",
+          "hitsPerRound"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "battles": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "description": "Number of battles actually run."
+          },
+          "outcomes": {
+            "$ref": "#/components/schemas/FightOutcomes",
+            "description": "How often each outcome occurred."
+          },
+          "rounds": {
+            "$ref": "#/components/schemas/RoundStats",
+            "description": "How many rounds the battles lasted."
+          },
+          "survivors": {
+            "$ref": "#/components/schemas/FightSurvivors",
+            "description": "What the winning side had left."
+          },
+          "hitsPerRound": {
+            "$ref": "#/components/schemas/HitsPerRound",
+            "description": "How many hits each side scored per round."
+          }
+        }
+      },
+      "FightError": {
+        "type": "object",
+        "description": "Error body for a rejected request.",
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable reason the request was rejected. A field error names the field."
+          }
+        }
+      },
+      "FightOutcomes": {
+        "type": "object",
+        "description": "One entry per outcome kind; counts over all kinds sum to battles, and a kind that never occurred has count 0. Later versions may add outcome kinds with the same {count, frequency} shape; clients must tolerate unknown keys.",
+        "required": [
+          "attacker",
+          "defender",
+          "tie"
+        ],
+        "additionalProperties": {
+          "$ref": "#/components/schemas/OutcomeTally"
+        },
+        "properties": {
+          "attacker": {
+            "$ref": "#/components/schemas/OutcomeTally",
+            "description": "Only the attacker has regulars or elites left."
+          },
+          "defender": {
+            "$ref": "#/components/schemas/OutcomeTally",
+            "description": "Only the defender has regulars or elites left."
+          },
+          "tie": {
+            "$ref": "#/components/schemas/OutcomeTally",
+            "description": "Both armies were eliminated in the same round."
+          }
+        }
+      },
+      "OutcomeTally": {
+        "type": "object",
+        "description": "How often one outcome occurred.",
+        "required": [
+          "count",
+          "frequency"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Battles that ended with this outcome."
+          },
+          "frequency": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "count / battles, unrounded."
+          }
+        }
+      },
+      "RoundStats": {
+        "type": "object",
+        "description": "Rounds per battle over all battles, every outcome included. median, p10 and p90 use the nearest-rank method: sort the round counts ascending and take the value at 1-based rank ceil(p * battles / 100).",
+        "required": [
+          "mean",
+          "median",
+          "p10",
+          "p90"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "mean": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Total rounds / battles, unrounded."
+          },
+          "median": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "50th percentile, nearest rank (the lower middle value for an even number of battles)."
+          },
+          "p10": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "10th percentile, nearest rank."
+          },
+          "p90": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "90th percentile, nearest rank."
+          }
+        }
+      },
+      "FightSurvivors": {
+        "type": "object",
+        "description": "For each side, the distribution of its surviving (regulars, elites) at the end of the battles it won. Leaders are not part of a combination, and ties contribute nothing. Elements are sorted by count, then regulars, then elites, all descending.",
+        "required": [
+          "attacker",
+          "defender"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "attacker": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurvivorCombination"
+            },
+            "description": "Surviving units of the attacker over the battles it won, one element per combination that occurred; empty when the attacker never won."
+          },
+          "defender": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SurvivorCombination"
+            },
+            "description": "Surviving units of the defender over the battles it won, one element per combination that occurred; empty when the defender never won."
+          }
+        }
+      },
+      "SurvivorCombination": {
+        "type": "object",
+        "description": "One combination of surviving regulars and elites on the winning side.",
+        "required": [
+          "regulars",
+          "elites",
+          "count",
+          "frequency"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "regulars": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Surviving regulars."
+          },
+          "elites": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Surviving elites."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Wins by this side that ended with this combination."
+          },
+          "frequency": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "count / this side's wins, unrounded."
+          }
+        }
+      },
+      "HitsPerRound": {
+        "type": "object",
+        "description": "Hit-count distribution per side, pooled across all rounds of all battles (combat and leader hits together). The denominator is the total rounds.",
+        "required": [
+          "attacker",
+          "defender"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "attacker": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 6,
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "Index k is the share of all rounds in which the attacker scored exactly k hits."
+          },
+          "defender": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 6,
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "Index k is the share of all rounds in which the defender scored exactly k hits."
+          }
+        }
+      }
+    }
+  }
+}
