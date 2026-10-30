@@ -65,6 +65,10 @@ None.
 - AoE4 base villager gather rates (owner, 2026-10-29): use the values in SichYuriy/aoe4-production-calculator
   `src/data/BaseGatheringRates.ts` (resources/min) as provisional data, labeled in the data file as unverified,
   patch unknown, source repo has no license; replace them once measured or otherwise sourced.
+- AoE4 builder scaling (owner, 2026-10-30): build time with N builders = base build time x 3/(N+2), i.e. each
+  extra builder adds +33% build speed (1 builder 100%, 2 75%, 4 50%, 8 30%). Source: Age of Empires fandom wiki,
+  "Villager (Age of Empires IV)", Building construction section (no patch stated). The data file records the
+  formula with that source and labels it unverified, patch unknown.
 - WOTR N: default 1000 battles, maximum 100,000 (owner, 2026-10-28).
 - WOTR rules: the published game's combat-dice cap (5) and leadership-reroll cap are genuine rules and
   must be implemented. The fixed casualty order is intentional: it stands in for the human player's
