@@ -85,8 +85,9 @@ Code changes found by a trial upgrade of `origin/main` (6013fcc) in a scratch co
       `vitest.config.ts` (`git grep -n "vitest.config"` finds only the file's own import line; REPO.md `commands.unit` is
       `npm test` and needs no change).
 
-Node: Next 16 needs Node >= 20.9 and Vitest 5 needs `^22.12 || ^24 || >=26`. Add `"engines": { "node": ">=22.12.0" }` to
-`package.json` so the Vercel build (which honors `engines`) cannot select an older Node. No `.nvmrc`/`engines` exists today.
+Node: Next 16 needs Node >= 20.9 and Vitest 5 needs `^22.12 || ^24 || >=26`. (rework 1) Add `"engines": { "node": "24.x" }` to
+`package.json`: Vercel honors `engines` over the project setting, and an open range (`>=22.12.0`) made it build on Node 26.x and
+auto-upgrade on each new major (owner, 2026-10-30: pin production to 24.x). No `.nvmrc`/`engines` exists today.
 (respec 1) The Vercel project `wotr-combat-simulator` already runs Node 24.x (confirmed via the Vercel API), which satisfies
 this floor; the project's Node setting is not changed.
 
@@ -107,7 +108,7 @@ Single-component change outside the core control loop; no diagram required.
 - [x] `npm ci` succeeds from the committed `package-lock.json`, and the lockfile is regenerated (`lockfileVersion` 3) with
       `next` resolving to 16.x, `react` and `react-dom` to 19.x, `typescript` to 7.x, `vitest` to 5.x.
 - [x] (respec 1) `package.json` `dependencies`/`devDependencies` match the target table, with `@types/node` at `^24`
-      (lockfile resolves 24.x), `@types/react-dom` is in `devDependencies`, and `engines.node` is `>=22.12.0`.
+      (lockfile resolves 24.x), `@types/react-dom` is in `devDependencies`, and (rework 1) `engines.node` is `24.x`.
 - [x] `npx next build` succeeds and lists `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`, `/api/fight`.
 - [x] `npx tsc --noEmit` exits 0.
 - [x] `npm test` passes with the same 57 tests (no test removed, skipped or edited).
@@ -135,7 +136,8 @@ Single-component change outside the core control loop; no diagram required.
       work when clicked through under `npm run dev`; no new browser console errors or React hydration warnings on `/`,
       `/apps/combat-simulator`, `/apps/starcraft-helper`.
 - [x] No `app/` directory is created and no `next.config.*` is added unless the build requires it (state why in the PR).
-- [ ] The Vercel check "Vercel – wotr-combat-simulator" is green on the PR, building on Node 24.x.
+- [ ] (rework 1) The Vercel check "Vercel – wotr-combat-simulator" is green on the PR, and its build log shows Node 24.x with no
+      "Project Settings ... will not apply" override warning.
 - [x] No INVARIANTS.md regressions (S2 links still present, H1-H3 and W1-W2 unchanged).
 
 ## Open questions
@@ -161,3 +163,19 @@ None.
   tsconfig include.
 - Existing branch work at 7ab5aee stands in full (deps, lockfile, Link rewrites, tsconfig, engines); the implementer adds
   item 5 on top and pushes for the Vercel check.
+
+## Rework 1 - 2026-10-30 (tech-lead)
+
+Bounced by tech-lead on draft PR #24 (branch tip 623a5ff; review, acceptance-test and suite passed at 623a5ff).
+
+Findings:
+- `package.json:8-10`: `"engines": { "node": ">=22.12.0" }` makes Vercel ignore the project's Node 24.x setting. Preview build log
+  (deployment 6QcYLshqg6kqY7f4hVnK1pm1BZ9X): "the Node.js Version defined in your Project Settings ("24.x") will not apply,
+  Node.js Version "26.x" will be used instead", and the range auto-upgrades on each new Node major. No gate ran on Node 26.
+
+Required fixes:
+- [ ] Set `engines.node` to `"24.x"` (owner decision 2026-10-30). The only lockfile change allowed is the root
+      package entry's `engines` field (run `npm install --package-lock-only`); no resolved version changes.
+- [ ] `npm ci` (local Node 22 prints an EBADENGINE warning only, since `engine-strict` is unset; confirm it still installs),
+      `npx tsc --noEmit`, `npm test` pass on the branch.
+- [ ] Push is done by the manager/tech-lead; after the push the Vercel log must show Node 24.x with no override warning.
