@@ -92,7 +92,7 @@ export function rollDice(numdice: number): number[] {
 
   for (let i = 0 ; i < numdice; i++) {
     let result = Math.floor(Math.random() * (max - min + 1)) + min;
-    results = results.concat(result);
+    results.push(result);
   }
   return results;
 }
@@ -113,9 +113,9 @@ function calculateCombatRollResults(opts: CombatRollOps): CombatRollResults {
   for (let i = 0; i < opts.diceRoll.length; i++) {
     let thisDice = opts.diceRoll[i];
     if (thisDice > threshold) {
-      hits = hits.concat(thisDice);
+      hits.push(thisDice);
     } else {
-      misses = misses.concat(thisDice);
+      misses.push(thisDice);
     }
   }
   return { hits: hits, misses: misses };
@@ -144,18 +144,6 @@ export function resolveRound(battle: BattleResult, roll: DiceRoller): void {
   defend.takeHits(attackHits);
 
   battle.recordRound(attackHits, defendHits);
-  console.log(
-    battle,
-    attackCombatRoll,
-    attackCombatResult,
-    attackLeaderRoll,
-    attackLeaderResult,
-    attackHits,
-    defenseCombat,
-    defendCombatResult,
-    defendLeaderRoll,
-    defendLeaderResult,
-    defendHits);
 }
 
 // Later termination rules, such as a round limit, are added as fields here.
@@ -171,6 +159,5 @@ export function Battle(attack: BaseArmy, defend: BaseArmy, roll: DiceRoller = ro
   while (!shouldStop(battleResult, options)) {
     resolveRound(battleResult, roll);
   }
-  console.log("Final result", battleResult);
   return battleResult;
 }

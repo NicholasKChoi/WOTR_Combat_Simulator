@@ -28,8 +28,8 @@ export default function CombatSimulator() {
   async function submitFight(e) {
     e.preventDefault();
     setError("");
-    const data = new FormData(e.target);
-    const payload = JSON.stringify(Object.fromEntries(data.entries()));
+    const submitted = Object.fromEntries(new FormData(e.target).entries());
+    const payload = JSON.stringify(submitted);
     try {
       const response = await fetch("/api/fight", {
         method: "POST",
@@ -45,8 +45,8 @@ export default function CombatSimulator() {
         setError(await errorMessage(response));
         return;
       }
-      const fightResult = await response.json();
-      setResult(fightResult);
+      const summary = await response.json();
+      setResult({ submitted, summary });
     } catch {
       setResult("");
       setError("The fight could not be run. Please try again.");
@@ -72,6 +72,20 @@ export default function CombatSimulator() {
               <div className="col-md-6">
                 <h3>Defending Army</h3>
                 <Army armyKey="defend" />
+              </div>
+            </div>
+            <div className='row mb-3 small-font-size'>
+              <div className="col-md-3">
+                <label htmlFor="battles">Battles</label>
+                <input
+                  type="number"
+                  id="battles"
+                  name="battles"
+                  className="form-control"
+                  defaultValue={1000}
+                  min={1}
+                  max={100000}
+                  step={1} />
               </div>
             </div>
             <div className='row'>
