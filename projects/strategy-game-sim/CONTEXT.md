@@ -49,6 +49,11 @@ None.
 
 ## Decisions
 
+- AoE4 model scope (owner, 2026-10-29): town centers and landmarks are ordinary buildings. Villager producers
+  (town center, King's Palace) are production buildings, and "optimal villagers" means each one produces villagers
+  continuously by default. Age-ups are landmark builds. Every construction pulls its assigned villagers off their
+  resource for the build time, and build time depends on the builder count. Houses are auto-built when supply
+  requires one. Resources are infinite (no depletion) for v1.
 - AoE4 simulation (owner, 2026-10-29): fixed for v1 (one deterministic result per build order and data), with two
   requirements so a spread can be added later without a rewrite: (1) every quantity that could vary (walk time,
   idle time, distance to each resource) is an explicit named input to the simulator, never a constant inside the
