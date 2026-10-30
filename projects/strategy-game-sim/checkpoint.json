@@ -1,14 +1,9 @@
 {
-  "lastBaseSha": "006c553",
+  "lastBaseSha": "cc47156",
   "openPRs": {
     "18": {
       "task": "SGS-009",
       "head": "97cae74",
-      "rerunTally": 0
-    },
-    "19": {
-      "task": "SGS-004",
-      "head": "0a84a2e",
       "rerunTally": 0
     }
   },
