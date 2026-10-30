@@ -273,7 +273,7 @@ prefix comes first, then the action:
 |---|---|---|
 | `@m:ss ` | time | `produce <unit> from <producer>[#k] [xN] [-> <node>] [walk Ns]` |
 | `at N vils ` | villagers | `pause <producer>[#k]` |
-| none | none | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move N <node> to <node> [walk Ns]` |
+| (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move N <node> to <node> [walk Ns]` |
 
 One example per action; each line stands alone:
 
@@ -315,7 +315,7 @@ JSON and paste:
 | code | meaning |
 |---|---|
 | `syntax` | text cannot be parsed, or JSON structure is wrong: bad paste grammar, a step that is not an object, a missing or mistyped field, an unknown `action` value, a wrong-typed `trigger` |
-| `unknown-trigger-kind` | the trigger's `kind` is not `time`, `villagers` or `none` (in paste, an unknown line prefix is `syntax`) |
+| `unknown-trigger-kind` | the trigger's `kind` is not `time` or `villagers` (an omitted trigger means no condition) (paste: unknown line prefix is `syntax`) |
 | `unknown-id` | a well-formed id not in the civilization's data (unit, producer, building, technology, node, civilization) |
 | `unsupported-tech`, `unknown-tech-effect` | a technology rejected by `classifyTech` |
 | `out-of-range` | a number outside `SIM_INPUT_BOUNDS`, a non-integer, or a non-finite number |
