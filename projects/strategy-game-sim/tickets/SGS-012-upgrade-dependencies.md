@@ -7,9 +7,9 @@
 - **Risk**: high
   <!-- Framework major jumps (Next 12 -> 16, React 18 -> 19, TypeScript 4 -> 7) under the one public route
        /api/fight and every page; adjacent invariants S2, H1-H3, W1-W2 (behavior must not move). -->
-- **LOC estimate**: ~20-35 (business logic: four `<Link>` call sites in `pages/index.js` and `components/layout.js`, two
-  `tsconfig.json` options, and a small acceptance-harness fix for the cold-run flake; the rest is `package.json` and a
-  regenerated `package-lock.json`)
+- **LOC estimate**: ~20-30 (business logic: four `<Link>` call sites in `pages/index.js` and `components/layout.js`, two
+  `tsconfig.json` options plus one `include` entry, two `.gitignore` lines, a `vitest.config.ts` -> `vitest.config.mts`
+  rename; the rest is `package.json` and a regenerated `package-lock.json`)
 - **Depends on**: none
 - **On merge**: REPO.md `acceptanceHarness`: change "Needs Node 20+" to the Node floor this ticket sets (22.12+).
   design/M2.md: the designer switches the Recharts section from `2.15.4` to `3.10.1` and re-verifies its chart test
@@ -58,35 +58,44 @@ Code changes found by a trial upgrade of `origin/main` (6013fcc) in a scratch co
 3. Everything else built and passed in the trial with no source change: `npx tsc --noEmit`, `npm test` (57 tests),
    `next build` (Turbopack, all five routes), and `npm run acceptance` (208 of 209 on a cold first run; the remaining spec
    passed on rerun, see item 4). `pages/api/fight.ts` (`NextApiRequest`/`NextApiResponse`), `next/head`, `next/image`
-   with fixed width/height, `useState`, `ajv/dist/2020` in `acceptance/fight-api-contract.spec.ts`, `vitest.config.ts`
-   and `playwright.config.ts` need no change for the upgrade itself (item 4 may touch the harness). There is no `next.config.*`, no `getServerSideProps`/`getStaticProps`, no
+   with fixed width/height, `useState`, `ajv/dist/2020` in `acceptance/fight-api-contract.spec.ts`, and
+   `playwright.config.ts` need no change (`vitest.config.ts` content is unchanged; item 5c only renames it). There is no `next.config.*`, no `getServerSideProps`/`getStaticProps`, no
    `useRouter`, no ESLint config.
 
-4. (respec 1) Acceptance cold-run flake, fixed in this ticket. In the trial, on a cold full `npm run acceptance`, the
-   `combat-simulator-battles.spec.ts` test "a valid submit posts battles and renders every results section with the response
-   numbers" timed out in `waitForFight` (the `page.waitForResponse` for the `/api/fight` POST) after clicking Fight!; it
-   passed on every rerun. The `beforeEach` there only does `page.goto('/apps/combat-simulator')` plus
-   `waitForLoadState('networkidle')`, which does not guarantee React has hydrated the form under Next 16 dev with cold
-   compiles and parallel workers, so a click can land on the server-rendered form with no submit handler. The implementer
-   reproduces it, confirms the cause (pre-hydration click, or cold compile of `/api/fight` on first request), and fixes it in
-   the harness: for example a shared helper in `acceptance/helpers.ts` that waits for a hydration signal before interacting,
-   used by the combat-simulator specs that click Fight!, or a warm-up of `/`, `/apps/combat-simulator` and `/api/fight`
-   before the suite (Playwright `globalSetup` or the `webServer` readiness URL in `playwright.config.ts`). If the only
-   reliable signal needs a marker in the page (e.g. a `data-hydrated` attribute set in an effect), that is allowed as a
-   test-only hook with no visible behavior change. This harness fix is a justified mechanical acceptance edit. It must not
-   weaken any assertion: no expectation removed or loosened, no `test.skip`/`test.fixme`, no Playwright `retries`, no
-   per-test timeout raise used as the fix.
+4. (respec 2) Acceptance cold-run flake: no harness change. The trial saw one cold-run timeout in
+   `combat-simulator-battles.spec.ts` ("a valid submit posts battles and renders every results section with the response
+   numbers", in `waitForFight` after clicking Fight!). On the branch it did not reproduce: 8 cold full runs (209/209 each),
+   3 cold full runs under 16 CPU-burning processes, 3 runs in the trial's order (fresh `next build` then `npm run
+   acceptance`), one cold `--repeat-each=10` run (2090/2090), Fight! clicked as soon as visible with Chromium CPU throttling
+   at 1x/10x/40x (every click posted to `/api/fight`), and the first cold `/api/fight` request answered in 82 ms. The PR
+   description records these attempts and that evidence. Nothing under `acceptance/` or in `playwright.config.ts` changes
+   for the flake; a future recurrence gets its own ticket.
+5. (respec 2) Upgrade-caused repo hygiene:
+   a. `next-env.d.ts`: Next 16 rewrites this tracked file on every `next build` (imports `./.next/types/...`) and `next dev`
+      (imports `./.next/dev/types/...`). Untrack it (`git rm --cached next-env.d.ts`) and add `next-env.d.ts` to
+      `.gitignore`. `npx tsc --noEmit` passes without the file (checked on the branch at 7ab5aee); `tsconfig.json` keeps
+      `next-env.d.ts` in `include` (Next manages that entry).
+   b. `AGENTS.md`: `next dev` writes it at the repo root when it detects an AI coding agent (`syncAgentRulesForDev` in
+      `node_modules/next/dist/server/lib/app-info-log.js`). Add `/AGENTS.md` to `.gitignore`; do not commit the file.
+   c. Vitest 5 config warning: `npm test` prints "(!) Your Vite config uses features that are unsupported by
+      `configLoader: 'native'` ... ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1)" because `package.json`
+      has no `"type": "module"`. Rename `vitest.config.ts` to `vitest.config.mts` (`git mv`, content unchanged); do not set
+      `"type": "module"`. `tsconfig.json` `include` matches only `**/*.ts`, `**/*.tsx`, so add `"**/*.mts"` to keep the
+      config type-checked (checked: `tsc --noEmit` exits 0 and lists `vitest.config.mts`). No other file references
+      `vitest.config.ts` (`git grep -n "vitest.config"` finds only the file's own import line; REPO.md `commands.unit` is
+      `npm test` and needs no change).
 
 Node: Next 16 needs Node >= 20.9 and Vitest 5 needs `^22.12 || ^24 || >=26`. Add `"engines": { "node": ">=22.12.0" }` to
 `package.json` so the Vercel build (which honors `engines`) cannot select an older Node. No `.nvmrc`/`engines` exists today.
 (respec 1) The Vercel project `wotr-combat-simulator` already runs Node 24.x (confirmed via the Vercel API), which satisfies
 this floor; the project's Node setting is not changed.
 
-Do not accept any change to an acceptance spec except a mechanical selector/API update that the upgrade forces, and the
-flake fix in item 4; each such edit is listed in the PR description with the reason.
+Do not accept any change to an acceptance spec or `playwright.config.ts` except a mechanical selector/API update that the
+upgrade forces (none was needed on the branch); each such edit is listed in the PR description with the reason.
 
 **Out of scope:** app-router migration (stay on the pages router); adding Recharts or any M2 code; `golang/` and its
-create-react-app frontend; ESLint; new tests; converting `.js` pages to TypeScript; fixing the "gamign" typo, the Next.js
+create-react-app frontend; ESLint; new tests; converting `.js` pages to TypeScript; fixing the "gamign" typo, updating `ARCHITECTURE.md` "Stack" (SGS-023), the Next 16 dev-only
+`scroll-behavior: smooth` log message, the Next.js
 tutorial og-image URL or other legacy content; `strict` mode; behavior changes of any kind.
 
 ## Diagrams
@@ -104,12 +113,19 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] `npm test` passes with the same 57 tests (no test removed, skipped or edited).
 - [ ] (respec 1) Two consecutive full `npm run acceptance` runs, the first from a cold start (no `.next/` directory), are
       both green with all 209 specs passing on the first attempt; the PR description states both runs and their counts.
-- [ ] (respec 1) The cold-run flake fix is in the harness: each edit under `acceptance/` or `playwright.config.ts` is
-      justified in the PR description, and none weakens an assertion (no `expect` removed or loosened, no `test.skip` or
-      `test.fixme`, no `retries` added, no test timeout raised as the fix). `git grep -nE "retries|test\.(skip|fixme)" --
-      acceptance playwright.config.ts` prints nothing.
-- [ ] (respec 1) The PR description names the root cause found for the "a valid submit posts battles" timeout (pre-hydration
-      click, cold `/api/fight` compile, or other, with the evidence), and the fix addresses that cause rather than masking it.
+- [ ] (respec 2) No file under `acceptance/` or `playwright.config.ts` changes for the flake, and `git grep -nE
+      "retries|test\.(skip|fixme)" -- acceptance playwright.config.ts` prints nothing.
+- [ ] (respec 2) The PR description records the cold-run flake reproduction attempts and evidence from item 4 (8 cold full
+      runs, CPU-loaded runs, `--repeat-each=10`, throttled clicks, cold `/api/fight` latency) and states that no harness
+      change was made for it.
+- [ ] (respec 2) `git ls-files next-env.d.ts` prints nothing, `.gitignore` lists `next-env.d.ts`, `npx next build` and
+      `npm run dev` each regenerate `next-env.d.ts` without it showing in `git status`, and `npx tsc --noEmit` exits 0 both
+      with and without the file present.
+- [ ] (respec 2) `.gitignore` lists `/AGENTS.md`; after an `npm run dev` or `npm run acceptance` run, `git status --porcelain`
+      shows no `AGENTS.md`, and `git ls-files AGENTS.md` prints nothing.
+- [ ] (respec 2) `vitest.config.ts` is renamed to `vitest.config.mts` with unchanged content, `tsconfig.json` `include` has
+      `"**/*.mts"`, `npm test` output contains no "loaded as CommonJS" warning (`npm test 2>&1 | grep -c "CommonJS"` prints
+      0; 1 today), and `npx tsc --listFilesOnly | grep -c vitest.config.mts` prints 1.
 - [ ] The OpenAPI contract check still passes: `npx playwright test fight-api-contract fight-api-spec-surface` is green and
       `docs/api/openapi.json` is unchanged.
 - [ ] `git grep -n -A1 "<Link" -- pages components | grep -c "<a"` prints 0, and the landing page renders both app links as
@@ -134,3 +150,14 @@ None.
   here in the harness with two consecutive green full runs required and no assertion weakened; the Recharts 3.x selector
   re-check moved fully to On merge for the designer.
 - Existing branch work: none yet; the trial findings (Link rewrites, tsconfig options, target table) all still stand.
+
+## Re-spec 2026-10-30 (2)
+
+- Underspecified: the flake criterion required a root cause the implementer could not reproduce (no failure in 8 cold
+  runs, CPU-loaded runs, `--repeat-each=10`, throttled clicks); the upgrade's side effects on tracked/generated files
+  were not covered.
+- Changed (owner answers): flake root-cause/fix criteria dropped in favor of recording the evidence in the PR, no harness
+  change; added `next-env.d.ts` untracking, `/AGENTS.md` gitignore, and the `vitest.config.mts` rename with a `**/*.mts`
+  tsconfig include.
+- Existing branch work at 7ab5aee stands in full (deps, lockfile, Link rewrites, tsconfig, engines); the implementer adds
+  item 5 on top and pushes for the Vercel check.
