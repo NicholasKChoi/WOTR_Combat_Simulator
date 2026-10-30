@@ -151,9 +151,11 @@ test.describe('body shape', () => {
   })
 
   test('malformed JSON runs no battle', async ({ request }) => {
-    const response = await postRaw(request, '{"attack-regs":', 'application/json')
+    // Playwright JSON-encodes a non-JSON string body, so send a Buffer to reach the parser.
+    const response = await postRaw(request, Buffer.from('{"attack-regs":'), 'application/json')
     expect(response.status()).toBe(400)
     await expectNoBattle(response)
+    expect(await response.text()).not.toContain('request body must be a JSON object')
   })
 })
 
