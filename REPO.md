@@ -43,6 +43,9 @@ staging:
   name: ""                        # Vercel preview deployment per PR, if you want to use it
   smokeTestSkill: ""
 
+questionResearch: medium          # none | low | medium | high: how much research the manager runs on
+                                  #   each owner decision question before asking it (manage.md
+                                  #   "Owner questions")
 humanReviewSignal: undraft
 prAuthor: "@me"
 ---
