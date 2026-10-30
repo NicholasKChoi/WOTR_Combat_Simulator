@@ -53,3 +53,4 @@ Confirmed by the owner 2026-10-30.
 | M2.7 | If the design adds an API route, it is in `docs/api/openapi.json` and passes the contract check | code | | open |
 | M2.8 | Playwright acceptance tests: paste a build order, run it, and see all three graphs | code | | open |
 | M2.9 | CONTEXT.md Key surfaces and Design docs row, and INVARIANTS.md AoE4 Paths, updated from proposed to actual | code | | open |
+| M2.10 | Precursor: the repo's npm dependencies (next, react, react-dom, typescript, @types/*, bootstrap, vitest, @playwright/test, ajv, classnames) are upgraded to current stable majors, with build, typecheck, unit and acceptance suites green and the WOTR and StarCraft pages unchanged in behavior | code | | open |
