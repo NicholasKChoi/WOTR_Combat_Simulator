@@ -59,8 +59,9 @@ Definitions:
 - **rounds**: over all N battles (every outcome), the number of rounds each battle lasted.
   `mean` = total rounds / N, unrounded. `median`, `p10`, `p90` use the **nearest-rank** method: sort
   the N round counts ascending; the p-th percentile is the value at 1-based rank `ceil(p * N / 100)` for
-  p = 50, 10, 90. Compute the rank with integer `p` (`Math.ceil((p * N) / 100)`), not `0.1 * N`, to avoid
-  float error. This is the method `docs/combat-simulator.md` fixes (SGS-001), so all three are whole rounds
+  p = 50, 10, 90. Compute the rank with integer `p` (`Math.ceil((p * N) / 100)`) (rework 1: the float form
+  gives the same ranks for p = 10, 50, 90 and every N up to 100,000, so this is for clarity, not a bug fix; do
+  not claim otherwise in comments or test names). This is the method `docs/combat-simulator.md` fixes (SGS-001), so all three are whole rounds
   (`median` is the lower middle value for even N), and for N = 1 all three equal that battle's rounds.
 - **survivors**: for each side, the distribution of that side's surviving (regulars, elites) at the end of
   the battles it won, regulars and elites kept separate. Leaders are not part of the combination. One
@@ -234,7 +235,7 @@ Unit (`npm test`, deterministic; no `Math.random`):
       kind not in the list throws. A version with hard-coded `attacker` / `defender` / `tie` tallies fails.
 - [ ] (respec 1) Percentiles: round counts 1..10 (N = 10) give median 5, p10 1, p90 9, mean 5.5; N = 1
       gives all three equal to that value; N = 30 with round counts 1..30 gives p10 3, median 15, p90 27
-      (catches `0.1 * N` float error).
+      (rework 1: no claim that this distinguishes the float form).
 - [ ] (respec 1) Survivors: synthetic wins with known (regulars, elites) give one element per combination
       with the right counts, per-side counts summing to `outcomes.<side>.count`, frequencies summing to 1
       within 1e-9 for a side with wins, `[]` for a side with none, ties adding nothing, and the pinned sort order.
@@ -416,3 +417,16 @@ Re-spec 2, from owner design decisions recorded in CONTEXT.md ("WOTR extensibili
 - Outcome labels: `attacker` → "Attacker wins", `defender` → "Defender wins", `tie` → "Tie"; unknown kinds show the raw key.
 - Update SGS-002's API acceptance spec, which still asserts the single-battle response.
 - Use a stateless roller in the independence test.
+
+## Rework 1 - 2026-10-29 (review)
+
+Bounced by: review (`reports/SGS-005-review.md`), at tip 6525ab0. No earlier gate had passed the branch.
+
+### Findings
+- `lib/combat-simulator/simulate.ts:51`: the comment says `0.1 * 30` is 3.0000000000000004 with ceiling 4. False: in JS `0.1 * 30 === 3`, and the float form matches the integer form for p = 10, 50, 90 and every N from 1 to 100,000.
+- `lib/combat-simulator/simulate.test.ts:91`: the test "computes the rank with integer arithmetic for N = 30" cannot catch the float form (it passes with `Math.ceil((p / 100) * n)`).
+
+### Required fixes
+- [ ] Delete the false comment at `simulate.ts:51`, or replace it with a true one. Change no code.
+- [ ] Rename the test at `simulate.test.ts:91` to say what it checks (N = 30 gives p10 3, median 15, p90 27). Keep its assertions.
+- [ ] Change nothing else. Acceptance specs (section 6) stay with the acceptance gate.
