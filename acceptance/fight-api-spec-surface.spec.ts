@@ -23,8 +23,7 @@ test.describe('spec file shape', () => {
     expect(spec.openapi).toMatch(/^3\.1\./)
     expect(Object.keys(spec.paths)).toEqual(['/api/fight'])
     expect(spec.info.version).toBeTruthy()
-    expect(spec.info.description).toContain('/api/models/army')
-    expect(spec.info.description).toMatch(/not part of the API/i)
+    expect(spec.info.description).not.toContain('/api/models/army')
   })
 
   test('has exactly the pinned schema names', () => {
