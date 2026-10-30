@@ -74,9 +74,11 @@ snapshot of aoe4world data (github.com/aoe4world/data), committed as
 - `data/aoe4-build-order/rules/english.json`, the English overlay: `startingState`, `supply`, `effects`
   and `upgradeTargets`.
 
-Every hand-entered value is a `HandValue` that carries its own `source` and its own `unverified` label.
-Some values, such as some carry capacities, are observed in game and are not labeled unverified; the rules
-files are the record of which value is which.
+Every hand-entered value carries its own `source` and its own `unverified` label: as a `HandValue`, or,
+for an overlay effect row, as fields of the `OverlayEffect` itself. Supply, the starting state, the overlay
+effect rows, and the trip walk and drop-off defaults are labeled unverified. Not every value is: the sheep,
+deer and boar carry capacities are observed in game and are not labeled unverified. The rules files are
+the record of which value is which.
 
 **Gather rates.** Raw per-resource rates come from the *Age of Empires* fandom wiki (Resource and Villager
 pages): for example 0.75/s for sheep, farms, gold, stone and wood, and 0.69/s for berries since update
@@ -91,8 +93,10 @@ section, with no patch stated; it is unverified.
 **Task-switch walk.** The base walk of 5 seconds per task switch (`walkSeconds` in `rules/base.json`) is an
 unverified, unmeasured assumption: about 5-6 tiles at villager speed 1.12 tiles/s.
 
-**Cross-check.** Effective gather rates from SichYuriy/aoe4-production-calculator are used as a labeled
-cross-check in a test only. They are never a source of data.
+**Calibration and cross-check.** The trip walk and drop-off defaults in `rules/base.json` are tuned so
+that effective rates land near the net effective rates of SichYuriy/aoe4-production-calculator; those
+defaults are labeled unverified. The calculator's rates are otherwise a labeled cross-check in a test only,
+and never a source of raw gather rates.
 
 **Loading.** `loadGameData(civ)` is synchronous. It builds its `GameData` indexes (`byId`, `byBaseId` in
 ascending age, `supply`, `upgradeTargets`) once per civilization and returns the same deep-frozen instance
@@ -209,7 +213,7 @@ The English farm bonus near a mill is four rows, one per age, with the wiki valu
   speed, production speed);
 - combat-only technologies (Blacksmith, University: hitpoints, attack and similar), accepted for cost and
   queue time with the effect ignored; technologies whose effects aoe4world lists as `unknown` (such as
-  `forestry`) are rejected with a clear error;
+  `forestry-1`) are rejected with a clear error;
 - unit veterancy upgrades, researched at their building from data, after which produced units are the
   upgraded tier and the units-produced graph shows tiers apart;
 - houses, starting state and the population cap.
@@ -275,7 +279,7 @@ One example per action; each line stands alone:
 
 ```text
 # opening
-produce villager from town-center x3 -> sheep walk 4s
+produce villager from capital-town-center x3 -> sheep walk 4s
 @0:45 build house with 2 from wood then wood walk 6s
 at 9 vils build mill from sheep then berry
 research wheelbarrow at mill
@@ -283,7 +287,7 @@ move 3 sheep to berry walk 5s
 @6:00 build council-hall with 4 from wood then gold
 produce longbowman from archery-range#1 x5
 research veteran-longbowmen
-pause town-center#1
+pause capital-town-center#1
 ```
 
 Grammar details:
@@ -297,7 +301,7 @@ Grammar details:
   integer, and `s` with no space (`walk 6s`).
 - A `produce` walk without `-> node` (in JSON, `walkSeconds` without `rally`) is an `invalid` issue.
 - Walk values in paste text are integers; JSON may use decimals.
-- `xN` takes no space (`x5`), `#k` follows the producer with no space (`town-center#1`), and `->` is
+- `xN` takes no space (`x5`), `#k` follows the producer with no space (`capital-town-center#1`), and `->` is
   delimited by whitespace.
 - Ids (unit, producer, building, technology) and node names are lowercase kebab-case
   `[a-z0-9]+(-[a-z0-9]+)*` and case-sensitive. Uppercase or other characters are a `syntax` issue; input
@@ -305,11 +309,22 @@ Grammar details:
 - Keywords are lowercase. Numbers are unsigned decimal integers, with no sign and no decimals.
 
 **Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line? }`. A paste
-error carries the 1-based `line`; a step error carries `step`. The codes are `syntax` (paste text that
-does not match the grammar), `unknown-trigger-kind`, `unknown-id` (an id or node the data does not have),
-`unsupported-tech`, `unknown-tech-effect`, `out-of-range` (a bound in `SIM_INPUT_BOUNDS`) and `invalid`
-(a well-formed step that breaks a rule above). A message names the step or line and the offending id,
-kind or property. Any issue stops the request; nothing is simulated.
+error carries the 1-based `line`; a step error carries `step`. The codes are complete and the same for
+JSON and paste:
+
+| code | meaning |
+|---|---|
+| `syntax` | text cannot be parsed, or JSON structure is wrong: bad paste grammar, a step that is not an object, a missing or mistyped field, an unknown `action` value, a wrong-typed `trigger` |
+| `unknown-trigger-kind` | the trigger's `kind` is not `time`, `villagers` or `none` (in paste, an unknown line prefix is `syntax`) |
+| `unknown-id` | a well-formed id not in the civilization's data (unit, producer, building, technology, node, civilization) |
+| `unsupported-tech`, `unknown-tech-effect` | a technology rejected by `classifyTech` |
+| `out-of-range` | a number outside `SIM_INPUT_BOUNDS`, a non-integer, or a non-finite number |
+| `invalid` | well-formed, known ids, in range, but a cross-field rule fails: `walkSeconds` without `rally`, or a villager `produce` without `rally` |
+
+Shape or spelling is `syntax`; value size is `out-of-range`; a field combination is `invalid`. A villager
+`produce` (unit `baseId` `villager`) without `rally` is `invalid`, reported on that step (`step`, or `line`
+for paste). A message names the step or line and the offending id, kind or property. Any issue stops the
+request; nothing is simulated.
 
 ```mermaid
 flowchart LR
@@ -346,8 +361,10 @@ TypeScript names in `lib/aoe4-build-order/api.ts` and `model.ts`; this doc does 
 A `SimulationResult` holds:
 
 - `civ`, `durationSeconds` and `sampleSeconds` (5).
-- `times`: the sample times in seconds, every `sampleSeconds` up to the horizon. Every series below is
-  aligned with it.
+- `times`: the sample times in seconds, `0, s, 2s, ...` for `s` = `sampleSeconds`, up to and including
+  `durationSeconds`. When `durationSeconds` is not a multiple of `s`, the last sample is `durationSeconds`
+  itself, after the last multiple below it. Every series below has one value per sample. The t=0 sample
+  reflects the state after the zero-time steps at t=0 have started.
 - `unitsProduced`: one `UnitSeries` per unit entry and tier (`unitId`, `baseId`, `name`, `tier`, the
   entry's age), with cumulative `counts` of produced units. Starting units are not produced and never
   appear in it, so every series starts at 0.
