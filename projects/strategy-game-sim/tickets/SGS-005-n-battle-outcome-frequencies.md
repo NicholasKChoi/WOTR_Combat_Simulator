@@ -226,28 +226,28 @@ flowchart TD
 
 Unit (`npm test`, deterministic; no `Math.random`):
 
-- [ ] (respec 2) Accumulator: for synthetic battles with known outcomes, `outcomes` counts equal the
+- [x] (respec 2) Accumulator: for synthetic battles with known outcomes, `outcomes` counts equal the
       inputs, has exactly the keys of `OUTCOME_KINDS` in that order (a kind with no battles has count 0),
       counts over all kinds sum to N, and frequencies sum to 1 within 1e-9.
-- [ ] (respec 2) Outcome kind list: constructing the accumulator with an extended kind list (for example
+- [x] (respec 2) Outcome kind list: constructing the accumulator with an extended kind list (for example
       `[...OUTCOME_KINDS, 'extra']`) and recording battles of every kind yields an `outcomes` object with
       one `{count, frequency}` entry per listed kind, including `extra`, with correct counts; recording a
       kind not in the list throws. A version with hard-coded `attacker` / `defender` / `tie` tallies fails.
-- [ ] (respec 1) Percentiles: round counts 1..10 (N = 10) give median 5, p10 1, p90 9, mean 5.5; N = 1
+- [x] (respec 1) Percentiles: round counts 1..10 (N = 10) give median 5, p10 1, p90 9, mean 5.5; N = 1
       gives all three equal to that value; N = 30 with round counts 1..30 gives p10 3, median 15, p90 27
       (rework 1: no claim that this distinguishes the float form).
-- [ ] (respec 1) Survivors: synthetic wins with known (regulars, elites) give one element per combination
+- [x] (respec 1) Survivors: synthetic wins with known (regulars, elites) give one element per combination
       with the right counts, per-side counts summing to `outcomes.<side>.count`, frequencies summing to 1
       within 1e-9 for a side with wins, `[]` for a side with none, ties adding nothing, and the pinned sort order.
-- [ ] (respec 1) Hits per round: synthetic battles with known per-round hits give 6-element arrays whose
+- [x] (respec 1) Hits per round: synthetic battles with known per-round hits give 6-element arrays whose
       entries equal the expected pooled shares and sum to 1 within 1e-9 per side; a hit count of 6 throws.
-- [ ] (respec 1) Loop independence (W2): with a scripted roller, running the loop for N >= 2 produces the
+- [x] (respec 1) Loop independence (W2): with a scripted roller, running the loop for N >= 2 produces the
       same per-battle results as calling `Battle` once per battle on fresh `BaseArmy` instances from the
       input counts with the same script; a version that reuses the first battle's `BaseArmy` objects fails
       this test (its second battle would start depleted).
-- [ ] (respec 1) The loop with a scripted roller and N battles returns `battles` = N and
+- [x] (respec 1) The loop with a scripted roller and N battles returns `battles` = N and
       `outcomes` counts summing to N.
-- [ ] (respec 2) The loop classifies with `battleOutcome`: scripted rollers producing an attacker win, a
+- [x] (respec 2) The loop classifies with `battleOutcome`: scripted rollers producing an attacker win, a
       defender win and a tie each put the battle under the matching key. The simulate function accepts a
       `BattleOptions` argument (default `{}`) and passes it unchanged to every `Battle` call; checked by the
       reviewer reading the diff (the options type is empty, so no behavior depends on it yet).
@@ -299,14 +299,14 @@ General:
 
 - [ ] Existing harness specs that asserted the single-battle shape are updated to the new shape and pass;
       `npm run acceptance` and `npm test` pass.
-- [ ] `npx tsc --noEmit` and `npx next build` pass; the page is loaded under `npm run dev` and in the built
+- [x] `npx tsc --noEmit` and `npx next build` pass; the page is loaded under `npm run dev` and in the built
       app (`npx next start`).
-- [ ] `git diff` shows no change to dice, threshold, reroll or casualty semantics, `docs/`, or `golang/`.
+- [x] `git diff` shows no change to dice, threshold, reroll or casualty semantics, `docs/`, or `golang/`.
 - [ ] The PR description records the measured times for both time-budget matchups at N = 100,000 and for
       the default N, locally; the Vercel preview time is informational if available.
-- [ ] (respec 1) The response contains exactly the statistics in CONTEXT.md Decisions ("WOTR outcomes") and
+- [x] (respec 1) The response contains exactly the statistics in CONTEXT.md Decisions ("WOTR outcomes") and
       the doc's outcome-reporting section, under the section 1 names, each computed over all N battles.
-- [ ] No INVARIANTS.md regressions (W1 unchanged; W2 and S3 satisfied).
+- [x] No INVARIANTS.md regressions (W1 unchanged; W2 and S3 satisfied).
 
 ## Open questions
 
@@ -427,6 +427,6 @@ Bounced by: review (`reports/SGS-005-review.md`), at tip 6525ab0. No earlier gat
 - `lib/combat-simulator/simulate.test.ts:91`: the test "computes the rank with integer arithmetic for N = 30" cannot catch the float form (it passes with `Math.ceil((p / 100) * n)`).
 
 ### Required fixes
-- [ ] Delete the false comment at `simulate.ts:51`, or replace it with a true one. Change no code.
-- [ ] Rename the test at `simulate.test.ts:91` to say what it checks (N = 30 gives p10 3, median 15, p90 27). Keep its assertions.
-- [ ] Change nothing else. Acceptance specs (section 6) stay with the acceptance gate.
+- [x] Delete the false comment at `simulate.ts:51`, or replace it with a true one. Change no code.
+- [x] Rename the test at `simulate.test.ts:91` to say what it checks (N = 30 gives p10 3, median 15, p90 27). Keep its assertions.
+- [x] Change nothing else. Acceptance specs (section 6) stay with the acceptance gate.
