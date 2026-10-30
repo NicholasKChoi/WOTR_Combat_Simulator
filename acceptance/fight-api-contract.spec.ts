@@ -80,7 +80,7 @@ function integerRange(field: string): { min: number; max: number } {
 }
 
 test.beforeAll(async ({ request }) => {
-  await request.post('/api/fight', { data: BASELINE, timeout: WARM_UP_TIMEOUT_MS })
+  await postFight(request, BASELINE, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('spec structure', () => {
