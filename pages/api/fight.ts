@@ -1,17 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { BaseArmy } from '../../lib/combat-simulator/army';
-import { Battle } from '../../lib/combat-simulator/battle';
-
-class FormParseResult {
-  attackArmy: BaseArmy;
-  defendArmy: BaseArmy;
-
-  constructor(attack: BaseArmy, defend: BaseArmy) {
-    this.attackArmy = attack;
-    this.defendArmy = defend;
-  }
-}
-
+import { DEFAULT_BATTLES, MAX_BATTLES, simulateBattles } from '../../lib/combat-simulator/simulate';
 
 const MAX_FIGHTERS_PER_SIDE = 10;
 const MAX_LEADERS_PER_SIDE = 5;
@@ -31,7 +19,7 @@ const ARMY_FIELDS: [keyof ArmyCounts, string, number][] = [
 
 type FightForm = Record<typeof SIDES[number], ArmyCounts>;
 
-type ValidationResult = { form: FightForm } | { error: string };
+type ValidationResult = { form: FightForm; battles: number } | { error: string };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -62,6 +50,17 @@ function validateField(body: Record<string, unknown>, key: string, max: number):
   return count;
 }
 
+function validateBattles(body: Record<string, unknown>): number | string {
+  if (body.battles === undefined) {
+    return DEFAULT_BATTLES;
+  }
+  const battles = parseCount(body.battles);
+  if (battles === undefined || battles < 1 || battles > MAX_BATTLES) {
+    return `battles must be a whole number between 1 and ${MAX_BATTLES}`;
+  }
+  return battles;
+}
+
 function validateFightForm(body: unknown): ValidationResult {
   if (!isPlainObject(body)) {
     return { error: 'request body must be a JSON object' };
@@ -90,14 +89,12 @@ function validateFightForm(body: unknown): ValidationResult {
     }
   }
 
-  return { form };
-}
+  const battles = validateBattles(body);
+  if (typeof battles === 'string') {
+    return { error: battles };
+  }
 
-function parseFightForm(form: FightForm): FormParseResult {
-  let attackers = new BaseArmy(form.attack.regulars, form.attack.elites, form.attack.leaders);
-  let defenders = new BaseArmy(form.defend.regulars, form.defend.elites, form.defend.leaders);
-
-  return new FormParseResult(attackers, defenders);
+  return { form, battles };
 }
 
 
@@ -114,7 +111,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const formParse = parseFightForm(validation.form);
-  const results = Battle(formParse.attackArmy, formParse.defendArmy);
-  res.status(200).json(results.getStats());
+  const { form, battles } = validation;
+  res.status(200).json(simulateBattles(form.attack, form.defend, battles));
 }

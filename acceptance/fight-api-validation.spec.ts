@@ -13,7 +13,7 @@ async function expectNoBattle(response: APIResponse) {
   }
   if (body && typeof body === 'object') {
     expect(body).not.toHaveProperty('rounds')
-    expect(body).not.toHaveProperty('survivor')
+    expect(body).not.toHaveProperty('outcomes')
   }
 }
 
@@ -32,11 +32,13 @@ async function expectRejected(response: APIResponse, errorContains?: string) {
 async function expectBattle(response: APIResponse) {
   expect(response.status()).toBe(200)
   const body = await response.json()
-  for (const key of ['attack', 'defend', 'rounds', 'averageAttackHitsPerRound', 'averageDefendHitsPerRound', 'survivor']) {
+  for (const key of ['battles', 'outcomes', 'rounds', 'survivors', 'hitsPerRound']) {
     expect(body).toHaveProperty(key)
   }
-  expect(Number.isFinite(body.averageAttackHitsPerRound)).toBe(true)
-  expect(Number.isFinite(body.averageDefendHitsPerRound)).toBe(true)
+  for (const kind of ['attacker', 'defender', 'tie']) {
+    expect(Number.isFinite(body.outcomes[kind].frequency)).toBe(true)
+  }
+  expect(Number.isFinite(body.rounds.mean)).toBe(true)
 }
 
 function postRaw(request: APIRequestContext, body: string | Buffer, contentType: string) {
