@@ -227,39 +227,39 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `docs/api/openapi.json` parses with `jq .`, and `jq -r '.openapi'` prints a `3.1.` version.
-- [ ] `jq '.paths | keys'` prints exactly `["/api/fight"]`; `jq '.info.description'` states that
+- [x] `docs/api/openapi.json` parses with `jq .`, and `jq -r '.openapi'` prints a `3.1.` version.
+- [x] `jq '.paths | keys'` prints exactly `["/api/fight"]`; `jq '.info.description'` states that
       `/api/models/army` is not part of the API.
-- [ ] (respec 2) `jq '.components.schemas | keys'` includes exactly the nine names in Scope item 1 (plus the
+- [x] (respec 2) `jq '.components.schemas | keys'` includes exactly the nine names in Scope item 1 (plus the
       optional shared field schema, if used), and `jq '[.paths | .. | objects | select(.type? == "object")] | length'`
       prints `0` (no inline object schemas under `.paths`).
-- [ ] (respec 2) `FightRequest` has the seven properties, `required` lists the six army fields and not
+- [x] (respec 2) `FightRequest` has the seven properties, `required` lists the six army fields and not
       `battles`, `battles.default` is 1000, each field's integer branch has the Scope ranges and its string
       branch has pattern `^[0-9]+$`, and the description states the cross-field rules and validation order.
-- [ ] (respec 2) Every property has a `description`, and `FightOutcomes` is the only object schema without
+- [x] (respec 2) Every property has a `description`, and `FightOutcomes` is the only object schema without
       `additionalProperties: false`:
       `jq -c '[.components.schemas | to_entries[] | select(.value.type=="object" and .value.additionalProperties != false) | .key]'`
       prints `["FightOutcomes"]`, and `jq -c '.components.schemas.FightOutcomes.additionalProperties'` prints
       `{"$ref":"#/components/schemas/OutcomeTally"}`.
-- [ ] (respec 2) `jq -c '.components.schemas.FightOutcomes.required | sort'` prints
+- [x] (respec 2) `jq -c '.components.schemas.FightOutcomes.required | sort'` prints
       `["attacker","defender","tie"]`, and `FightOutcomes.description` says later versions may add outcome kinds
       and clients must tolerate unknown keys.
-- [ ] (respec 2) The contract check rejects a 200 example with any one of `attacker`, `defender`, `tie`
+- [x] (respec 2) The contract check rejects a 200 example with any one of `attacker`, `defender`, `tie`
       removed from `outcomes`, accepts one with an extra `{count, frequency}` outcome kind, and rejects one with
       an extra kind missing `frequency` (Scope item 5 case 1). Adding `additionalProperties: false` to
       `FightOutcomes`, or dropping `tie` from its `required`, makes `npm run acceptance` fail.
-- [ ] (respec 2) `FightRequest` gains no termination-rule property (`jq '.components.schemas.FightRequest.properties | keys | length'`
+- [x] (respec 2) `FightRequest` gains no termination-rule property (`jq '.components.schemas.FightRequest.properties | keys | length'`
       prints `7`).
-- [ ] (respec 2) The `FightResponse` tree has exactly SGS-005 section 1's keys at every level, and
+- [x] (respec 2) The `FightResponse` tree has exactly SGS-005 section 1's keys at every level, and
       `HitsPerRound` arrays have `minItems` and `maxItems` 6.
-- [ ] (respec 2) The 400 response `description` documents the plain-text `Invalid JSON` exception; the 405
+- [x] (respec 2) The 400 response `description` documents the plain-text `Invalid JSON` exception; the 405
       response declares `headers.Allow` with `const: "POST"`.
-- [ ] (respec 2) `npm run acceptance` runs `acceptance/fight-api-contract.spec.ts` covering Scope item 5 cases
+- [x] (respec 2) `npm run acceptance` runs `acceptance/fight-api-contract.spec.ts` covering Scope item 5 cases
       1-8 and exits 0. Ajv validators are obtained by `$ref` from one root document (`addSchema` of the whole
       spec), and a missing validator throws.
-- [ ] (respec 2) The contract spec sets a file timeout and a per-request timeout, and no request in it sends
+- [x] (respec 2) The contract spec sets a file timeout and a per-request timeout, and no request in it sends
       `battles` 100000 (`grep -n 100000 acceptance/fight-api-contract.spec.ts` shows none in a request body).
-- [ ] (respec 2) The examples are real output: posting the spec's request example returns 200 whose body
+- [x] (respec 2) The examples are real output: posting the spec's request example returns 200 whose body
       validates against `FightResponse` and has the same key sets as the 200 example (case 2); every example
       validates against its own schema (case 1).
 - [ ] (respec 2) Each of these makes the contract check fail, verified once locally and noted in the PR (no
@@ -267,7 +267,7 @@ Single-component change outside the core control loop; no diagram required.
       returning an extra top-level key; lowering `attack-ldrs` maximum in the spec to 4 (max + 1 = 5 is then
       accepted); raising it to 6 (max = 6 is then rejected); renaming a key in an exported type only (`tsc`
       fails); renaming the same key in the spec only (`npm run acceptance` fails).
-- [ ] (respec 2) `FightOutcomes` in `fight-api.ts` is derived from `OutcomeKind` imported (type-only) from
+- [x] (respec 2) `FightOutcomes` in `fight-api.ts` is derived from `OutcomeKind` imported (type-only) from
       `lib/combat-simulator/battle.ts`; `grep -n "'tie'\|\"tie\"" lib/combat-simulator/fight-api.ts` finds
       nothing. The contract check asserts `OUTCOME_KINDS` equals `FightOutcomes.required` and the real 200
       body's `outcomes` keys as sets (case 8).
@@ -275,15 +275,15 @@ Single-component change outside the core control loop; no diagram required.
       `FightResponse` and `FightError` from it and declares no local response type; if `simulate.ts` had its own
       result type, it now uses `FightResponse`. Changing a field name in `FightResponse` makes `npx tsc --noEmit`
       fail in `fight.ts` or `simulate.ts` (verify once, note in the PR).
-- [ ] No new file under `pages/api/`; `npx next build` succeeds and its route list shows no new API route;
+- [x] No new file under `pages/api/`; `npx next build` succeeds and its route list shows no new API route;
       `docs/api/openapi.json` is not served (GET `/docs/api/openapi.json` is 404).
-- [ ] (respec 2) Wire behavior unchanged: `git diff` of `pages/api/fight.ts` and `simulate.ts` contains only
+- [x] (respec 2) Wire behavior unchanged: `git diff` of `pages/api/fight.ts` and `simulate.ts` contains only
       imports and type annotations, and the SGS-003 and SGS-005 acceptance specs pass without edits.
-- [ ] `ajv` is the only new dependency, a devDependency, with `package-lock.json` updated.
-- [ ] `npx tsc --noEmit` passes.
-- [ ] Neither the spec, the doc link line, nor any changed code or comment references ticket ids, invariant
+- [x] `ajv` is the only new dependency, a devDependency, with `package-lock.json` updated.
+- [x] `npx tsc --noEmit` passes.
+- [x] Neither the spec, the doc link line, nor any changed code or comment references ticket ids, invariant
       numbers, or factory files.
-- [ ] No INVARIANTS.md regressions (adjacent: S3 caps are documented as enforced, W1 the spec does not restate
+- [x] No INVARIANTS.md regressions (adjacent: S3 caps are documented as enforced, W1 the spec does not restate
       or contradict the design doc's rules, W2 untouched).
 
 ## Open questions
