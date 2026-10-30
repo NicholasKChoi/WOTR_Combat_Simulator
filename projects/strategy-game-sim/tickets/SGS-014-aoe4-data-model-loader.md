@@ -148,14 +148,24 @@ or Next imports.
 (respec 1) Exports `loadGameData(civ: CivId): GameData` and the design's types `GameData`, `SnapshotEntry`, `SnapshotEffect`,
 `SnapshotSource`, `BaseRules`, `GatherNodeRules`, `CivData`, with exactly the design's fields (`GameData`: `civ, source, byId,
 byBaseId, base, civData, supply, upgradeTargets`). The JSON is read with static `import` (resolved by the bundler, so no `fs`
-path to trace on Vercel; `resolveJsonModule` is already on), cast through those types.
+path to trace on Vercel; `resolveJsonModule` is already on), cast through those types. (respec 3) JSON imports infer
+`type: string` and similar wide types, so a cast through `unknown` (`as unknown as SnapshotEntry[]`) is allowed at the import
+site only.
 
 - `byId` holds unit, building, technology and upgrade entries by `id` (`wheelbarrow-1`); `byBaseId` the same entries by
   `baseId`, ascending `age`; `supply` and `upgradeTargets` are `Map`s built from `civData`. A user-supplied id such as
   `constructor` or `__proto__` finds nothing.
-- `loadGameData` is synchronous, builds the indexes once per civ at first call, returns the same deep-frozen instance every
-  time (the engine must not be able to mutate shared data between requests; A3), and throws `Error` for a civ with no data or
-  for a duplicate `id` across the four arrays.
+- (respec 3) In the exported `GameData` type the four `Map` fields (`byId`, `byBaseId`, `supply`, `upgradeTargets`) are typed
+  `ReadonlyMap` (and `byBaseId` values `readonly SnapshotEntry[]`), so `set`/`delete`/`clear` are compile errors. This is a
+  deliberate narrowing of the design's `Map` (manager decision 2026-10-30).
+- `loadGameData` is synchronous, builds the indexes once per civ at first call, returns the same instance every time, and
+  throws `Error` for a civ with no data or for a duplicate `id` across the four arrays.
+- (respec 3) Freezing: every plain object and array reachable from the returned `GameData` (snapshot entries, `source`, `base`,
+  `civData`, the `byBaseId` arrays) is deep-frozen with `Object.freeze`; the `Map`s themselves are not frozen or wrapped at
+  runtime, and `Map` mutation is guarded only by the `ReadonlyMap` type. Rationale (A3: same build order and data give the same
+  timings): the engine shares one instance across requests, so a write into shared data would make a later run's timings depend
+  on an earlier one; the freeze makes such a write throw at runtime, and the `ReadonlyMap` type rejects `Map` writes at
+  compile time.
 - (respec 2) It also throws `Error` when a `civData.startingState.units` key does not resolve in `byBaseId` to an entry with `type: 'unit'`
   (design "Starting units": the loader fails on an unknown id); the message names the key.
 - No validation of rules content beyond that; the other reference checks live in the tests below.
@@ -165,6 +175,9 @@ path to trace on Vercel; `resolveJsonModule` is already on), cast through those 
 Exports `SUPPORTED_EFFECT_PROPERTIES`, `IGNORED_EFFECT_PROPERTIES` (both `ReadonlySet<string>`) and
 `classifyTech(entry, data): TechSupport` as in the design "Engine rules" `classifyTech` bullet. The interpreter (`modifiedValue`)
 is added to this file by a later ticket; this ticket adds classification only.
+
+- (respec 3) `classifyTech` accepts only entries with `type: 'technology'` or `'upgrade'`; for any other `type` (`unit`,
+  `building`) it throws `Error` naming the entry's `id`. The parameter stays `SnapshotEntry`, so the check is at runtime.
 
 - `SUPPORTED_EFFECT_PROPERTIES` = `foodGatherRate, woodGatherRate, goldGatherRate, stoneGatherRate, farmGatherRate,
   berryGatherRate, huntGatherRate, carryCapacity, huntCarryCapacity, moveSpeed, productionSpeed` (design).
@@ -190,6 +203,9 @@ is added to this file by a later ticket; this ticket adds classification only.
   `supported` (`crosscut-saw, cupellation, double-broadax, drift-nets, extended-lines, fertilization, greased-axles,
   horticulture, lumber-preservation, precision-cross-breeding, shaft-mining, specialized-pick, survival-techniques,
   wheelbarrow`).
+- (respec 3) Note for the later interpreter ticket, not this one: `professional-scouts-2` is `effects-ignored` here, but its
+  supported `huntCarryCapacity` effect has `select: { id: ['scout'] }`, not `villager`; the interpreter must honor `select.id`
+  so it does not raise villager hunt capacity.
 
 ### Known data gaps (written into the README, not modeled)
 
@@ -205,8 +221,10 @@ is added to this file by a later ticket; this ticket adds classification only.
 - Snapshot: `source` has all six fields non-empty, `commit` matches `/^[0-9a-f]{40}$/`, `patchSource` starts with `http`; every
   entry in the four arrays has `civs` containing `en`; every `id` is unique.
 - (respec 1) Hand values: walk both rules files recursively; every object with a `value` key also has a non-empty string
-  `source` and a boolean `unverified`; the walk finds at least the count of values this ticket writes (so a loader or file that
-  drops values fails); `unverified` is `false` for exactly the sheep, deer and boar `capacity` values and `true` for every other.
+  `source` and a boolean `unverified`; (respec 3) the walk finds at least 71 such objects: 44 in `base.json` (8 gather nodes x 5
+  = 40 [`rate`, `capacity`, three `trip` fields], `builderScaling` 2, `maxPopCap` 1, `walkSeconds` 1) and 27 in `english.json`
+  (`startingState` 5, `supply` 4, `effects` 7 [each `OverlayEffect` has `value`, `source`, `unverified`], `upgradeTargets` 11),
+  so a loader or file that drops values fails; `unverified` is `false` for exactly the sheep, deer and boar `capacity` values and `true` for every other.
 - (respec 1) References: every `dropOffs` baseId, `supply` key, `startingState.buildings` entry, `condition.nearBuilding`,
   `condition.producer` and building/tech `grantedBy` resolves in `byBaseId`; every `upgradeTargets` key resolves to an upgrade
   entry and its value to a unit with an entry whose `age` equals the upgrade's; (respec 2) every `startingState.units` key
@@ -216,14 +234,18 @@ is added to this file by a later ticket; this ticket adds classification only.
   `{unknown, buildTime}`, so a refreshed snapshot with a new property fails until it is classified.
 - (respec 1) `classifyTech`: `wheelbarrow-1` supported; `forestry-1` rejected `unknown-tech-effect`; `enclosures-4` rejected
   `unsupported-tech` naming `goldGatherRate`; `military-academy-3` rejected `unsupported-tech` naming `buildTime`;
-  `fitted-leatherwork-2` (Blacksmith) `effects-ignored` naming `meleeArmor` and `rangedArmor` as present in its effects;
+  (respec 3) `fitted-leatherwork-2` (Blacksmith; one `meleeArmor` effect at `e89f01e`) `effects-ignored` with `properties`
+  exactly `['meleeArmor']`; `armor-clad-3` (Barracks; effects `rangedArmor` then `meleeArmor`) `effects-ignored` with
+  `properties` exactly `['rangedArmor','meleeArmor']`;
   `professional-scouts-2` `effects-ignored` with `['rangedAttack']` only (mixed supported + ignored); `shaft-mining-3`
   supported; the same entry against a fixture `GameData` without the `shaft-mining` overlay rows `effects-unmodeled`;
   `admiralty-2` `effects-unmodeled`; an upgrade in `upgradeTargets` supported; the same upgrade with its `upgradeTargets` row
   removed (fixture `GameData`) rejected with property `upgradeTargets`; a fixture tech with a supported property typed
-  `influence` rejected `unsupported-tech`.
-- Loader: `byBaseId.get('man-at-arms')` ages ascend; two calls return the same instance; assigning to a nested field of the
-  returned object throws `TypeError`; `loadGameData('x' as CivId)` throws; `byId.get('constructor')` is `undefined`. Duplicate-id
+  `influence` rejected `unsupported-tech`; (respec 3) `villager-1` (a unit) and `house-1` (a building) each throw an `Error`.
+- Loader: `byBaseId.get('man-at-arms')` ages ascend; two calls return the same instance; (respec 3) assigning to a nested
+  plain-object field (for example `civData.startingState.age.value`) and pushing onto a `byBaseId` array each throw `TypeError`;
+  a line `// @ts-expect-error` above `data.byId.set('x', entry)` (inside a function the test never calls) keeps
+  `npx tsc --noEmit` passing only while the field is typed `ReadonlyMap`; `loadGameData('x' as CivId)` throws; `byId.get('constructor')` is `undefined`. Duplicate-id
   rejection is tested through whatever seam the implementer gives the index builder (an exported or injected entry list).
   (respec 2) Through the same seam, a `CivData` whose `startingState.units` is `{ scoutx: 1 }` throws an `Error` naming `scoutx`,
   and one keyed by a building baseId (`house`) throws.
@@ -265,18 +287,22 @@ Single-component change outside the core control loop; no diagram required.
       BaseRules, GatherNodeRules, CivData` with the design's field names.
 - [ ] (respec 1) `classifyTech` over the 69 English technologies at `e89f01e` returns exactly the counts and lists in Scope 6:
       7 `rejected/unknown-tech-effect`, 3 `rejected/unsupported-tech`, 4 `effects-unmodeled`, 41 `effects-ignored`, 14
-      `supported` (including `shaft-mining` and `wheelbarrow`); a Blacksmith tech is `effects-ignored` naming its properties.
+      `supported` (including `shaft-mining` and `wheelbarrow`); (respec 3) `fitted-leatherwork-2` gives `['meleeArmor']` and
+      `armor-clad-3` gives `['rangedArmor','meleeArmor']`; a unit or building entry throws `Error`.
 - [ ] `loadGameData('english')` returns indexes that resolve `wheelbarrow-1` by id and `villager` by baseId, the same instance
-      on every call, deep-frozen (a write throws `TypeError`); an unknown civ throws; a duplicate id throws; (respec 2) a
+      on every call; (respec 3) its plain objects and arrays are deep-frozen (a nested write throws `TypeError`) and its four
+      `Map` fields are typed `ReadonlyMap` but not frozen at runtime; an unknown civ throws; a duplicate id throws; (respec 2) a
       `startingState.units` key that is unknown (`scoutx`) or not a unit (`house`) throws an `Error` naming it.
 - [ ] A1: `git grep -nE "\b(0\.75|0\.69|0\.825|0\.9|1\.15)\b" -- lib/aoe4-build-order ':!*.test.ts'` prints nothing (no gather
       rate or modifier constant in code); `git grep -nE "(from|import\()\s*['\"].*(components|pages)/apps/" -- lib/aoe4-build-order`
       prints nothing (S1).
 - [ ] (respec 1) Tests exist for each bullet under "Tests" and fail for a real reason: removing `moveSpeed` from
       `SUPPORTED_EFFECT_PROPERTIES` fails the `wheelbarrow-1` test and the drift guard; deleting one `source` string from either
-      rules file fails the hand-value walk; deleting an `upgradeTargets` row fails the reference test; deleting the two Shaft
+      rules file fails the hand-value walk; (respec 3) deleting one `supply` row fails the hand-value walk's count of 71; deleting an `upgradeTargets` row fails the reference test; deleting the two Shaft
       Mining overlay rows fails the `shaft-mining-3` supported test and the classification-count test; flipping the sheep
-      capacity to `unverified: true` fails the hand-value walk; removing the deep freeze fails the `TypeError` test; (respec 2)
+      capacity to `unverified: true` fails the hand-value walk; removing the deep freeze fails the `TypeError` test; (respec 3)
+      retyping `GameData.byId` as `Map` fails `npx tsc --noEmit` (unused `@ts-expect-error`); removing the type check from
+      `classifyTech` fails the unit/building test; (respec 2)
       removing the `startingState.units` check from `loadGameData` fails the `scoutx` loader test.
 - [ ] `npx tsc --noEmit`, `npm test` and `npx next build` pass; the build output lists no new route (nothing imports the new
       modules yet).
@@ -300,4 +326,14 @@ None.
 - Underspecified: `CivData.startingState` had no field for the starting scout, so its 1 population was dropped.
 - Changed: design adds `startingState.units`; Scope writes `{ scout: 1 }` (baseId `scout` verified at `e89f01e`), the loader
   throws on a key that is not a unit, tests and criteria cover both; README gap now covers sheep only; open question removed.
+- Branch work: none (no branch yet).
+
+## Re-spec 2026-10-30 (3)
+
+- Underspecified: the `fitted-leatherwork-2` test expected a `rangedArmor` it does not have; the hand-value walk had no count;
+  "deep-frozen" did not say what happens to the `Map`s; `classifyTech` on a unit or building was undefined.
+- Changed: `fitted-leatherwork-2` -> `['meleeArmor']`, `armor-clad-3` added for `['rangedArmor','meleeArmor']` (both checked at
+  `e89f01e`); walk guard "at least 71" (44 + 27); plain objects and arrays deep-frozen, `GameData` Maps typed `ReadonlyMap` and
+  not frozen at runtime (manager decision), A3 rationale reworded; `classifyTech` throws on unit/building; `as unknown as`
+  allowed for JSON imports; `professional-scouts-2` `select.id` note for the interpreter ticket.
 - Branch work: none (no branch yet).
