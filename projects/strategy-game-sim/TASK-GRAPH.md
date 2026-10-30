@@ -19,4 +19,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-009 | Update combat doc for SGS-003 input validation | M1 | | wotr-combat-simulator | low | SGS-003 | | sgs-009-combat-doc-input-bounds-current | 97cae74 | integrated | 0 | 18 | tickets/SGS-009-combat-doc-input-bounds-current.md |
 | SGS-011 | Remove stray /api/models/army route | M1 | | wotr-combat-simulator | high | | | sgs-011-api-models-army-resolver-error | 9336369 | integrated | 0 | 23 | tickets/SGS-011-api-models-army-resolver-error.md |
 | SGS-010 | Fix malformed-JSON acceptance test path | M1 | | wotr-combat-simulator | low | | | sgs-010-malformed-json-test-wrong-path | 8bdd45d | integrated | 0 | 22 | tickets/SGS-010-malformed-json-test-wrong-path.md |
-| SGS-012 | Upgrade npm dependencies to current stable | M2 | M2.10 | repo | high | | | | | draft | | | tickets/SGS-012-upgrade-dependencies.md |
+| SGS-012 | Upgrade npm dependencies to current stable | M2 | M2.10 | site | high | | | sgs-012-upgrade-dependencies | | in_progress | | | tickets/SGS-012-upgrade-dependencies.md |
