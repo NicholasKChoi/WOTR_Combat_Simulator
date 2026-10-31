@@ -16,11 +16,11 @@ stackMarker: cf-stack
 reworkCap: 3
 respecThreshold: 2
 
-strongModelTriggers:
-  - touches an invariant in INVARIANTS.md
-  - changes a core control loop or state machine
-  - changes a public schema, API, or cross-component contract
-  - concurrency or ordering
+strongModelTriggers:                # docs, data snapshots, dependency/config upgrades, dead-code deletion, UI styling, test-only: not triggers alone
+  - changes combat or simulation rules, dice, casualties, RNG, or battle/series loop behavior (what a run computes)
+  - changes shared or mutable state, or the order of operations a result depends on (W2, A3)
+  - changes a public schema, API request/response, or cross-component contract (/api/fight, shared types)
+  - changes a bound or cap that enforces S3, H1, or A2
   - estimated over 150 lines of business logic
 ---
 
