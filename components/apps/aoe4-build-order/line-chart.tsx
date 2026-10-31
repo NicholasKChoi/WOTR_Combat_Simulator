@@ -2,9 +2,6 @@ import { useState } from 'react'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { type ChartSeries, formatMinSec, seriesColor, toChartRows, toggleHidden } from './chart-rows'
 
-export type { ChartSeries }
-export { toChartRows }
-
 interface SeriesChartProps {
     testId: string
     title: string
