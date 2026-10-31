@@ -23,7 +23,7 @@ reviewBot:
   cli: ""
   required: false
   rulesFile: ""
-  botLogin: "vercel"              # only commenter on PRs #2-#10 (preview-deploy comment, not a reviewer)
+  botLogin: "vercel[bot]"         # only commenter on PRs (preview-deploy comment, not a reviewer)
 
 styleSources:                     # no AGENTS.md/CLAUDE.md/CONTRIBUTING.md exist
   - ARCHITECTURE.md

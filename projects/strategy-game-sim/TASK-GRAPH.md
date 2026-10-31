@@ -24,3 +24,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-014 | Add the English aoe4world snapshot, rules files, model types and data loader | M2 | M2.2 | aoe4-build-order | high | SGS-012 | | sgs-014-aoe4-data-model-loader | cac82e8 | needs_review | 1 | | tickets/SGS-014-aoe4-data-model-loader.md |
 | SGS-015 | Add the Recharts series chart component | M2 | M2.6 | aoe4-build-order | standard | SGS-012 | | sgs-015-aoe4-series-chart | 0b6419f | tested | 1 | | tickets/SGS-015-aoe4-series-chart.md |
 | SGS-023 | Update ARCHITECTURE.md stack versions after the dependency upgrade | M2 | M2.10 | site | low | SGS-012 | | sgs-023-architecture-stack-versions | ce3636e | integrated | | 25 | tickets/SGS-023-architecture-stack-versions.md |
+| SGS-024 | Name package and pin lockfile name | M2 | | | low | | | | | draft | | | tickets/SGS-024-package-name-lockfile.md |
