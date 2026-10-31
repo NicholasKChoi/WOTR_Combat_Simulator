@@ -261,42 +261,42 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `data/aoe4-build-order/aoe4world/english.json` exists with top-level keys exactly `source, units, buildings, technologies,
+- [x] `data/aoe4-build-order/aoe4world/english.json` exists with top-level keys exactly `source, units, buildings, technologies,
       upgrades`. `jq '[.units,.buildings,.technologies,.upgrades|length]' -c` prints `[43,30,69,11]` when the pinned commit is
       `e89f01e` (otherwise the counts of the upstream files filtered below, at the recorded commit).
-- [ ] For each of the four kinds, `curl -s https://raw.githubusercontent.com/aoe4world/data/<source.commit>/<kind>/all.json |
+- [x] For each of the four kinds, `curl -s https://raw.githubusercontent.com/aoe4world/data/<source.commit>/<kind>/all.json |
       jq -S '[.data[]|select(.civs|index("en"))]' | diff - <(jq -S .<kind> english.json)` prints nothing (entries are verbatim and
       complete), and `jq '[.units[],.buildings[],.technologies[],.upgrades[]]|map(select(.civs|index("en")|not))|length'` prints `0`.
-- [ ] `source` carries `repo, commit, committedAt, fetchedAt, patch, patchSource`; `patch` names the game patch live on
+- [x] `source` carries `repo, commit, committedAt, fetchedAt, patch, patchSource`; `patch` names the game patch live on
       `committedAt` and `patchSource` is the URL that states it (A1).
-- [ ] (respec 1) `rules/base.json` has exactly the keys `gatherNodes, builderScaling, maxPopCap, walkSeconds` (`walkSeconds.value`
+- [x] (respec 1) `rules/base.json` has exactly the keys `gatherNodes, builderScaling, maxPopCap, walkSeconds` (`walkSeconds.value`
       5, `maxPopCap.value` 200), and `gatherNodes` has exactly the eight `GatherNodeId` keys with the rates, capacities, property
       mappings, drop-offs and trip seeds in Scope 3 (boar 5.67 s).
-- [ ] (respec 1) `rules/english.json` has exactly `startingState, supply, effects, upgradeTargets`: `startingState` age 1,
+- [x] (respec 1) `rules/english.json` has exactly `startingState, supply, effects, upgradeTargets`: `startingState` age 1,
       resources `{food 200, wood 200, gold 100, stone 0}`, villagers 6 on `sheep` and 0 elsewhere, (respec 2) units
       `{ scout: 1 }`, buildings `['capital-town-center']`; `supply` keys exactly `capital-town-center, town-center, house, kings-palace`, each 10; `effects`
       exactly the seven rows in Scope 3 (four farm, one King's Palace, two Shaft Mining); the 11 `upgradeTargets` rows listed.
-- [ ] (respec 1) Every rules value is a `HandValue` or an `OverlayEffect` with a non-empty `source`; `unverified` is `false` only
+- [x] (respec 1) Every rules value is a `HandValue` or an `OverlayEffect` with a non-empty `source`; `unverified` is `false` only
       for the sheep, deer and boar `capacity` values, whose `source` is "owner, in-game observation 2026-10-30".
-- [ ] (respec 1) `lib/aoe4-build-order/model.ts` exports every type named in Scope 4:
+- [x] (respec 1) `lib/aoe4-build-order/model.ts` exports every type named in Scope 4:
       `git grep -hoE "^export (type|interface) [A-Za-z]+" -- lib/aoe4-build-order/model.ts | awk '{print $3}' | sort` prints the
       16 names `BuildOrder, BuildOrderIssue, BuildOrderNote, BuildStep, CivId, GatherNodeId, HandValue, OverlayEffect,
       ResourceKind, SimInputs, SimulationResult, StepTiming, TechSupport, Trigger, TripInputs, UnitSeries`; `TechSupport` has the
       `effects-unmodeled` member and `SimInputs` has `walkSeconds`.
-- [ ] (respec 1) `lib/aoe4-build-order/data.ts` exports `loadGameData, GameData, SnapshotEntry, SnapshotEffect, SnapshotSource,
+- [x] (respec 1) `lib/aoe4-build-order/data.ts` exports `loadGameData, GameData, SnapshotEntry, SnapshotEffect, SnapshotSource,
       BaseRules, GatherNodeRules, CivData` with the design's field names.
-- [ ] (respec 1) `classifyTech` over the 69 English technologies at `e89f01e` returns exactly the counts and lists in Scope 6:
+- [x] (respec 1) `classifyTech` over the 69 English technologies at `e89f01e` returns exactly the counts and lists in Scope 6:
       7 `rejected/unknown-tech-effect`, 3 `rejected/unsupported-tech`, 4 `effects-unmodeled`, 41 `effects-ignored`, 14
       `supported` (including `shaft-mining` and `wheelbarrow`); (respec 3) `fitted-leatherwork-2` gives `['meleeArmor']` and
       `armor-clad-3` gives `['rangedArmor','meleeArmor']`; a unit or building entry throws `Error`.
-- [ ] `loadGameData('english')` returns indexes that resolve `wheelbarrow-1` by id and `villager` by baseId, the same instance
+- [x] `loadGameData('english')` returns indexes that resolve `wheelbarrow-1` by id and `villager` by baseId, the same instance
       on every call; (respec 3) its plain objects and arrays are deep-frozen (a nested write throws `TypeError`) and its four
       `Map` fields are typed `ReadonlyMap` but not frozen at runtime; an unknown civ throws; a duplicate id throws; (respec 2) a
       `startingState.units` key that is unknown (`scoutx`) or not a unit (`house`) throws an `Error` naming it.
-- [ ] A1: `git grep -nE "\b(0\.75|0\.69|0\.825|0\.9|1\.15)\b" -- lib/aoe4-build-order ':!*.test.ts'` prints nothing (no gather
+- [x] A1: `git grep -nE "\b(0\.75|0\.69|0\.825|0\.9|1\.15)\b" -- lib/aoe4-build-order ':!*.test.ts'` prints nothing (no gather
       rate or modifier constant in code); `git grep -nE "(from|import\()\s*['\"].*(components|pages)/apps/" -- lib/aoe4-build-order`
       prints nothing (S1).
-- [ ] (respec 1) Tests exist for each bullet under "Tests" and fail for a real reason: removing `moveSpeed` from
+- [x] (respec 1) Tests exist for each bullet under "Tests" and fail for a real reason: removing `moveSpeed` from
       `SUPPORTED_EFFECT_PROPERTIES` fails the `wheelbarrow-1` test and the drift guard; deleting one `source` string from either
       rules file fails the hand-value walk; (respec 3) deleting one `supply` row fails the hand-value walk's count of 71; deleting an `upgradeTargets` row fails the reference test; deleting the two Shaft
       Mining overlay rows fails the `shaft-mining-3` supported test and the classification-count test; flipping the sheep
@@ -304,9 +304,9 @@ Single-component change outside the core control loop; no diagram required.
       retyping `GameData.byId` as `Map` fails `npx tsc --noEmit` (unused `@ts-expect-error`); removing the type check from
       `classifyTech` fails the unit/building test; (respec 2)
       removing the `startingState.units` check from `loadGameData` fails the `scoutx` loader test.
-- [ ] `npx tsc --noEmit`, `npm test` and `npx next build` pass; the build output lists no new route (nothing imports the new
+- [x] `npx tsc --noEmit`, `npm test` and `npx next build` pass; the build output lists no new route (nothing imports the new
       modules yet).
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

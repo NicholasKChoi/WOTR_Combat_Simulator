@@ -20,8 +20,8 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-011 | Remove stray /api/models/army route | M1 | | wotr-combat-simulator | high | | | sgs-011-api-models-army-resolver-error | 9336369 | integrated | 0 | 23 | tickets/SGS-011-api-models-army-resolver-error.md |
 | SGS-010 | Fix malformed-JSON acceptance test path | M1 | | wotr-combat-simulator | low | | | sgs-010-malformed-json-test-wrong-path | 8bdd45d | integrated | 0 | 22 | tickets/SGS-010-malformed-json-test-wrong-path.md |
 | SGS-012 | Upgrade npm dependencies to current stable | M2 | M2.10 | site | high | | | sgs-012-upgrade-dependencies | da77a09 | integrated | 1 | 24 | tickets/SGS-012-upgrade-dependencies.md |
-| SGS-013 | Write the AoE4 build order design doc | M2 | M2.1 | aoe4-build-order | high | SGS-012 | | sgs-013-aoe4-design-doc | 07ebae7 | needs_review | 1 | | tickets/SGS-013-aoe4-design-doc.md |
-| SGS-014 | Add the English aoe4world snapshot, rules files, model types and data loader | M2 | M2.2 | aoe4-build-order | high | SGS-012 | | sgs-014-aoe4-data-model-loader | cac82e8 | needs_review | 1 | | tickets/SGS-014-aoe4-data-model-loader.md |
-| SGS-015 | Add the Recharts series chart component | M2 | M2.6 | aoe4-build-order | standard | SGS-012 | | sgs-015-aoe4-series-chart | 0b6419f | tested | 1 | | tickets/SGS-015-aoe4-series-chart.md |
+| SGS-013 | Write the AoE4 build order design doc | M2 | M2.1 | aoe4-build-order | high | SGS-012 | | sgs-013-aoe4-design-doc | 555bb41 | integrated | 1 | 27 | tickets/SGS-013-aoe4-design-doc.md |
+| SGS-014 | Add the English aoe4world snapshot, rules files, model types and data loader | M2 | M2.2 | aoe4-build-order | high | SGS-012 | | sgs-014-aoe4-data-model-loader | 81dc459 | integrated | 1 | 28 | tickets/SGS-014-aoe4-data-model-loader.md |
+| SGS-015 | Add the Recharts series chart component | M2 | M2.6 | aoe4-build-order | standard | SGS-012 | | sgs-015-aoe4-series-chart | 7524915 | integrated | 1 | 29 | tickets/SGS-015-aoe4-series-chart.md |
 | SGS-023 | Update ARCHITECTURE.md stack versions after the dependency upgrade | M2 | M2.10 | site | low | SGS-012 | | sgs-023-architecture-stack-versions | ce3636e | integrated | | 25 | tickets/SGS-023-architecture-stack-versions.md |
-| SGS-024 | Name package and pin lockfile name | M2 | | | low | | | | | draft | | | tickets/SGS-024-package-name-lockfile.md |
+| SGS-024 | Name package and pin lockfile name | M2 | | site | low | | | sgs-024-package-name-lockfile | 53ff223 | integrated | | 26 | tickets/SGS-024-package-name-lockfile.md |

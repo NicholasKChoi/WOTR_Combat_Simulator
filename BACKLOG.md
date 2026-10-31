@@ -9,3 +9,7 @@ pull from here; triage moves an item into a milestone or deletes it.
   this would be the first workflow. Depends on M2's data snapshot existing. (owner, 2026-10-29)
 - **AoE4 base gather rates are provisional.** Replace the unverified values copied from
   SichYuriy/aoe4-production-calculator with measured or citable ones, labeled with a patch. (owner, 2026-10-29)
+- **AoE4 default villager production has no rally target.** design/M2.md does not say where villagers from the
+  default continuous production go: with no step there is no `rally`, and a villager `produce` without `rally`
+  is `invalid` (docs/aoe4-build-order.md l.19-20 on main). The designer should decide it
+  before the engine ticket. (SGS-013 review 2)

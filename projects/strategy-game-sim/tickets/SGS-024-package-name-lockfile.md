@@ -38,12 +38,12 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `package.json` has `"name": "wotr_combat_simulator"` and `"private": true`.
-- [ ] `node -p "const l=require('./package-lock.json');[l.name,l.packages[''].name].join()"` prints `wotr_combat_simulator,wotr_combat_simulator`.
-- [ ] `git diff origin/main -- package-lock.json` changes only name lines (two added/changed lines; no version, resolved or integrity lines).
-- [ ] Running `npm install --package-lock-only` (or `npm install`) from a worktree whose folder is named differently leaves `package-lock.json` byte-identical.
-- [ ] `npx next build`, `npx tsc --noEmit` and `npm test` pass.
-- [ ] No INVARIANTS.md regressions
+- [x] `package.json` has `"name": "wotr_combat_simulator"` and `"private": true`.
+- [x] `node -p "const l=require('./package-lock.json');[l.name,l.packages[''].name].join()"` prints `wotr_combat_simulator,wotr_combat_simulator`.
+- [x] `git diff origin/main -- package-lock.json` changes only name lines (two added/changed lines; no version, resolved or integrity lines).
+- [x] Running `npm install --package-lock-only` (or `npm install`) from a worktree whose folder is named differently leaves `package-lock.json` byte-identical.
+- [x] `npx next build`, `npx tsc --noEmit` and `npm test` pass.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
