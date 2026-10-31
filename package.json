@@ -1,4 +1,6 @@
 {
+    "name": "wotr_combat_simulator",
+    "private": true,
     "scripts": {
         "dev": "next dev",
         "test": "vitest run",
