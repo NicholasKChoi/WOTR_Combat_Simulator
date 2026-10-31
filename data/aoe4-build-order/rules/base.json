@@ -1,0 +1,342 @@
+{
+  "gatherNodes": {
+    "sheep": {
+      "resource": "food",
+      "rate": {
+        "value": 0.75,
+        "source": "fandom \"Resource (Age of Empires IV)\", Resource gather rates table, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "capacity": {
+        "value": 10,
+        "source": "owner, in-game observation 2026-10-30",
+        "unverified": false
+      },
+      "rateProperties": [
+        "foodGatherRate"
+      ],
+      "capacityProperties": [
+        "carryCapacity"
+      ],
+      "dropOffs": [
+        "mill"
+      ],
+      "trip": {
+        "walkSecondsCamp": {
+          "value": 2.86,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 37.05/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "walkSecondsTownCenter": {
+          "value": 2.86,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 37.05/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "dropOffSeconds": {
+          "value": 0,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 37.05/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        }
+      }
+    },
+    "berry": {
+      "resource": "food",
+      "rate": {
+        "value": 0.69,
+        "source": "fandom \"Resource (Age of Empires IV)\", Resource gather rates table, read 2026-10-30; 0.69 since update 12.0.1974 (0.66 before), table patch not stated",
+        "unverified": true
+      },
+      "capacity": {
+        "value": 10,
+        "source": "fandom \"Villager (Age of Empires IV)\", Resource gathering section, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "rateProperties": [
+        "foodGatherRate",
+        "berryGatherRate"
+      ],
+      "capacityProperties": [
+        "carryCapacity"
+      ],
+      "dropOffs": [
+        "mill"
+      ],
+      "trip": {
+        "walkSecondsCamp": {
+          "value": 3.73,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 32.93/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "walkSecondsTownCenter": {
+          "value": 3.73,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 32.93/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "dropOffSeconds": {
+          "value": 0,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 32.93/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        }
+      }
+    },
+    "deer": {
+      "resource": "food",
+      "rate": {
+        "value": 0.825,
+        "source": "fandom \"Resource (Age of Empires IV)\", Resource gather rates table, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "capacity": {
+        "value": 25,
+        "source": "owner, in-game observation 2026-10-30",
+        "unverified": false
+      },
+      "rateProperties": [
+        "huntGatherRate"
+      ],
+      "capacityProperties": [
+        "carryCapacity",
+        "huntCarryCapacity"
+      ],
+      "dropOffs": [
+        "mill"
+      ],
+      "trip": {
+        "walkSecondsCamp": {
+          "value": 5.67,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 41.7/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "walkSecondsTownCenter": {
+          "value": 5.67,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 41.7/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "dropOffSeconds": {
+          "value": 0,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 41.7/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        }
+      }
+    },
+    "boar": {
+      "resource": "food",
+      "rate": {
+        "value": 0.9,
+        "source": "fandom \"Resource (Age of Empires IV)\", Resource gather rates table, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "capacity": {
+        "value": 25,
+        "source": "owner, in-game observation 2026-10-30",
+        "unverified": false
+      },
+      "rateProperties": [
+        "huntGatherRate"
+      ],
+      "capacityProperties": [
+        "carryCapacity",
+        "huntCarryCapacity"
+      ],
+      "dropOffs": [
+        "mill"
+      ],
+      "trip": {
+        "walkSecondsCamp": {
+          "value": 5.67,
+          "source": "no source; copied from deer, nearest analogue (no calculator value for boar)",
+          "unverified": true
+        },
+        "walkSecondsTownCenter": {
+          "value": 5.67,
+          "source": "no source; copied from deer, nearest analogue (no calculator value for boar)",
+          "unverified": true
+        },
+        "dropOffSeconds": {
+          "value": 0,
+          "source": "no source; copied from deer, nearest analogue (no calculator value for boar)",
+          "unverified": true
+        }
+      }
+    },
+    "farm": {
+      "resource": "food",
+      "rate": {
+        "value": 0.75,
+        "source": "fandom \"Resource (Age of Empires IV)\", Resource gather rates table, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "capacity": {
+        "value": 10,
+        "source": "fandom \"Villager (Age of Empires IV)\", Resource gathering section, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "rateProperties": [
+        "foodGatherRate",
+        "farmGatherRate"
+      ],
+      "capacityProperties": [
+        "carryCapacity"
+      ],
+      "dropOffs": [
+        "mill"
+      ],
+      "trip": {
+        "walkSecondsCamp": {
+          "value": 3.01,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 36.718/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "walkSecondsTownCenter": {
+          "value": 3.01,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 36.718/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "dropOffSeconds": {
+          "value": 0,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 36.718/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        }
+      }
+    },
+    "wood": {
+      "resource": "wood",
+      "rate": {
+        "value": 0.75,
+        "source": "fandom \"Resource (Age of Empires IV)\", Resource gather rates table, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "capacity": {
+        "value": 10,
+        "source": "fandom \"Villager (Age of Empires IV)\", Resource gathering section, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "rateProperties": [
+        "woodGatherRate"
+      ],
+      "capacityProperties": [
+        "carryCapacity"
+      ],
+      "dropOffs": [
+        "lumber-camp"
+      ],
+      "trip": {
+        "walkSecondsCamp": {
+          "value": 6.02,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 31/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "walkSecondsTownCenter": {
+          "value": 6.02,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 31/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "dropOffSeconds": {
+          "value": 0,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 31/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        }
+      }
+    },
+    "gold": {
+      "resource": "gold",
+      "rate": {
+        "value": 0.75,
+        "source": "fandom \"Resource (Age of Empires IV)\", Resource gather rates table, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "capacity": {
+        "value": 10,
+        "source": "fandom \"Villager (Age of Empires IV)\", Resource gathering section, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "rateProperties": [
+        "goldGatherRate"
+      ],
+      "capacityProperties": [
+        "carryCapacity"
+      ],
+      "dropOffs": [
+        "mining-camp"
+      ],
+      "trip": {
+        "walkSecondsCamp": {
+          "value": 2.88,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 37/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "walkSecondsTownCenter": {
+          "value": 2.88,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 37/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "dropOffSeconds": {
+          "value": 0,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 37/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        }
+      }
+    },
+    "stone": {
+      "resource": "stone",
+      "rate": {
+        "value": 0.75,
+        "source": "fandom \"Resource (Age of Empires IV)\", Resource gather rates table, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "capacity": {
+        "value": 10,
+        "source": "fandom \"Villager (Age of Empires IV)\", Resource gathering section, read 2026-10-30, patch not stated",
+        "unverified": true
+      },
+      "rateProperties": [
+        "stoneGatherRate"
+      ],
+      "capacityProperties": [
+        "carryCapacity"
+      ],
+      "dropOffs": [
+        "mining-camp"
+      ],
+      "trip": {
+        "walkSecondsCamp": {
+          "value": 2.88,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 37/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "walkSecondsTownCenter": {
+          "value": 2.88,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 37/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        },
+        "dropOffSeconds": {
+          "value": 0,
+          "source": "derived from SichYuriy/aoe4-production-calculator src/data/BaseGatheringRates.ts net 37/min: per-trip overhead = capacity / net rate - capacity / rate, all of it put in walk with drop-off 0 so the trip model reproduces the calculator rate; split between walk and drop-off unknown; seed to be retuned against the calculator",
+          "unverified": true
+        }
+      }
+    }
+  },
+  "builderScaling": {
+    "numerator": {
+      "value": 3,
+      "source": "fandom \"Villager (Age of Empires IV)\", Building construction section: build time = base x 3 / (builders + 2), read 2026-10-30, patch not stated",
+      "unverified": true
+    },
+    "offset": {
+      "value": 2,
+      "source": "fandom \"Villager (Age of Empires IV)\", Building construction section: build time = base x 3 / (builders + 2), read 2026-10-30, patch not stated",
+      "unverified": true
+    }
+  },
+  "maxPopCap": {
+    "value": 200,
+    "source": "owner decision 2026-10-29; gamewatcher https://www.gamewatcher.com/age-of-empires-4-population-limit (start 10 + 19 houses x 10 = 200)",
+    "unverified": true
+  },
+  "walkSeconds": {
+    "value": 5,
+    "source": "owner assumption: about 5-6 tiles at villager speed 1.12 tiles/s, no measurement",
+    "unverified": true
+  }
+}
