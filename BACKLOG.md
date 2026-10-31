@@ -9,7 +9,13 @@ pull from here; triage moves an item into a milestone or deletes it.
   this would be the first workflow. Depends on M2's data snapshot existing. (owner, 2026-10-29)
 - **AoE4 base gather rates are provisional.** Replace the unverified values copied from
   SichYuriy/aoe4-production-calculator with measured or citable ones, labeled with a patch. (owner, 2026-10-29)
-- **AoE4 default villager production has no rally target.** design/M2.md does not say where villagers from the
-  default continuous production go: with no step there is no `rally`, and a villager `produce` without `rally`
-  is `invalid` (docs/aoe4-build-order.md l.19-20 on main). The designer should decide it
-  before the engine ticket. (SGS-013 review 2)
+- **AoE4 English economy and Blacksmith tech gaps (owner review of rules/english.json, 2026-10-31).** Owner flagged
+  wood and food gather upgrades, Wheelbarrow and the basic Blacksmith upgrades
+  (https://ageofempires.fandom.com/wiki/Blacksmith_(Age_of_Empires_IV)) as missing; owner accepts them as follow-ups.
+  Checked against `data/aoe4-build-order/aoe4world/english.json` on main 68e004a: wheelbarrow, crosscut-saw,
+  lumber-preservation, horticulture, fertilization, survival-techniques, professional-scouts and all twelve Blacksmith
+  techs plus siege-works are in the snapshot; `rules/english.json` holds only the hand-entered overlay. Real gaps:
+  (1) `double-broadaxe` is absent from the snapshot (refresh or overlay it); (2) `forestry` effect is `unknown`, so
+  the engine rejects it; (3) crosscut-saw's +5 wood carry is not modeled (SGS-014 known data gap); (4) Blacksmith
+  techs are combat-only, so by the v1 coverage decision they cost resources and queue time but their effects are
+  ignored. Decide whether a follow-up adds overlay rows for (1)-(3).
