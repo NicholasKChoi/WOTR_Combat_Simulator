@@ -75,7 +75,6 @@ None.
 - WOTR time budget: N = 100,000 completes within 10 seconds.
 - Error responses: `{ error: string }` with 400 or 405, accepted for now.
 - API documentation: an OpenAPI (Swagger) JSON spec in the repo that agents can read with `jq`.
-- Superseded PRs #11 (input validation) and #12 (Jest suite) were closed.
 
 ## Out of scope
 
