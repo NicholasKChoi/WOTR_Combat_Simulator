@@ -15,7 +15,7 @@ pull from here; triage moves an item into a milestone or deletes it.
   Checked against `data/aoe4-build-order/aoe4world/english.json` on main 68e004a: wheelbarrow, crosscut-saw,
   lumber-preservation, horticulture, fertilization, survival-techniques, professional-scouts and all twelve Blacksmith
   techs plus siege-works are in the snapshot; `rules/english.json` holds only the hand-entered overlay. Real gaps:
-  (1) `double-broadaxe` is absent from the snapshot (refresh or overlay it); (2) `forestry` effect is `unknown`, so
+  (1) `double-broadaxe` is absent from the snapshot (refresh or overlay it; owner gives cost 50 food, 100 gold, a wood gather-rate upgrade like lumber-preservation; label the hand-entered row unverified with that source); (2) `forestry` effect is `unknown`, so
   the engine rejects it; (3) crosscut-saw's +5 wood carry is not modeled (SGS-014 known data gap); (4) Blacksmith
   techs are combat-only, so by the v1 coverage decision they cost resources and queue time but their effects are
   ignored. Decide whether a follow-up adds overlay rows for (1)-(3).
