@@ -27,7 +27,7 @@ async function errorMessages(response: Response): Promise<string[]> {
     if (response.status === 400) {
         try {
             const body: Partial<SimulateError> = await response.json()
-            if (Array.isArray(body?.issues) && body.issues.length > 0) {
+            if (Array.isArray(body.issues) && body.issues.length > 0) {
                 return body.issues.map((issue) => issue.message)
             }
         } catch {}
@@ -57,8 +57,7 @@ export default function AoE4BuildOrder({ builds }: PageProps) {
                 setIssues(await errorMessages(response))
                 return
             }
-            const body: SimulateResponse = await response.json()
-            setResult(body)
+            setResult(await response.json())
         } catch {
             setResult(null)
             setIssues(['The simulation could not be run. Please try again.'])
