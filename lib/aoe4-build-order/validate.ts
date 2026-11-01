@@ -286,7 +286,7 @@ class OrderChecker {
     const invalid = (text: string) => this.issues.push(issue('invalid', where, text));
     const { action, producer, unit, instance } = step as { action: string; producer: string; unit: string; instance?: number };
     if (action === 'produce') {
-      if (resolved.has('producer') && resolved.has('unit') && !producedBy(entriesOf(this.data, unit, 'unit')).has(producer)) {
+      if (resolved.has('producer') && resolved.has('unit') && !entriesOf(this.data, unit, 'unit').some((e) => e.producedBy.includes(producer))) {
         invalid(`${producer} cannot produce ${unit}`);
       }
       if (step.walkSeconds !== undefined && step.rally === undefined) invalid('walkSeconds without rally');
@@ -306,7 +306,7 @@ class OrderChecker {
   }
 
   private checkResearch(tech: string, at: string | undefined, resolved: Set<string>, index: number, invalid: (text: string) => void): void {
-    if (at !== undefined && resolved.has('at') && !producedBy(entriesOf(this.data, tech, 'tech')).has(at)) {
+    if (at !== undefined && resolved.has('at') && !entriesOf(this.data, tech, 'tech').some((e) => e.producedBy.includes(at))) {
       invalid(`${tech} cannot be researched at ${at}`);
     }
     const earlier = this.researched.get(tech);
