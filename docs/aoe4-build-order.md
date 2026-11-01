@@ -226,6 +226,9 @@ all its present fields hold:
 - `nearBuilding`: the effect applies to the `influenceCoverage` share of gatherers for that building.
 - `producer`: holds only when the modified value is a production time at an instance of that building.
 
+A modified value is the base value plus every applying `change`, then multiplied by every applying
+`multiply`. A missing `influenceCoverage` entry for a `nearBuilding` counts as 0, so the effect does nothing.
+
 `productionSpeed` is a speed: production time = `costs.time` divided by the product of its multipliers.
 The English farm bonus near a mill is four rows, one per age, with the wiki values +20%, +25%, +30% and
 +30% by age, unverified. The King's Palace villager production bonus, +10%, is a `productionSpeed`
