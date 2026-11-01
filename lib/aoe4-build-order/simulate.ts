@@ -481,8 +481,14 @@ function houseDemand(engine: Engine): HouseDemand {
 
 // Closed until the order's last build-house step has started; open throughout without one.
 function houseGateOpen(engine: Engine): boolean {
-  const last = engine.order.steps.map((step) => step.action === 'build' && step.building === HOUSE).lastIndexOf(true);
-  return last < 0 || engine.steps[last].startedAt !== null;
+  const { steps } = engine.order;
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const step = steps[i];
+    if (step.action === 'build' && step.building === HOUSE) {
+      return engine.steps[i].startedAt !== null;
+    }
+  }
+  return true;
 }
 
 function houseBuilderSource(engine: Engine): GatherNodeId | undefined {
