@@ -5,6 +5,7 @@ import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import { effectiveGatherRate } from './gather';
 import type { BuildOrder, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult, StepTiming, Trigger, UnitSeries } from './model';
+import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 
 // Output resolution, not a game number.
 export const SAMPLE_SECONDS = 5;
@@ -237,16 +238,10 @@ function payUnit(state: EngineState, instance: BuildingInstance, entry: Snapshot
   });
 }
 
-// Tier choice by researched upgrades is not modeled yet: the lowest-age entry, when the current age has it.
-function unitEntry(state: EngineState, unit: string): SnapshotEntry | undefined {
-  const entry = state.data.byBaseId.get(unit)?.[0];
-  return entry && entry.age <= state.age ? entry : undefined;
-}
-
 const produce: StepHandler<'produce'> = (step, index, state) => {
   const targets = targetInstances(state, step.producer, step.instance);
-  const entry = unitEntry(state, step.unit);
-  if (targets.length === 0 || !entry || state.population + targets.length * entry.costs.popcap > state.supply) {
+  const entry = resolveUnitEntry(step.unit, state);
+  if (targets.length === 0 || !entry || entry.age > state.age || state.population + targets.length * entry.costs.popcap > state.supply) {
     return { started: false };
   }
   const total = costOf(entry, targets.length);
@@ -283,7 +278,7 @@ const rally: StepHandler<'rally'> = (step, index, state) => {
   return { started: true };
 };
 
-export const stepHandlers: { [A in BuildStep['action']]?: StepHandler<A> } = { produce, pause, rally };
+export const stepHandlers: { [A in BuildStep['action']]?: StepHandler<A> } = { produce, pause, rally, research: researchHandler };
 
 function offerSteps(engine: Engine): void {
   engine.reserve = undefined;
@@ -327,8 +322,8 @@ function orderNeed(cost: Resources, reserve: Readonly<Resources> | undefined): R
 
 function payOrder(engine: Engine, instance: BuildingInstance): void {
   const order = instance.order;
-  const entry = unitEntry(engine, order.unit);
-  if (!entry || engine.population + entry.costs.popcap > engine.supply) {
+  const entry = resolveUnitEntry(order.unit, engine);
+  if (!entry || entry.age > engine.age || engine.population + entry.costs.popcap > engine.supply) {
     return;
   }
   const need = orderNeed(costOf(entry, 1), engine.reserve);
@@ -552,6 +547,6 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     floating,
     steps: engine.steps,
     ages: [{ age: startAge, reachedAt: 0 }],
-    notes: [],
+    notes: researchNotes(order, data),
   };
 }

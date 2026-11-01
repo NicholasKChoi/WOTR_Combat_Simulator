@@ -75,14 +75,19 @@ function withStart(parts: Parts, edit: (start: CivData['startingState']) => void
     edit(parts.civData.startingState)
 }
 
-// Registers a handler for an action the engine leaves unhandled, for the duration of fn.
+// Installs a handler for action for the duration of fn, then puts back whatever was registered before.
 function withHandler<A extends BuildStep['action']>(action: A, handler: StepHandler<A>, fn: () => void) {
     const handlers = stepHandlers as Record<string, unknown>
+    const saved = handlers[action]
     handlers[action] = handler
     try {
         fn()
     } finally {
-        delete handlers[action]
+        if (saved === undefined) {
+            delete handlers[action]
+        } else {
+            handlers[action] = saved
+        }
     }
 }
 
@@ -514,16 +519,38 @@ describe('produce waits', () => {
 })
 
 describe('handler seam', () => {
-    it('leaves build, move and research waiting and blocking', () => {
+    it('leaves build and move waiting and blocking', () => {
         const unhandled: BuildStep[] = [
             { action: 'build', building: 'house', from: 'sheep' },
             { action: 'move', count: 1, from: 'sheep', to: 'wood' },
-            { action: 'research', tech: 'wheelbarrow' },
         ]
         for (const step of unhandled) {
             const result = run([step, { action: 'rally', producer: 'capital-town-center', to: 'wood' }])
             expect(result.steps.map((s) => s.status)).toEqual(['waiting', 'not-reached'])
         }
+    })
+
+    it('leaves an action with no registered handler waiting and blocking', () => {
+        const withMill = gameData((parts) =>
+            withStart(parts, (start) => {
+                start.buildings.value = ['capital-town-center', 'mill']
+                start.resources.value = { food: 200, wood: 200, gold: 200, stone: 0 }
+            }),
+        )
+        const steps: BuildStep[] = [
+            { action: 'research', tech: 'wheelbarrow' },
+            { action: 'rally', producer: 'capital-town-center', to: 'wood' },
+        ]
+        const handlers = stepHandlers as Record<string, unknown>
+        const saved = handlers.research
+        delete handlers.research
+        try {
+            expect(run(steps, { game: withMill }).steps.map((s) => s.status)).toEqual(['waiting', 'not-reached'])
+        } finally {
+            handlers.research = saved
+        }
+        expect(stepHandlers.research).toBe(saved)
+        expect(run(steps, { game: withMill }).steps[1].status).toBe('completed')
     })
 
     it('starts a step through a registered handler with no loop change', () => {

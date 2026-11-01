@@ -170,11 +170,23 @@ finish: nothing is cancelled and there is no refund. The old order's unpaid unit
 costs nothing, completes the instant it arms, and is a no-op for an instance that does not exist (it is
 not held for one built later).
 
+A `research` step goes to `at` if given, else to the first building in the tech's `producedBy` (snapshot
+order) that has an instance, and within that building to its lowest-numbered instance (instance 1 first).
+Queue length is not consulted, `research` has no `instance` field, and a tech with no producing building
+and no `at` never starts. With a capital town center and two town centers, `research textiles` goes to
+the capital town center and `research textiles at town-center` to town center 1.
+
+A `research` step pays its cost when it starts and is appended to its instance's paid units, behind any
+unit already paid. It never replaces the instance's order, which resumes (pays its next unit) when the
+research ends. It waits while no target instance exists or while the tech's age is not reached, and it
+reserves resources only when it is short of resources alone.
+
 **Tiers.** A produced unit is the entry for the highest tier whose upgrade has been researched, else the
 lowest-age entry for its `baseId`. `upgradeTargets` maps an upgrade `baseId` to the unit `baseId` it
 upgrades, because aoe4world's `unlocks` is empty; the target tier is the unit entry whose `age` equals the
 upgrade's `age`. A veterancy upgrade occupies its building's queue for its research time, and units
-produced afterwards are the upgraded tier.
+paid afterwards are the upgraded tier. A unit's tier is fixed when paid: a unit paid before an upgrade
+completes keeps the lower tier. An upgrade with no unit entry at its age does not change the tier.
 
 **Ages and landmarks.** A building whose `classes` match `^age[1-3]_landmark\d$` advances the age from its
 `age` to `age + 1` when it completes, so any landmark reaches the next of the four ages. Entries whose
@@ -467,8 +479,8 @@ A `SimulationResult` holds:
   `waitSeconds`. `status` is one of `completed`, `in-progress`, `waiting` or `not-reached`.
 - `ages`: each age reached and its `reachedAt` time.
 - `notes`: `BuildOrderNote`s, non-fatal, one per research step of a technology whose effects are not all
-  simulated: `tech-effect-ignored` (ignored combat properties listed) and `tech-effect-unmodeled` (empty
-  `properties`).
+  simulated, whether or not the step is reached, in step order: `tech-effect-ignored` (ignored combat
+  properties listed) and `tech-effect-unmodeled` (empty `properties`).
 
 The page draws three graphs over time from it: units produced (by unit and tier), gather rates, and
 floating resources. The charting component and its test selectors are documented with that component and
@@ -499,7 +511,8 @@ A step waits while it cannot be paid, while supply has no room, while the unit's
 current age, or while no building instance it targets exists. A `produce` step completes when no instance
 carries its order any more: a counted one at the spawn of its last unit on the last instance, a
 continuous one (or a counted one replaced early) when a later `produce` or `pause` on that producer
-starts. `rally` and `pause` complete the instant they start.
+starts. `rally` and `pause` complete the instant they start. A `research` step completes when its
+research time ends.
 
 ## CivRules seams
 
