@@ -519,17 +519,6 @@ describe('produce waits', () => {
 })
 
 describe('handler seam', () => {
-    it('leaves build and move waiting and blocking', () => {
-        const unhandled: BuildStep[] = [
-            { action: 'build', building: 'house', from: 'sheep' },
-            { action: 'move', count: 1, from: 'sheep', to: 'wood' },
-        ]
-        for (const step of unhandled) {
-            const result = run([step, { action: 'rally', producer: 'capital-town-center', to: 'wood' }])
-            expect(result.steps.map((s) => s.status)).toEqual(['waiting', 'not-reached'])
-        }
-    })
-
     it('leaves an action with no registered handler waiting and blocking', () => {
         const withMill = gameData((parts) =>
             withStart(parts, (start) => {
@@ -554,6 +543,7 @@ describe('handler seam', () => {
     })
 
     it('starts a step through a registered handler with no loop change', () => {
+        const registered = stepHandlers.build
         withHandler(
             'build',
             () => ({ started: true }),
@@ -566,7 +556,8 @@ describe('handler seam', () => {
                 expect(result.steps[1]).toMatchObject({ status: 'completed', startedAt: 15 })
             },
         )
-        expect(stepHandlers.build).toBeUndefined()
+        expect(registered).toBeTypeOf('function')
+        expect(stepHandlers.build).toBe(registered)
     })
 
     it('runs a handler event through schedule in time order', () => {

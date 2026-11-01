@@ -189,8 +189,13 @@ paid afterwards are the upgraded tier. A unit's tier is fixed when paid: a unit 
 completes keeps the lower tier. An upgrade with no unit entry at its age does not change the tier.
 
 **Ages and landmarks.** A building whose `classes` match `^age[1-3]_landmark\d$` advances the age from its
-`age` to `age + 1` when it completes, so any landmark reaches the next of the four ages. Entries whose
-`age` is above the current age are unavailable.
+`age` to `age + 1` when it completes, so any landmark reaches the next of the four ages. The age advances
+only when the landmark's `age` equals the current age: a second landmark of an age already passed moves
+nothing. Entries whose `age` is above the current age are unavailable. Entries of the new age are usable
+at the instant of the age-up: steps and order payments are re-checked then. An age-up never changes a paid
+item or a running production time; a unit paid before it spawns as the entry it was paid as. On a build's
+completion the engine adds the instance, calls `onBuildingComplete`, advances the age, then calls
+`onAgeAdvance`.
 
 **Trip model.** A gathering villager repeats a cycle:
 
@@ -242,13 +247,37 @@ numerator 3 and offset 2 in `rules/base.json`:
 |---|---|---|---|---|
 | share of base build time | 100% | 75% | 50% | 30% |
 
+A `build` step pays the building's cost when it starts. Its builders come from the villagers gathering at
+`from`; the step waits while fewer than `builders` gather there. Builders count as villagers for an
+`at N vils` trigger throughout. Construction starts when they arrive at the site. The building counts for
+nothing until it completes: its supply, its instance and its drop-off appear at that instant, which is
+also the step's `completedAt`. The builders then walk to `then` (default `from`). A `build` step waits
+while its building's entry is above the current age, while `from` has too few gatherers, or while its cost
+cannot be paid; only the last reserves resources.
+
+A `move` step waits until `count` villagers gather at `from`, costs nothing, and takes them off `from`
+for the walk. Its `completedAt` is their arrival at `to`.
+
 **Houses and supply.** `supply` in `rules/english.json` gives the supply each building provides; total
 supply is capped at `maxPopCap`, 200. With `autoHouses` on (the default), the simulator builds houses on
-its own so supply never blocks production. It computes each house's start from the house build time, the
-builders' walk and the combined production rate of all producers. `houseBuilders` and `houseBuilderSource`
-are inputs, default 1 builder taken from `wood`. When production outpaces one house at a time, builders
-build houses back to back, or more builders are used, rather than production stalling. An explicit
-`build house` step overrides auto-houses.
+its own so supply does not block production. At every instant, after production starts, it projects the
+population one lead ahead, where the lead is the builders' walk to the site plus the house build time with
+`houseBuilders` builders. The projection adds to the current population the combined rate of every
+producer with an order, in population per second. When it passes the supply plus the supply of buildings
+under construction, enough houses start at once to cover the difference, each with its own `houseBuilders`
+builders; houses run concurrently. Planning stops once supply plus pending supply reaches `maxPopCap`.
+
+`houseBuilderSource` is the preferred node. When it has fewer than `houseBuilders` villagers gathering,
+builders come from the node with the most gatherers (ties: the first in node order, `sheep, berry, deer,
+boar, farm, wood, gold, stone`). Builders walk `inputs.walkSeconds` each way and return to the node they
+came from. A house pays its whole cost (all four resources) when it starts. A house waits only when no node
+has enough gatherers or a resource of its cost is short; supply may block production meanwhile. Auto-houses
+are not order payments: they ignore a waiting step's resource reservation, and never take a resource below
+zero.
+
+Auto-houses are off until the last `build house` step in the order has started, and on from then; if that
+step never starts they stay off; with no `build house` step they are on from the start. With
+`autoHouses: false` production blocks at supply until a `build house` step adds more.
 
 **Farms and mill coverage.** A farm costs its snapshot cost and holds one villager. `influenceCoverage`
 gives, per building `baseId`, the share of gatherers inside that building's influence once one exists;
@@ -508,11 +537,13 @@ stateDiagram-v2
 | Completed | `completed` |
 
 A step waits while it cannot be paid, while supply has no room, while the unit's entry is above the
-current age, or while no building instance it targets exists. A `produce` step completes when no instance
-carries its order any more: a counted one at the spawn of its last unit on the last instance, a
+current age, or while no building instance it targets exists. A `build` step also waits while its
+building's entry is above the current age or while fewer than `builders` villagers gather at `from`; a
+`move` step waits while fewer than `count` villagers gather at `from`. A `produce` step completes when no
+instance carries its order any more: a counted one at the spawn of its last unit on the last instance, a
 continuous one (or a counted one replaced early) when a later `produce` or `pause` on that producer
-starts. `rally` and `pause` complete the instant they start. A `research` step completes when its
-research time ends.
+starts. `rally` and `pause` complete the instant they start; `build` completes when the building does,
+`move` when its villagers arrive, and `research` when its research time ends.
 
 ## CivRules seams
 
@@ -531,7 +562,9 @@ optional:
 | `onAgeAdvance` | event |
 
 A value hook is `(defaultValue, ctx) => value`; an event hook is `(state, ctx) => void`. The engine calls
-every hook as `rules.hook?.(...) ?? default`, so an absent hook leaves the default behavior. English needs
+every hook as `rules.hook?.(...) ?? default`, so an absent hook leaves the default behavior.
+`onBuildingComplete` is called once per completed building, after its instance exists, and `onAgeAdvance`
+after a landmark moves the age, in the order given in Ages and landmarks. English needs
 none: `civRules('english')` returns `NO_CIV_RULES`, a frozen `{}`. English bonuses that the data can
 express, such as the farm bonus and the King's Palace bonus, are `OverlayEffect` rows, not hooks.
 
