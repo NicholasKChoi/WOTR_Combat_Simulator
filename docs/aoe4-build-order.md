@@ -147,9 +147,28 @@ At one instant, steps start in list order before villagers spawn. A step armed b
 trigger) starts at that instant, after the spawn. So `@T rally` routes the villager spawning at T, and
 `at N vils rally` routes villager N+1 onward.
 
+**Priority.** At most one step is armed and not started at a time. While it waits on resources only, it
+reserves its cost: a producer's order skips paying its next unit if that would drop any resource the unit
+costs below the step's cost of that resource. A step waiting on supply, on an age or on a building
+instance that does not exist reserves nothing. At one instant, steps start before orders pay, so a step
+wins a tie with an order payment.
+
 **Queues.** Each building instance has one queue, shared by production and research. A `produce` step on
 a busy producer replaces its order (a switch); `pause` clears the order. A step names a building by
 `baseId`, which applies to every instance, or by `instance` (1-based) for one.
+
+Every villager producer instance starts with a continuous villager order, which a `produce` or `pause`
+step replaces. A unit is paid before it is queued: its resource cost and its population are taken
+together, and only when every resource covers its cost and supply has room for it. Each instance runs its
+paid units first in, first out, one at a time. An order pays its next unit only when its instance has no
+paid unit left.
+
+A `produce` step pays its first unit on every targeted instance that exists when it starts, so it waits
+while it cannot pay all of them. It waits while no targeted instance exists, and it does not cover
+instances built after it starts. A switch or a pause lets the unit in production and every paid unit
+finish: nothing is cancelled and there is no refund. The old order's unpaid units are dropped. `pause`
+costs nothing, completes the instant it arms, and is a no-op for an instance that does not exist (it is
+not held for one built later).
 
 **Tiers.** A produced unit is the entry for the highest tier whose upgrade has been researched, else the
 lowest-age entry for its `baseId`. `upgradeTargets` maps an upgrade `baseId` to the unit `baseId` it
@@ -462,7 +481,7 @@ At the horizon each state maps to a `StepTiming.status`:
 stateDiagram-v2
   [*] --> Unarmed
   Unarmed --> Armed: trigger holds and every earlier step started (armedAt)
-  Armed --> Waiting: unaffordable or supply-blocked
+  Armed --> Waiting: unaffordable, supply-blocked, unit unavailable or no targeted instance
   Waiting --> Started: affordable and supply allows (startedAt)
   Armed --> Started: affordable and supply allows (startedAt)
   Started --> Completed: work done (completedAt)
@@ -475,6 +494,12 @@ stateDiagram-v2
 | Armed or Waiting, not started | `waiting` |
 | Started, not completed | `in-progress` |
 | Completed | `completed` |
+
+A step waits while it cannot be paid, while supply has no room, while the unit's entry is above the
+current age, or while no building instance it targets exists. A `produce` step completes when no instance
+carries its order any more: a counted one at the spawn of its last unit on the last instance, a
+continuous one (or a counted one replaced early) when a later `produce` or `pause` on that producer
+starts. `rally` and `pause` complete the instant they start.
 
 ## CivRules seams
 
@@ -494,7 +519,7 @@ optional:
 
 A value hook is `(defaultValue, ctx) => value`; an event hook is `(state, ctx) => void`. The engine calls
 every hook as `rules.hook?.(...) ?? default`, so an absent hook leaves the default behavior. English needs
-none: `civRules('english')` returns `NO_CIV_RULES`, which is `{}`. English bonuses that the data can
+none: `civRules('english')` returns `NO_CIV_RULES`, a frozen `{}`. English bonuses that the data can
 express, such as the farm bonus and the King's Palace bonus, are `OverlayEffect` rows, not hooks.
 
 ## Extension points
