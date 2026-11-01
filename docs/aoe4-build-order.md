@@ -126,7 +126,9 @@ scout), but they are not produced. Sheep are not units: sheep are the `sheep` ga
 A build order's `start.villagers`, when present, replaces the civ's `villagers` split whole (omitted nodes
 get 0). It is placed at t=0 with no walk, as the civ split is, and must sum to the civ's starting villager
 count, the sum of `civData.startingState.villagers.value` (6 for English). `start.rally` is the rally node
-for the starting villager producers. Both `start` fields are optional, and `start: {}` is valid.
+for the starting villager producers. Both `start` fields are optional in the schema, and `start: {}` is well-formed (not a `syntax`
+issue). An English order still needs `start.rally`, because its starting town center is a villager
+producer.
 
 **Ordering and triggers.** Steps run in list order. A trigger is either a time (`@m:ss`, meaning "not
 before" that time) or a villager count (`at N vils`, counting villagers alive). A step arms when its
@@ -308,7 +310,7 @@ prefix comes first, then the action:
 | `at N vils ` | villagers | `pause <producer>[#k]` |
 | (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move N <node> to <node> [walk Ns]`; `rally <producer>[#k] -> <node> [walk Ns]` |
 
-One example per action; each line stands alone:
+One example per action; each line is a separate example:
 
 ```text
 # opening
@@ -369,13 +371,12 @@ Shape or spelling is `syntax`; value size is `out-of-range`; a field combination
 - `rally` on a `produce` whose unit is not a villager;
 - a `rally` step whose `producer` is a known building that produces no villagers;
 - no `start.rally` while a starting building is a villager producer;
-- a `build` of a villager producer with no `start.rally` and no earlier `rally` source covering every
-  instance of that `baseId`.
+- a `build` of a villager producer with no `start.rally` and no earlier `rally` or `produce` source for that
+  `baseId` without `instance` (baseId-wide).
 
 A villager `produce` without `rally` is valid and uses the standing rally. Each issue is reported on its
 step or `start`, with the location fields above. A message names the step or line and the offending id,
-kind or property. Any issue stops the
-request; nothing is simulated.
+kind or property. Any issue stops the request; nothing is simulated.
 
 ```mermaid
 flowchart LR
