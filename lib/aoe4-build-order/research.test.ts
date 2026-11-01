@@ -313,8 +313,8 @@ describe('technology effects apply from completion', () => {
     const game = startingWith(1, ['capital-town-center', 'mill'], resources)
     const simInputs = inputsFor(game)
     const wheelbarrow: BuildStep = { action: 'research', tech: 'wheelbarrow', at: 'mill' }
-    const result = run([wheelbarrow], { game })
-    const plain = run([], { game })
+    const result = run([wheelbarrow], { game, inputs: inputsFor(game, { autoHouses: false }) })
+    const plain = run([], { game, inputs: inputsFor(game, { autoHouses: false }) })
     const effectState = (researched: string[]) => ({ data: game, age: 1, buildings: new Map([['capital-town-center', 1], ['mill', 1]]), researched: new Set(researched), coverage: simInputs.influenceCoverage })
     const sheepRate = (researched: string[]) => effectiveGatherRate('sheep' as GatherNodeId, effectState(researched), simInputs)
     const entry = game.byBaseId.get('wheelbarrow')[0]
