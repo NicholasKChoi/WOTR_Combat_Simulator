@@ -77,7 +77,7 @@ describe('hand-computed timeline with a wood-only start', () => {
     const woodStart = gameData((start) => {
         start.villagers.value = { sheep: 0, berry: 0, deer: 0, boar: 0, farm: 0, wood: 6, gold: 0, stone: 0 }
     })
-    const result = run([], { game: woodStart, start: { rally: 'wood' } })
+    const result = run([], { game: woodStart, inputs: inputsFor(woodStart, { autoHouses: false }), start: { rally: 'wood' } })
     const t = (s: number) => result.times.indexOf(s)
 
     it('banks wood from six gatherers and spends food only at payments', () => {
@@ -257,8 +257,8 @@ describe('invariants over generated build orders', () => {
     it('never goes negative, orders step times, keeps counts cumulative and supply bounded', () => {
         for (let seed = 1; seed <= 60; seed++) {
             const steps = randomSteps(lcg(seed))
-            const result = run(steps, { game: barracksGame })
-            const again = run(steps, { game: barracksGame })
+            const result = run(steps, { game: barracksGame, inputs: inputsFor(barracksGame, { autoHouses: false }) })
+            const again = run(steps, { game: barracksGame, inputs: inputsFor(barracksGame, { autoHouses: false }) })
             expect(again).toEqual(result)
             for (const values of Object.values(result.floating)) {
                 expect(values).toHaveLength(result.times.length)

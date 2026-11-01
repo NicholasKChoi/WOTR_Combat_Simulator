@@ -1,9 +1,12 @@
 import { civRules } from './civ-rules';
 import type { CivRuleContext, CivRules } from './civ-rules';
+import { constructionSeconds } from './construction';
 import type { GameData, SnapshotEntry } from './data';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import { effectiveGatherRate } from './gather';
+import { planAutoHouse } from './houses';
+import type { HouseDemand } from './houses';
 import type { BuildOrder, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult, StepTiming, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 
@@ -16,6 +19,10 @@ const RESOURCE_TOLERANCE = 1e-9;
 const SECONDS_PER_MINUTE = 60;
 const RESOURCES: readonly ResourceKind[] = ['food', 'wood', 'gold', 'stone'];
 const VILLAGER = 'villager';
+const HOUSE = 'house';
+const GATHER_NODE_ORDER = Object.keys({ sheep: 0, berry: 0, deer: 0, boar: 0, farm: 0, wood: 0, gold: 0, stone: 0 } satisfies Record<GatherNodeId, 0>) as GatherNodeId[];
+// A rule on class names: completing a landmark of the current age advances it.
+const LANDMARK_CLASS = new RegExp('^age[1-3]_landmark\\d$');
 
 export interface RallySource {
   node: GatherNodeId;
@@ -100,8 +107,11 @@ interface Engine extends EngineState {
   cursor: number;
   // What the armed step waits to afford, when it waits on resources alone.
   reserve: Readonly<Resources> | undefined;
-  // Order payments short of resources at the latest instant.
+  // Order payments and auto-houses short of resources at the latest instant.
   needs: Resources[];
+  // baseIds under construction, explicit or auto.
+  readonly constructing: string[];
+  readonly ages: SimulationResult['ages'];
 }
 
 function ruleContext(state: EngineState): CivRuleContext {
@@ -143,10 +153,13 @@ export function addBuildingInstance(state: EngineState, baseId: string): Buildin
   }
   list.push(instance);
   state.buildings.set(baseId, (state.buildings.get(baseId) ?? 0) + 1);
-  const supply = state.data.supply.get(baseId)?.value ?? 0;
-  const provided = state.rules.supplyProvider?.(supply, { ...ruleContext(state), baseId }) ?? supply;
-  state.supply = Math.min(state.supply + provided, state.data.base.maxPopCap.value);
+  state.supply = Math.min(state.supply + supplyOf(state, baseId), state.data.base.maxPopCap.value);
   return instance;
+}
+
+function supplyOf(state: EngineState, baseId: string): number {
+  const supply = state.data.supply.get(baseId)?.value ?? 0;
+  return state.rules.supplyProvider?.(supply, { ...ruleContext(state), baseId }) ?? supply;
 }
 
 export function triggerHolds(trigger: Trigger | undefined, state: EngineState): boolean {
@@ -278,7 +291,86 @@ const rally: StepHandler<'rally'> = (step, index, state) => {
   return { started: true };
 };
 
-export const stepHandlers: { [A in BuildStep['action']]?: StepHandler<A> } = { produce, pause, rally, research: researchHandler };
+function spend(state: EngineState, cost: Readonly<Resources>): void {
+  for (const kind of RESOURCES) {
+    state.resources[kind] = Math.max(0, state.resources[kind] - cost[kind]);
+  }
+}
+
+function villagerWalk(state: EngineState, walkSeconds: number | undefined): number {
+  const villager = state.data.byBaseId.get(VILLAGER)?.[0];
+  const moveSpeedMultiplier = modifiedValue(1, 'moveSpeed', { baseId: VILLAGER, classes: villager?.classes ?? [] }, state);
+  return (walkSeconds ?? state.inputs.walkSeconds) / moveSpeedMultiplier;
+}
+
+interface Construction {
+  entry: SnapshotEntry;
+  builders: number;
+  from: GatherNodeId;
+  then: GatherNodeId;
+  walkSeconds: number | undefined;
+  // null for an auto-house.
+  step: number | null;
+}
+
+function startConstruction(state: EngineState, job: Construction): void {
+  spend(state, costOf(job.entry, 1));
+  state.gatherers[job.from] -= job.builders;
+  state.walking += job.builders;
+  (state as Engine).constructing.push(job.entry.baseId);
+  const done = state.time + villagerWalk(state, job.walkSeconds) + constructionSeconds(job.entry.costs.time, job.builders, state.data);
+  state.schedule(done, (s) => completeConstruction(s, job));
+}
+
+function completeConstruction(state: EngineState, job: Construction): void {
+  const { constructing, ages } = state as Engine;
+  const { entry } = job;
+  constructing.splice(constructing.indexOf(entry.baseId), 1);
+  const built = addBuildingInstance(state, entry.baseId);
+  state.rules.onBuildingComplete?.(state, { ...ruleContext(state), baseId: entry.baseId, instance: built.instance });
+  if (entry.age === state.age && entry.classes.some((name) => LANDMARK_CLASS.test(name))) {
+    state.age += 1;
+    ages.push({ age: state.age, reachedAt: state.time });
+    state.rules.onAgeAdvance?.(state, { ...ruleContext(state), age: state.age });
+  }
+  if (job.step !== null) {
+    markCompleted(state, job.step);
+  }
+  state.schedule(state.time + villagerWalk(state, job.walkSeconds), (s) => {
+    s.walking -= job.builders;
+    s.gatherers[job.then] += job.builders;
+  });
+}
+
+const build: StepHandler<'build'> = (step, index, state) => {
+  const entry = state.data.byBaseId.get(step.building)?.[0];
+  const builders = step.builders ?? 1;
+  if (!entry || entry.age > state.age || state.gatherers[step.from] < builders) {
+    return { started: false };
+  }
+  const cost = costOf(entry, 1);
+  if (!affordable(state, cost)) {
+    return { started: false, reserve: cost };
+  }
+  startConstruction(state, { entry, builders, from: step.from, then: step.then ?? step.from, walkSeconds: step.walkSeconds, step: index });
+  return { started: true };
+};
+
+const move: StepHandler<'move'> = (step, index, state) => {
+  if (state.gatherers[step.from] < step.count) {
+    return { started: false };
+  }
+  state.gatherers[step.from] -= step.count;
+  state.walking += step.count;
+  state.schedule(state.time + villagerWalk(state, step.walkSeconds), (s) => {
+    s.walking -= step.count;
+    s.gatherers[step.to] += step.count;
+    markCompleted(s, index);
+  });
+  return { started: true };
+};
+
+export const stepHandlers: { [A in BuildStep['action']]?: StepHandler<A> } = { produce, pause, rally, research: researchHandler, build, move };
 
 function offerSteps(engine: Engine): void {
   engine.reserve = undefined;
@@ -335,14 +427,15 @@ function payOrder(engine: Engine, instance: BuildingInstance): void {
   payUnit(engine, instance, entry, order);
 }
 
+function productionSeconds(state: EngineState, entry: SnapshotEntry, producer: string): number {
+  const speed = modifiedValue(1, 'productionSpeed', { baseId: entry.baseId, classes: entry.classes, producer }, state);
+  const seconds = entry.costs.time / speed;
+  return state.rules.productionModifier?.(seconds, { ...ruleContext(state), entry, producer }) ?? seconds;
+}
+
 function startHead(engine: Engine, instance: BuildingInstance): void {
   const item = instance.paid[0];
-  const { entry } = item;
-  const producer = instance.baseId;
-  const speed = modifiedValue(1, 'productionSpeed', { baseId: entry.baseId, classes: entry.classes, producer }, engine);
-  const seconds = entry.costs.time / speed;
-  const modified = engine.rules.productionModifier?.(seconds, { ...ruleContext(engine), entry, producer }) ?? seconds;
-  instance.busyUntil = engine.time + modified;
+  instance.busyUntil = engine.time + productionSeconds(engine, item.entry, instance.baseId);
   engine.schedule(instance.busyUntil, (s) => {
     instance.paid.shift();
     item.complete(s, instance);
@@ -367,11 +460,73 @@ function startProduction(engine: Engine): void {
   }
 }
 
+function currentUnitEntry(unit: string, state: EngineState): SnapshotEntry | undefined {
+  return resolveUnitEntry(unit, state);
+}
+
+function houseDemand(engine: Engine): HouseDemand {
+  const pendingSupply = engine.constructing.reduce((sum, baseId) => sum + supplyOf(engine, baseId), 0);
+  let populationPerSecond = 0;
+  for (const list of engine.instances.values()) {
+    for (const instance of list) {
+      const order = instance.order;
+      const entry = order && order.remaining !== 0 ? currentUnitEntry(order.unit, engine) : undefined;
+      if (entry) {
+        populationPerSecond += entry.costs.popcap / productionSeconds(engine, entry, instance.baseId);
+      }
+    }
+  }
+  return { pendingSupply, populationPerSecond };
+}
+
+// Closed until the order's last build-house step has started; open throughout without one.
+function houseGateOpen(engine: Engine): boolean {
+  const { steps } = engine.order;
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const step = steps[i];
+    if (step.action === 'build' && step.building === HOUSE) {
+      return engine.steps[i].startedAt !== null;
+    }
+  }
+  return true;
+}
+
+function houseBuilderSource(engine: Engine): GatherNodeId | undefined {
+  const { gatherers, inputs } = engine;
+  if (gatherers[inputs.houseBuilderSource] >= inputs.houseBuilders) {
+    return inputs.houseBuilderSource;
+  }
+  const fullest = GATHER_NODE_ORDER.reduce((best, node) => (gatherers[node] > gatherers[best] ? node : best));
+  return gatherers[fullest] >= inputs.houseBuilders ? fullest : undefined;
+}
+
+// Not an order payment: a waiting step's reserve does not hold houses back.
+function startAutoHouses(engine: Engine): void {
+  const house = engine.data.byBaseId.get(HOUSE)?.[0];
+  if (!engine.inputs.autoHouses || !house || !houseGateOpen(engine)) {
+    return;
+  }
+  const cost = costOf(house, 1);
+  const count = planAutoHouse(engine, engine.inputs, engine.data, houseDemand(engine));
+  for (let i = 0; i < count; i += 1) {
+    const from = houseBuilderSource(engine);
+    if (from === undefined) {
+      return;
+    }
+    if (!affordable(engine, cost)) {
+      engine.needs.push(cost);
+      return;
+    }
+    startConstruction(engine, { entry: house, builders: engine.inputs.houseBuilders, from, then: from, walkSeconds: undefined, step: null });
+  }
+}
+
 function runInstant(engine: Engine): void {
   offerSteps(engine);
   applyDueEvents(engine);
   offerSteps(engine);
   startProduction(engine);
+  startAutoHouses(engine);
 }
 
 // Only gather.ts picks the walk, so a drop-off override hands it the other walk under the name it reads.
@@ -477,6 +632,8 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     cursor: 0,
     reserve: undefined,
     needs: [],
+    constructing: [],
+    ages: [{ age: start.age.value, reachedAt: 0 }],
   };
   engine.population = aliveVillagers(engine) + units;
   start.buildings.value.forEach((baseId) => addBuildingInstance(engine, baseId));
@@ -508,7 +665,6 @@ function unitSeries(engine: Engine, times: number[]): UnitSeries[] {
 
 export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: SimInputs, rules: CivRules = civRules(order.civ)): SimulationResult {
   const engine = createEngine(order, data, inputs, rules);
-  const startAge = engine.age;
   const times = sampleTimes(inputs.durationSeconds);
   const gatherRates = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
   const floating = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
@@ -546,7 +702,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     gatherRates,
     floating,
     steps: engine.steps,
-    ages: [{ age: startAge, reachedAt: 0 }],
+    ages: engine.ages,
     notes: researchNotes(order, data),
   };
 }

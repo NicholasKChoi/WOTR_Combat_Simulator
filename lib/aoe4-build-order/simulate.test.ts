@@ -212,7 +212,7 @@ describe('determinism', () => {
 })
 
 describe('default English start', () => {
-    const result = run([])
+    const result = run([], { inputs: inputsFor(data, { autoHouses: false }) })
     const villagers = series(result, 'villager')
 
     it('pays villagers at 0, 20 and 40 until supply 10 blocks the fourth', () => {
@@ -283,7 +283,7 @@ describe('same instant', () => {
     })
 
     it('routes the villager after the one that met a villagers trigger', () => {
-        const result = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', trigger: vils(7) }])
+        const result = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', trigger: vils(7) }], { inputs: inputsFor(data, { autoHouses: false }) })
         expect(result.gatherRates.food[sampleAt(result, 25)]).toBeCloseTo(7 * r * 60, 9)
         expect(result.gatherRates.wood[sampleAt(result, 25)]).toBe(0)
         expect(result.gatherRates.wood[sampleAt(result, 45)]).toBeCloseTo(woodRate * 60, 9)
@@ -409,13 +409,13 @@ describe('rally scope', () => {
             parts.civData.effects.push({ property: 'moveSpeed', select: { id: ['villager'] }, effect: 'multiply', value: 2, type: 'passive', grantedBy: 'civ', source: 'test', unverified: true })
         })
         const fastWood = rateOf('wood', fast, inputsFor(fast))
-        const routed = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', walkSeconds: 20 }], { game: fast })
+        const routed = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', walkSeconds: 20 }], { game: fast, inputs: inputsFor(fast, { autoHouses: false }) })
         expect(routed.gatherRates.wood[sampleAt(routed, 25)]).toBe(0)
         expect(routed.gatherRates.wood[sampleAt(routed, 30)]).toBeCloseTo(fastWood * 60, 9)
-        const slow = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', walkSeconds: 20 }])
+        const slow = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', walkSeconds: 20 }], { inputs: inputsFor(data, { autoHouses: false }) })
         expect(slow.gatherRates.wood[sampleAt(slow, 35)]).toBe(0)
         expect(slow.gatherRates.wood[sampleAt(slow, 40)]).toBeCloseTo(woodRate * 60, 9)
-        const base = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood' }], { game: fast, inputs: inputsFor(fast, { walkSeconds: 10 }) })
+        const base = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood' }], { game: fast, inputs: inputsFor(fast, { walkSeconds: 10, autoHouses: false }) })
         expect(base.gatherRates.wood[sampleAt(base, 20)]).toBe(0)
         expect(base.gatherRates.wood[sampleAt(base, 25)]).toBeCloseTo(fastWood * 60, 9)
     })
@@ -512,24 +512,13 @@ describe('produce waits', () => {
     })
 
     it('waits while the population would pass supply, without a reserve', () => {
-        const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(45) }])
+        const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(45) }], { inputs: inputsFor(data, { autoHouses: false }) })
         expect(result.steps[0].status).toBe('waiting')
         expect(result.floating.food[sampleAt(result, 50)]).toBeGreaterThan(65)
     })
 })
 
 describe('handler seam', () => {
-    it('leaves build and move waiting and blocking', () => {
-        const unhandled: BuildStep[] = [
-            { action: 'build', building: 'house', from: 'sheep' },
-            { action: 'move', count: 1, from: 'sheep', to: 'wood' },
-        ]
-        for (const step of unhandled) {
-            const result = run([step, { action: 'rally', producer: 'capital-town-center', to: 'wood' }])
-            expect(result.steps.map((s) => s.status)).toEqual(['waiting', 'not-reached'])
-        }
-    })
-
     it('leaves an action with no registered handler waiting and blocking', () => {
         const withMill = gameData((parts) =>
             withStart(parts, (start) => {
@@ -554,6 +543,7 @@ describe('handler seam', () => {
     })
 
     it('starts a step through a registered handler with no loop change', () => {
+        const registered = stepHandlers.build
         withHandler(
             'build',
             () => ({ started: true }),
@@ -566,7 +556,8 @@ describe('handler seam', () => {
                 expect(result.steps[1]).toMatchObject({ status: 'completed', startedAt: 15 })
             },
         )
-        expect(stepHandlers.build).toBeUndefined()
+        expect(registered).toBeTypeOf('function')
+        expect(stepHandlers.build).toBe(registered)
     })
 
     it('runs a handler event through schedule in time order', () => {
@@ -636,9 +627,9 @@ describe('civ rules', () => {
     })
 
     it('supplyProvider changes the supply a building gives', () => {
-        const result = run([], { rules: { supplyProvider: (supply) => supply + 10 } })
+        const result = run([], { inputs: inputsFor(data, { autoHouses: false }), rules: { supplyProvider: (supply) => supply + 10 } })
         expect(countAt(result, 'villager', 80)).toBe(4)
-        expect(countAt(def, 'villager', 80)).toBe(3)
+        expect(countAt(run([], { inputs: inputsFor(data, { autoHouses: false }) }), 'villager', 80)).toBe(3)
         let supply: number
         withHandler(
             'move',
