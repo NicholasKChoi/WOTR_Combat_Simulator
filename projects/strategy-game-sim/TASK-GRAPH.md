@@ -17,4 +17,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-033 | Serve the build order simulation over POST and OpenAPI | M2 | M2.7 | | high | SGS-028,SGS-029,SGS-030 | | sgs-033-aoe4-simulate-route | 25b1512 | integrated | | 39 | tickets/SGS-033-aoe4-simulate-route.md |
 | SGS-032 | AoE4 research handler and veterancy tiers | M2 | M2.3 | | high | SGS-030 | | sgs-032-aoe4-research-veterancy | 7e41e68 | integrated | | 38 | tickets/SGS-032-aoe4-research-veterancy.md |
 | SGS-031 | AoE4 build and move handlers, landmark ages, auto-houses | M2 | M2.3 | | high | SGS-030 | | sgs-031-aoe4-build-move-ages | c88fb01 | integrated | 2 | 40 | tickets/SGS-031-aoe4-build-move-ages.md |
-| SGS-034 | AoE4 build order page, prebuilt build, landing link and acceptance tests | M2 | M2.5 | | high | SGS-028,SGS-031,SGS-032,SGS-033 | | | | ready | | | tickets/SGS-034-aoe4-build-order-page.md |
+| SGS-034 | AoE4 build order page, prebuilt build, landing link and acceptance tests | M2 | M2.5 | | high | SGS-028,SGS-031,SGS-032,SGS-033 | | sgs-034-aoe4-build-order-page | 1bfff2a | needs_review | | | tickets/SGS-034-aoe4-build-order-page.md |
