@@ -26,9 +26,11 @@ describe('rally and start model types', () => {
         const strSteps: BuildOrderLines = { steps: ['1'] }
         // @ts-expect-error rally.to must be a GatherNodeId
         const badTo: BuildStep = { action: 'rally', producer: 'town-center', to: 'castle' }
+        // @ts-expect-error rally needs a target node
+        const noTarget: BuildStep = { action: 'rally', producer: 'town-center' }
         // @ts-expect-error rally needs a producer
         const noProducer: BuildStep = { action: 'rally', to: 'wood' }
-        void [badRally, badKey, badCount, noSteps, strSteps, badTo, noProducer]
+        void [badRally, badKey, badCount, noSteps, strSteps, badTo, noProducer, noTarget]
     })
 
     it('lets a rally step take instance, a villagers trigger and no walkSeconds', () => {
