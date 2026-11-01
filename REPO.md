@@ -29,7 +29,8 @@ styleSources:                     # no AGENTS.md/CLAUDE.md/CONTRIBUTING.md exist
   - ARCHITECTURE.md
   - tsconfig.json
 
-criticalPaths: []                 # no docs name production-critical code
+criticalPaths:                    # app logic (simulation, rules, stats) per ARCHITECTURE.md; golang/ is retired
+  - "lib/**"                       # test files (*.test.ts) alone do not count
 
 babysit: false                    # no .github/workflows; the only check is the Vercel preview deploy
 stacking: gh-stack                # user: no repo enablement needed (per Copilot); gh-stack v0.3.0 installed
