@@ -32,6 +32,7 @@ on `main` (SGS-006), with shared types in `lib/combat-simulator/fight-api.ts`. T
 this list only names the surfaces.
 
 - `POST /api/fight`: WOTR combat simulator (`operationId: runFight`).
+- `POST /api/aoe4-build-order/simulate` (`operationId: simulateBuildOrder`).
 - Routes: `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`.
 
 ## Design docs

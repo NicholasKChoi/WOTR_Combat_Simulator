@@ -50,7 +50,7 @@ Confirmed by the owner 2026-10-30.
 | M2.4 | The build-order input is a JSON model with tagged triggers (time = "not before", villager count) plus a line-based paste format that parses into it; unknown trigger kinds and unsupported techs are rejected with clear errors | code | SGS-026, SGS-028, SGS-029 | open |
 | M2.5 | At least one prebuilt English build order in `data/aoe4-build-order/builds/` loads in the app | code | SGS-034 | open |
 | M2.6 | `pages/apps/aoe4-build-order` graphs units produced (by unit and tier), gather rates, and floating resources over time, and is linked from `pages/index.js` | code | SGS-015, SGS-034 | open |
-| M2.7 | If the design adds an API route, it is in `docs/api/openapi.json` and passes the contract check | code | SGS-033 | open |
+| M2.7 | If the design adds an API route, it is in `docs/api/openapi.json` and passes the contract check | code | SGS-033 | done |
 | M2.8 | Playwright acceptance tests: paste a build order, run it, and see all three graphs | code | SGS-034 | open |
 | M2.9 | CONTEXT.md Key surfaces and Design docs row, and INVARIANTS.md AoE4 Paths, updated from proposed to actual | code | manager On-merge | open |
 | M2.10 | Precursor: the repo's npm dependencies (next, react, react-dom, typescript, @types/*, bootstrap, vitest, @playwright/test, ajv, classnames) are upgraded to current stable majors, with build, typecheck, unit and acceptance suites green and the WOTR and StarCraft pages unchanged in behavior | code | SGS-012 | done |
