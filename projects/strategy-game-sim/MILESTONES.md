@@ -54,3 +54,24 @@ Confirmed by the owner 2026-10-30.
 | M2.8 | Playwright acceptance tests: paste a build order, run it, and see all three graphs | code | SGS-034 | done |
 | M2.9 | CONTEXT.md Key surfaces and Design docs row, and INVARIANTS.md AoE4 Paths, updated from proposed to actual | code | manager On-merge | done |
 | M2.10 | Precursor: the repo's npm dependencies (next, react, react-dom, typescript, @types/*, bootstrap, vitest, @playwright/test, ajv, classnames) are upgraded to current stable majors, with build, typecheck, unit and acceptance suites green and the WOTR and StarCraft pages unchanged in behavior | code | SGS-012 | done |
+
+## M3: AoE4 build order workbench (finite resources, easier editing)
+
+**Outcome:** Starting resources run out as in the game, and the owner can edit, tune and compare build
+orders on the page, for example a spearman/archer opening that transitions to men-at-arms and crossbows.
+
+### Exit criteria
+
+Confirmed by the owner 2026-11-01 (editor shape, tinkering tools, depletion behavior and backlog scope chosen in chat).
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M3.1 | Starting gather nodes are finite: sheep, berries, deer, boar, gold and stone have per-start amounts (each hand-entered value carries a source and an "unverified" label, and is overridable in the inputs); farms and wood stay infinite; the result reports when each node ran out | code | | open |
+| M3.2 | When a node runs out, its gatherers go idle (they gather nothing until a step moves them) and the result carries a warning naming the node, the time and the idle villager count | code | | open |
+| M3.3 | New trigger kinds in both the JSON model and the paste format: a node runs out (`when berry runs out`) and a resource bank reaches an amount (`when wood >= 400`); unknown or malformed forms are rejected with clear errors | code | | open |
+| M3.4 | The page has a step table editor: add, delete and reorder steps, with dropdowns limited to the civ's valid actions, buildings, units, techs and gather nodes; it stays in sync with the paste text both ways | code | | open |
+| M3.5 | Per-step timeline: each step shows when it started and completed, or what it is waiting on (resources, villagers, population, prerequisite); steps that never start are flagged | code | | open |
+| M3.6 | Compare to a pinned run: the owner can pin a run and the charts overlay it, with the difference in key numbers (military resources spent at 10/15/20 min, age-up times, time to 200 population) | code | | open |
+| M3.7 | A prebuilt English build that opens spearman + archer and transitions to men-at-arms + crossbow ships in `data/aoe4-build-order/builds/`, loads in the app, and has no step left waiting or not reached | code | | open |
+| M3.8 | Backlog bugs and doc fixes: a build whose `then` is the node it built (e.g. a farm) pays no second walk leg; chart Y-axis label overlap; note messages use ids; the issues list is capped; paste-parser NBSP and pre-`start` line counting; sparse `steps` arrays rejected; multi-tier tech handling in effects/research; and the listed doc wording fixes in docs/aoe4-build-order.md and design/M2.md | code | | open |
+| M3.9 | `docs/aoe4-build-order.md` and `docs/api/openapi.json` cover the new inputs, triggers, warnings and step timeline, and pass the contract check; Playwright tests edit a step in the table, run it, see a depletion warning and the step timeline, and pin and compare a run | code | | open |
