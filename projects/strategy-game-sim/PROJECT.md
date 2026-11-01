@@ -19,9 +19,9 @@ respecThreshold: 2
 strongModelTriggers:                # docs, data snapshots, dependency/config upgrades, dead-code deletion, UI styling, test-only: not triggers alone
   - changes combat or simulation rules, dice, casualties, RNG, or battle/series loop behavior (what a run computes)
   - changes shared or mutable state, or the order of operations a result depends on (W2, A3)
-  - changes a public schema, API request/response, or cross-component contract (/api/fight, shared types)
+  - changes an existing public schema, API request/response, or cross-component contract that current callers depend on (/api/fight, shared types); a new contract the design already specifies with exact names does not count
   - changes a bound or cap that enforces S3, H1, or A2
-  - estimated over 150 lines of business logic
+  - estimated over 250 lines of business logic (UI components, tests, OpenAPI/schema JSON, and data excluded)
 ---
 
 # Project notes
