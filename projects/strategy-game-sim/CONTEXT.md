@@ -21,7 +21,7 @@ with randomness, either to estimate odds or to make fair random picks. A landing
 | site | `pages/index.js`, `pages/_app.js`, `components/layout.*`, `utils/**`, `styles/**` | Landing page and routing, shared Layout, shared helpers and styles |
 | wotr-combat-simulator | `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `lib/combat-simulator/**`, `pages/api/fight.ts` | Army input form, `/api/fight` battle simulation, results view |
 | starcraft-helper | `pages/apps/starcraft-helper.js` | Partner pairing, map strike and map pick, all client-side |
-| aoe4-build-order | TODO: proposed `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `lib/aoe4-build-order/**`, `pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**` | Build order input, simulation, timing report, versioned game data |
+| aoe4-build-order | `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `lib/aoe4-build-order/**`, `pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**` | Build order input, simulation, timing report, versioned game data |
 
 The apps don't depend on each other. The only shared code is the site component.
 
@@ -33,7 +33,7 @@ this list only names the surfaces.
 
 - `POST /api/fight`: WOTR combat simulator (`operationId: runFight`).
 - `POST /api/aoe4-build-order/simulate` (`operationId: simulateBuildOrder`).
-- Routes: `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`.
+- Routes: `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`, `/apps/aoe4-build-order`.
 
 ## Design docs
 

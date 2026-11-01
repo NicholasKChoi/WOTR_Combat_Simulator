@@ -47,7 +47,7 @@ Every eligible player pairing and map has an equal chance.
 Likely break: a hand-written shuffle bug.
 
 ## AoE4 Build Order Simulator
-Paths: `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `lib/aoe4-build-order/**`, `pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**` (proposed).
+Paths: `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `lib/aoe4-build-order/**`, `pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**`.
 
 ### A1. Game numbers come only from versioned data files
 Costs, build times, and gather rates are read from data files labeled with a game patch.
