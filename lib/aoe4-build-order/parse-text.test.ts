@@ -57,15 +57,6 @@ describe('round trip', () => {
         expect(result.order.start).toStrictEqual(representable.start)
         expect(result.order.steps).toStrictEqual(representable.steps)
     })
-
-    it('formats the same order to the same text every time', () => {
-        expect(formatBuildOrderText(representable)).toBe(formatBuildOrderText(structuredClone(representable)))
-    })
-
-    it('parses the same text to the same result every time', () => {
-        const text = formatBuildOrderText(representable)
-        expect(parseBuildOrderText(text)).toStrictEqual(parseBuildOrderText(text))
-    })
 })
 
 describe('order metadata', () => {

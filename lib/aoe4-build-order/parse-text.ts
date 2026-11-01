@@ -8,7 +8,8 @@ export type ParseTextResult =
 type StepOf<A extends BuildStep['action']> = Extract<BuildStep, { action: A }>;
 
 const PASTED_ORDER_NAME = 'Pasted build order';
-const GATHER_NODE_ORDER: readonly GatherNodeId[] = ['sheep', 'berry', 'deer', 'boar', 'farm', 'wood', 'gold', 'stone'];
+// Keys are the canonical start order; `satisfies` makes a new GatherNodeId a compile error instead of a silently dropped node.
+const GATHER_NODE_ORDER = Object.keys({ sheep: 0, berry: 0, deer: 0, boar: 0, farm: 0, wood: 0, gold: 0, stone: 0 } satisfies Record<GatherNodeId, 0>) as GatherNodeId[];
 
 // Every pattern is anchored with no nested quantifier over the same characters, so matching is linear.
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -18,7 +19,6 @@ const TIME = /^@(\d+):(\d\d)$/;
 const COUNT = /^x(\d+)$/;
 const SECONDS = /^(\d+)s$/;
 // \r is whitespace, so a CRLF break needs no separate split and a stray \r never joins a token.
-const LINE_BREAK = '\n';
 const WHITESPACE = /[ \t\r]+/;
 const MAX_QUOTED_LENGTH = 40;
 
@@ -222,7 +222,7 @@ export function parseBuildOrderText(text: string): ParseTextResult {
   let sawStart = false;
   let sawStep = false;
 
-  text.split(LINE_BREAK).forEach((raw, index) => {
+  text.split('\n').forEach((raw, index) => {
     const line = index + 1;
     const tokens = raw.split(WHITESPACE).filter((token) => token !== '');
     if (tokens.length === 0 || tokens[0].startsWith('#')) {
