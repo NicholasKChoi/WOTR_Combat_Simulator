@@ -1,4 +1,5 @@
-import { EffectState, ModifierTarget, modifiedValue } from './effects';
+import { hasBuilding, modifiedValue } from './effects';
+import type { EffectState, ModifierTarget } from './effects';
 import type { GatherNodeId, SimInputs } from './model';
 
 function villagerTarget(state: EffectState): ModifierTarget {
@@ -21,7 +22,7 @@ export function effectiveGatherRate(node: GatherNodeId, state: EffectState, inpu
   const capacity = applyAll(rules.capacity.value, rules.capacityProperties, target, state);
   const moveSpeedMultiplier = modifiedValue(1, 'moveSpeed', target, state);
   const trip = inputs.trips[node];
-  const nearDropOff = rules.dropOffs.some((baseId) => (state.buildings.get(baseId) ?? 0) >= 1);
+  const nearDropOff = rules.dropOffs.some((baseId) => hasBuilding(state, baseId));
   const walk = nearDropOff ? trip.walkSecondsCamp : trip.walkSecondsTownCenter;
   const cycle = capacity / rate + walk / moveSpeedMultiplier + trip.dropOffSeconds;
   return capacity / cycle;

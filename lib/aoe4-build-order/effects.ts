@@ -93,7 +93,7 @@ export interface ModifierTarget {
   producer?: string;
 }
 
-function hasBuilding(state: EffectState, baseId: string): boolean {
+export function hasBuilding(state: EffectState, baseId: string): boolean {
   return (state.buildings.get(baseId) ?? 0) >= 1;
 }
 
