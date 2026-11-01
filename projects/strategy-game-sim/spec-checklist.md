@@ -20,7 +20,8 @@ the diff touches its paths (see INVARIANTS.md).
 
 - [ ] S1: no import path from one `pages/apps/*` or `components/apps/<x>/` into another app's files.
 - [ ] S2: every page added under `pages/apps/` has a link in `pages/index.js` and renders inside `Layout`.
-- [ ] S3: every new numeric input or iteration count has an explicit cap checked before the loop runs.
+- [ ] S3: every new numeric input or iteration count has an explicit cap checked before the loop runs, and
+  every list an API route returns (including validation issues) is capped so the response size is bounded.
 
 ## WOTR Combat Simulator (W1–W2)
 

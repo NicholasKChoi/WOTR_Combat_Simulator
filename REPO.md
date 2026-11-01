@@ -33,7 +33,7 @@ criticalPaths:                    # app logic (simulation, rules, stats) per ARC
   - "lib/**"                       # test files (*.test.ts) alone do not count
 
 babysit: false                    # no .github/workflows; the only check is the Vercel preview deploy
-stacking: gh-stack                # user: no repo enablement needed (per Copilot); gh-stack v0.3.0 installed
+stacking: footer                  # retro 2026-11-01: native gh-stack links made `gh pr merge` refuse stacked PRs; engine has no `none` yet
 
 tracker:
   kind: none
@@ -98,6 +98,16 @@ Paths: `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, 
   design doc lists, and compare responses with the doc's rules.
 - For a change to dice or casualty logic, run enough fights to see that outcomes move the way the
   ticket says. Don't approve it from reading the code alone.
+
+### AoE4 build order
+Paths: `lib/aoe4-build-order/**`, `components/apps/aoe4-build-order/**`, `pages/apps/aoe4-build-order*`,
+`pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**`. Design doc: `docs/aoe4-build-order.md` and the
+active milestone's design.
+- A helper, constant or tolerance copied from another `lib/aoe4-build-order/` module is blocking: import
+  or extract it instead (past copies drifted, e.g. two resource tolerances with different values).
+- Check every engine rule change against `docs/aoe4-build-order.md`; a doc sentence the diff leaves
+  contradicted by the code is blocking.
+- For chart changes, load the page at 1280px wide and check that axis labels and tick labels do not overlap.
 
 ### Starcraft helper
 Paths: `pages/apps/starcraft-helper.js`. Design doc: `docs/starcraft-helper.md` (pending ticket).
