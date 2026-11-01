@@ -30,6 +30,10 @@ export default function Home() {
             🚀{' '}
             <Link href="/apps/starcraft-helper">Starcraft Helper</Link>
           </li>
+          <li className={utilStyles.headingMd}>
+            🏰{' '}
+            <Link href="/apps/aoe4-build-order">AoE4 Build Order Simulator</Link>
+          </li>
         </ul>
       </section>
       <section className={cn(utilStyles.lightText, utilStyles.headingSm)}>

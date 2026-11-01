@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test'
 const links = [
   { name: 'Combat Simulator', route: '/apps/combat-simulator' },
   { name: 'Starcraft Helper', route: '/apps/starcraft-helper' },
+  { name: 'AoE4 Build Order Simulator', route: '/apps/aoe4-build-order' },
 ]
 
 for (const { name, route } of links) {

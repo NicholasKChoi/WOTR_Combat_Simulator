@@ -1,0 +1,187 @@
+{
+  "civ": "english",
+  "name": "ENG 1TC",
+  "source": "https://aoe4guides.com/builds/reinDv5vkVX6KUny571E",
+  "start": {
+    "rally": "gold"
+  },
+  "steps": [
+    {
+      "action": "produce",
+      "producer": "capital-town-center",
+      "unit": "villager"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 20
+      },
+      "action": "build",
+      "building": "house",
+      "from": "gold",
+      "then": "gold"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 40
+      },
+      "action": "build",
+      "building": "mining-camp",
+      "from": "gold",
+      "then": "gold"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 60
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "sheep"
+    },
+    {
+      "trigger": {
+        "kind": "villagers",
+        "count": 9
+      },
+      "action": "build",
+      "building": "abbey-of-kings",
+      "from": "sheep",
+      "builders": 3,
+      "then": "sheep"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 140
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "wood"
+    },
+    {
+      "action": "build",
+      "building": "lumber-camp",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 230
+      },
+      "action": "build",
+      "building": "house",
+      "from": "sheep",
+      "then": "sheep"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 240
+      },
+      "action": "build",
+      "building": "mill",
+      "from": "sheep",
+      "builders": 3,
+      "then": "sheep"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 300
+      },
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "barracks",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "research",
+      "tech": "horticulture"
+    },
+    {
+      "action": "research",
+      "tech": "double-broadax"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 315
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "produce",
+      "producer": "barracks",
+      "unit": "spearman"
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "longbowman"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 360
+      },
+      "action": "build",
+      "building": "blacksmith",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 420
+      },
+      "action": "research",
+      "tech": "steeled-arrow"
+    },
+    {
+      "action": "research",
+      "tech": "iron-undermesh"
+    }
+  ]
+}

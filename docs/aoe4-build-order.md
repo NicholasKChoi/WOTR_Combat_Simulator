@@ -518,8 +518,7 @@ A `SimulationResult` holds:
   properties listed) and `tech-effect-unmodeled` (empty `properties`).
 
 The page draws three graphs over time from it: units produced (by unit and tier), gather rates, and
-floating resources. The charting component and its test selectors are documented with that component and
-its tests.
+floating resources.
 
 The life of one step is shown below. The diagram is conceptual: its states are not values in the result.
 At the horizon each state maps to a `StepTiming.status`:
@@ -550,6 +549,33 @@ instance carries its order any more: a counted one at the spawn of its last unit
 continuous one (or a counted one replaced early) when a later `produce` or `pause` on that producer
 starts. `rally` and `pause` complete the instant they start; `build` completes when the building does,
 `move` when its villagers arrive, and `research` when its research time ends.
+
+### Page
+
+The page is `/apps/aoe4-build-order`. Its controls are a prebuilt build select, a paste textarea, a
+`durationSeconds` number input (default 1200) and a run button. Choosing a prebuilt build replaces the
+text with that build's paste text; editing the text leaves the select as it is. Run posts the text and
+`inputs.durationSeconds` to the route. The duration is not checked in the browser: an empty or
+non-numeric entry is sent as 0, and the route rejects any value outside its bounds.
+
+A 200 draws three line charts, each with a toggleable legend:
+
+| chart | series keys | series names |
+|---|---|---|
+| Units produced | each `unitsProduced` `unitId`, in result order | `<name> (tier <tier>)` |
+| Gather rates (per minute) | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
+| Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
+
+Each series' line carries its key as `data-series`. Clicking a legend item hides that series and clicking
+it again restores it. When `notes` is non-empty, a notes list shows each note's technology id and
+message; with no notes there is no list.
+
+A 400 shows every issue's `message` (each names its line or step) and removes any earlier charts. Any
+other failure shows "The simulation could not be run (HTTP <status>)."
+
+Prebuilt builds live in `data/aoe4-build-order/builds/`, one `BuildOrder` JSON file per build, each
+with a `source`. Every prebuilt build is paste-representable: it re-parses from its own paste text to the
+same `start` and `steps`.
 
 ## CivRules seams
 
