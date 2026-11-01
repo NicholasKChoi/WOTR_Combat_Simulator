@@ -1,6 +1,7 @@
 # AoE4 build order game data
 
-Every game number the AoE4 build order simulator uses comes from the files here. Code holds none.
+Every game number the AoE4 build order simulator uses comes from `aoe4world/` and `rules/`. Code holds
+none.
 
 | file | contents |
 |---|---|
@@ -8,6 +9,7 @@ Every game number the AoE4 build order simulator uses comes from the files here.
 | `rules/base.json` | civ-agnostic hand-entered values: gather nodes, builder scaling, max population, task-switch walk |
 | `rules/english.json` | English hand-entered values: starting state, supply, overlay effects, upgrade targets |
 | `refresh-snapshot.mjs` | rewrites `aoe4world/english.json`; not imported by the app |
+| `builds/<slug>.json` | user-authored prebuilt `BuildOrder`s (paste-representable, each with a `source`); not game data and not patch-labeled |
 
 ## Refreshing the snapshot
 
@@ -28,6 +30,27 @@ Every game number the AoE4 build order simulator uses comes from the files here.
 5. Run `npm test`. The drift guard fails if an English technology uses an effect property that is
    neither supported nor ignored; classify it in `lib/aoe4-build-order/effects.ts` before committing.
    The reference tests fail if a rules file names an id the new snapshot no longer has.
+
+## Prebuilt builds
+
+Each file in `builds/` is one `BuildOrder` the page offers in its prebuilt list, and one import line in
+`lib/aoe4-build-order/builds.ts`. Every number is a non-negative integer, so the build re-parses from its
+paste text unchanged. Ids are aoe4world `baseId`s. A guide step the paste grammar cannot express is left
+out, never approximated, and is listed under its build below. So is any step that does not complete or
+keep running by 3600 s in the simulation, with its reason.
+
+- `english-1tc` "ENG 1TC", https://aoe4guides.com/builds/reinDv5vkVX6KUny571E (English, Season 13).
+  Villager production is continuous from the start, following the guide's villager counts. Omitted:
+  - 0:40 "termina [house] después a [mining camp][gold]" (a second villager finishes the house): no action
+    adds a builder to a building already under construction. The rest of the step, going to gold at a
+    mining camp, is the `build mining-camp from gold` step.
+  - No step was removed for not completing.
+
+  Transcription choices: the 0:20 villager rallies to gold (`start -> gold`) because it builds the house
+  and then goes to gold; "x4 a [sheep]" at 1:00 is a rally to sheep, which holds until the 2:20 rally to
+  wood; the abbey builders return to sheep and, at 4:00, build the mill and the three farms from there;
+  the 5:00 builders and the 6:00 blacksmith builder come from wood; the 5:15 military production is
+  continuous because the guide gives no count.
 
 ## Hand-entered values
 
