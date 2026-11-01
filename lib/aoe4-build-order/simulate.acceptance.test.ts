@@ -40,11 +40,16 @@ function run(steps: BuildStep[], options: { game?: GameData; inputs?: SimInputs;
 
 function withHandler<A extends BuildStep['action']>(action: A, handler: StepHandler<A>, fn: () => void) {
     const handlers = stepHandlers as Record<string, unknown>
+    const saved = handlers[action]
     handlers[action] = handler
     try {
         fn()
     } finally {
-        delete handlers[action]
+        if (saved === undefined) {
+            delete handlers[action]
+        } else {
+            handlers[action] = saved
+        }
     }
 }
 

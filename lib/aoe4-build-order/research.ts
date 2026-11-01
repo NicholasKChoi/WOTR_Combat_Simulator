@@ -1,0 +1,99 @@
+import type { GameData, SnapshotEntry } from './data';
+import { classifyTech } from './effects';
+import type { EffectState } from './effects';
+import type { BuildOrder, BuildOrderNote, ResourceKind } from './model';
+import type { BuildingInstance, EngineState, PaidItem, StepHandler } from './simulate';
+
+const RESOURCES: readonly ResourceKind[] = ['food', 'wood', 'gold', 'stone'];
+
+// Income credited up to the engine's computed affordability time can land a hair under the cost.
+const RESOURCE_TOLERANCE = Math.sqrt(Number.EPSILON);
+
+// Queue length is not consulted: the first candidate building with an instance takes it on instance 1.
+function researchTarget(state: EngineState, candidates: readonly string[]): BuildingInstance | undefined {
+  for (const baseId of candidates) {
+    const first = state.instances.get(baseId)?.[0];
+    if (first) {
+      return first;
+    }
+  }
+  return undefined;
+}
+
+function researchItem(entry: SnapshotEntry, index: number): PaidItem {
+  return {
+    entry,
+    complete(state) {
+      state.researched.add(entry.baseId);
+      state.steps[index].completedAt = state.time;
+      state.steps[index].status = 'completed';
+    },
+  };
+}
+
+export const researchHandler: StepHandler<'research'> = (step, index, state) => {
+  const entry = state.data.byBaseId.get(step.tech)[0];
+  const target = researchTarget(state, step.at === undefined ? entry.producedBy : [step.at]);
+  if (!target || entry.age > state.age) {
+    return { started: false };
+  }
+  const cost = {} as Record<ResourceKind, number>;
+  for (const kind of RESOURCES) {
+    cost[kind] = entry.costs[kind];
+  }
+  if (!RESOURCES.every((kind) => state.resources[kind] + RESOURCE_TOLERANCE >= cost[kind])) {
+    return { started: false, reserve: cost };
+  }
+  for (const kind of RESOURCES) {
+    state.resources[kind] = Math.max(0, state.resources[kind] - cost[kind]);
+  }
+  target.paid.push(researchItem(entry, index));
+  return { started: true };
+};
+
+// A unit's entry is read when it is paid, so a unit paid before an upgrade completes keeps the lower tier.
+export function resolveUnitEntry(baseId: string, state: EffectState): SnapshotEntry | undefined {
+  const entries = state.data.byBaseId.get(baseId);
+  if (!entries) {
+    return undefined;
+  }
+  let tier: number | undefined;
+  for (const upgrade of state.researched) {
+    if (state.data.upgradeTargets.get(upgrade)?.value !== baseId) {
+      continue;
+    }
+    for (const entry of state.data.byBaseId.get(upgrade) ?? []) {
+      tier = tier === undefined ? entry.age : Math.max(tier, entry.age);
+    }
+  }
+  return entries.find((entry) => entry.age === tier) ?? entries[0];
+}
+
+export function researchNotes(order: BuildOrder, data: GameData): BuildOrderNote[] {
+  const notes: BuildOrderNote[] = [];
+  order.steps.forEach((step, index) => {
+    if (step.action !== 'research') {
+      return;
+    }
+    const entry = data.byBaseId.get(step.tech)[0];
+    const support = classifyTech(entry, data);
+    if (support.kind === 'effects-ignored') {
+      notes.push({
+        code: 'tech-effect-ignored',
+        step: index,
+        tech: step.tech,
+        properties: support.properties,
+        message: `${entry.name}: its effect on ${support.properties.join(', ')} is not simulated; it still costs resources and queue time.`,
+      });
+    } else if (support.kind === 'effects-unmodeled') {
+      notes.push({
+        code: 'tech-effect-unmodeled',
+        step: index,
+        tech: step.tech,
+        properties: [],
+        message: `${entry.name}: its effect is not simulated; it still costs resources and queue time.`,
+      });
+    }
+  });
+  return notes;
+}
