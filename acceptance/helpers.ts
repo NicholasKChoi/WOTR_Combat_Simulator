@@ -44,3 +44,18 @@ export function armies(attack: [number, number, number], defend: [number, number
 export function postFight(request: APIRequestContext, body: Armies | FightBody, timeout?: number) {
   return request.post('/api/fight', { data: body, timeout })
 }
+
+export const SIMULATE_PATH = '/api/aoe4-build-order/simulate'
+
+export function postSimulate(request: APIRequestContext, body: unknown, timeout = 10_000) {
+  return request.post(SIMULATE_PATH, { data: body, timeout })
+}
+
+// Playwright JSON-encodes a string `data`, so a raw body (a bare JSON value, malformed JSON) goes as a Buffer.
+export function postSimulateRaw(request: APIRequestContext, raw: string, timeout = 10_000) {
+  return request.post(SIMULATE_PATH, {
+    data: Buffer.from(raw),
+    headers: { 'Content-Type': 'application/json' },
+    timeout,
+  })
+}

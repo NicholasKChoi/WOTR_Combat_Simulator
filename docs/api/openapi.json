@@ -183,6 +183,375 @@
           }
         }
       }
+    },
+    "/api/aoe4-build-order/simulate": {
+      "post": {
+        "operationId": "simulateBuildOrder",
+        "summary": "Simulate an AoE4 build order and report its timings.",
+        "description": "Simulates one AoE4 build order for one horizon and returns the timings. The simulation is deterministic: the same request and game data always give the same body. Validation runs in two stages and every issue is reported. A body that is not a JSON object (an array, string, number or null) gives one syntax issue and nothing else is checked. Otherwise the order stage runs (exactly one of text and buildOrder; text is parsed then validated, buildOrder is validated) and then the inputs stage always runs too, even when the order stage failed; issues list order-stage issues first, then inputs issues, and error is the first issue message. Issue location: an issue on a pasted step carries line and step, an issue on the pasted start line carries line; an issue on a JSON step carries step and never line; an issue on JSON start, on inputs, or on the request shape carries neither. Absent inputs fields at any depth take their defaults. Two framework responses have no schema and happen before the handler runs: a body that is not valid JSON is a 400 with the plain-text body Invalid JSON, and a body over the 1 MB default body limit is a 413 with a plain-text body.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateRequest"
+              },
+              "examples": {
+                "buildOrder": {
+                  "summary": "JSON build order with a start and a rally step",
+                  "value": {
+                    "buildOrder": {
+                      "civ": "english",
+                      "name": "Rally opener",
+                      "start": {
+                        "villagers": {
+                          "sheep": 6
+                        },
+                        "rally": "sheep"
+                      },
+                      "steps": [
+                        {
+                          "action": "produce",
+                          "producer": "capital-town-center",
+                          "unit": "villager",
+                          "count": 2
+                        },
+                        {
+                          "trigger": {
+                            "kind": "time",
+                            "seconds": 30
+                          },
+                          "action": "rally",
+                          "producer": "capital-town-center",
+                          "to": "wood"
+                        }
+                      ]
+                    },
+                    "inputs": {
+                      "durationSeconds": 60
+                    }
+                  }
+                },
+                "text": {
+                  "summary": "The same build order as paste text",
+                  "value": {
+                    "text": "start 6 sheep -> sheep\nproduce villager from capital-town-center x2\n@0:30 rally capital-town-center -> wood",
+                    "inputs": {
+                      "durationSeconds": 60
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The simulation result. Both request examples return this body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationResult"
+                },
+                "example": {
+                  "civ": "english",
+                  "durationSeconds": 60,
+                  "sampleSeconds": 5,
+                  "times": [
+                    0,
+                    5,
+                    10,
+                    15,
+                    20,
+                    25,
+                    30,
+                    35,
+                    40,
+                    45,
+                    50,
+                    55,
+                    60
+                  ],
+                  "unitsProduced": [
+                    {
+                      "unitId": "villager-1",
+                      "baseId": "villager",
+                      "name": "Villager",
+                      "tier": 1,
+                      "counts": [
+                        0,
+                        0,
+                        0,
+                        0,
+                        1,
+                        1,
+                        1,
+                        1,
+                        2,
+                        2,
+                        2,
+                        2,
+                        2
+                      ]
+                    }
+                  ],
+                  "gatherRates": {
+                    "food": [
+                      222.3137093454096,
+                      222.3137093454096,
+                      222.3137093454096,
+                      222.3137093454096,
+                      222.3137093454096,
+                      259.3659942363112,
+                      259.3659942363112,
+                      259.3659942363112,
+                      259.3659942363112,
+                      259.3659942363112,
+                      259.3659942363112,
+                      259.3659942363112,
+                      259.3659942363112
+                    ],
+                    "wood": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      31.00241129865656,
+                      31.00241129865656,
+                      31.00241129865656,
+                      31.00241129865656
+                    ],
+                    "gold": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ],
+                    "stone": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ]
+                  },
+                  "floating": {
+                    "food": [
+                      150,
+                      168.5261424454508,
+                      187.0522848909016,
+                      205.5784273363524,
+                      174.1045697818032,
+                      192.630712227254,
+                      214.24454508027995,
+                      235.8583779333059,
+                      257.4722107863318,
+                      279.08604363935774,
+                      300.6998764923837,
+                      322.3137093454096,
+                      343.92754219843556
+                    ],
+                    "wood": [
+                      200,
+                      200,
+                      200,
+                      200,
+                      200,
+                      200,
+                      200,
+                      200,
+                      200,
+                      200,
+                      202.58353427488805,
+                      205.1670685497761,
+                      207.75060282466416
+                    ],
+                    "gold": [
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100
+                    ],
+                    "stone": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ]
+                  },
+                  "steps": [
+                    {
+                      "step": 0,
+                      "status": "completed",
+                      "armedAt": 0,
+                      "startedAt": 0,
+                      "completedAt": 40,
+                      "waitSeconds": 0
+                    },
+                    {
+                      "step": 1,
+                      "status": "completed",
+                      "armedAt": 30,
+                      "startedAt": 30,
+                      "completedAt": 30,
+                      "waitSeconds": 0
+                    }
+                  ],
+                  "ages": [
+                    {
+                      "age": 1,
+                      "reachedAt": 0
+                    }
+                  ],
+                  "notes": []
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was rejected; nothing was simulated. One exception does not match SimulateError: a body that is not valid JSON is rejected by the framework before the handler runs, with status 400 and the plain-text body Invalid JSON (no JSON content type).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulateError"
+                },
+                "examples": {
+                  "stepAndInputs": {
+                    "summary": "an invalid step and inputs.durationSeconds 59: both reported, the step first",
+                    "value": {
+                      "error": "steps[0]: house cannot produce villager",
+                      "issues": [
+                        {
+                          "code": "invalid",
+                          "message": "steps[0]: house cannot produce villager",
+                          "step": 0
+                        },
+                        {
+                          "code": "out-of-range",
+                          "message": "inputs.durationSeconds: 59 is outside 60..3600"
+                        }
+                      ]
+                    }
+                  },
+                  "pastedStep": {
+                    "summary": "a pasted step whose producer cannot produce the unit: line and step",
+                    "value": {
+                      "error": "line 3: house cannot produce villager",
+                      "issues": [
+                        {
+                          "code": "invalid",
+                          "message": "line 3: house cannot produce villager",
+                          "step": 0,
+                          "line": 3
+                        }
+                      ]
+                    }
+                  },
+                  "pasteSyntax": {
+                    "summary": "a paste line that does not parse: line only",
+                    "value": {
+                      "error": "line 2: seconds over 59 in '@1:61'",
+                      "issues": [
+                        {
+                          "code": "syntax",
+                          "message": "line 2: seconds over 59 in '@1:61'",
+                          "line": 2
+                        }
+                      ]
+                    }
+                  },
+                  "exactlyOne": {
+                    "summary": "neither text nor buildOrder",
+                    "value": {
+                      "error": "request: send exactly one of text and buildOrder",
+                      "issues": [
+                        {
+                          "code": "syntax",
+                          "message": "request: send exactly one of text and buildOrder"
+                        }
+                      ]
+                    }
+                  },
+                  "notAnObject": {
+                    "summary": "body is a JSON array: one issue, inputs not checked",
+                    "value": {
+                      "error": "request body: must be a JSON object",
+                      "issues": [
+                        {
+                          "code": "syntax",
+                          "message": "request body: must be a JSON object"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not POST.",
+            "headers": {
+              "Allow": {
+                "description": "The only allowed method.",
+                "schema": {
+                  "type": "string",
+                  "const": "POST"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FightError"
+                },
+                "example": {
+                  "error": "method GET is not allowed; use POST"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -538,6 +907,874 @@
               "maximum": 1
             },
             "description": "Index k is the share of all rounds in which the defender scored exactly k hits."
+          }
+        }
+      },
+      "SimulateRequest": {
+        "type": "object",
+        "description": "One simulation request: exactly one of text (paste format) or buildOrder (JSON), plus optional inputs. A key whose value is null counts as present, so text: null beside buildOrder is the both-present syntax issue. Unknown extra keys are ignored.",
+        "oneOf": [
+          {
+            "description": "The paste-format variant: text is sent and buildOrder is not.",
+            "required": [
+              "text"
+            ]
+          },
+          {
+            "description": "The JSON variant: buildOrder is sent and text is not.",
+            "required": [
+              "buildOrder"
+            ]
+          }
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 20000,
+            "description": "The build order in the paste format, at most 20000 characters (JavaScript string length). Longer text is one out-of-range issue and is not parsed. Issues on a pasted step carry step and line; an issue on the start line carries line only."
+          },
+          "buildOrder": {
+            "$ref": "#/components/schemas/BuildOrder",
+            "description": "The build order as JSON, at most 200 steps. Issues on a step carry step and never line; issues on start carry neither."
+          },
+          "inputs": {
+            "$ref": "#/components/schemas/SimInputOverrides",
+            "description": "Simulation inputs; every absent field, at any depth, takes its default. Issues here carry neither step nor line."
+          }
+        }
+      },
+      "BuildOrder": {
+        "type": "object",
+        "description": "A build order: steps run in list order, each once its trigger holds and every earlier step has started. Unknown extra keys are ignored.",
+        "required": [
+          "civ",
+          "name",
+          "steps"
+        ],
+        "properties": {
+          "civ": {
+            "$ref": "#/components/schemas/CivId",
+            "description": "Civilization; only english is supported. Any other string is an unknown-id issue."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the build order."
+          },
+          "source": {
+            "type": "string",
+            "description": "Where the build order comes from, for example a guide URL."
+          },
+          "start": {
+            "$ref": "#/components/schemas/BuildStart",
+            "description": "The t=0 villager split and rally; omitted keeps the civ split and sets no rally."
+          },
+          "steps": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "$ref": "#/components/schemas/BuildStep"
+            },
+            "description": "The steps, at most 200. More is one out-of-range issue and no step is checked."
+          }
+        }
+      },
+      "BuildStart": {
+        "type": "object",
+        "description": "Starting state overrides. Both fields are optional; {} is valid. Unknown extra keys are ignored.",
+        "properties": {
+          "villagers": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/GatherNodeId"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 200
+            },
+            "description": "Villagers per gather node at t=0, each 0..200. When present it replaces the civ split whole (omitted nodes get 0) and the values must sum to the civ starting count (6 for english), else an invalid issue. An unknown node key is an unknown-id issue."
+          },
+          "rally": {
+            "$ref": "#/components/schemas/GatherNodeId",
+            "description": "Rally node at t=0 for the starting villager producers. Required (as an invalid issue) when a starting building produces villagers, which is true for english (capital-town-center)."
+          }
+        }
+      },
+      "BuildStep": {
+        "description": "One step, a oneOf on the action const. Ids are aoe4world baseIds. A step that is not an object, has an unknown action, or a missing or mistyped field is a syntax issue. Unknown extra keys are ignored.",
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Queue units at a producer. Without count production is continuous until a later produce or pause on that producer.",
+            "required": [
+              "action",
+              "producer",
+              "unit"
+            ],
+            "properties": {
+              "action": {
+                "const": "produce",
+                "description": "Step kind: produce."
+              },
+              "trigger": {
+                "$ref": "#/components/schemas/Trigger",
+                "description": "When the step may start; omitted means no condition."
+              },
+              "producer": {
+                "type": "string",
+                "minLength": 1,
+                "description": "baseId of the producing building; must be a producedBy building of the unit (else invalid)."
+              },
+              "instance": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "1-based instance of the producer to target, 1..200; omitted targets every instance of that baseId."
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1,
+                "description": "baseId of the unit to produce."
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Units to produce, 1..200; omitted means continuous."
+              },
+              "rally": {
+                "$ref": "#/components/schemas/GatherNodeId",
+                "description": "Villager only (else invalid): sets the producer rally for villagers it spawns from this step on."
+              },
+              "walkSeconds": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 60,
+                "description": "Walk in seconds for the rally walk; only allowed with rally (else invalid), 0..60 (decimals allowed); omitted inherits inputs.walkSeconds."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Set the rally node of a villager producer for villagers spawned from this step on; costs nothing and completes when it starts.",
+            "required": [
+              "action",
+              "producer",
+              "to"
+            ],
+            "properties": {
+              "action": {
+                "const": "rally",
+                "description": "Step kind: rally."
+              },
+              "trigger": {
+                "$ref": "#/components/schemas/Trigger",
+                "description": "When the step may start; omitted means no condition."
+              },
+              "producer": {
+                "type": "string",
+                "minLength": 1,
+                "description": "baseId of a villager producer (else invalid)."
+              },
+              "instance": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "1-based instance of the producer to target, 1..200; omitted targets every instance of that baseId."
+              },
+              "to": {
+                "$ref": "#/components/schemas/GatherNodeId",
+                "description": "Rally node."
+              },
+              "walkSeconds": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 60,
+                "description": "Walk in seconds for the rally walk of every villager it routes, 0..60 (decimals allowed); omitted inherits inputs.walkSeconds."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Stop production at a producer; completes when it starts.",
+            "required": [
+              "action",
+              "producer"
+            ],
+            "properties": {
+              "action": {
+                "const": "pause",
+                "description": "Step kind: pause."
+              },
+              "trigger": {
+                "$ref": "#/components/schemas/Trigger",
+                "description": "When the step may start; omitted means no condition."
+              },
+              "producer": {
+                "type": "string",
+                "minLength": 1,
+                "description": "baseId of the producing building."
+              },
+              "instance": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "1-based instance of the producer to target, 1..200; omitted targets every instance of that baseId."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Pull villagers off a node to construct a building, then send them to a node.",
+            "required": [
+              "action",
+              "building",
+              "from"
+            ],
+            "properties": {
+              "action": {
+                "const": "build",
+                "description": "Step kind: build."
+              },
+              "trigger": {
+                "$ref": "#/components/schemas/Trigger",
+                "description": "When the step may start; omitted means no condition."
+              },
+              "building": {
+                "type": "string",
+                "minLength": 1,
+                "description": "baseId of the building to construct."
+              },
+              "builders": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Villagers that build, 1..200; default 1."
+              },
+              "from": {
+                "$ref": "#/components/schemas/GatherNodeId",
+                "description": "Node the builders are taken from."
+              },
+              "then": {
+                "$ref": "#/components/schemas/GatherNodeId",
+                "description": "Node the builders go to afterwards; default from."
+              },
+              "walkSeconds": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 60,
+                "description": "Walk in seconds for each build leg, 0..60 (decimals allowed); omitted inherits inputs.walkSeconds."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Research a technology or veterancy upgrade. A technology an earlier research step already names is invalid.",
+            "required": [
+              "action",
+              "tech"
+            ],
+            "properties": {
+              "action": {
+                "const": "research",
+                "description": "Step kind: research."
+              },
+              "trigger": {
+                "$ref": "#/components/schemas/Trigger",
+                "description": "When the step may start; omitted means no condition."
+              },
+              "tech": {
+                "type": "string",
+                "minLength": 1,
+                "description": "baseId of the technology; one whose effects cannot be simulated is unsupported-tech or unknown-tech-effect."
+              },
+              "at": {
+                "type": "string",
+                "minLength": 1,
+                "description": "baseId of the building to research it at; must be a producedBy building of the technology (else invalid). Omitted uses the technology producedBy."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Move villagers between gather nodes.",
+            "required": [
+              "action",
+              "count",
+              "from",
+              "to"
+            ],
+            "properties": {
+              "action": {
+                "const": "move",
+                "description": "Step kind: move."
+              },
+              "trigger": {
+                "$ref": "#/components/schemas/Trigger",
+                "description": "When the step may start; omitted means no condition."
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Villagers to move, 1..200."
+              },
+              "from": {
+                "$ref": "#/components/schemas/GatherNodeId",
+                "description": "Node the villagers leave."
+              },
+              "to": {
+                "$ref": "#/components/schemas/GatherNodeId",
+                "description": "Node the villagers go to."
+              },
+              "walkSeconds": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 60,
+                "description": "Walk in seconds for the move, 0..60 (decimals allowed); omitted inherits inputs.walkSeconds."
+              }
+            }
+          }
+        ]
+      },
+      "Trigger": {
+        "description": "A oneOf on the kind const. A trigger whose kind is neither time nor villagers is invalid under this schema, and the server rejects it with an unknown-trigger-kind issue; a trigger that is not an object or has a mistyped field is a syntax issue.",
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Holds from a game time on.",
+            "required": [
+              "kind",
+              "seconds"
+            ],
+            "properties": {
+              "kind": {
+                "const": "time",
+                "description": "Trigger kind: time."
+              },
+              "seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3600,
+                "description": "Game time in seconds, 0..3600."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Holds once the villager count reaches count.",
+            "required": [
+              "kind",
+              "count"
+            ],
+            "properties": {
+              "kind": {
+                "const": "villagers",
+                "description": "Trigger kind: villagers."
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Villager count, 1..200."
+              }
+            }
+          }
+        ]
+      },
+      "GatherNodeId": {
+        "type": "string",
+        "enum": [
+          "sheep",
+          "berry",
+          "deer",
+          "boar",
+          "farm",
+          "wood",
+          "gold",
+          "stone"
+        ],
+        "description": "A gather node villagers work at."
+      },
+      "ResourceKind": {
+        "type": "string",
+        "enum": [
+          "food",
+          "wood",
+          "gold",
+          "stone"
+        ],
+        "description": "A resource."
+      },
+      "CivId": {
+        "type": "string",
+        "enum": [
+          "english"
+        ],
+        "description": "A supported civilization."
+      },
+      "SimInputOverrides": {
+        "type": "object",
+        "description": "Simulation input overrides. Every property is optional and every absent field takes its default at any depth: trips merges per node and then per field, influenceCoverage per key. An out-of-range value is an out-of-range issue whose message names its path, for example inputs.trips.farm.walkSecondsCamp. Unknown extra keys are ignored.",
+        "properties": {
+          "durationSeconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 3600,
+            "default": 1200,
+            "description": "Simulated horizon in seconds, 60..3600."
+          },
+          "trips": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/GatherNodeId"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TripInputOverrides"
+            },
+            "description": "Per-node gather trip overrides; nodes and fields left out keep the rules/base.json defaults. An unknown node key is an unknown-id issue."
+          },
+          "walkSeconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60,
+            "description": "Base walk in seconds per task switch (move, build legs, rally, auto-house), 0..60; default from rules/base.json."
+          },
+          "autoHouses": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether houses are built automatically to stay ahead of supply."
+          },
+          "houseBuilders": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 1,
+            "description": "Villagers that build each automatic house, 1..200."
+          },
+          "houseBuilderSource": {
+            "$ref": "#/components/schemas/GatherNodeId",
+            "default": "wood",
+            "description": "Preferred node automatic house builders are taken from."
+          },
+          "influenceCoverage": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "default": {
+              "mill": 1
+            },
+            "description": "Share of gatherers inside a building influence once one exists, keyed by building baseId, each 0..1; keys left out keep their default ({ mill: 1 }). An unknown building key is an unknown-id issue."
+          }
+        }
+      },
+      "TripInputOverrides": {
+        "type": "object",
+        "description": "Gather trip overrides for one node. Every property is optional; absent ones keep the node default. Unknown extra keys are ignored.",
+        "properties": {
+          "walkSecondsCamp": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60,
+            "description": "Walk in seconds between the node and a drop-off camp, 0..60."
+          },
+          "walkSecondsTownCenter": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 60,
+            "description": "Walk in seconds between the node and a town center, 0..60."
+          },
+          "dropOffSeconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 30,
+            "description": "Seconds spent dropping off a load, 0..30."
+          }
+        }
+      },
+      "SimulationResult": {
+        "type": "object",
+        "description": "The simulated timings. Every series has one value per entry of times.",
+        "required": [
+          "civ",
+          "durationSeconds",
+          "sampleSeconds",
+          "times",
+          "unitsProduced",
+          "gatherRates",
+          "floating",
+          "steps",
+          "ages",
+          "notes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "civ": {
+            "$ref": "#/components/schemas/CivId",
+            "description": "Civilization simulated."
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 3600,
+            "description": "Simulated horizon in seconds."
+          },
+          "sampleSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Seconds between samples (5)."
+          },
+          "times": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "number",
+              "minimum": 0
+            },
+            "description": "Sample times in seconds: 0, s, 2s, ... for s = sampleSeconds, up to and including durationSeconds; when durationSeconds is not a multiple of s the last sample is durationSeconds."
+          },
+          "unitsProduced": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitSeries"
+            },
+            "description": "One series per unit entry and tier produced; starting units never appear."
+          },
+          "gatherRates": {
+            "type": "object",
+            "description": "Income per minute for each resource at each sample.",
+            "required": [
+              "food",
+              "wood",
+              "gold",
+              "stone"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "food": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Income per minute of this resource at each sample."
+              },
+              "wood": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Income per minute of this resource at each sample."
+              },
+              "gold": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Income per minute of this resource at each sample."
+              },
+              "stone": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Income per minute of this resource at each sample."
+              }
+            }
+          },
+          "floating": {
+            "type": "object",
+            "description": "Banked, unspent amount of each resource at each sample.",
+            "required": [
+              "food",
+              "wood",
+              "gold",
+              "stone"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "food": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Banked amount of this resource at each sample."
+              },
+              "wood": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Banked amount of this resource at each sample."
+              },
+              "gold": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Banked amount of this resource at each sample."
+              },
+              "stone": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Banked amount of this resource at each sample."
+              }
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepTiming"
+            },
+            "description": "One timing per build order step, in step order."
+          },
+          "ages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "An age reached.",
+              "required": [
+                "age",
+                "reachedAt"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "age": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Age number (1 = Dark Age)."
+                },
+                "reachedAt": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Game time in seconds the age was reached."
+                }
+              }
+            },
+            "description": "Each age reached and when, starting age first."
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BuildOrderNote"
+            },
+            "description": "Non-fatal notes about technologies whose effects are not all simulated."
+          }
+        }
+      },
+      "UnitSeries": {
+        "type": "object",
+        "description": "Cumulative count of one unit entry produced over time.",
+        "required": [
+          "unitId",
+          "baseId",
+          "name",
+          "tier",
+          "counts"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "unitId": {
+            "type": "string",
+            "description": "aoe4world entry id (baseId plus tier)."
+          },
+          "baseId": {
+            "type": "string",
+            "description": "aoe4world baseId of the unit."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the entry."
+          },
+          "tier": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The entry age."
+          },
+          "counts": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Units of this entry produced up to each sample time, cumulative."
+          }
+        }
+      },
+      "StepTiming": {
+        "type": "object",
+        "description": "Timing of one step at the horizon.",
+        "required": [
+          "step",
+          "status",
+          "armedAt",
+          "startedAt",
+          "completedAt",
+          "waitSeconds"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "step": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0-based index into buildOrder.steps."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "in-progress",
+              "waiting",
+              "not-reached"
+            ],
+            "description": "State of the step at durationSeconds."
+          },
+          "armedAt": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "When the trigger held and every earlier step had started; null if never."
+          },
+          "startedAt": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "When the step started (paid and supply allowed); null if never."
+          },
+          "completedAt": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "When the step finished; null if not by durationSeconds."
+          },
+          "waitSeconds": {
+            "type": "number",
+            "minimum": 0,
+            "description": "startedAt - armedAt once the step has started; 0 before it starts."
+          }
+        }
+      },
+      "BuildOrderIssue": {
+        "type": "object",
+        "description": "One problem with the request; any issue means nothing was simulated.",
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "syntax",
+              "unknown-trigger-kind",
+              "unknown-id",
+              "unsupported-tech",
+              "unknown-tech-effect",
+              "out-of-range",
+              "invalid"
+            ],
+            "description": "syntax: shape or spelling; unknown-trigger-kind: trigger kind other than time or villagers; unknown-id: id not in the civ data; unsupported-tech and unknown-tech-effect: a technology that cannot be simulated; out-of-range: a number outside its bound, non-integer where an integer is required, or non-finite; invalid: a cross-field rule fails."
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable reason, naming the step or line and the offending id, kind or property."
+          },
+          "step": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0-based index of the step the issue is on; absent for start, inputs and request-level issues."
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based line of the pasted text; present only for issues on text."
+          }
+        }
+      },
+      "BuildOrderNote": {
+        "type": "object",
+        "description": "A non-fatal note on a research step.",
+        "required": [
+          "code",
+          "message",
+          "step",
+          "tech",
+          "properties"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "tech-effect-ignored",
+              "tech-effect-unmodeled"
+            ],
+            "description": "tech-effect-ignored: some effect properties are ignored (listed); tech-effect-unmodeled: the technology has no simulated effect."
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable note naming the step and technology."
+          },
+          "step": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0-based index of the research step."
+          },
+          "tech": {
+            "type": "string",
+            "description": "baseId of the technology."
+          },
+          "properties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Effect properties not simulated; empty for tech-effect-unmodeled."
+          }
+        }
+      },
+      "SimulateError": {
+        "type": "object",
+        "description": "Error body for a rejected request; nothing was simulated.",
+        "required": [
+          "error",
+          "issues"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The message of the first issue."
+          },
+          "issues": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/BuildOrderIssue"
+            },
+            "description": "Every issue found: order-stage issues first (text or buildOrder), then inputs issues."
           }
         }
       }

@@ -478,14 +478,20 @@ flowchart LR
 
 `POST /api/aoe4-build-order/simulate` (`operationId: simulateBuildOrder`) runs one simulation. The request
 is a `SimulateRequest` with exactly one of `text` (paste format, at most 20,000 characters) or
-`buildOrder` (JSON, at most 200 steps), and optional `inputs`, a partial `SimInputs` whose missing fields
-take their defaults.
+`buildOrder` (JSON, at most 200 steps), and optional `inputs`, a `SimInputOverrides` whose absent fields
+take their defaults at any depth (`trips` per node, then per field; `influenceCoverage` per key). A key
+whose value is `null` counts as present, so `text: null` beside `buildOrder` is the both-present `syntax`
+issue. Longer `text` is one `out-of-range` issue and is not parsed.
 
 - **200:** the `SimulationResult`.
 - **400:** `SimulateError` `{ error, issues }`, where `issues` lists every `BuildOrderIssue` and `error` is
-  the first issue's message.
+  the first issue's message. The order (`text` or `buildOrder`) is checked first and `inputs` second, and
+  both always run, so order issues come first, then inputs issues. A body that is not a JSON object (an
+  array, string, number or `null`) gives one `syntax` issue and nothing else is checked. A pasted step's
+  issue carries `line` and `step`, a JSON step's carries `step` only, and `inputs` issues carry neither.
 - **405:** `{ error }` with an `Allow: POST` header, for any other method.
-- A body that is not valid JSON keeps Next's plain-text 400.
+- A body that is not valid JSON keeps Next's plain-text 400 `Invalid JSON`, and a body over Next's 1 MB
+  default limit is its plain-text 413; neither reaches the handler.
 
 `docs/api/openapi.json` is the authoritative request and response contract, with schema names equal to the
 TypeScript names in `lib/aoe4-build-order/api.ts` and `model.ts`; this doc does not copy its field lists.

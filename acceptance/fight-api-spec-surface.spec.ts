@@ -7,6 +7,19 @@ const TIMEOUT = { timeout: 10_000 }
 
 const spec = JSON.parse(readFileSync(join(__dirname, '..', 'docs', 'api', 'openapi.json'), 'utf8'))
 const schemas = spec.components.schemas
+const FIGHT_SCHEMA_NAMES = [
+  'ArmyCount',
+  'FightError',
+  'FightOutcomes',
+  'FightRequest',
+  'FightResponse',
+  'FightSurvivors',
+  'HitsPerRound',
+  'OutcomeTally',
+  'RoundStats',
+  'SurvivorCombination',
+]
+const fightSchemas = Object.fromEntries(Object.entries<any>(schemas).filter(([name]) => FIGHT_SCHEMA_NAMES.includes(name)))
 const operation = spec.paths['/api/fight'].post
 const errorExamples = operation.responses['400'].content['application/json'].examples
 
@@ -19,15 +32,15 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.describe('spec file shape', () => {
-  test('is OpenAPI 3.1 and lists only /api/fight', () => {
+  test('is OpenAPI 3.1 and lists /api/fight and /api/aoe4-build-order/simulate', () => {
     expect(spec.openapi).toMatch(/^3\.1\./)
-    expect(Object.keys(spec.paths)).toEqual(['/api/fight'])
+    expect(Object.keys(spec.paths).sort()).toEqual(['/api/aoe4-build-order/simulate', '/api/fight'])
     expect(spec.info.version).toBeTruthy()
     expect(spec.info.description).not.toContain('/api/models/army')
   })
 
-  test('has exactly the pinned schema names', () => {
-    expect(Object.keys(schemas).filter((n) => n !== 'ArmyCount').sort()).toEqual(
+  test('has exactly the pinned fight schema names', () => {
+    expect(Object.keys(fightSchemas).filter((n) => n !== 'ArmyCount').sort()).toEqual(
       [
         'FightError',
         'FightOutcomes',
@@ -54,9 +67,9 @@ test.describe('spec file shape', () => {
     expect(inline).toEqual([])
   })
 
-  test('every object schema requires every property and describes each; only FightOutcomes is open', () => {
+  test('every fight object schema requires every property and describes each; only FightOutcomes is open', () => {
     const open: string[] = []
-    for (const [name, schema] of Object.entries<any>(schemas)) {
+    for (const [name, schema] of Object.entries<any>(fightSchemas)) {
       if (schema.type !== 'object') continue
       if (schema.additionalProperties !== false) open.push(name)
       const props = Object.keys(schema.properties)
