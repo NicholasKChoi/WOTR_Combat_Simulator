@@ -19,3 +19,9 @@ pull from here; triage moves an item into a milestone or deletes it.
   the engine rejects it; (3) crosscut-saw's +5 wood carry is not modeled (SGS-014 known data gap); (4) Blacksmith
   techs are combat-only, so by the v1 coverage decision they cost resources and queue time but their effects are
   ignored. Decide whether a follow-up adds overlay rows for (2)-(3).
+- design/M2.md paste grammar: says `walk Ns` is last on produce/build/move lines but omits `rally` (SGS-025 ticket has it right). Evidence: reports/SGS-025-spec-gate-1.md. Reported by SGS-025 spec-gate.
+- REPO.md Review checklist: no section for `lib/aoe4-build-order/**`. Evidence: projects/strategy-game-sim/reports/SGS-026-review-1.md. Reported by SGS-026 review.
+- design/M2.md Modules table: effects.ts row omits `EffectState` and `ModifierTarget` (added by SGS-027). Evidence: projects/strategy-game-sim/reports/SGS-027-implementer-1.md. Reported by SGS-027 spec-gate/implementer.
+- design/M2.md:140 says "`start: {}` is valid"; it is only well-formed, since English always needs `start.rally` (starting town center is a villager producer). Reword to "well-formed". Evidence: projects/strategy-game-sim/reports/SGS-025-review-1.md. Reported by SGS-025 review.
+- lib/aoe4-build-order/effects.ts activeEffects: applies every snapshot entry under a researched baseId, so a multi-tier tech would apply all tiers; decide whether `researched` holds baseIds or ids (relevant to SGS-032). Evidence: projects/strategy-game-sim/reports/SGS-027-review-1.md. Reported by SGS-027 review.
+- `lib/aoe4-build-order/effects.ts` `conditionWeight` matches an overlay row age exactly, so a row meant as "from age N on" stops applying after N; confirm intent for SGS-030/032 (SGS-027 tech-lead).

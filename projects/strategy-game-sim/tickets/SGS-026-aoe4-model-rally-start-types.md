@@ -36,11 +36,11 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `model.ts` declares `BuildStart`, `BuildOrderLines`, `BuildOrder.start?: BuildStart` and the `rally` step variant exactly as in the design Contracts block (field names, optionality, types), and the `produce` comment states the design wording.
-- [ ] A type-level check compiles: a `BuildOrder` with `start: { villagers: { sheep: 4, wood: 2 }, rally: 'sheep' }` and a step `{ trigger: { kind: 'time', seconds: 30 }, action: 'rally', producer: 'town-center', to: 'wood', walkSeconds: 5 }` type-checks, and a `rally` step without `to` is a type error (`@ts-expect-error`). `npx tsc --noEmit` passes.
-- [ ] `lib/aoe4-build-order/data.acceptance.test.ts` export-list test passes with the 18 names; it still asserts no runtime exports.
-- [ ] `npm test` passes unchanged otherwise. `git grep -nE "^export (const|function|class|enum)" -- lib/aoe4-build-order/model.ts` finds nothing.
-- [ ] No INVARIANTS.md regressions
+- [x] `model.ts` declares `BuildStart`, `BuildOrderLines`, `BuildOrder.start?: BuildStart` and the `rally` step variant exactly as in the design Contracts block (field names, optionality, types), and the `produce` comment states the design wording.
+- [x] A type-level check compiles: a `BuildOrder` with `start: { villagers: { sheep: 4, wood: 2 }, rally: 'sheep' }` and a step `{ trigger: { kind: 'time', seconds: 30 }, action: 'rally', producer: 'town-center', to: 'wood', walkSeconds: 5 }` type-checks, and a `rally` step without `to` is a type error (`@ts-expect-error`). `npx tsc --noEmit` passes.
+- [x] `lib/aoe4-build-order/data.acceptance.test.ts` export-list test passes with the 18 names; it still asserts no runtime exports.
+- [x] `npm test` passes unchanged otherwise. `git grep -nE "^export (const|function|class|enum)" -- lib/aoe4-build-order/model.ts` finds nothing.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
