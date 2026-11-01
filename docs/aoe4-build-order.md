@@ -126,9 +126,9 @@ scout), but they are not produced. Sheep are not units: sheep are the `sheep` ga
 A build order's `start.villagers`, when present, replaces the civ's `villagers` split whole (omitted nodes
 get 0). It is placed at t=0 with no walk, as the civ split is, and must sum to the civ's starting villager
 count, the sum of `civData.startingState.villagers.value` (6 for English). `start.rally` is the rally node
-for the starting villager producers. Both `start` fields are optional in the schema, and `start: {}` is well-formed (not a `syntax`
-issue). An English order still needs `start.rally`, because its starting town center is a villager
-producer.
+for the starting villager producers. Both `start` fields are optional in the schema, and `start: {}` is
+well-formed (not a `syntax` issue). An English order still needs `start.rally`, because its starting town
+center is a villager producer.
 
 **Ordering and triggers.** Steps run in list order. A trigger is either a time (`@m:ss`, meaning "not
 before" that time) or a villager count (`at N vils`, counting villagers alive). A step arms when its
