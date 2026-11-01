@@ -54,20 +54,20 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `parseBuildOrderText` and `formatBuildOrderText` are exported from `lib/aoe4-build-order/parse-text.ts` with the `ParseTextResult` type above; `npx tsc --noEmit` passes.
-- [ ] (respec 1) Round trip: for a paste-representable order (every number a non-negative integer) that uses every action (`produce` with every suffix, `pause`, `build`, `research` with and without `at`, `move`, `rally`), both trigger kinds, `#k` instances and a `start` with `villagers` and `rally`, `parseBuildOrderText(formatBuildOrderText(order))` is `ok` and its `order.start` and `order.steps` deep-equal the input's.
-- [ ] (respec 1) Every `ok: true` result, including empty text, has `order.civ === 'english'`, `order.name === 'Pasted build order'`, and no `source` key (`'source' in order` is false).
-- [ ] (respec 1) `formatBuildOrderText` on an order with `civ`, `name` and `source` set emits none of them; on an order with `walkSeconds: 4.5` it returns a string containing `walk 4.5s` without throwing, and re-parsing that string gives a `syntax` issue on that line.
-- [ ] Line map: the two design examples above produce exactly `{ start: 1, steps: [3] }` and `{ steps: [1, 2, 3, 4, 5] }`; a text with `\r\n` breaks, blank lines and comments puts each step's physical line in `lines.steps`; a `start` line absent yields no `start` key in `lines`.
-- [ ] Each grammar error is a `syntax` issue carrying `line` and no `step`, with a test per case: `@1:61`; unknown prefix word; unknown action; `produce` suffixes out of order (`walk 4s` before `x3`); `walk 4 s` (space) and `walk 4.5s`; uppercase id (`Villager`); negative or decimal number; missing `from`; missing `->` target on `rally`; trailing tokens. `@60:00` and `@75:00` parse `ok`.
-- [ ] `start` rules: `start 4 sheep 2 wood -> sheep` parses to `{ villagers: { sheep: 4, wood: 2 }, rally: 'sheep' }`; `start -> sheep` and `start 6 sheep` parse; `start` alone, a repeated node (`start 2 sheep 3 sheep`), a second `start`, a `start` after a step line, and `@0:00 start 6 sheep` are each `syntax` with the offending line.
-- [ ] Multiple bad lines yield one issue each, in line order, and no `ok: true`.
-- [ ] No cross-checks: `produce villager from capital-town-center -> nowhere walk 4s` and `@75:00 produce villager from nowhere x999` parse `ok` with the literal values (no `unknown-id`, `out-of-range` or `invalid`).
-- [ ] `git grep -nE "from '\./(data|validate)'" -- lib/aoe4-build-order/parse-text.ts` finds nothing.
-- [ ] `formatBuildOrderText` puts `start` first with nodes in `GatherNodeId` order regardless of key order in the object, and omits it when `start` is `{}` or absent.
-- [ ] A 20,000-character input (many valid lines, and one long line of 20,000 non-matching characters) parses in well under 100 ms (guards backtracking).
-- [ ] Unit tests in `lib/aoe4-build-order/parse-text.test.ts`; `npm test` passes.
-- [ ] No INVARIANTS.md regressions
+- [x] `parseBuildOrderText` and `formatBuildOrderText` are exported from `lib/aoe4-build-order/parse-text.ts` with the `ParseTextResult` type above; `npx tsc --noEmit` passes.
+- [x] (respec 1) Round trip: for a paste-representable order (every number a non-negative integer) that uses every action (`produce` with every suffix, `pause`, `build`, `research` with and without `at`, `move`, `rally`), both trigger kinds, `#k` instances and a `start` with `villagers` and `rally`, `parseBuildOrderText(formatBuildOrderText(order))` is `ok` and its `order.start` and `order.steps` deep-equal the input's.
+- [x] (respec 1) Every `ok: true` result, including empty text, has `order.civ === 'english'`, `order.name === 'Pasted build order'`, and no `source` key (`'source' in order` is false).
+- [x] (respec 1) `formatBuildOrderText` on an order with `civ`, `name` and `source` set emits none of them; on an order with `walkSeconds: 4.5` it returns a string containing `walk 4.5s` without throwing, and re-parsing that string gives a `syntax` issue on that line.
+- [x] Line map: the two design examples above produce exactly `{ start: 1, steps: [3] }` and `{ steps: [1, 2, 3, 4, 5] }`; a text with `\r\n` breaks, blank lines and comments puts each step's physical line in `lines.steps`; a `start` line absent yields no `start` key in `lines`.
+- [x] Each grammar error is a `syntax` issue carrying `line` and no `step`, with a test per case: `@1:61`; unknown prefix word; unknown action; `produce` suffixes out of order (`walk 4s` before `x3`); `walk 4 s` (space) and `walk 4.5s`; uppercase id (`Villager`); negative or decimal number; missing `from`; missing `->` target on `rally`; trailing tokens. `@60:00` and `@75:00` parse `ok`.
+- [x] `start` rules: `start 4 sheep 2 wood -> sheep` parses to `{ villagers: { sheep: 4, wood: 2 }, rally: 'sheep' }`; `start -> sheep` and `start 6 sheep` parse; `start` alone, a repeated node (`start 2 sheep 3 sheep`), a second `start`, a `start` after a step line, and `@0:00 start 6 sheep` are each `syntax` with the offending line.
+- [x] Multiple bad lines yield one issue each, in line order, and no `ok: true`.
+- [x] No cross-checks: `produce villager from capital-town-center -> nowhere walk 4s` and `@75:00 produce villager from nowhere x999` parse `ok` with the literal values (no `unknown-id`, `out-of-range` or `invalid`).
+- [x] `git grep -nE "from '\./(data|validate)'" -- lib/aoe4-build-order/parse-text.ts` finds nothing.
+- [x] `formatBuildOrderText` puts `start` first with nodes in `GatherNodeId` order regardless of key order in the object, and omits it when `start` is `{}` or absent.
+- [x] A 20,000-character input (many valid lines, and one long line of 20,000 non-matching characters) parses in well under 100 ms (guards backtracking).
+- [x] Unit tests in `lib/aoe4-build-order/parse-text.test.ts`; `npm test` passes.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
