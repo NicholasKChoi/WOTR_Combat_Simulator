@@ -31,3 +31,7 @@ pull from here; triage moves an item into a milestone or deletes it.
 - lib/aoe4-build-order/parse-text.ts: a line that fails before reaching `start` counts as a step, so a valid `start` after it gets an extra "must come before every step" issue. (SGS-028 review)
 - lib/aoe4-build-order/validate.ts:189: `steps.forEach` skips holes in a sparse array, so `new Array(3)` as `steps` returns `ok: true`. Unreachable from JSON or the parser; a plain indexed loop would fix it. (SGS-029 review)
 - lib/aoe4-build-order/validate.ts: each key in `start.villagers`, `trips` or `influenceCoverage` can produce one issue with no limit on key count; a hostile 1 MB body could return a very large issues list. The SGS-033 route could cap returned issues. (SGS-029 review)
+- docs/aoe4-build-order.md never states the order of the `unitsProduced` series (first spawn, then unit id). (SGS-030 implementer)
+- docs/aoe4-build-order.md does not say that after a counted `produce` completes, that building's default villager order does not resume. (SGS-030 review)
+- lib/aoe4-build-order/simulate.ts:212-215 throws a TypeError if a villager-producer hook disagrees with the data; simulate.ts:301 has a redundant condition; the supply-wait test assertion is weak. (SGS-030 review)
+- lib/aoe4-build-order/simulate.ts:350-351: a unit with 0 production time finishes at the instant it starts; on a continuous order that loop never advances time. Check the data for zero-time units and keep hook-supplied times positive. (SGS-030 tech-lead)
