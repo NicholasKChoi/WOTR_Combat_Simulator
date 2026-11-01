@@ -17,7 +17,8 @@ The model treats the game as a small set of ordinary rules:
 - Town centers and landmarks are ordinary buildings. They are built, produce and research like any other
   building.
 - Villager producers (town center, King's Palace) are production buildings. By default each one produces
-  villagers continuously ("optimal villagers") until a step changes its order.
+  villagers continuously ("optimal villagers") until a step changes its order. Each spawned villager walks
+  to its producer's rally node.
 - An age-up is a landmark build. There is no separate age-up action.
 - Every construction pulls its builders off their resource for the whole build time; they gather nothing
   while walking and building. Build time depends on the builder count.
@@ -50,7 +51,8 @@ apply to JSON and paste input alike: a paste line is checked after it is parsed.
 | `produce.count`, `move.count` | int | 1..200 | continuous (produce) |
 | `builders`, `houseBuilders` | int | 1..200 | 1 |
 | `instance` | int | 1..200 | every instance |
-| `walkSeconds` (`SimInputs`) and per-step `walkSeconds` (`produce`, `build`, `move`) | number | 0..60 | `rules/base.json`; step: inherit |
+| `walkSeconds` (`SimInputs`) and per-step `walkSeconds` (`produce`, `build`, `move`, `rally`) | number | 0..60 | `rules/base.json`; step: inherit |
+| `start.villagers` values | int | 0..200 | the civ split |
 | `walkSecondsCamp`, `walkSecondsTownCenter` | number | 0..60 | `rules/base.json` |
 | `dropOffSeconds` | number | 0..30 | `rules/base.json` |
 | `influenceCoverage` values | number | 0..1 | `{ mill: 1 }` |
@@ -121,12 +123,21 @@ scout), but they are not produced. Sheep are not units: sheep are the `sheep` ga
 `startingState` hook of `CivRules` may override the whole object. The starting values themselves live in
 `rules/english.json`.
 
+A build order's `start.villagers`, when present, replaces the civ's `villagers` split whole (omitted nodes
+get 0). It is placed at t=0 with no walk, as the civ split is, and must sum to the civ's starting villager
+count, the sum of `civData.startingState.villagers.value` (6 for English). `start.rally` is the rally node
+for the starting villager producers. Both `start` fields are optional, and `start: {}` is valid.
+
 **Ordering and triggers.** Steps run in list order. A trigger is either a time (`@m:ss`, meaning "not
 before" that time) or a villager count (`at N vils`, counting villagers alive). A step arms when its
 trigger holds and every earlier step has started; a step without a trigger arms as soon as the earlier
 steps have started. Once armed, it waits until it is affordable and supply allows it, then starts.
 `waitSeconds = startedAt - armedAt`. At the horizon, a step that never armed is `not-reached`, and a step
 that armed but never started is `waiting`.
+
+At one instant, steps start in list order before villagers spawn. A step armed by a spawn (a `villagers`
+trigger) starts at that instant, after the spawn. So `@T rally` routes the villager spawning at T, and
+`at N vils rally` routes villager N+1 onward.
 
 **Queues.** Each building instance has one queue, shared by production and research. A `produce` step on
 a busy producer replaces its order (a switch); `pause` clears the order. A step names a building by
@@ -160,11 +171,30 @@ walk is paid:
 
 - once per villager on `move`, from `from` to `to`;
 - twice on `build`: once to the site, then once from the site to `then`;
-- once on `produce` with `rally`, from spawn to the node;
+- once per spawned villager, from spawn to its producer instance's rally node. The walk is
+  `(source.walkSeconds ?? inputs.walkSeconds) / moveSpeedMultiplier`, where the source is the `rally` step
+  or `produce` that set the rally; a `start.rally` route uses `inputs.walkSeconds`;
 - for both legs by auto-house builders, at `inputs.walkSeconds` (no step to override it).
 
 The trip model's per-node `walkSecondsCamp`, `walkSecondsTownCenter` and `dropOffSeconds` model the gather
 cycle, not task switches.
+
+**Rally rules.** A rally sends each villager a producer spawns to a gather node.
+
+- Villager producers are the `producedBy` buildings of the civ's `villager` entries (English
+  `capital-town-center`, `town-center` and `kings-palace`).
+- Each producer instance holds a rally state `{ node, walkSeconds? }`.
+- Two writers set it: a `rally` step, and a villager `produce` with `rally`. The last writer wins, from the
+  writer's `startedAt`. A writer's scope is its `instance`, or with no `instance` every existing instance of
+  the `baseId` plus the default for that `baseId`'s later instances.
+- A new instance takes its `baseId` default, else `start.rally`.
+- An instance-scoped rally for an instance not yet built is held for it.
+- Villagers already spawned are never re-routed; `move` does that.
+- A `rally` step has no cost and no supply: `startedAt = completedAt = armedAt`, `waitSeconds` is 0 and its
+  status is `completed`. Its `walkSeconds` applies to the walk of every villager it routes.
+- Same-instant order is in Ordering and triggers.
+- The validation rules in Issues guarantee a rally is in effect whenever a villager spawns, so the engine
+  reports no rally error.
 
 **Construction.** Build time with N builders = base build time x 3 / (N + 2), the `builderScaling`
 numerator 3 and offset 2 in `rules/base.json`:
@@ -251,16 +281,19 @@ Effects stated only in a technology's description text, beside non-empty `effect
 
 ## Build order input
 
-**JSON.** A `BuildOrder` is `{ civ, name, source?, steps }` with `civ` = `english`. Each `BuildStep` has
-an optional `trigger` and one `action`:
+**JSON.** A `BuildOrder` is `{ civ, name, source?, start?, steps }` with `civ` = `english`.
+`BuildStart` is `{ villagers?, rally? }`: `villagers` maps gather nodes to villager counts at t=0 (see
+Starting state), and `rally` is the rally node for starting villager producers. Each `BuildStep` has an
+optional `trigger` and one `action`:
 
 | action | fields |
 |---|---|
-| `produce` | `producer`, `instance?`, `unit`, `count?` (absent = continuous), `rally?` (required for villagers), `walkSeconds?` (only with `rally`) |
+| `produce` | `producer`, `instance?`, `unit`, `count?` (absent = continuous), `rally?` (villager only; sets the producer's standing rally), `walkSeconds?` (only with `rally`) |
 | `pause` | `producer`, `instance?` |
 | `build` | `building`, `builders?` (default 1), `from`, `then?` (default `from`), `walkSeconds?` |
 | `research` | `tech`, `at?` (technologies and veterancy upgrades) |
 | `move` | `count`, `from`, `to`, `walkSeconds?` |
+| `rally` | `producer`, `instance?`, `to`, `walkSeconds?` |
 
 A trigger is a tagged object: `{ "kind": "time", "seconds": 90 }` or `{ "kind": "villagers", "count": 17 }`.
 An unknown `kind` is an `unknown-trigger-kind` issue. Gather nodes (`GatherNodeId`) are `sheep`, `berry`,
@@ -273,12 +306,13 @@ prefix comes first, then the action:
 |---|---|---|
 | `@m:ss ` | time | `produce <unit> from <producer>[#k] [xN] [-> <node>] [walk Ns]` |
 | `at N vils ` | villagers | `pause <producer>[#k]` |
-| (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move N <node> to <node> [walk Ns]` |
+| (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move N <node> to <node> [walk Ns]`; `rally <producer>[#k] -> <node> [walk Ns]` |
 
 One example per action; each line stands alone:
 
 ```text
 # opening
+start 4 sheep 2 wood -> sheep
 produce villager from capital-town-center x3 -> sheep walk 4s
 @0:45 build house with 2 from wood then wood walk 6s
 at 9 vils build mill from sheep then berry
@@ -288,6 +322,7 @@ move 3 sheep to berry walk 5s
 produce longbowman from archery-range#1 x5
 research veteran-longbowmen
 pause capital-town-center#1
+rally capital-town-center#1 -> wood walk 3s
 ```
 
 Grammar details:
@@ -297,7 +332,7 @@ Grammar details:
   is valid.
 - On a `produce` line the suffixes are ordered `[xN]`, `[-> node]`, `[walk Ns]`; any other order is a
   `syntax` issue.
-- `walk Ns` is always last on `produce`, `build` and `move` lines: the keyword `walk`, a space, an
+- `walk Ns` is always last on `produce`, `build`, `move` and `rally` lines: the keyword `walk`, a space, an
   integer, and `s` with no space (`walk 6s`).
 - A `produce` walk without `-> node` (in JSON, `walkSeconds` without `rally`) is an `invalid` issue.
 - Walk values in paste text are integers; JSON may use decimals.
@@ -307,23 +342,39 @@ Grammar details:
   `[a-z0-9]+(-[a-z0-9]+)*` and case-sensitive. Uppercase or other characters are a `syntax` issue; input
   is never lowercased for the user.
 - Keywords are lowercase. Numbers are unsigned decimal integers, with no sign and no decimals.
+- The `start` line is `start [N <node>]... [-> <node>]` with at least one part, for example
+  `start 4 sheep 2 wood -> sheep`. There is at most one, before every step line, with no trigger prefix. A
+  repeated node, a second `start`, or a `start` after a step is a `syntax` issue. `formatBuildOrderText`
+  emits it first, with nodes in `GatherNodeId` order.
 
 **Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line? }`. A paste
-error carries the 1-based `line`; a step error carries `step`. The codes are complete and the same for
-JSON and paste:
+step issue carries both `step` and the 1-based `line`; a paste `start` issue carries `line` only; a JSON
+step issue carries `step` only and a JSON `start` issue carries neither. The codes are complete and the
+same for JSON and paste:
 
 | code | meaning |
 |---|---|
 | `syntax` | text cannot be parsed, or JSON structure is wrong: bad paste grammar, a step that is not an object, a missing or mistyped field, an unknown `action` value, a wrong-typed `trigger` |
 | `unknown-trigger-kind` | the trigger's `kind` is not `time` or `villagers` (an omitted trigger means no condition) (paste: unknown line prefix is `syntax`) |
-| `unknown-id` | a well-formed id not in the civilization's data (unit, producer, building, technology, node, civilization) |
+| `unknown-id` | a well-formed id not in the civilization's data (unit, producer, building, technology, node, civilization), including an unknown `start` node key |
 | `unsupported-tech`, `unknown-tech-effect` | a technology rejected by `classifyTech` |
-| `out-of-range` | a number outside `SIM_INPUT_BOUNDS`, a non-integer, or a non-finite number |
-| `invalid` | well-formed, known ids, in range, but a cross-field rule fails: `walkSeconds` without `rally`, or a villager `produce` without `rally` |
+| `out-of-range` | a number outside `SIM_INPUT_BOUNDS` (including a `start.villagers` value outside 0..200), a non-integer, or a non-finite number |
+| `invalid` | well-formed, known ids, in range, but a cross-field rule fails (the rules below) |
 
-Shape or spelling is `syntax`; value size is `out-of-range`; a field combination is `invalid`. A villager
-`produce` (unit `baseId` `villager`) without `rally` is `invalid`, reported on that step (`step`, or `line`
-for paste). A message names the step or line and the offending id, kind or property. Any issue stops the
+Shape or spelling is `syntax`; value size is `out-of-range`; a field combination is `invalid`. The
+`invalid` rules for `start` and rally are:
+
+- `start.villagers` values do not sum to the civ's starting villager count;
+- `walkSeconds` without `rally` on a `produce`;
+- `rally` on a `produce` whose unit is not a villager;
+- a `rally` step whose `producer` is a known building that produces no villagers;
+- no `start.rally` while a starting building is a villager producer;
+- a `build` of a villager producer with no `start.rally` and no earlier `rally` source covering every
+  instance of that `baseId`.
+
+A villager `produce` without `rally` is valid and uses the standing rally. Each issue is reported on its
+step or `start`, with the location fields above. A message names the step or line and the offending id,
+kind or property. Any issue stops the
 request; nothing is simulated.
 
 ```mermaid
@@ -434,6 +485,7 @@ fields and results unchanged.
 | Event or resource triggers, combinators | a new `Trigger.kind`, handled in one `triggerHolds(trigger, state)` switch in `simulate.ts`; validation keeps rejecting unknown kinds |
 | A spread of outcomes | every variable quantity is already in `SimInputs` and the simulator uses no randomness or clock; a `spread` field on `SimulationResult` and `runs` and `seed` on `SimulateRequest` |
 | New step kinds (idle, sacred sites, trade) | `BuildStep` is tagged on `action`; one handler per action |
+| Military rally points, more `start` fields (resources, units) | an optional `unit` on the `rally` step; new optional `BuildStart` fields |
 | More technology effects (`buildTime`, `influence`), combat | move a property into `SUPPORTED_EFFECT_PROPERTIES` and the interpreter; `IGNORED_EFFECT_PROPERTIES` shrinks |
 | More English bonuses (Council Hall, Network of Castles, Abbey of Kings) | `OverlayEffect` rows in `rules/english.json`; no code |
 | Depletion, positions, per-trip deposits | `gatherNodes` data and `TripInputs`; rates and crediting live only in `gather.ts` |
