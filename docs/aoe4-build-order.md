@@ -57,6 +57,12 @@ apply to JSON and paste input alike: a paste line is checked after it is parsed.
 | `dropOffSeconds` | number | 0..30 | `rules/base.json` |
 | `influenceCoverage` values | number | 0..1 | `{ mill: 1 }` |
 
+Unknown extra properties on a build order, its `start`, its steps, their triggers and `inputs` are
+ignored. Every omitted `inputs` field takes its default at any depth: `trips` merges per node and then
+per field, and `influenceCoverage` per key, so `{ trips: { farm: { walkSecondsCamp: 3 } } }` changes only
+that one value. A build order with more than 200 steps is one `out-of-range` issue, and its steps are not
+checked.
+
 The result is sampled every `sampleSeconds` = 5 seconds.
 
 ## Data sources
@@ -366,7 +372,7 @@ same for JSON and paste:
 | `out-of-range` | a number outside `SIM_INPUT_BOUNDS` (including a `start.villagers` value outside 0..200), a non-integer, or a non-finite number |
 | `invalid` | well-formed, known ids, in range, but a cross-field rule fails (the rules below) |
 
-Shape or spelling is `syntax`; value size is `out-of-range`; a field combination is `invalid`. The
+Shape or spelling is `syntax`; value size is `out-of-range`; a field combination is `invalid`. The six
 `invalid` rules for `start` and rally are:
 
 - `start.villagers` values do not sum to the civ's starting villager count;
@@ -376,6 +382,19 @@ Shape or spelling is `syntax`; value size is `out-of-range`; a field combination
 - no `start.rally` while a starting building is a villager producer;
 - a `build` of a villager producer with no `start.rally` and no earlier `rally` or `produce` source for that
   `baseId` without `instance` (baseId-wide).
+
+Three more `invalid` rules cover producers and research:
+
+- a `produce` whose `producer` is not a `producedBy` building of any entry of its `unit`
+  (`produce villager from house`);
+- a `research` with `at` where `at` is not a `producedBy` building of the technology
+  (`research wheelbarrow at house`); without `at` there is no check;
+- a `research` of a technology an earlier `research` step already names, with or without `at`; the issue is
+  on the later step and names the earlier one.
+
+These three run only once the step's ids resolve, so an `unknown-id` step gets no second issue, and a
+technology that is unknown or rejected does not count as an earlier research. The simulator assumes all
+nine rules hold and has no runtime check for them.
 
 A villager `produce` without `rally` is valid and uses the standing rally. Each issue is reported on its
 step or `start`, with the location fields above. A message names the step or line and the offending id,
