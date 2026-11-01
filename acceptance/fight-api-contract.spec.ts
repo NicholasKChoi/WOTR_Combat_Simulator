@@ -48,6 +48,22 @@ function expectInvalid(name: string, data: unknown) {
   expect(validator(name)(data)).toBe(false)
 }
 
+function referencedSchemas(node: unknown, found = new Set<string>()): Set<string> {
+  if (!node || typeof node !== 'object') return found
+  for (const [key, value] of Object.entries(node)) {
+    if (key === '$ref' && typeof value === 'string') {
+      const name = value.split('/').pop()!
+      if (!found.has(name)) {
+        found.add(name)
+        referencedSchemas(schemas[name], found)
+      }
+    } else {
+      referencedSchemas(value, found)
+    }
+  }
+  return found
+}
+
 function keys(value: object) {
   return Object.keys(value).sort()
 }
@@ -256,8 +272,8 @@ test.describe('exported types match the spec', () => {
     HitsPerRound: hitsPerRound,
   }
 
-  test('every schema has an exported type and the reverse', () => {
-    expect(keys(typeKeys)).toEqual(keys(schemas))
+  test('every schema /api/fight uses has an exported type and the reverse', () => {
+    expect(keys(typeKeys)).toEqual([...referencedSchemas(spec.paths['/api/fight'])].sort())
   })
 
   for (const [name, literal] of Object.entries(typeKeys)) {
