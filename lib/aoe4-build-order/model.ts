@@ -9,8 +9,10 @@ export type GatherNodeId = 'sheep' | 'berry' | 'deer' | 'boar' | 'farm' | 'wood'
 export type Trigger = { kind: 'time'; seconds: number } | { kind: 'villagers'; count: number };
 
 export type BuildStep = { trigger?: Trigger } & (
-  // No count means continuous production; rally is required for villagers; walkSeconds only with rally.
+  // No count means continuous production; rally only for villagers and sets the producer's rally; walkSeconds only with rally.
   | { action: 'produce'; producer: string; instance?: number; unit: string; count?: number; rally?: GatherNodeId; walkSeconds?: number }
+  // Rallies villagers that start from this step on; costs nothing.
+  | { action: 'rally'; producer: string; instance?: number; to: GatherNodeId; walkSeconds?: number }
   | { action: 'pause'; producer: string; instance?: number }
   // builders defaults to 1, then defaults to from.
   | { action: 'build'; building: string; builders?: number; from: GatherNodeId; then?: GatherNodeId; walkSeconds?: number }
@@ -23,7 +25,14 @@ export interface BuildOrder {
   civ: CivId;
   name: string;
   source?: string;
+  start?: BuildStart;
   steps: BuildStep[];
+}
+
+// The t=0 villager split (absent means the civ's default split) and the rally in effect at t=0.
+export interface BuildStart {
+  villagers?: Partial<Record<GatherNodeId, number>>;
+  rally?: GatherNodeId;
 }
 
 export interface HandValue<T> {
@@ -95,6 +104,12 @@ export interface BuildOrderNote {
   step: number;
   tech: string;
   properties: string[];
+}
+
+// Pasted-text line numbers, 1-based. steps[i] is the line of order.steps[i]; no start means no start line.
+export interface BuildOrderLines {
+  start?: number;
+  steps: number[];
 }
 
 export type TechSupport =
