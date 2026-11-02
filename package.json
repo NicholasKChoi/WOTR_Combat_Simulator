@@ -5,7 +5,8 @@
         "dev": "next dev",
         "test": "vitest run",
         "acceptance": "playwright test",
-        "acceptance:setup": "playwright install chromium"
+        "acceptance:setup": "playwright install chromium",
+        "lint:dup": "jscpd"
     },
     "engines": {
         "node": "24.x"
@@ -24,6 +25,7 @@
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
         "ajv": "^8.20.0",
+        "jscpd": "4.3.0",
         "typescript": "^7.0.2",
         "vitest": "^5.0.5"
     }

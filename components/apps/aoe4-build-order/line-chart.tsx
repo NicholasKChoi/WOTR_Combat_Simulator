@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { type ChartSeries, formatMinSec, seriesColor, toChartRows, toggleHidden } from './chart-rows'
+import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
+import { type ChartSeries, seriesColor, toChartRows, toggleHidden } from './chart-rows'
 
 interface SeriesChartProps {
     testId: string

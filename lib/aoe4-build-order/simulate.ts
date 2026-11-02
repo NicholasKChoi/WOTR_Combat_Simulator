@@ -4,25 +4,20 @@ import { constructionSeconds } from './construction';
 import type { GameData, SnapshotEntry } from './data';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
+import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, costOf, markCompleted, payCost, villagerWalkSeconds } from './engine-common';
 import { effectiveGatherRate } from './gather';
 import { planAutoHouse } from './houses';
 import type { HouseDemand } from './houses';
-import type { BuildOrder, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult, StepTiming, Trigger, UnitSeries } from './model';
+import { GATHER_NODES, RESOURCE_KINDS } from './model';
+import type { BuildOrder, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult, SpendCategory, StepTiming, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 
 // Output resolution, not a game number.
 export const SAMPLE_SECONDS = 5;
 
-// Income credited up to the computed affordability time can land a hair under the cost in floating point.
-const RESOURCE_TOLERANCE = 1e-9;
-
 const SECONDS_PER_MINUTE = 60;
-const RESOURCES: readonly ResourceKind[] = ['food', 'wood', 'gold', 'stone'];
-const VILLAGER = 'villager';
-const HOUSE = 'house';
-const GATHER_NODE_ORDER = Object.keys({ sheep: 0, berry: 0, deer: 0, boar: 0, farm: 0, wood: 0, gold: 0, stone: 0 } satisfies Record<GatherNodeId, 0>) as GatherNodeId[];
 // A rule on class names: completing a landmark of the current age advances it.
-const LANDMARK_CLASS = new RegExp('^age[1-3]_landmark\\d$');
+const LANDMARK_CLASS = /^age[1-3]_landmark\d$/;
 
 export interface RallySource {
   node: GatherNodeId;
@@ -80,6 +75,8 @@ export interface EngineState extends EffectState {
   // Capped at data.base.maxPopCap.
   supply: number;
   readonly steps: StepTiming[];
+  // Resources paid so far, summed over the four kinds.
+  readonly spent: Record<SpendCategory, number>;
   // Events run in (time, insertion) order.
   schedule(time: number, apply: (state: EngineState) => void): void;
 }
@@ -118,24 +115,12 @@ function ruleContext(state: EngineState): CivRuleContext {
   return { data: state.data, inputs: state.inputs, time: state.time };
 }
 
-function costOf(entry: SnapshotEntry, units: number): Resources {
-  const cost = {} as Resources;
-  for (const kind of RESOURCES) {
-    cost[kind] = entry.costs[kind] * units;
-  }
-  return cost;
-}
-
-function affordable(state: EngineState, cost: Readonly<Resources>): boolean {
-  return RESOURCES.every((kind) => state.resources[kind] + RESOURCE_TOLERANCE >= cost[kind]);
-}
-
 function aliveVillagers(state: EngineState): number {
   return Object.values(state.gatherers).reduce((sum, n) => sum + n, state.walking);
 }
 
 function isVillagerProducer(state: EngineState, baseId: string): boolean {
-  const byDefault = (state.data.byBaseId.get(VILLAGER) ?? []).some((entry) => entry.producedBy.includes(baseId));
+  const byDefault = (state.data.byBaseId.get(VILLAGER_ID) ?? []).some((entry) => entry.producedBy.includes(baseId));
   return state.rules.villagerProducer?.(byDefault, { ...ruleContext(state), baseId }) ?? byDefault;
 }
 
@@ -149,7 +134,7 @@ export function addBuildingInstance(state: EngineState, baseId: string): Buildin
     const fallback = state.order.start?.rally;
     instance.rally = held?.get(k) ?? state.rallyDefaults.get(baseId) ?? (fallback === undefined ? undefined : { node: fallback });
     held?.delete(k);
-    instance.order = { step: null, unit: VILLAGER, remaining: null };
+    instance.order = { step: null, unit: VILLAGER_ID, remaining: null };
   }
   list.push(instance);
   state.buildings.set(baseId, (state.buildings.get(baseId) ?? 0) + 1);
@@ -198,11 +183,6 @@ function writeRally(state: EngineState, baseId: string, instance: number | undef
   }
 }
 
-function markCompleted(state: EngineState, step: number): void {
-  state.steps[step].completedAt = state.time;
-  state.steps[step].status = 'completed';
-}
-
 function completeIfUncarried(state: EngineState, step: number | null): void {
   if (step === null || state.steps[step].completedAt !== null) {
     return;
@@ -220,7 +200,7 @@ function spawnUnit(state: EngineState, entry: SnapshotEntry, at: BuildingInstanc
   const record = spawns.get(entry.id) ?? { entry, times: [] };
   spawns.set(entry.id, record);
   record.times.push(state.time);
-  if (entry.baseId !== VILLAGER) {
+  if (entry.baseId !== VILLAGER_ID) {
     return;
   }
   const rally = at.rally;
@@ -233,10 +213,7 @@ function spawnUnit(state: EngineState, entry: SnapshotEntry, at: BuildingInstanc
 }
 
 function payUnit(state: EngineState, instance: BuildingInstance, entry: SnapshotEntry, order: ProductionOrder): void {
-  const cost = costOf(entry, 1);
-  for (const kind of RESOURCES) {
-    state.resources[kind] = Math.max(0, state.resources[kind] - cost[kind]);
-  }
+  payCost(state, costOf(entry, 1), entry.baseId === VILLAGER_ID ? 'villagers' : 'military');
   state.population += entry.costs.popcap;
   const last = order.remaining === 0;
   instance.paid.push({
@@ -258,7 +235,7 @@ const produce: StepHandler<'produce'> = (step, index, state) => {
     return { started: false };
   }
   const total = costOf(entry, targets.length);
-  if (!affordable(state, total)) {
+  if (!canAfford(state.resources, total)) {
     return { started: false, reserve: total };
   }
   const replaced = targets.map((target) => target.order?.step ?? null);
@@ -291,18 +268,6 @@ const rally: StepHandler<'rally'> = (step, index, state) => {
   return { started: true };
 };
 
-function spend(state: EngineState, cost: Readonly<Resources>): void {
-  for (const kind of RESOURCES) {
-    state.resources[kind] = Math.max(0, state.resources[kind] - cost[kind]);
-  }
-}
-
-function villagerWalk(state: EngineState, walkSeconds: number | undefined): number {
-  const villager = state.data.byBaseId.get(VILLAGER)?.[0];
-  const moveSpeedMultiplier = modifiedValue(1, 'moveSpeed', { baseId: VILLAGER, classes: villager?.classes ?? [] }, state);
-  return (walkSeconds ?? state.inputs.walkSeconds) / moveSpeedMultiplier;
-}
-
 interface Construction {
   entry: SnapshotEntry;
   builders: number;
@@ -314,11 +279,11 @@ interface Construction {
 }
 
 function startConstruction(state: EngineState, job: Construction): void {
-  spend(state, costOf(job.entry, 1));
+  payCost(state, costOf(job.entry, 1), 'buildings');
   state.gatherers[job.from] -= job.builders;
   state.walking += job.builders;
   (state as Engine).constructing.push(job.entry.baseId);
-  const done = state.time + villagerWalk(state, job.walkSeconds) + constructionSeconds(job.entry.costs.time, job.builders, state.data);
+  const done = state.time + villagerWalkSeconds(state, job.walkSeconds ?? state.inputs.walkSeconds) + constructionSeconds(job.entry.costs.time, job.builders, state.data);
   state.schedule(done, (s) => completeConstruction(s, job));
 }
 
@@ -336,7 +301,7 @@ function completeConstruction(state: EngineState, job: Construction): void {
   if (job.step !== null) {
     markCompleted(state, job.step);
   }
-  state.schedule(state.time + villagerWalk(state, job.walkSeconds), (s) => {
+  state.schedule(state.time + villagerWalkSeconds(state, job.walkSeconds ?? state.inputs.walkSeconds), (s) => {
     s.walking -= job.builders;
     s.gatherers[job.then] += job.builders;
   });
@@ -349,7 +314,7 @@ const build: StepHandler<'build'> = (step, index, state) => {
     return { started: false };
   }
   const cost = costOf(entry, 1);
-  if (!affordable(state, cost)) {
+  if (!canAfford(state.resources, cost)) {
     return { started: false, reserve: cost };
   }
   startConstruction(state, { entry, builders, from: step.from, then: step.then ?? step.from, walkSeconds: step.walkSeconds, step: index });
@@ -362,7 +327,7 @@ const move: StepHandler<'move'> = (step, index, state) => {
   }
   state.gatherers[step.from] -= step.count;
   state.walking += step.count;
-  state.schedule(state.time + villagerWalk(state, step.walkSeconds), (s) => {
+  state.schedule(state.time + villagerWalkSeconds(state, step.walkSeconds ?? state.inputs.walkSeconds), (s) => {
     s.walking -= step.count;
     s.gatherers[step.to] += step.count;
     markCompleted(s, index);
@@ -404,7 +369,7 @@ function applyDueEvents(engine: Engine): void {
 // Under a reserve, an order payment must leave each resource the unit costs at or above the reserved amount.
 function orderNeed(cost: Resources, reserve: Readonly<Resources> | undefined): Resources {
   const need = { ...cost };
-  for (const kind of RESOURCES) {
+  for (const kind of RESOURCE_KINDS) {
     if (reserve && cost[kind] > 0) {
       need[kind] += reserve[kind];
     }
@@ -419,7 +384,7 @@ function payOrder(engine: Engine, instance: BuildingInstance): void {
     return;
   }
   const need = orderNeed(costOf(entry, 1), engine.reserve);
-  if (!affordable(engine, need)) {
+  if (!canAfford(engine.resources, need)) {
     engine.needs.push(need);
     return;
   }
@@ -460,17 +425,13 @@ function startProduction(engine: Engine): void {
   }
 }
 
-function currentUnitEntry(unit: string, state: EngineState): SnapshotEntry | undefined {
-  return resolveUnitEntry(unit, state);
-}
-
 function houseDemand(engine: Engine): HouseDemand {
   const pendingSupply = engine.constructing.reduce((sum, baseId) => sum + supplyOf(engine, baseId), 0);
   let populationPerSecond = 0;
   for (const list of engine.instances.values()) {
     for (const instance of list) {
       const order = instance.order;
-      const entry = order && order.remaining !== 0 ? currentUnitEntry(order.unit, engine) : undefined;
+      const entry = order && order.remaining !== 0 ? resolveUnitEntry(order.unit, engine) : undefined;
       if (entry) {
         populationPerSecond += entry.costs.popcap / productionSeconds(engine, entry, instance.baseId);
       }
@@ -484,7 +445,7 @@ function houseGateOpen(engine: Engine): boolean {
   const { steps } = engine.order;
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
-    if (step.action === 'build' && step.building === HOUSE) {
+    if (step.action === 'build' && step.building === HOUSE_ID) {
       return engine.steps[i].startedAt !== null;
     }
   }
@@ -496,13 +457,13 @@ function houseBuilderSource(engine: Engine): GatherNodeId | undefined {
   if (gatherers[inputs.houseBuilderSource] >= inputs.houseBuilders) {
     return inputs.houseBuilderSource;
   }
-  const fullest = GATHER_NODE_ORDER.reduce((best, node) => (gatherers[node] > gatherers[best] ? node : best));
+  const fullest = GATHER_NODES.reduce((best, node) => (gatherers[node] > gatherers[best] ? node : best));
   return gatherers[fullest] >= inputs.houseBuilders ? fullest : undefined;
 }
 
 // Not an order payment: a waiting step's reserve does not hold houses back.
 function startAutoHouses(engine: Engine): void {
-  const house = engine.data.byBaseId.get(HOUSE)?.[0];
+  const house = engine.data.byBaseId.get(HOUSE_ID)?.[0];
   if (!engine.inputs.autoHouses || !house || !houseGateOpen(engine)) {
     return;
   }
@@ -513,7 +474,7 @@ function startAutoHouses(engine: Engine): void {
     if (from === undefined) {
       return;
     }
-    if (!affordable(engine, cost)) {
+    if (!canAfford(engine.resources, cost)) {
       engine.needs.push(cost);
       return;
     }
@@ -557,7 +518,7 @@ function incomePerSecond(engine: Engine): Resources {
 
 function affordableAt(engine: Engine, need: Readonly<Resources>, income: Resources): number {
   let at = engine.time;
-  for (const kind of RESOURCES) {
+  for (const kind of RESOURCE_KINDS) {
     const shortfall = need[kind] - engine.resources[kind];
     if (shortfall > RESOURCE_TOLERANCE) {
       at = Math.max(at, engine.time + shortfall / income[kind]);
@@ -620,6 +581,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     population: 0,
     supply: 0,
     steps: order.steps.map((_, step) => ({ step, status: 'not-reached', armedAt: null, startedAt: null, completedAt: null, waitSeconds: 0 })),
+    spent: { villagers: 0, military: 0, buildings: 0, research: 0 },
     schedule(time, apply) {
       let i = engine.events.length;
       while (i > 0 && engine.events[i - 1].time > time) {
@@ -676,7 +638,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     }
     const income = incomePerSecond(engine);
     for (; sample < times.length && times[sample] <= engine.time; sample += 1) {
-      for (const kind of RESOURCES) {
+      for (const kind of RESOURCE_KINDS) {
         gatherRates[kind].push(income[kind] * SECONDS_PER_MINUTE);
         floating[kind].push(engine.resources[kind]);
       }
@@ -685,7 +647,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
       break;
     }
     const next = nextWake(engine, income, times[sample]);
-    for (const kind of RESOURCES) {
+    for (const kind of RESOURCE_KINDS) {
       engine.resources[kind] += income[kind] * (next - engine.time);
     }
     engine.time = next;

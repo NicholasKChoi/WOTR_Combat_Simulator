@@ -1,4 +1,5 @@
 // Paste text <-> BuildOrder. Grammar only: ids, bounds and cross-field rules are checked by validation.
+import { formatMinSec } from './format-time';
 import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStart, BuildStep, GatherNodeId, Trigger } from './model';
 
 export type ParseTextResult =
@@ -296,10 +297,8 @@ function formatStart(start: BuildStart): string | undefined {
 
 function formatTrigger(trigger: Trigger | undefined): string | undefined {
   switch (trigger?.kind) {
-    case 'time': {
-      const minutes = Math.floor(trigger.seconds / 60);
-      return `@${minutes}:${String(trigger.seconds - minutes * 60).padStart(2, '0')}`;
-    }
+    case 'time':
+      return `@${formatMinSec(trigger.seconds)}`;
     case 'villagers':
       return `at ${trigger.count} vils`;
     default:

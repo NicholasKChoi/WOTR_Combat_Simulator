@@ -12,12 +12,6 @@ export function toChartRows(times: number[], series: ChartSeries[]): Array<{ t: 
     })
 }
 
-export function formatMinSec(seconds: number): string {
-    const total = Math.round(seconds)
-    const sec = total % 60
-    return `${Math.floor(total / 60)}:${sec < 10 ? '0' : ''}${sec}`
-}
-
 export const PALETTE: readonly string[] = [
     '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
     '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',

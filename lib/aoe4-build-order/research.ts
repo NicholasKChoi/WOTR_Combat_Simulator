@@ -1,13 +1,9 @@
 import type { GameData, SnapshotEntry } from './data';
 import { classifyTech } from './effects';
 import type { EffectState } from './effects';
-import type { BuildOrder, BuildOrderNote, ResourceKind } from './model';
+import { canAfford, costOf, markCompleted, payCost } from './engine-common';
+import type { BuildOrder, BuildOrderNote } from './model';
 import type { BuildingInstance, EngineState, PaidItem, StepHandler } from './simulate';
-
-const RESOURCES: readonly ResourceKind[] = ['food', 'wood', 'gold', 'stone'];
-
-// Income credited up to the engine's computed affordability time can land a hair under the cost.
-const RESOURCE_TOLERANCE = Math.sqrt(Number.EPSILON);
 
 // Queue length is not consulted: the first candidate building with an instance takes it on instance 1.
 function researchTarget(state: EngineState, candidates: readonly string[]): BuildingInstance | undefined {
@@ -25,8 +21,7 @@ function researchItem(entry: SnapshotEntry, index: number): PaidItem {
     entry,
     complete(state) {
       state.researched.add(entry.baseId);
-      state.steps[index].completedAt = state.time;
-      state.steps[index].status = 'completed';
+      markCompleted(state, index);
     },
   };
 }
@@ -37,16 +32,11 @@ export const researchHandler: StepHandler<'research'> = (step, index, state) => 
   if (!target || entry.age > state.age) {
     return { started: false };
   }
-  const cost = {} as Record<ResourceKind, number>;
-  for (const kind of RESOURCES) {
-    cost[kind] = entry.costs[kind];
-  }
-  if (!RESOURCES.every((kind) => state.resources[kind] + RESOURCE_TOLERANCE >= cost[kind])) {
+  const cost = costOf(entry, 1);
+  if (!canAfford(state.resources, cost)) {
     return { started: false, reserve: cost };
   }
-  for (const kind of RESOURCES) {
-    state.resources[kind] = Math.max(0, state.resources[kind] - cost[kind]);
-  }
+  payCost(state, cost, 'research');
   target.paid.push(researchItem(entry, index));
   return { started: true };
 };
