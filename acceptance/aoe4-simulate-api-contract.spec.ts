@@ -259,6 +259,31 @@ test.describe('real responses against the schemas', () => {
   })
 })
 
+test.describe('SimulateError issue cap', () => {
+  const issue = (i: number) => ({ code: 'syntax', message: `m${i}`, line: i + 1 })
+  const issues = (count: number) => Array.from({ length: count }, (_, i) => issue(i))
+
+  test('a real capped response validates', async ({ request }) => {
+    const text = Array.from({ length: 101 }, (_, i) => `bogus ${i}`).join('\n')
+    const json = await expect400(request, { text })
+    expect(json.omittedIssues).toBe(1)
+  })
+
+  test('100 issues with omittedIssues validate; 100 issues without it validate', () => {
+    expectValid('SimulateError', { error: 'm0', issues: issues(100), omittedIssues: 5 })
+    expectValid('SimulateError', { error: 'm0', issues: issues(100) })
+  })
+
+  test('101 issues are schema-invalid', () => {
+    expectInvalid('SimulateError', { error: 'm0', issues: issues(101), omittedIssues: 1 })
+  })
+
+  test('omittedIssues of 0 or a non-integer is schema-invalid', () => {
+    expectInvalid('SimulateError', { error: 'm0', issues: issues(1), omittedIssues: 0 })
+    expectInvalid('SimulateError', { error: 'm0', issues: issues(1), omittedIssues: 1.5 })
+  })
+})
+
 test.describe('schema and server agree on requests', () => {
   test('the Trigger description pins the unknown-kind rule', () => {
     expect(schemas.Trigger.description).toMatch(/neither time nor villagers is invalid under this schema/)
