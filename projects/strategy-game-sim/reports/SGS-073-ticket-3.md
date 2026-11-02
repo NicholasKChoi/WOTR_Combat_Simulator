@@ -1,0 +1,1 @@
+SGS-073 re-spec 3: Scope 5 long-message test now uses `produce <3000 a> from town-center` (unknown-id, validator quotes id in full, runRejected). Criterion 3 restated, Re-spec 2 entry corrected, Re-spec 3 appended. Verified on origin/main: ID regex unbounded, validate.ts:360 untruncated. Open questions: none.

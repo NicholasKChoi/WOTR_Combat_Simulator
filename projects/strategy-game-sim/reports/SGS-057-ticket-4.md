@@ -1,0 +1,2 @@
+# SGS-057 ticket author 4 (re-spec, spec gate 2)
+Added to the exports list (Scope 2, 5, criterion 2, LOC note): types Where, Fields, IdKind, plus functions isKnownId and entriesOf (isKnownId is used by moved resolveTrips/resolveInfluence and OrderChecker; found by grepping every validate.ts definition against moved code). Type exports count; validate.ts uses import type. Other names (DEPOSIT_NUMBER, isGatherNode, TRIP_FIELDS, ENTRY_TYPES, InputBound, bound) move private; VILLAGER, stepWhere, producedBy, rangeProblem stay in validate.ts.

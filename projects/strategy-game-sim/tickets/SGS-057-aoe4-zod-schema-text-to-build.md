@@ -8,7 +8,7 @@
   <!-- strongModelTriggers: existing public schema/API behavior changes (`BuildOrderIssue.suggestion` added to the OpenAPI schema); over 250 lines
        of business logic. No REPO.md critical path symbol changes. The route and every validator caller behave as before. -->
 - **Invariants**: S3 (every request bounded: `SIM_INPUT_BOUNDS` and the 20000-character text cap are defined once in `schema.ts` and enforced by `textToBuildOrder`; the route keeps enforcing them until the route swap), A1 (the catalog is derived from the data files; no game number is written into schema code), A3 (checking is pure: same value and catalog, same issues in the same order)
-- **LOC estimate**: about 500 added, about 150 deleted (business logic only: `schema.ts` about 450 including catalog, shapes, refinements, inputs and `nearestId`; `text-to-build.ts` about 35; `step-options.ts` `names` about 15; `validate.ts` about -200 (lines 338 to 533 plus the constants and `nodeRefIssue` at the top, and the shared helpers `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`: `SIM_INPUT_BOUNDS`, `INPUT_DEFAULTS`, `TRIP_FIELDS`, `nodeRefIssue`, `NodeRefProblem`, `resolveSimInputs` and their helpers), replaced by an import and re-export). Tests, OpenAPI excluded. Above the ~400 line guide; design "M4.1 ticket order" row 2a fixes this scope after splitting the caller swap into SGS-075, and the new module cannot be split further without leaving `checkBuildOrder` and `textToBuildOrder` unusable.
+- **LOC estimate**: about 500 added, about 150 deleted (business logic only: `schema.ts` about 450 including catalog, shapes, refinements, inputs and `nearestId`; `text-to-build.ts` about 35; `step-options.ts` `names` about 15; `validate.ts` about -200 (lines 338 to 533 plus the constants and `nodeRefIssue` at the top, and the shared helpers `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `isKnownId`, `entriesOf`, `BoundKey`, `Where`, `Fields`, `IdKind`: `SIM_INPUT_BOUNDS`, `INPUT_DEFAULTS`, `TRIP_FIELDS`, `nodeRefIssue`, `NodeRefProblem`, `resolveSimInputs` and their helpers), replaced by an import and re-export). Tests, OpenAPI excluded. Above the ~400 line guide; design "M4.1 ticket order" row 2a fixes this scope after splitting the caller swap into SGS-075, and the new module cannot be split further without leaving `checkBuildOrder` and `textToBuildOrder` unusable.
 - **Depends on**: SGS-056 (`strictNullChecks`; `z.infer` needs it)
 - **On merge**: `REPO.md schemaLibrary: zod`; `CONTEXT.md Key surfaces`: add `lib/aoe4-build-order/schema.ts` (`checkBuildOrder`, `checkSimInputs`, `buildOrderCatalog`) and `lib/aoe4-build-order/text-to-build.ts` (`textToBuildOrder`) (no `REPO.md` command changes)
 - **Source**: M4 design contracts C1, C2, C3, C4a, Behavior rules "Validation (M4.1)" and "M4.1 ticket order" row 2a (`design/M4.md`); designer pass 4 (`reports/M4-designer-4.md`, Q1: split into 2a, 2b, 2c); plan outline B (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md`: DQ1, Spec gaps 1, "Outline changes" 2); `BACKLOG.md` line 42 (owner: replace hand-rolled parsing/validation with zod; front end converts the paste before POST)
@@ -35,11 +35,16 @@ All paths are relative to the repo root. Contract names are exactly those of C2,
 `checkBuildOrder(value, catalog, lines?)`, `checkSimInputs(value, catalog)`, `resolveSimInputs(partial, data)`,
 `nearestId(value, choices)`, `OPTIONAL_STEP_FIELDS`, `SIM_INPUT_BOUNDS`, `INPUT_DEFAULTS`, plus `nodeRefIssue`
 and `NodeRefProblem` moved from `validate.ts` unchanged (the node-ref reasons are reused by the schema), plus the shared helpers
-`issue`, `outOfRange`, `isRecord`, `isBoundKey` and the type `BoundKey` (all built on `SIM_INPUT_BOUNDS`; `validate.ts`'s `OrderChecker`
-keeps using them, so they live only in `schema.ts` and `validate.ts` imports them; there is one copy and `lint:dup` passes).
+`issue`, `outOfRange`, `isRecord`, `isBoundKey`, `isKnownId`, `entriesOf` and the types `BoundKey`, `Where`, `Fields`, `IdKind`
+(`issue`, `outOfRange`, `isBoundKey` are built on `SIM_INPUT_BOUNDS`; `Where` is `issue`'s parameter type and `Fields` is `isRecord`'s guard type;
+`isKnownId(data, kind: IdKind, id)` is used by the moved `resolveTrips` and `resolveInfluence` with kinds `node` and `building` and by `OrderChecker`,
+and `entriesOf` with its private `ENTRY_TYPES` table and `IdKind` come with it. `validate.ts`'s `OrderChecker` keeps using all of them, so they live only
+in `schema.ts` and `validate.ts` imports them, with `import type` for `BoundKey`, `Where`, `Fields` and `IdKind`; there is one copy and `lint:dup` passes).
 `NodeRefProblem` stays an `interface` declaration in `schema.ts` (the criterion 3 grep counts it). `inputIssue`, `readNumber`,
-`readRecord`, `resolveTrips`, `resolveNodeAmounts` and `resolveInfluence` move with `resolveSimInputs` and need not be exported.
-So "exactly" means: the C2 list, `nodeRefIssue`, `NodeRefProblem`, `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`.
+`readRecord`, `resolveTrips`, `resolveNodeAmounts`, `resolveInfluence`, `DEPOSIT_NUMBER`, `isGatherNode`, `TRIP_FIELDS`, `ENTRY_TYPES`, `InputBound` and `bound`
+move with the code that uses them and need not be exported. Type exports count in "exactly". So "exactly" means: the C2 list, `nodeRefIssue`,
+`NodeRefProblem`, `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `isKnownId`, `entriesOf`, and the types `BoundKey`, `Where`, `Fields`, `IdKind`.
+Any other `validate.ts` name the moved code uses stays private; `VILLAGER`, `stepWhere`, `producedBy`, `rangeProblem` are used only by code that stays.
 - `SIM_INPUT_BOUNDS` (including `textChars` 0..20000) and `INPUT_DEFAULTS` keep their values from
   `validate.ts` lines 15 to 52. `resolveSimInputs(partial, data)` keeps its name and signature and returns
   `checkSimInputs`'s result for `buildOrderCatalog(data)`.
@@ -92,7 +97,7 @@ if they build an object literal.
 `INPUT_DEFAULTS`, `TRIP_FIELDS` (and any helper only the moved code used), `nodeRefIssue`, `NodeRefProblem` and
 `resolveSimInputs`; import them from `./schema` and re-export `SIM_INPUT_BOUNDS`, `nodeRefIssue`,
 `NodeRefProblem` and `resolveSimInputs` (the four it exports today) so every importer keeps working. A helper
-both files need (`issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`) lives only in `schema.ts` and is imported here. `validateBuildOrder`, `ValidateOptions` and its behavior are
+or type both files need (`issue`, `outOfRange`, `isRecord`, `isBoundKey`, `isKnownId`, `entriesOf`, `BoundKey`, `Where`, `Fields`, `IdKind`) lives only in `schema.ts` and is imported here (types with `import type`). `validateBuildOrder`, `ValidateOptions` and its behavior are
 unchanged. `validate.ts` and its two test files are otherwise untouched; SGS-075 deletes them.
 
 **6. `lib/aoe4-build-order/model.ts`.** `BuildOrderIssue` gains `suggestion?: string`. `BuildOrder`,
@@ -143,7 +148,7 @@ Single-component change outside the core control loop; no diagram required.
 ## Acceptance criteria
 
 - [ ] `npm ls zod` shows zod 4.x and `jq -r .dependencies.zod package.json` prints `^4.6.7`; no file imports `zod/v3` or `zod/mini` (`git grep -nE "zod/(v3|mini)" -- '*.ts' '*.tsx'` prints nothing).
-- [ ] `schema.ts` exports exactly the names listed in Scope 2 (C2 list, `nodeRefIssue`, `NodeRefProblem`, `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`) and no helper is defined in both `schema.ts` and `validate.ts`; `text-to-build.ts` exports `textToBuildOrder` and `TextToBuildResult`; neither imports `data.ts` as a value or any `fs` / `node:` module (`git grep -nE "^import [^t].*'(\./data|fs|node:[a-z]+)'" -- lib/aoe4-build-order/schema.ts lib/aoe4-build-order/text-to-build.ts` prints nothing).
+- [ ] `schema.ts` exports exactly the names listed in Scope 2 (C2 list, `nodeRefIssue`, `NodeRefProblem`, `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `isKnownId`, `entriesOf`, and the type exports `BoundKey`, `Where`, `Fields`, `IdKind`; type exports count) and no helper is defined in both `schema.ts` and `validate.ts`; `text-to-build.ts` exports `textToBuildOrder` and `TextToBuildResult`; neither imports `data.ts` as a value or any `fs` / `node:` module (`git grep -nE "^import [^t].*'(\./data|fs|node:[a-z]+)'" -- lib/aoe4-build-order/schema.ts lib/aoe4-build-order/text-to-build.ts` prints nothing).
 - [ ] One copy of each moved name: `git grep -nE "(const|function|interface) (SIM_INPUT_BOUNDS|INPUT_DEFAULTS|nodeRefIssue|NodeRefProblem|resolveSimInputs)\b" -- lib` prints 5 lines, all in `validate.ts`, today; after the change it prints 5 lines, all in `schema.ts`. `validate.ts` still exports `SIM_INPUT_BOUNDS`, `nodeRefIssue`, `NodeRefProblem`, `resolveSimInputs`, `validateBuildOrder` and `ValidateOptions`, and `validate.test.ts` and `validate.acceptance.test.ts` pass unedited.
 - [ ] Mutation check: changing `SIM_INPUT_BOUNDS.durationSeconds.max` in `schema.ts` from 3600 to 3601 fails the `checkSimInputs` bounds case in `schema.test.ts`.
 - [ ] `checkBuildOrder` of the pasted knight + longbow build text via `textToBuildOrder` with the English catalog returns `ok: true` with `lines`; `checkBuildOrder` returns `ok: true` for every build in `listBuilds()` (`schema.test.ts`).
@@ -171,4 +176,10 @@ None.
 
 - Underspecified: shared helpers (`issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`) were unnamed against the "exactly" export list; the `soon` trigger case was untestable as paste; `names` did not say which age entry; `validate.ts` deletion estimate.
 - Changed: export list widened and `NodeRefProblem` stays an `interface`; trigger-kind cases (`soon` no suggestion, `tme` suggests `time`) moved to JSON in `schema.test.ts`; `names` uses the lowest-age entry; LOC estimate corrected to about -200.
+- Branch work: none exists yet.
+
+## Re-spec 2026-11-02 (spec gate 2)
+
+- Underspecified: the "exactly" export list omitted the types `Where` and `Fields`, and also `isKnownId` (used by moved `resolveTrips`/`resolveInfluence` and by `OrderChecker`) with `entriesOf` and `IdKind`.
+- Changed: all five added to Scope 2, Scope 5, the LOC note and criterion 2; type exports count; `validate.ts` uses `import type` for the types; the remaining shared-or-moved names are listed as private.
 - Branch work: none exists yet.

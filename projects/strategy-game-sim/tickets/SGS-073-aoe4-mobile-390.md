@@ -68,7 +68,7 @@ labelled fields (the start card's `start-field-rally` and first `start-villagers
 - `step-timeline-scroll` and `compare-scroll` each have computed `overflow-x` of `auto` and `scrollWidth >
   clientWidth` at 390 px (they scroll, the page does not); at a 1280x720 viewport both have `scrollWidth <=
   clientWidth`.
-- Long issue message: fill the text with `start -> sheep` then `at 8 vils ${'a'.repeat(3000)}` (the design's invalid paste with the 3000-character token in place of `fly`; under the 20000 cap, so the parser quotes the token in a `syntax` issue). The text is rejected client side, so no POST is sent: use `runRejected(page)` (not `runSimulation`, which would time out), assert one `build-order-issue` is visible and its text contains `'a'.repeat(3000)`, then scrollWidth <= 390 on the Build tab. If the parser does not quote the token, the implementer picks the input that does and says so.
+- Long issue message (respec 3): fill the text with `start -> sheep` then `produce ${'a'.repeat(3000)} from town-center`. The paste parser's `quote()` truncates quoted tokens to 40 characters (`parse-text.ts` `MAX_QUOTED_LENGTH`), so a long token in a `syntax` message would not carry the run; this line instead parses (the id regex has no length limit) and fails validation as an unknown unit, whose message quotes the id in full: `line 2: unknown unit "<3000 a>" in unit` (`validate.ts` line 360 on main; SGS-057 and design/M4.md C3 keep that text, and the message must still include the id in full). It is under the 20000 character cap. The client runs `checkBuildOrder` (through `textToBuildOrder`) before any POST (design/M4.md, `textToBuildOrder` ordering row), so no request is sent: use `runRejected(page)` (not `runSimulation`, which would time out), assert exactly one `build-order-issue` is visible with `data-code="unknown-id"` and text containing `'a'.repeat(3000)`, then scrollWidth <= 390 on the Build tab.
 
 **6. Docs.** `docs/aoe4-build-order.md` section "Page" (line 762 on main): add one short paragraph for the narrow
 layout (under 768 px rows are cards, the run bar wraps, the timeline and compare tables scroll in their own boxes,
@@ -90,7 +90,7 @@ Single-component change outside the core control loop; no diagram required.
 
 - [ ] At 390x844, `document.documentElement.scrollWidth <= 390` on the Build tab text view, the Build tab table view (knight + longbow build), and the Results tab with a result and a pinned run (new spec, three tests).
 - [ ] At 390 px `step-timeline-scroll` and `compare-scroll` have `overflow-x: auto` and `scrollWidth > clientWidth`; at 1280 px both have `scrollWidth <= clientWidth`.
-- [ ] A rejected paste whose `build-order-issue` text contains a 3000-character unbroken token leaves `scrollWidth <= 390` on the Build tab.
+- [ ] (respec 3) A rejected paste whose one `unknown-id` `build-order-issue` text contains the 3000-character id leaves `scrollWidth <= 390` on the Build tab.
 - [ ] `ls components/apps/aoe4-build-order/*.module.css` lists `step-table.module.css`, `workbench.module.css` and `results.module.css` (today it lists none).
 - [ ] `git grep -nE "overflow-x: ?hidden" -- components pages styles` prints nothing for `html`, `body`, `main` or the page section (review check).
 - [ ] No `data-testid`, `id`, `aria-*` or `data-*` attribute is added, removed or renamed (`git diff origin/main -- components pages | grep -E "^[-+].*(data-testid|data-[a-z-]+=|aria-[a-z]+=|id=)"` shows only lines that moved with their element).
@@ -107,7 +107,7 @@ None.
 ## Re-spec 2026-11-02 (second pass: spec gate 1)
 
 - Underspecified: the 3000-character test would have waited for a POST that never comes and might not reach the message wrap; 20001 vs 3000 disagreed; the Results test did not switch tab.
-- Changed: the test uses `runRejected`, a named input and an assertion that the issue text contains the run; figures are 3000; `tab-results` is clicked; the start card controls are named.
+- Changed: the test uses `runRejected` and an assertion that the issue text contains the run; figures are 3000; `tab-results` is clicked; the start card controls are named.
 - Stands: all other scope and criteria.
 
 ## Re-spec 2026-11-02
@@ -115,3 +115,9 @@ None.
 - Underspecified: how much CSS moves, the 30rem and 768 px values, and who owns 390 px tests (designer pass 4, Q8 and Q10).
 - Changed: 30rem and 768 px confirmed; only narrow-layout rules move to modules; this spec owns every whole-page 390 px test and the overflow mutation; both open questions removed.
 - Stands: all other scope, the module split and the spec content.
+
+## Re-spec 2026-11-02 (third pass: spec gate 2)
+
+- Underspecified: the parser's `quote()` truncates tokens to 40 characters, so the earlier claim that it quotes the 3000-character token was wrong and the criterion could not pass.
+- Changed: the input is `produce <3000 a> from town-center`, an `unknown-id` issue quoted in full by the validator; client-side `checkBuildOrder` before any POST confirmed; the contingency sentence is gone; criterion 3 restated.
+- Stands: all other scope and criteria.
