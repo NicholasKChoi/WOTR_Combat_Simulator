@@ -1,23 +1,36 @@
+import cn from 'classnames'
 import { useState } from 'react'
 
 import type { BuildOrder, BuildStep, Trigger } from '../../../lib/aoe4-build-order/model'
-import { formatBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import type { BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
+import { OPTIONAL_STEP_FIELDS, type BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
 import type { StepOptions } from '../../../lib/aoe4-build-order/step-options'
+import styles from './step-table.module.css'
 import {
+    ACTION_LABELS,
+    FIELD_LABELS,
+    TRIGGER_KIND_LABELS,
+    addStartPair,
     changeAction,
     changeProducer,
     changeTriggerKind,
     defaultStep,
+    deleteStartPair,
     deleteStep,
+    firstUnusedStartNode,
+    hasOptionalField,
     insertStep,
     moveStep,
     offersEmptyChoice,
+    optionLabel,
     replaceStep,
     selectChoices,
     setNumberField,
     setReaction,
+    setStartCount,
+    setStartNode,
+    setStartRally,
     setTriggerNumber,
+    startPairs,
     withoutField,
 } from './step-table-model'
 
@@ -62,10 +75,10 @@ function actionFields(step: BuildStep, options: StepOptions): FieldDef[] {
     }
 }
 
-function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
+function Labeled({ field, children }: { field: string; children: React.ReactNode }) {
     return (
-        <label className="d-inline-flex align-items-center gap-1 me-2 mb-1">
-            <span className="small text-muted">{label}</span>
+        <label className="d-flex d-md-inline-flex align-items-center gap-1 me-2 mb-1">
+            <span className="small text-muted">{FIELD_LABELS[field]}</span>
             {children}
         </label>
     )
@@ -75,12 +88,15 @@ function SelectControl(props: {
     testId: string
     value: string | undefined
     choices: readonly string[]
+    label: (id: string) => string
     allowEmpty?: boolean
+    index?: number
     onChange: (value: string) => void
 }) {
     return (
         <select
             data-testid={props.testId}
+            data-index={props.index}
             className="form-select form-select-sm w-auto"
             value={props.value ?? ''}
             onChange={(e) => props.onChange(e.target.value)}
@@ -88,20 +104,21 @@ function SelectControl(props: {
             {props.allowEmpty ? <option value="">(none)</option> : null}
             {selectChoices(props.value, props.choices).map(({ id, unknown }) => (
                 <option key={id} value={id} data-unknown={unknown ? 'true' : undefined}>
-                    {unknown ? `${id} (unknown)` : id}
+                    {unknown ? `${id} (unknown)` : props.label(id)}
                 </option>
             ))}
         </select>
     )
 }
 
-function NumberControl({ testId, value, onType }: { testId: string; value: number | string | undefined; onType: (text: string) => void }) {
+function NumberControl({ testId, value, index, onType }: { testId: string; value: number | string | undefined; index?: number; onType: (text: string) => void }) {
     const [draft, setDraft] = useState<string | null>(null)
     return (
         <input
             type="text"
             inputMode="numeric"
             data-testid={testId}
+            data-index={index}
             className="form-control form-control-sm"
             style={{ width: '5rem' }}
             value={draft ?? String(value ?? '')}
@@ -114,34 +131,35 @@ function NumberControl({ testId, value, onType }: { testId: string; value: numbe
     )
 }
 
-function TriggerFields({ step, options, onEdit }: { step: BuildStep; options: StepOptions; onEdit: (next: BuildStep) => void }) {
+function TriggerFields({ step, options, onEdit }: { step: BuildStep; options: BuildOrderCatalog; onEdit: (next: BuildStep) => void }) {
     const trigger = step.trigger
     const setTrigger = (next: Trigger) => onEdit({ ...step, trigger: next })
     switch (trigger?.kind) {
         case 'time':
             return (
-                <Labeled label="seconds">
+                <Labeled field="seconds">
                     <NumberControl testId="step-field-seconds" value={trigger.seconds} onType={(t) => onEdit(setTriggerNumber(step, 'seconds', t))} />
                 </Labeled>
             )
         case 'villagers':
             return (
-                <Labeled label="villagers">
+                <Labeled field="trigger-count">
                     <NumberControl testId="step-field-trigger-count" value={trigger.count} onType={(t) => onEdit(setTriggerNumber(step, 'count', t))} />
                 </Labeled>
             )
         case 'depleted':
             return (
                 <>
-                    <Labeled label="node">
+                    <Labeled field="node">
                         <SelectControl
                             testId="step-field-node"
                             value={trigger.node}
                             choices={options.finiteNodes}
+                            label={(id) => optionLabel(id, options)}
                             onChange={(node) => setTrigger({ ...trigger, node: node as typeof trigger.node })}
                         />
                     </Labeled>
-                    <Labeled label="reaction">
+                    <Labeled field="reaction">
                         <input
                             type="checkbox"
                             data-testid="step-field-reaction"
@@ -155,15 +173,16 @@ function TriggerFields({ step, options, onEdit }: { step: BuildStep; options: St
         case 'bank':
             return (
                 <>
-                    <Labeled label="resource">
+                    <Labeled field="resource">
                         <SelectControl
                             testId="step-field-resource"
                             value={trigger.resource}
                             choices={options.resources}
+                            label={(id) => optionLabel(id, options)}
                             onChange={(resource) => setTrigger({ ...trigger, resource: resource as typeof trigger.resource })}
                         />
                     </Labeled>
-                    <Labeled label="atLeast">
+                    <Labeled field="atLeast">
                         <NumberControl testId="step-field-atLeast" value={trigger.atLeast} onType={(t) => onEdit(setTriggerNumber(step, 'atLeast', t))} />
                     </Labeled>
                 </>
@@ -173,12 +192,15 @@ function TriggerFields({ step, options, onEdit }: { step: BuildStep; options: St
     }
 }
 
-function ActionFields({ step, options, onEdit }: { step: BuildStep; options: StepOptions; onEdit: (next: BuildStep) => void }) {
+function ActionFields(props: { step: BuildStep; options: BuildOrderCatalog; expanded: boolean; onToggle: () => void; onEdit: (next: BuildStep) => void }) {
+    const { step, options, expanded, onToggle, onEdit } = props
     const values = step as unknown as Record<string, string | number | undefined>
+    const optional = OPTIONAL_STEP_FIELDS[step.action]
+    const shown = actionFields(step, options).filter((field) => expanded || !optional.includes(field.name))
     return (
         <>
-            {actionFields(step, options).map((field) => (
-                <Labeled key={field.name} label={field.name}>
+            {shown.map((field) => (
+                <Labeled key={field.name} field={field.name}>
                     {field.kind === 'number' ? (
                         <NumberControl testId={`step-field-${field.name}`} value={values[field.name]} onType={(t) => onEdit(setNumberField(step, field.name, t))} />
                     ) : (
@@ -186,6 +208,7 @@ function ActionFields({ step, options, onEdit }: { step: BuildStep; options: Ste
                             testId={`step-field-${field.name}`}
                             value={values[field.name] as string | undefined}
                             choices={field.choices}
+                            label={(id) => optionLabel(id, options)}
                             allowEmpty={offersEmptyChoice(step.action, field.name)}
                             onChange={(value) => {
                                 if (field.name === 'producer') onEdit(changeProducer(step, value, options))
@@ -196,7 +219,68 @@ function ActionFields({ step, options, onEdit }: { step: BuildStep; options: Ste
                     )}
                 </Labeled>
             ))}
+            <button type="button" data-testid="step-more" className="btn btn-sm btn-link p-0 mb-1" aria-expanded={expanded} onClick={onToggle}>
+                {expanded ? 'Fewer options' : 'More options'}
+            </button>
         </>
+    )
+}
+
+function StartRow({ order, catalog, onChange }: { order: BuildOrder; catalog: BuildOrderCatalog; onChange: (next: BuildOrder) => void }) {
+    const pairs = startPairs(order)
+    return (
+        <tr data-testid="step-start-row">
+            <td>
+                <span className="small text-muted me-2">Start</span>
+                {order.start === undefined ? (
+                    <button type="button" data-testid="start-customize" className="btn btn-sm btn-outline-secondary" onClick={() => onChange({ ...order, start: catalog.defaultStart })}>
+                        Customize start
+                    </button>
+                ) : (
+                    <Labeled field="rally">
+                        <SelectControl
+                            testId="start-field-rally"
+                            value={order.start.rally}
+                            choices={catalog.nodes}
+                            label={(id) => optionLabel(id, catalog)}
+                            allowEmpty
+                            onChange={(rally) => onChange(setStartRally(order, rally))}
+                        />
+                    </Labeled>
+                )}
+            </td>
+            <td colSpan={2}>
+                {order.start === undefined ? null : (
+                    <>
+                        {pairs.map(([node, count], index) => (
+                            <span key={node} className="d-inline-flex align-items-center gap-1 me-2 mb-1">
+                                <NumberControl testId="start-villagers-count" index={index} value={count} onType={(t) => onChange(setStartCount(order, index, t))} />
+                                <SelectControl
+                                    testId="start-villagers-node"
+                                    index={index}
+                                    value={node}
+                                    choices={catalog.nodes.filter((other) => other === node || !pairs.some(([used]) => used === other))}
+                                    label={(id) => optionLabel(id, catalog)}
+                                    onChange={(next) => onChange(setStartNode(order, index, next))}
+                                />
+                                <button type="button" data-testid="start-villagers-delete" data-index={index} className="btn btn-sm btn-outline-danger" aria-label="Delete villagers" onClick={() => onChange(deleteStartPair(order, index))}>
+                                    {'\u2715'}
+                                </button>
+                            </span>
+                        ))}
+                        <button
+                            type="button"
+                            data-testid="start-villagers-add"
+                            className="btn btn-sm btn-outline-secondary mb-1"
+                            disabled={firstUnusedStartNode(order, catalog) === undefined}
+                            onClick={() => onChange(addStartPair(order, catalog))}
+                        >
+                            Add villagers
+                        </button>
+                    </>
+                )}
+            </td>
+        </tr>
     )
 }
 
@@ -205,30 +289,38 @@ export function StepTable({ order, catalog, onChange }: StepTableProps) {
     const commit = (next: BuildStep[]) => {
         if (next !== steps) onChange({ ...order, steps: next })
     }
-    const start = order.start === undefined ? null : formatBuildOrderText({ ...order, steps: [] })
+    const [expansion, setExpansion] = useState(() => ({ rows: steps.length, open: steps.map(hasOptionalField) }))
+    let { open } = expansion
+    if (expansion.rows !== steps.length) {
+        open = steps.map(hasOptionalField)
+        setExpansion({ rows: steps.length, open })
+    }
+    const setOpen = (index: number, value: boolean) => setExpansion({ rows: steps.length, open: open.map((was, i) => (i === index ? value : was)) })
 
     return (
         <div data-testid="step-table" className="mb-3">
-            {start === null ? null : <pre className="mb-2 small">{start}</pre>}
-            <table className="table table-sm align-middle">
+            <table className={cn(styles.table, 'table table-sm align-middle')}>
                 <tbody>
+                    <StartRow order={order} catalog={catalog} onChange={onChange} />
                     {steps.map((step, index) => {
                         const edit = (next: BuildStep) => {
-                            if (next !== step) commit(replaceStep(steps, index, next))
+                            if (next === step) return
+                            if (next.action !== step.action) setOpen(index, false)
+                            commit(replaceStep(steps, index, next))
                         }
                         return (
                             <tr key={index} data-testid="step-row" data-step={index}>
                                 <td>
                                     <select
                                         data-testid="step-trigger-kind"
-                                        aria-label="trigger"
+                                        aria-label="Trigger"
                                         className="form-select form-select-sm w-auto mb-1"
                                         value={step.trigger?.kind ?? 'none'}
                                         onChange={(e) => edit(changeTriggerKind(step, e.target.value as Trigger['kind'] | 'none', catalog))}
                                     >
                                         {catalog.triggerKinds.map((kind) => (
                                             <option key={kind} value={kind}>
-                                                {kind}
+                                                {TRIGGER_KIND_LABELS[kind]}
                                             </option>
                                         ))}
                                     </select>
@@ -237,28 +329,28 @@ export function StepTable({ order, catalog, onChange }: StepTableProps) {
                                 <td>
                                     <select
                                         data-testid="step-action"
-                                        aria-label="action"
+                                        aria-label="Action"
                                         className="form-select form-select-sm w-auto mb-1"
                                         value={step.action}
                                         onChange={(e) => edit(changeAction(step, e.target.value as BuildStep['action'], catalog))}
                                     >
                                         {catalog.actions.map((action) => (
                                             <option key={action} value={action}>
-                                                {action}
+                                                {ACTION_LABELS[action]}
                                             </option>
                                         ))}
                                     </select>
-                                    <ActionFields step={step} options={catalog} onEdit={edit} />
+                                    <ActionFields step={step} options={catalog} expanded={open[index] ?? false} onToggle={() => setOpen(index, !open[index])} onEdit={edit} />
                                 </td>
                                 <td className="text-nowrap">
-                                    <button type="button" data-testid="step-move-up" className="btn btn-sm btn-outline-secondary me-1" disabled={index === 0} onClick={() => commit(moveStep(steps, index, -1))}>
-                                        Up
+                                    <button type="button" data-testid="step-move-up" aria-label="Move up" className="btn btn-sm btn-outline-secondary me-1" disabled={index === 0} onClick={() => commit(moveStep(steps, index, -1))}>
+                                        {'\u25B2'}
                                     </button>
-                                    <button type="button" data-testid="step-move-down" className="btn btn-sm btn-outline-secondary me-1" disabled={index === steps.length - 1} onClick={() => commit(moveStep(steps, index, 1))}>
-                                        Down
+                                    <button type="button" data-testid="step-move-down" aria-label="Move down" className="btn btn-sm btn-outline-secondary me-1" disabled={index === steps.length - 1} onClick={() => commit(moveStep(steps, index, 1))}>
+                                        {'\u25BC'}
                                     </button>
-                                    <button type="button" data-testid="step-delete" className="btn btn-sm btn-outline-danger" onClick={() => commit(deleteStep(steps, index))}>
-                                        Delete
+                                    <button type="button" data-testid="step-delete" aria-label="Delete step" className="btn btn-sm btn-outline-danger" onClick={() => commit(deleteStep(steps, index))}>
+                                        {'\u2715'}
                                     </button>
                                 </td>
                             </tr>
