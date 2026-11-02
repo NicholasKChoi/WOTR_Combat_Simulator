@@ -4,7 +4,8 @@ import baseRules from '../../data/aoe4-build-order/rules/base.json'
 import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import { BaseRules, CivData, Snapshot, buildGameData, loadGameData } from './data'
 import type { BuildOrderLines } from './model'
-import { SIM_INPUT_BOUNDS, ValidateOptions, resolveSimInputs, validateBuildOrder } from './validate'
+import { FINITE_NODE_REFS } from './model'
+import { SIM_INPUT_BOUNDS, ValidateOptions, nodeRefIssue, resolveSimInputs, validateBuildOrder } from './validate'
 
 const data = loadGameData('english')
 const START = { villagers: { sheep: 6 }, rally: 'sheep' }
@@ -515,5 +516,126 @@ describe('resolveSimInputs', () => {
         expect(defaults().trips.farm.walkSecondsCamp).toBe(farm.walkSecondsCamp.value)
         expect(defaults().influenceCoverage).toEqual({ mill: 1 })
         expect(data.base.gatherNodes.farm.trip.walkSecondsCamp.value).not.toBe(99)
+    })
+})
+
+describe('node refs', () => {
+    const table: [string, string | null][] = [
+        ['gold', null],
+        ['gold#2', null],
+        ['gold#8', null],
+        ['wood', null],
+        ['gold#1', 'invalid'],
+        ['wood#2', 'invalid'],
+        ['berry#2', 'invalid'],
+        ['stone#2', 'invalid'],
+        ['gold#0', 'out-of-range'],
+        ['gold#9', 'out-of-range'],
+        ['iron', 'unknown-id'],
+        ['iron#2', 'unknown-id'],
+        ['gold#02', 'syntax'],
+        ['gold#', 'syntax'],
+        ['gold#x', 'syntax'],
+        ['gold#2#3', 'syntax'],
+    ]
+
+    it.each(table)('classifies %s', (value, code) => {
+        expect(nodeRefIssue(value, false)?.code ?? null).toBe(code)
+        expect(nodeRefIssue(value, false)?.reason ?? value).toContain(value)
+    })
+
+    it('rejects farm and wood only where the node must run out, and a non-string as syntax', () => {
+        expect(nodeRefIssue('farm', true)).toEqual({ code: 'invalid', reason: expect.stringContaining('"farm"') })
+        expect(nodeRefIssue('wood', true)?.code).toBe('invalid')
+        expect(nodeRefIssue('gold#2', true)).toBeNull()
+        expect(nodeRefIssue('farm', false)).toBeNull()
+        expect(nodeRefIssue(3, false)).toEqual({ code: 'syntax', reason: 'node must be a string' })
+    })
+
+    const villager = { action: 'produce', producer: 'capital-town-center', unit: 'villager' }
+    const positions: [string, (v: string) => unknown][] = [
+        ['rally', (v) => order([{ ...villager, rally: v }])],
+        ['to', (v) => order([{ action: 'rally', producer: 'capital-town-center', to: v }])],
+        ['from', (v) => order([{ action: 'build', building: 'house', from: v }])],
+        ['then', (v) => order([{ action: 'build', building: 'house', from: 'sheep', then: v }])],
+        ['from', (v) => order([{ action: 'move', count: 1, from: v, to: 'wood' }])],
+        ['to', (v) => order([{ action: 'move', count: 1, from: 'sheep', to: v }])],
+        ['start.rally', (v) => order([], { start: { villagers: { sheep: 6 }, rally: v } })],
+        ['start.villagers', (v) => order([], { start: { villagers: { sheep: 5, [v]: 1 }, rally: 'sheep' } })],
+    ]
+
+    it.each(positions)('gives every value the same issue in %s', (path, build) => {
+        for (const [value, code] of table) {
+            const issues = issuesOf(build(value))
+            if (code === null) {
+                expect(issues, value).toEqual([])
+            } else {
+                expect(issues, value).toEqual([expect.objectContaining({ code, message: expect.stringContaining(`${nodeRefIssue(value, false).reason} in ${path}`) })])
+            }
+        }
+    })
+
+    it('keeps the M2 message for an unknown node', () => {
+        expect(stepIssue({ action: 'move', count: 1, from: 'iron', to: 'wood' })).toEqual({ code: 'unknown-id', message: expect.stringContaining('unknown node "iron" in from'), step: 0 })
+    })
+})
+
+describe('move count all', () => {
+    it('accepts "all" on move only', () => {
+        expect(issuesOf(order([{ action: 'move', count: 'all', from: 'gold', to: 'gold#2' }]))).toEqual([])
+        for (const count of ['All', '3']) {
+            expect(stepIssue({ action: 'move', count, from: 'sheep', to: 'wood' }).code, count).toBe('syntax')
+        }
+        expect(stepIssue({ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 'all' }).code).toBe('syntax')
+    })
+})
+
+describe('resolveSimInputs nodeAmounts', () => {
+    it('returns every finite ref, null when no amount ships', () => {
+        const { nodeAmounts } = defaults()
+        expect(Object.keys(nodeAmounts)).toEqual(FINITE_NODE_REFS)
+        expect(Object.values(nodeAmounts).every((v) => v === null)).toBe(true)
+    })
+
+    it('defaults every deposit to the gold amount and merges overrides per key', () => {
+        const base = structuredClone(baseRules) as unknown as BaseRules
+        base.gatherNodes.gold.amount = { value: 4000, source: 'test', unverified: true }
+        base.gatherNodes.berry.amount = { value: 900, source: 'test', unverified: true }
+        const game = buildGameData('english', englishSnapshot as unknown as Snapshot, base, englishRules as unknown as CivData)
+        const result = resolveSimInputs({ nodeAmounts: { gold: null, 'gold#3': 2500, berry: 0 } }, game)
+        if (result.ok === false) throw new Error('rejected')
+        expect(result.inputs.nodeAmounts).toMatchObject({ gold: null, 'gold#2': 4000, 'gold#3': 2500, 'gold#8': 4000, berry: 0, sheep: null })
+    })
+
+    it.each([
+        [{ berry: 0 }, null],
+        [{ gold: null }, null],
+        [{ 'gold#2': 2500 }, null],
+        [{ farm: 500 }, 'invalid'],
+        [{ wood: 500 }, 'invalid'],
+        [{ 'gold#1': 5 }, 'invalid'],
+        [{ 'wood#2': 5 }, 'invalid'],
+        [{ 'gold#9': 5 }, 'out-of-range'],
+        [{ iron: 5 }, 'unknown-id'],
+        [{ gold: 1.5 }, 'out-of-range'],
+        [{ gold: -1 }, 'out-of-range'],
+        [{ gold: 100001 }, 'out-of-range'],
+        [{ gold: Infinity }, 'out-of-range'],
+        [{ gold: '5' }, 'syntax'],
+        [{ 'gold#02': 5 }, 'syntax'],
+    ])('reads %o as %s', (nodeAmounts, code) => {
+        const [key] = Object.keys(nodeAmounts)
+        const expected = code === null ? [] : [{ code, message: expect.stringContaining(`inputs.nodeAmounts.${key}`) }]
+        expect(inputIssues({ nodeAmounts })).toEqual(expected)
+    })
+
+    it('rejects a non-object nodeAmounts and accepts 0 and 100000', () => {
+        expect(inputIssues({ nodeAmounts: 5 })).toEqual([{ code: 'syntax', message: expect.stringContaining('inputs.nodeAmounts') }])
+        expect(inputIssues({ nodeAmounts: { gold: 0, stone: 100000 } })).toEqual([])
+    })
+
+    it('keeps houseBuilderSource and trips to plain nodes', () => {
+        expect(inputIssues({ houseBuilderSource: 'gold#2' })).toEqual([{ code: 'unknown-id', message: expect.stringContaining('unknown node "gold#2"') }])
+        expect(inputIssues({ trips: { 'gold#2': {} } })).toEqual([{ code: 'unknown-id', message: expect.stringContaining('unknown node "gold#2"') }])
     })
 })

@@ -401,6 +401,7 @@ test.describe('exported types match the spec', () => {
     houseBuilders: true,
     houseBuilderSource: true,
     influenceCoverage: true,
+    nodeAmounts: true,
   }
   const buildOrder: Record<keyof BuildOrder, true> = { civ: true, name: true, source: true, start: true, steps: true }
   const buildStart: Record<keyof BuildStart, true> = { villagers: true, rally: true }
