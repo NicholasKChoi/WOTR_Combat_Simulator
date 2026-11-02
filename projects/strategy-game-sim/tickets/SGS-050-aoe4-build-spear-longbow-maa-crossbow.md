@@ -4,8 +4,8 @@
 - **Component**: aoe4-build-order
 - **Milestone / criteria**: M3 / M3.7 (first new prebuilt build: no step waiting or not reached), M3.11 (the shipped build switches gold deposits through reactions)
 - **Priority**: medium
-- **Risk**: high
-  <!-- The plan said medium and the work is data. But `lib/aoe4-build-order/builds.ts` is a non-test file under REPO.md criticalPaths `lib/**`, so the template rule gives high (same call as SGS-040). Business logic is one import and one array entry. The real risk is tuning: the build has to meet the full prebuilt bar at 1200 s and 3600 s with depletion on. -->
+- **Risk**: standard
+  <!-- (re-rated 2026-11-01, symbol-scoped criticalPaths) Data plus one builds.ts entry; no criticalPaths symbol or trigger applies. The risk is tuning against the prebuilt bar (A1/A2), not code. -->
 - **Invariants**: A1 (no game number in code: the build is a data file and every cost, time and amount comes from the snapshot and `rules/base.json`), A2 (no step may be left `waiting`; the bar asserts it)
 - **LOC estimate**: ~3 business logic (`builds.ts`: one import, one array entry). Data: one new JSON file, about 30 to 45 steps. Tests ~40 (`builds.test.ts`). Prose: `data/aoe4-build-order/README.md` entry.
 - **Depends on**: SGS-039 (`Trigger` kinds `depleted` and `bank`, `BuildStep.reaction`, default node amounts, the prebuilt bar in `builds.test.ts`, parts 1 to 3 at both horizons and 4 and 5 at 1200 s), SGS-040 (paste grammar for `whenever <ref> runs out`, `move all`, `gold#N`; the paste round-trip test; bar parts 4 and 5 extended to 3600 s). SGS-035 (`test-helpers.ts`, the shared bar helpers the new shape test imports). Transitively SGS-038 (stock, `move all`, deposits), SGS-042 (`waitingOn`), SGS-037. Use the final names from the SGS-039 and SGS-040 as merged; this ticket names no new contract.

@@ -4,8 +4,8 @@
 - **Component**: aoe4-build-order
 - **Milestone / criteria**: M3 / M3.3 (paste side: `depleted` and `bank` triggers, clear errors), M3.11 (paste `gold#N`, `move all`; the shipped build switches deposits through reactions), M3.4 prerequisite (`formatBuildStep`), M3.7 (the prebuilt bar parts 4 and 5 at 3600 s, and the paste round-trip)
 - **Priority**: high
-- **Risk**: high
-  <!-- REPO.md criticalPaths `lib/**` applies (parse-text.ts is business logic, not a test file). The change also adds the paste half of a public contract the page and the route both consume, and edits a shipped build that every default run uses. About 80 lines of business logic, under the 250 trigger. The plan rated this medium; the template rule (criticalPaths) makes it high. -->
+- **Risk**: standard
+  <!-- (re-rated 2026-11-01, symbol-scoped criticalPaths) Not a criticalPaths symbol (parse-text.ts). The paste grammar is a new contract design/M3.md names, ~80 lines of business logic, adjacent to A1/A3. -->
 - **Invariants**: A1 (no number is written into code: the deposit limit and the node lists come from `model.ts`; the ENG 1TC step is data), A3 (parsing and formatting are pure; the paste text of a build always maps to the same order)
 - **LOC estimate**: ~80 business logic (`parse-text.ts`: node token and `node()` ~10, `move all` ~8, `parseTrigger` `when`/`whenever` ~35, `parseAction` reaction flag ~5, `formatTrigger` / `formatAction` / `formatBuildStep` / `formatStart` ~22; one JSON step in `english-1tc.json`; tests, docs and acceptance excluded)
 - **Depends on**: SGS-039 (`Trigger` kinds `depleted` and `bank`, `BuildStep.reaction`, `triggerHolds`, the five-part bar in `builds.test.ts`); transitively SGS-038 (`NodeRef` step fields, `move.count: number | 'all'`, `nodeRefIssue`), SGS-037 (`NODE_REFS`, `FiniteNodeRef`, `nodeKindOf`), SGS-035 (`GATHER_NODES`, `test-helpers.ts`)

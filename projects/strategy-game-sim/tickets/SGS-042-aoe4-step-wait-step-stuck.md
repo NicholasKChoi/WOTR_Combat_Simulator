@@ -4,8 +4,8 @@
 - **Component**: aoe4-build-order
 - **Milestone / criteria**: M3 / M3.5 (engine side), M3.12 (`step-stuck` warning)
 - **Priority**: medium
-- **Risk**: high
-  <!-- lib/** is a REPO.md criticalPath; the change lands in offerSteps and the main event loop. The plan rated merge risk medium; the template tier is the higher one. -->
+- **Risk**: standard
+  <!-- (re-rated 2026-11-01, symbol-scoped criticalPaths) Records why a step waits: handlers return the first failing check in the existing order and offerSteps stores it, without changing which step starts or when. Adjacent to A2/A3, ~130 lines. -->
 - **Invariants**: A2 (a step that cannot be afforded waits and the wait appears in the reported timings; this ticket extends exactly that reporting), A3 (accrual is arithmetic on event times only, no wall clock)
 - **LOC estimate**: ~130 (`simulate.ts` handler returns, `offerSteps`, interval accrual in `simulateBuildOrder`, horizon pass and `step-stuck` emission ~100; `research.ts` ~10; `model.ts` ~10; tests, docs and OpenAPI excluded)
 - **Depends on**: SGS-037 (warnings contract, `StepWait`, `sortWarnings`), SGS-038 (`availableAt`, `gatherers` keyed by `NodeRef`, `move.count: number | 'all'`, `warnings` filled from `depletionResults`), SGS-041 (`researchEntry` in `researchHandler`) (respec 2); transitively SGS-035

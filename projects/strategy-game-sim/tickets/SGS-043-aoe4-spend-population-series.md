@@ -4,9 +4,8 @@
 - **Component**: aoe4-build-order
 - **Milestone / criteria**: M3 / M3.6 (engine side: military spent, time to 200 pop)
 - **Priority**: medium
-- **Risk**: high
-  <!-- (respec 2) REPO.md criticalPaths `lib/**` applies: non-test files `lib/aoe4-build-order/simulate.ts` and
-       `model.ts` change. By the template a critical-path glob forces high. -->
+- **Risk**: standard
+  <!-- (re-rated 2026-11-01, symbol-scoped criticalPaths) Adds recorded series only; payment and event order are unchanged. Adjacent to A2/A3. -->
 - **Invariants**: A2 (the series read the same bank-checked payments, via `payCost`), A3 (series are pure functions of engine state; no clock)
 - **LOC estimate**: ~50 (`simulate.ts` sampling, seed and spawn hook, `model.ts` fields; excludes tests, OpenAPI JSON and docs)
 - **Depends on**: SGS-035, SGS-037

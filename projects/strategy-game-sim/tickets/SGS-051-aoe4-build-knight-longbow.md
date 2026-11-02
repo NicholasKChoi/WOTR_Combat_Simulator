@@ -4,8 +4,8 @@
 - **Component**: aoe4-build-order
 - **Milestone / criteria**: M3 / M3.7 (second prebuilt build, meets the prebuilt bar), M3.11 (the build switches gold deposits through reactions)
 - **Priority**: medium
-- **Risk**: high
-  <!-- REPO.md criticalPaths `lib/**` applies: the ticket adds one entry to lib/aoe4-build-order/builds.ts (and test lines in builds.test.ts, which alone would not count). The plan rated this medium and called the risk tuning, not code; the template rule (criticalPaths) makes it high. The data file (about 60 to 90 steps) is excluded from the business-logic count, which is about 3 lines. -->
+- **Risk**: standard
+  <!-- (re-rated 2026-11-01, symbol-scoped criticalPaths) Data plus one builds.ts entry; no criticalPaths symbol or trigger applies. The risk is tuning against the prebuilt bar (A1/A2/A3), not code. -->
 - **Invariants**: A1 (the build is data; every cost, time and rate stays in the snapshot and rules files, and no step restates one), A2 (the build only sequences steps; a step that cannot be afforded waits and shows as waiting, which the bar forbids at the two horizons), A3 (the build and its result are deterministic)
 - **LOC estimate**: ~3 business logic (`builds.ts` one import and one array entry; one `builds.test.ts` ordering assertion ~15 lines of test); new JSON `builds/english-knight-longbow.json`, tests, docs excluded
 - **Depends on**: SGS-039 (reactions, `depleted` trigger, depletion on by default, the five-part bar test in `builds.test.ts` at parts 1-3 for 1200 s and 3600 s and parts 4-5 for 1200 s), SGS-040 (paste grammar for `whenever <ref> runs out`, `move all`, `gold#N`; the paste round-trip test; parts 4-5 extended to 3600 s), SGS-041 (multi-tier `researchEntry`, note ids; research steps pick the entry at the current age); transitively SGS-038, SGS-037, SGS-035. SGS-050 (the first M3.7 build) adds its own line to `builds.ts` in parallel: rebase only, no shared contract.

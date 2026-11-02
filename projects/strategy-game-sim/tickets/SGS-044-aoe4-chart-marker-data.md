@@ -4,8 +4,8 @@
 - **Component**: aoe4-build-order
 - **Milestone / criteria**: M3 / M3.10 (engine side)
 - **Priority**: medium
-- **Risk**: high
-  <!-- REPO.md criticalPaths `lib/**` applies (new `markers.ts`, edits to `simulate.ts` and `research.ts`), so the template makes this high although the plan listed low. -->
+- **Risk**: standard
+  <!-- (re-rated 2026-11-01, symbol-scoped criticalPaths) Adds recorded marker data only (new markers.ts and pushes); no listed symbol changes what it decides. Adds a response field, ~70 lines. -->
 - **Invariants**: A1 (labels and kinds come from snapshot entries and the fixed age names, no game numbers), A3 (markers are derived from the event order, no wall clock), S3 (adds no input)
 - **LOC estimate**: 70 (new `markers.ts` ~40; `model.ts` types ~15; `simulate.ts` and `research.ts` pushes and result field ~15; tests, docs and OpenAPI excluded)
 - **Depends on**: SGS-041 (G: `researchEntry(baseId, state)` picks the entry whose completion is marked)

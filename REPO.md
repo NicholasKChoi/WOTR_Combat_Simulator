@@ -29,8 +29,22 @@ styleSources:                     # no AGENTS.md/CLAUDE.md/CONTRIBUTING.md exist
   - ARCHITECTURE.md
   - tsconfig.json
 
-criticalPaths:                    # app logic (simulation, rules, stats) per ARCHITECTURE.md; golang/ is retired
-  - "lib/**"                       # test files (*.test.ts) alone do not count
+criticalPaths:                    # a change to what these decide, or their signature, makes a ticket high
+  - path: "lib/aoe4-build-order/simulate.ts"
+    symbols: [simulateBuildOrder, runInstant, offerSteps, applyDueEvents, nextWake, affordableAt]
+    why: event loop; step order and wake times decide every result (A3)
+  - path: "lib/aoe4-build-order/simulate.ts"
+    symbols: [affordable, spend, orderNeed]
+    why: payment checks; resources never go negative (A2)
+  - path: "lib/aoe4-build-order/engine-common.ts"
+    symbols: [canAfford, payCost]
+    why: shared payment checks once SGS-035 moves them here (A2)
+  - path: "lib/combat-simulator/battle.ts"
+    symbols: [Battle, resolveRound, rollDice, calculateCombatRollResults]
+    why: combat per the rules doc (W1)
+  - path: "lib/combat-simulator/simulate.ts"
+    symbols: [simulateBattles]
+    why: battles stay independent (W2)
 
 babysit: false                    # no .github/workflows; the only check is the Vercel preview deploy
 stacking: footer                  # retro 2026-11-01: native gh-stack links made `gh pr merge` refuse stacked PRs; engine has no `none` yet
