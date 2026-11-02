@@ -13,7 +13,7 @@
 
 ## Context
 
-Eight statements in `docs/aoe4-build-order.md` and four in `design/M2.md` disagree with the shipped M2 code or
+Eight statements (item 7 spans three lines) in `docs/aoe4-build-order.md` and four in `design/M2.md` disagree with the shipped M2 code or
 omit a behavior a reader needs. This ticket is a root so every later M3 ticket that edits the same doc rebases
 on corrected text. Each fix below was checked against the code on `main` (f078c11).
 
@@ -40,10 +40,14 @@ on corrected text. Each fix below was checked against the code on `main` (f078c1
    (pasted `start`: `line` only; JSON `start`: neither).
 6. **Parse-fails branch in the diagram.** The mermaid `flowchart LR` (~line 464) has no edge from
    `parse` to `error`. Add `parse -->|"syntax issues"| error`.
-7. **Move-speed divisor in the builder walk.** The walk list (~line 221) says auto-house builders walk
-   "at `inputs.walkSeconds`". The code divides by the villager `moveSpeed` multiplier on both legs
-   (`houses.ts:25-26` for the lead time, `simulate.ts:300-303` `villagerWalk` for the walk). Write
-   "`inputs.walkSeconds / moveSpeedMultiplier`".
+7. **Move-speed divisor in every builder-walk statement.** Two places state the auto-house builder walk
+   without the divisor: the walk list (~line 221, "at `inputs.walkSeconds`") and the auto-house paragraph
+   (~line 272, "Builders walk `inputs.walkSeconds` each way"). The code divides by the villager `moveSpeed`
+   multiplier on both legs (`houses.ts:25-26` for the lead time, `simulate.ts:300-303` `villagerWalk` for the
+   walk). Write "`inputs.walkSeconds / moveSpeedMultiplier`" in both. Also ~line 220: "a `start.rally` route
+   uses `inputs.walkSeconds`" needs the divisor too, because `simulate.ts:229` computes
+   `(rally.walkSeconds ?? inputs.walkSeconds) / moveSpeedMultiplier` and a start rally has no
+   `walkSeconds` (`:150`); write "a `start.rally` route uses `inputs.walkSeconds / moveSpeedMultiplier`".
 8. **`shaft-mining` example.** ~Line 341 uses `shaft-mining` as an `effects-unmodeled` example, but it has an
    overlay row, so it is `supported` (`effects.test.ts:57-59`; the base id `admiralty` is the unmodeled one,
    `research.acceptance.test.ts:283-286`). Use `admiralty`.
@@ -74,7 +78,7 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] The doc states that a `syntax` issue from parsing a paste line carries `line` only, in both the Issues paragraph and the Route 400 bullet, and the Route bullet lists the pasted `start` (line only) and JSON `start` (neither) cases.
 - [ ] The `unitsProduced` bullet states the order: first spawn time, then unit id (matches `simulate.ts` `unitSeries`).
 - [ ] The Queues text states that a counted `produce` leaves the instance with no order after its last unit and the default villager order does not resume.
-- [ ] The builder-walk bullet states `inputs.walkSeconds` divided by the villager move-speed multiplier for auto-house builders.
+- [ ] Every builder-walk statement in the doc (the ~221 walk-list bullet and the ~272 auto-house paragraph) states `inputs.walkSeconds` divided by the villager move-speed multiplier, and the `start.rally` route statement (~220) does too; `git grep -n "inputs.walkSeconds" docs/aoe4-build-order.md` shows no remaining builder or start-rally statement without the divisor (today the ~220, ~221 and ~272 lines lack it).
 - [ ] Each corrected statement was compared with the code cited in Scope; no code, test or `openapi.json` file is in the diff (`git diff --stat origin/main` lists only `docs/aoe4-build-order.md`).
 - [ ] After merge, `design/M2.md` has 0 `shaft-mining` (1 today), 1 `admiralty` (0 today), `EffectState` and `ModifierTarget` in the effects.ts row (0 `EffectState` today), `rally` in the "walk Ns is always last" sentence, and no "`start: {}` is valid" (1 today).
 - [ ] No INVARIANTS.md regressions

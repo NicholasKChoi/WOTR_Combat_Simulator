@@ -49,6 +49,11 @@ Contract names are the design's (design/M3.md Contracts and Markers); do not ren
    (kinds, classification order, label rule, sort order, no marker for the start age or for unfinished work, no
    effect on the simulation) and state in the research section that a completed tech adds a marker. The
    cross-cutting M3 sections are SGS-054's.
+7. (respec 2) `components/apps/aoe4-build-order/result-series.test.ts`: add `markers: []` to the `result()` literal
+   (`function result(): SimulationResult`, lines 6-22 on main). It is the only typed `SimulationResult` literal outside
+   `lib/` (`git grep -n "): SimulationResult\|SimulationResult = " -- components pages` finds just this one), and
+   `npx tsc --noEmit` fails without it once `markers` is required. SGS-037 (reached through SGS-041) already adds
+   `depletions: []` and `warnings: []` to the same literal; this ticket adds only `markers`.
 
 Result-shape contract (must hold; the design rows are `markers | age reached`, `research completed`, `ordering and ties`,
 `repeat`, `no target`, `effects`, `x range`):
@@ -60,7 +65,8 @@ Result-shape contract (must hold; the design rows are `markers | age reached`, `
 
 **Out of scope:** chart rendering, colors, labels and legend (`MARKER_COLORS`, `MARKER_KIND_LABELS`, `markerLabel`; SGS-049);
 pinned-run markers; new `ChartMarkerKind` values; any combat effect of a tech; the audit of the whole docs/OpenAPI
-(SGS-054); `pages/apps/aoe4-build-order.tsx` and `components/**`.
+(SGS-054); `pages/apps/aoe4-build-order.tsx` and `components/**` except the one `markers: []` line in
+`components/apps/aoe4-build-order/result-series.test.ts` (Scope item 7).
 
 ## Diagrams
 
@@ -108,15 +114,15 @@ flowchart LR
 - [ ] A research completing at the same instant as an age-up produces both markers, ordered by `compareMarkers`
       (the `age-up` first). Two techs completing at the same instant both appear.
 - [ ] Every `markers[i].at <= durationSeconds`, `markers` is sorted per `compareMarkers`, and each age and each tech appears at most once.
-- [ ] Adding `markers` changes nothing else: for the shipped build and two other builds in the existing tests, every
-      other `SimulationResult` field is deep-equal to the output with the two push lines removed (assert via a
-      fixture of the M2 field set, or the existing snapshot-style tests staying green unchanged).
+- [ ] (respec 2) Adding `markers` changes nothing else: every existing unit test (`npm test`) stays green with no edit
+      to its assertions; the only edit to an existing test file is the `markers: []` line in `result-series.test.ts`
+      (Scope item 7).
 - [ ] `docs/api/openapi.json` has `ChartMarkerKind` and `ChartMarker`, `SimulationResult.required` lists `markers`, and
       `acceptance/aoe4-simulate-api-contract.spec.ts` (ajv) passes against a live response that contains `markers`.
 - [ ] `docs/aoe4-build-order.md` has a `markers` bullet beside `ages`; `git grep -n "markers" -- docs/aoe4-build-order.md` is no longer empty (it is empty today).
-- [ ] `git grep -n "ages.push" -- lib ':!*.test.ts'` still finds exactly one site and `markers.push(ageMarker` appears next to it; `git grep -n "researchMarker(" -- lib/aoe4-build-order/research.ts` finds one site (today `git grep -n "researched.add" -- lib ':!*.test.ts'` finds exactly one, in `research.ts`).
+- [ ] `git grep -n "ages.push" -- lib ':!*.test.ts'` still finds exactly one site and `markers.push(ageMarker` appears next to it; (respec 2) `git grep -n "researchMarker(" -- lib/aoe4-build-order/research.ts` finds exactly one call site (the import line has no `(` and is not counted; today the grep finds none, and `git grep -n "researched.add" -- lib ':!*.test.ts'` finds exactly one, in `research.ts`).
 - [ ] Mutation: swapping the first two checks in `researchMarkerKind` fails the priority test; dropping the `ageMarker` push fails the age-marker test; dropping the `.sort(compareMarkers)` fails the same-time ordering test.
-- [ ] `npx tsc --noEmit` and `npm test` pass; no INVARIANTS.md regressions.
+- [ ] (respec 2) `npx tsc --noEmit` (including `components/apps/aoe4-build-order/result-series.test.ts`) and `npm test` pass; no INVARIANTS.md regressions.
 
 ## Open questions
 
