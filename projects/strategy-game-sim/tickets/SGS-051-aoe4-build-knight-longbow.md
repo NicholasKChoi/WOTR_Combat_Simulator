@@ -73,8 +73,8 @@ Findings:
 - `data/aoe4-build-order/README.md:61-62` says "farms added at 14, 16 and 18 minutes" but the `@14:00` farms start at 15:05, queued behind `produce knight`, which waits for Castle.
 
 Required fixes:
-- [ ] (rework 1) Retune the build so both archery ranges produce (add a produce step after the second range, or reorder), keeping the bar (parts 1 to 5) at 1200 s and 3600 s, no gold `warning`, and the gold reactions intact. Try to bring Castle nearer the reference (for example move the gold transfer or the stable/range order); report measured Castle time and unit counts at 1200 s, and keep anything not reachable as a documented gap.
-- [ ] (rework 1) Move all `whenever` reaction steps to the end of the step list.
-- [ ] (rework 1) Make the 14:00 farm block start when the README says (move it before `produce knight`, or reword the README to the measured start).
-- [ ] (rework 1) Correct the README and the implementer report to the measured causes above, and put the measured Castle time, 1200 s counts, upgrade gold (about 750 against about 1,750 in the reference) and the `hand-authored` source note in the report so the PR body can carry them.
-- [ ] (rework 1) Write the `builds.ts` array one entry per line so the sibling build's entry does not conflict on one long line. Re-run the mutation checks against the retuned file.
+- [x] (rework 1) Retune the build so both archery ranges produce (add a produce step after the second range, or reorder), keeping the bar (parts 1 to 5) at 1200 s and 3600 s, no gold `warning`, and the gold reactions intact. Try to bring Castle nearer the reference (for example move the gold transfer or the stable/range order); report measured Castle time and unit counts at 1200 s, and keep anything not reachable as a documented gap.
+- [x] (rework 1) Move all `whenever` reaction steps to the end of the step list.
+- [x] (rework 1) Make the 14:00 farm block start when the README says (move it before `produce knight`, or reword the README to the measured start).
+- [x] (rework 1) Correct the README and the implementer report to the measured causes above, and put the measured Castle time, 1200 s counts, upgrade gold (about 750 against about 1,750 in the reference) and the `hand-authored` source note in the report so the PR body can carry them.
+- [x] (rework 1) Write the `builds.ts` array one entry per line so the sibling build's entry does not conflict on one long line. Re-run the mutation checks against the retuned file.
