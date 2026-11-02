@@ -34,6 +34,10 @@ describe('parseBuildOrderText grammar', () => {
                 'research fervent',
                 'move 4 sheep to berry walk 2s',
                 'rally capital-town-center -> farm walk 1s',
+                'move all gold#2 to stone#3 walk 5s',
+                'when gold#2 runs out pause capital-town-center',
+                'whenever berry runs out move all berry to gold#2 walk 1s',
+                'when wood >= 400 research fervent',
             ].join('\n'),
         )
         expect(order.steps).toEqual([
@@ -44,6 +48,10 @@ describe('parseBuildOrderText grammar', () => {
             { action: 'research', tech: 'fervent' },
             { action: 'move', count: 4, from: 'sheep', to: 'berry', walkSeconds: 2 },
             { action: 'rally', producer: 'capital-town-center', to: 'farm', walkSeconds: 1 },
+            { action: 'move', count: 'all', from: 'gold#2', to: 'stone#3', walkSeconds: 5 },
+            { trigger: { kind: 'depleted', node: 'gold#2' }, action: 'pause', producer: 'capital-town-center' },
+            { trigger: { kind: 'depleted', node: 'berry' }, reaction: true, action: 'move', count: 'all', from: 'berry', to: 'gold#2', walkSeconds: 1 },
+            { trigger: { kind: 'bank', resource: 'wood', atLeast: 400 }, action: 'research', tech: 'fervent' },
         ])
     })
 
