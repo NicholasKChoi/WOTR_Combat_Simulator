@@ -38,6 +38,10 @@ async function expectInViewBelowRunBar(page: Page, testId: string, line?: number
     .toBe(true)
 }
 
+function scrollToTop(page: Page) {
+  return page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+}
+
 test.describe('AoE4 build order live issues', () => {
   test('a parse issue shows without a Run, marks its gutter line and has no suggestion', async ({ page }) => {
     await openPage(page)
