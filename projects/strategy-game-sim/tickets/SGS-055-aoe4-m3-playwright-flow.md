@@ -64,3 +64,15 @@ Single-component change outside the core control loop; no diagram required. (Tes
 ## Open questions
 
 - `designer`: the reaction test relies on SGS-039's measurement that ENG 1TC gold deposit 1 runs out near 3305 s. If SGS-040 or later tuning moves it past 3600 s, the test's first assertion fails and it must switch to a different way of showing a reaction under way (for example, override nothing and assert only the reaction row's `data-reaction` at 1200 s).
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review at tip 6fef201b89fcd3351b6e36aa894ba9f8b63a658e (report `reports/SGS-055-review-1.md`). No other gate has passed yet.
+
+Findings:
+- Criterion 8: `aoe4-build-order-pin-compare.spec.ts:16` and `aoe4-step-table.spec.ts:13` (written after this ticket) each keep their own `openPage` plus a `PAGE` const; both behave like the shared helper, so `openPage` and `runSimulation` are not defined only once in `helpers.ts`.
+- `aoe4-build-order-m3-flow.spec.ts:80`: `find(gold)?.depletedAt` with `.not.toBeNull()` passes when `gold` is missing from `depletions` (`undefined` is not null).
+
+Required fixes:
+- [ ] (rework 1) Make both specs import `openPage` from `./helpers`, and delete their local `openPage` and the `PAGE` const that only it uses. No test expectation changes. Criterion 8's grep then finds the two exports only.
+- [ ] (rework 1) Make the gold run-out check fail loudly when the entry is missing (match the found entry against `{ depletedAt: expect.any(Number) }`, or assert the entry exists first).
