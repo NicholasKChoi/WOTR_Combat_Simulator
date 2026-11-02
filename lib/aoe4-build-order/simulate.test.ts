@@ -6,6 +6,7 @@ import { NO_CIV_RULES, civRules } from './civ-rules'
 import type { CivData, GameData } from './data'
 import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult } from './model'
+import { FINITE_GATHER_NODES } from './model'
 import { SAMPLE_SECONDS, addBuildingInstance, simulateBuildOrder, stepHandlers } from './simulate'
 import type { BuildingInstance, EngineState, RallySource } from './simulate'
 import { ENGLISH, at, buildOrder, countAt, editGameData, inputsFor, run, sampleIndex, series, withHandler } from './test-helpers'
@@ -689,10 +690,10 @@ describe('source shape', () => {
     it('exports exactly the seam names', () => {
         const names = (file: string) => [...source(file).matchAll(/^export (?:const|function|interface|type) (\w+)/gm)].map((m) => m[1]).sort()
         expect(names('simulate.ts')).toEqual(
-            ['BuildingInstance', 'EngineState', 'PaidItem', 'ProductionOrder', 'RallySource', 'SAMPLE_SECONDS', 'StepHandler', 'StepStart', 'addBuildingInstance', 'simulateBuildOrder', 'stepHandlers', 'triggerHolds'].sort(),
+            ['BuildingInstance', 'EngineState', 'PaidItem', 'ProductionOrder', 'RallySource', 'SAMPLE_SECONDS', 'StepHandler', 'StepStart', 'addBuildingInstance', 'assignGatherers', 'simulateBuildOrder', 'stepHandlers', 'triggerHolds'].sort(),
         )
         expect(names('civ-rules.ts')).toEqual(['CivRuleContext', 'CivRules', 'NO_CIV_RULES', 'civRules'].sort())
-        expect(source('simulate.ts').match(/^export /gm)).toHaveLength(12)
+        expect(source('simulate.ts').match(/^export /gm)).toHaveLength(13)
         expect(source('civ-rules.ts').match(/^export /gm)).toHaveLength(4)
     })
 
@@ -718,7 +719,7 @@ describe('depletions and warnings', () => {
         const prebuilt = simulateBuildOrder(listBuilds()[0], data, inputsFor(data, { durationSeconds: 3600 }))
         const oneStep = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1 }])
         for (const result of [prebuilt, oneStep]) {
-            expect(result.depletions).toEqual([])
+            expect(result.depletions).toEqual(FINITE_GATHER_NODES.map((node) => ({ node, amount: null, depletedAt: null })))
             expect(result.warnings).toEqual([])
         }
     })

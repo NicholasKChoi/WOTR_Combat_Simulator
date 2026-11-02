@@ -63,7 +63,7 @@ test.describe('pinned timelines', () => {
     expectTiming(body.steps[25], { startedAt: 711.0333333333333, completedAt: 801.0333333333333, waitSeconds: 121.60000000000002 })
     expect(body.steps[26]).toMatchObject({ status: 'waiting', startedAt: null })
     const last = <T,>(series: T[]) => series[series.length - 1]
-    expect(last<number>(body.floating.food)).toBeCloseTo(596.2798390913501, 6)
+    expect(last<number>(body.floating.food)).toBeCloseTo(618.3789316586852, 6)
     expect(last<number>(body.floating.wood)).toBeCloseTo(3269.775976995086, 6)
     expect(last<number>(body.floating.gold)).toBeCloseTo(242.9497986659074, 6)
     expect(last<number>(body.floating.stone)).toBe(0)

@@ -403,6 +403,7 @@ describe('resolveSimInputs', () => {
             houseBuilders: 1,
             houseBuilderSource: 'wood',
             influenceCoverage: { mill: 1 },
+            nodeAmounts: expect.any(Object),
         })
         expect(Object.keys(inputs.trips).sort()).toEqual(Object.keys(data.base.gatherNodes).sort())
         expect(inputs.trips.farm).toEqual({

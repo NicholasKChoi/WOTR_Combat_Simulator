@@ -219,7 +219,7 @@ test.describe('bounds match SIM_INPUT_BOUNDS', () => {
     durationSeconds: () => [overrides.durationSeconds],
     triggerSeconds: () => [trigger('time').properties.seconds],
     triggerCount: () => [trigger('villagers').properties.count],
-    count: () => [variant('produce').properties.count, variant('move').properties.count],
+    count: () => [variant('produce').properties.count, variant('move').properties.count.oneOf[0]],
     builders: () => [variant('build').properties.builders],
     houseBuilders: () => [overrides.houseBuilders],
     instance: () => ['produce', 'rally', 'pause'].map((a) => variant(a).properties.instance),
@@ -229,6 +229,7 @@ test.describe('bounds match SIM_INPUT_BOUNDS', () => {
     walkSecondsTownCenter: () => [trip.walkSecondsTownCenter],
     dropOffSeconds: () => [trip.dropOffSeconds],
     influenceCoverage: () => [overrides.influenceCoverage.additionalProperties],
+    nodeAmount: () => [overrides.nodeAmounts.additionalProperties.oneOf[0]],
   }
 
   test('text and steps caps', () => {

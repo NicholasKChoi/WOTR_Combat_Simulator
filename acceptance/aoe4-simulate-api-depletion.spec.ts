@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { postSimulate } from './helpers'
+import { FINITE_GATHER_NODES } from '../lib/aoe4-build-order/model'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -29,13 +30,13 @@ test.beforeAll(async ({ request }) => {
   await postSimulate(request, { text: START_LINE }, WARM_UP_TIMEOUT_MS)
 })
 
-test.describe('depletions and warnings until the engine reports them', () => {
+test.describe('depletions and warnings with every node infinite', () => {
   for (const [name, body] of ORDERS) {
-    test(`${name} returns empty depletions and warnings arrays`, async ({ request }) => {
+    test(`${name} returns one null depletion row per finite node and no warnings`, async ({ request }) => {
       const response = await postSimulate(request, body)
       expect(response.status(), await response.text()).toBe(200)
       const result = await response.json()
-      expect(result.depletions).toEqual([])
+      expect(result.depletions).toEqual(FINITE_GATHER_NODES.map((node) => ({ node, amount: null, depletedAt: null })))
       expect(result.warnings).toEqual([])
     })
   }
