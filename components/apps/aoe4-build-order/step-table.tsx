@@ -11,6 +11,7 @@ import {
     deleteStep,
     insertStep,
     moveStep,
+    offersEmptyChoice,
     replaceStep,
     selectChoices,
     setNumberField,
@@ -25,10 +26,10 @@ interface StepTableProps {
     onChange: (next: BuildOrder) => void
 }
 
-type FieldDef = { name: string; kind: 'number' } | { name: string; kind: 'select'; choices: readonly string[]; optional?: boolean }
+type FieldDef = { name: string; kind: 'number' } | { name: string; kind: 'select'; choices: readonly string[] }
 
 const num = (name: string): FieldDef => ({ name, kind: 'number' })
-const pick = (name: string, choices: readonly string[], optional = false): FieldDef => ({ name, kind: 'select', choices, optional })
+const pick = (name: string, choices: readonly string[]): FieldDef => ({ name, kind: 'select', choices })
 
 function actionFields(step: BuildStep, options: StepOptions): FieldDef[] {
     switch (step.action) {
@@ -38,11 +39,11 @@ function actionFields(step: BuildStep, options: StepOptions): FieldDef[] {
                 num('instance'),
                 pick('unit', options.unitsByProducer[step.producer] ?? []),
                 num('count'),
-                pick('rally', options.nodes, true),
+                pick('rally', options.nodes),
                 num('walkSeconds'),
             ]
         case 'rally':
-            return [pick('producer', options.villagerProducers), num('instance'), pick('to', options.nodes, true), num('walkSeconds')]
+            return [pick('producer', options.villagerProducers), num('instance'), pick('to', options.nodes), num('walkSeconds')]
         case 'pause':
             return [pick('producer', options.producers), num('instance')]
         case 'build':
@@ -50,11 +51,11 @@ function actionFields(step: BuildStep, options: StepOptions): FieldDef[] {
                 pick('building', options.buildings),
                 num('builders'),
                 pick('from', options.nodes),
-                pick('then', options.nodes, true),
+                pick('then', options.nodes),
                 num('walkSeconds'),
             ]
         case 'research':
-            return [pick('tech', options.techs), pick('at', options.techSites[step.tech] ?? [], true)]
+            return [pick('tech', options.techs), pick('at', options.techSites[step.tech] ?? [])]
         case 'move':
             return [num('count'), pick('from', options.nodes), pick('to', options.nodes), num('walkSeconds')]
     }
@@ -184,7 +185,7 @@ function ActionFields({ step, options, onEdit }: { step: BuildStep; options: Ste
                             testId={`step-field-${field.name}`}
                             value={values[field.name] as string | undefined}
                             choices={field.choices}
-                            allowEmpty={field.optional}
+                            allowEmpty={offersEmptyChoice(step.action, field.name)}
                             onChange={(value) => {
                                 if (field.name === 'producer') onEdit(changeProducer(step, value, options))
                                 else if (value === '') onEdit(withoutField(step, field.name))

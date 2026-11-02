@@ -93,6 +93,12 @@ export function setReaction(step: BuildStep, reaction: boolean): BuildStep {
     return (reaction ? { ...rest, reaction: true } : rest) as BuildStep
 }
 
+const OPTIONAL_SELECTS: Partial<Record<Action, readonly string[]>> = { produce: ['rally'], build: ['then'], research: ['at'] }
+
+export function offersEmptyChoice(action: Action, field: string): boolean {
+    return OPTIONAL_SELECTS[action]?.includes(field) ?? false
+}
+
 export function selectChoices(value: string | undefined, choices: readonly string[]): { id: string; unknown: boolean }[] {
     const listed = choices.map((id) => ({ id, unknown: false }))
     return value === undefined || choices.includes(value) ? listed : [...listed, { id: value, unknown: true }]
@@ -105,15 +111,23 @@ export function withoutField(step: BuildStep, field: string): BuildStep {
 
 const UNSIGNED_INTEGER = /^\d+$/
 
+// Above MAX_SAFE_INTEGER a value can print in exponent form, which the text grammar does not read.
+function parseUnsigned(text: string): number | undefined {
+    const value = UNSIGNED_INTEGER.test(text) ? Number(text) : NaN
+    return Number.isSafeInteger(value) ? value : undefined
+}
+
 // A rejected draft leaves the step unchanged; an empty draft deletes an optional field.
 export function setNumberField(step: BuildStep, field: string, text: string): BuildStep {
     const isMoveCount = step.action === 'move' && field === 'count'
     if (text === '') return isMoveCount ? step : withoutField(step, field)
     if (isMoveCount && text === 'all') return { ...step, count: 'all' }
-    return UNSIGNED_INTEGER.test(text) ? ({ ...step, [field]: Number(text) } as BuildStep) : step
+    const value = parseUnsigned(text)
+    return value === undefined ? step : ({ ...step, [field]: value } as BuildStep)
 }
 
 export function setTriggerNumber(step: BuildStep, field: 'seconds' | 'count' | 'atLeast', text: string): BuildStep {
-    if (step.trigger === undefined || !UNSIGNED_INTEGER.test(text) || !(field in step.trigger)) return step
-    return { ...step, trigger: { ...step.trigger, [field]: Number(text) } as Trigger }
+    const value = parseUnsigned(text)
+    if (step.trigger === undefined || value === undefined || !(field in step.trigger)) return step
+    return { ...step, trigger: { ...step.trigger, [field]: value } as Trigger }
 }

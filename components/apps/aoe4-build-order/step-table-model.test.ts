@@ -13,11 +13,13 @@ import {
     deleteStep,
     insertStep,
     moveStep,
+    offersEmptyChoice,
     replaceStep,
     selectChoices,
     setNumberField,
     setReaction,
     setTriggerNumber,
+    withoutField,
 } from './step-table-model'
 
 const options = stepOptions(ENGLISH)
@@ -107,7 +109,9 @@ describe('changeProducer', () => {
     })
 
     it('only swaps the producer on pause and rally', () => {
+        const rally: BuildStep = { action: 'rally', producer: 'capital-town-center', to: 'sheep' }
         expect(changeProducer(pause, 'town-center', options)).toEqual({ ...pause, producer: 'town-center' })
+        expect(changeProducer(rally, 'town-center', options)).toEqual({ ...rally, producer: 'town-center' })
     })
 })
 
@@ -168,6 +172,16 @@ describe('number fields', () => {
         expect(setTriggerNumber(timed, 'seconds', text)).toBe(timed)
     })
 
+    it.each(['9007199254740992', '1'.repeat(22)])('rejects %s, which is not a safe integer', (text) => {
+        expect(setNumberField(counted, 'count', text)).toBe(counted)
+        expect(setNumberField(move, 'count', text)).toBe(move)
+        expect(setTriggerNumber(timed, 'seconds', text)).toBe(timed)
+    })
+
+    it('accepts the largest safe integer', () => {
+        expect(setNumberField(counted, 'count', '9007199254740991')).toEqual({ ...counted, count: Number.MAX_SAFE_INTEGER })
+    })
+
     it('accepts all only on move.count', () => {
         expect(setNumberField(move, 'count', 'all')).toEqual({ ...move, count: 'all' })
     })
@@ -176,6 +190,31 @@ describe('number fields', () => {
         expect(setTriggerNumber(timed, 'seconds', '120').trigger).toEqual({ kind: 'time', seconds: 120 })
         expect(setTriggerNumber(timed, 'atLeast', '5')).toBe(timed)
         expect(setTriggerNumber(produce, 'seconds', '5')).toBe(produce)
+    })
+})
+
+describe('empty select choice', () => {
+    const filled: BuildStep[] = [
+        { ...produce, rally: 'gold' },
+        { action: 'rally', producer: 'capital-town-center', to: 'sheep' },
+        { ...build, then: 'gold' },
+        { action: 'research', tech: 'wheelbarrow', at: 'mill' },
+        { action: 'move', count: 2, from: 'sheep', to: 'wood' },
+    ]
+    const selects = filled.flatMap((step) =>
+        Object.entries(step)
+            .filter(([field, value]) => field !== 'action' && typeof value === 'string')
+            .map(([field]) => [step, field] as const),
+    )
+
+    it.each(selects)('is offered on %j.%s only when clearing it keeps the text parseable', (step, field) => {
+        const cleared = parseBuildOrderText(formatBuildOrderText(buildOrder([withoutField(step, field)])))
+        expect(offersEmptyChoice(step.action, field)).toBe(cleared.ok)
+    })
+
+    it('is not offered on the rally action target', () => {
+        expect(offersEmptyChoice('rally', 'to')).toBe(false)
+        expect(offersEmptyChoice('produce', 'rally')).toBe(true)
     })
 })
 
