@@ -5,7 +5,7 @@ import { MARKER_COLORS, MARKER_KIND_LABELS } from '../components/apps/aoe4-build
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { CHART_MARKER_KINDS, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { openPage, runSimulation, SIMULATE_PATH } from './helpers'
+import { hexToRgb, openPage, runSimulation, SIMULATE_PATH } from './helpers'
 
 const TITLE = 'AoE4 Build Order Simulator'
 const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
@@ -19,7 +19,6 @@ const RALLY_PASTE = [
 const RESEARCH_PASTE = ['start -> sheep', 'research fitted-leatherwork at blacksmith'].join('\n')
 const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
 
-const hexToRgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 async function expectChartsDrawn(page: Page) {
   for (const chart of CHARTS) {
@@ -191,15 +190,16 @@ test.describe('AoE4 build order page', () => {
     await openPage(page)
     expect((await runSimulation(page)).status()).toBe(200)
     const chart = page.getByTestId('chart-gather-rates')
-    const food = chart.locator('li.recharts-legend-item', { hasText: 'Food' })
+    const food = chart.locator('[data-testid="chart-series-legend-item"][data-series="food"]')
 
     await food.click()
-    await expect(chart.locator('li.recharts-legend-item.inactive')).toHaveCount(1)
+    await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(1)
+    await expect(food).toHaveAttribute('aria-pressed', 'true')
     await expect(chart.locator('path[data-series="food"]')).toHaveCount(0)
     await expect(chart.locator('path[data-series="wood"]')).toHaveCount(1)
 
     await food.click()
-    await expect(chart.locator('li.recharts-legend-item.inactive')).toHaveCount(0)
+    await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(0)
     await expect(chart.locator('path[data-series="food"]')).toHaveCount(1)
     await expect(chart.locator('path[data-series="wood"]')).toHaveCount(1)
   })
@@ -369,6 +369,13 @@ test.describe('AoE4 build order page', () => {
         boxes.push((await text.boundingBox())!)
       }
       const plot = (await root.locator('.recharts-cartesian-grid').boundingBox())!
+      const svgBox = (await root.locator('svg.recharts-surface').boundingBox())!
+      const rows = Number(await root.getAttribute('data-label-rows'))
+      expect(rows).toBeGreaterThan(0)
+      expect(Math.abs(plot.y - svgBox.y - (5 + rows * 14))).toBeLessThan(1)
+      for (const [i, box] of boxes.entries()) {
+        expect(box.y + box.height, `label ${i} in ${chart} is not above the plot`).toBeLessThanOrEqual(plot.y + 0.5)
+      }
       for (const [i, box] of boxes.entries()) {
         const inside = box.x >= plot.x && box.x + box.width <= plot.x + plot.width
         expect(inside, `label ${i} in ${chart} leaves the plot`).toBe(true)
@@ -399,9 +406,7 @@ test.describe('AoE4 build order page', () => {
       })
     }
 
-    const GRID_DASH = '3 3'
-
-    test('each chart draws the result markers as labeled dashed lines with a kind legend, stacked without overlap', async ({ page }) => {
+    test('each chart draws the result markers as labeled solid lines with a kind legend, stacked without overlap', async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 900 })
       await openPage(page)
       await page.getByTestId('build-order-text').fill(formatBuildOrderText(english1tc as BuildOrder))
@@ -423,16 +428,20 @@ test.describe('AoE4 build order page', () => {
           await expect(line).toHaveAttribute('data-kind', marker.kind)
           await expect(line).toHaveAttribute('data-label', marker.label)
           await expect(line).toHaveAttribute('data-at', String(marker.at))
-          const dash = await line.getAttribute('stroke-dasharray')
-          expect(dash).toBeTruthy()
-          expect(dash).not.toBe(GRID_DASH)
+          expect(await line.getAttribute('stroke-dasharray')).toBeNull()
           await expect(line).toHaveAttribute('stroke', MARKER_COLORS[marker.kind])
         }
         expect(await root.locator('path[data-series][stroke-dasharray]').count()).toBe(0)
 
         const legend = root.getByTestId('chart-marker-legend')
         await expect(legend).toBeVisible()
-        await expect(legend.locator('.recharts-legend-wrapper')).toHaveCount(0)
+        const seriesLegend = root.getByTestId('chart-series-legend')
+        await expect(seriesLegend).toBeVisible()
+        await expect(seriesLegend.getByRole('heading')).toHaveText('Series')
+        await expect(legend.getByRole('heading')).toHaveText('Markers')
+        await expect(seriesLegend.getByTestId('chart-marker-legend')).toHaveCount(0)
+        const [seriesBox, markerBox] = [(await seriesLegend.boundingBox())!, (await legend.boundingBox())!]
+        expect(markerBox.y).toBeGreaterThanOrEqual(seriesBox.y + seriesBox.height)
         await expect(legend.getByTestId('chart-marker-legend-item')).toHaveCount(kinds.length)
         for (const [i, kind] of kinds.entries()) {
           const item = legend.getByTestId('chart-marker-legend-item').nth(i)
@@ -445,13 +454,13 @@ test.describe('AoE4 build order page', () => {
       }
 
       const chart = page.getByTestId('chart-gather-rates')
-      await chart.locator('li.recharts-legend-item', { hasText: 'Food' }).click()
-      await expect(chart.locator('li.recharts-legend-item.inactive')).toHaveCount(1)
+      await chart.locator('[data-testid="chart-series-legend-item"][data-series="food"]').click()
+      await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(1)
       await expect(chart.locator('svg [data-testid="chart-marker"]')).toHaveCount(markers.length)
       await expect(chart.getByTestId('chart-marker-legend')).toBeVisible()
     })
 
-    test('with a pinned run the pinned lines are dashed 6 4, the current run markers 8 2, and the markers still draw', async ({ page }) => {
+    test('with a pinned run the pinned lines are dashed 6 4, the current run markers solid, and the markers still draw', async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 900 })
       await openPage(page)
       await page.getByTestId('build-order-text').fill(formatBuildOrderText(english1tc as BuildOrder))
@@ -467,7 +476,7 @@ test.describe('AoE4 build order page', () => {
         await expect(lines).toHaveCount(markers.length)
         for (const [i, marker] of markers.entries()) {
           await expect(lines.nth(i)).toHaveAttribute('data-label', marker.label)
-          await expect(lines.nth(i)).toHaveAttribute('stroke-dasharray', '8 2')
+          expect(await lines.nth(i).getAttribute('stroke-dasharray')).toBeNull()
         }
         const pinnedPaths = root.locator('path.recharts-line-curve[data-series][stroke-dasharray]')
         expect(await pinnedPaths.count()).toBeGreaterThan(0)

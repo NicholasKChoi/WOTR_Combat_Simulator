@@ -783,7 +783,7 @@ optional number field omits it, while an empty or invalid entry in a required fi
 Bounds are checked on Run, not in the table. Editing while a run is in flight does not change the result
 shown.
 
-A 200 draws three line charts, each with a toggleable legend:
+A 200 draws three line charts, each with a series legend titled "Series" (one toggle button per series):
 
 | chart | series keys | series names |
 |---|---|---|
@@ -791,10 +791,10 @@ A 200 draws three line charts, each with a toggleable legend:
 | Gather rates (per minute) | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 
-Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series and clicking
-it again restores it. Each chart also draws the result's `markers` as dashed vertical lines labeled
-`<label> <m:ss>` (for example `Castle 13:24`); markers that fall close in time stack their labels in rows so
-each stays readable. A marker legend under the chart, separate from the series legend, lists one entry per
+Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
+it again restores it; a pinned series' item follows its current series' item. Each chart also draws the result's `markers` as solid vertical lines labeled
+`<label> <m:ss>` (for example `Castle 13:24`); the labels sit above the plot and are stacked in rows by their measured width so
+each stays readable. A marker legend titled "Markers", in its own row below the series legend, lists one entry per
 kind present: `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
 and `Other` (`#6b6bd6`). A run with no markers draws neither lines nor the marker legend. Clicking a series
 legend item does not hide markers, and the pinned run draws none. Messages come from `warnings` and `notes`, `warnings` entries first.
@@ -822,7 +822,7 @@ survives later runs, text and build edits, and failed runs (a failed run clears 
 pin). With a pinned run, each chart also draws the pinned run's series dashed, in the same color as the
 current series with that key, with the name `<name> (pinned)` and the key `pinned:<key>`. The x axis covers
 the union of both runs' sample times; a series has a gap at times outside its own run. Each pinned line
-toggles from the legend like any series.
+toggles from the series legend like any series.
 
 With both a shown result and a pinned run, a compare table lists up to seven rows (`data-key`): military spent at
 10, 15 and 20 minutes (`military-600`, `military-900`, `military-1200`; the cumulative `spent.military` at the

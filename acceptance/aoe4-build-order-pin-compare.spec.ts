@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, expectedCompareKeys, openPage } from './helpers'
+import { SIMULATE_PATH, expectedCompareKeys, hexToRgb, openPage } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -81,17 +81,27 @@ test.describe('AoE4 build order pin and compare', () => {
     await pin(page)
     await runOk(page, { duration: 600 })
     const chart = page.getByTestId('chart-gather-rates')
-    const item = chart.locator('li.recharts-legend-item', { hasText: 'Food (pinned)' })
+    const item = chart.locator('[data-testid="chart-series-legend-item"][data-series="pinned:food"]')
     await expect(item).toHaveCount(1)
 
+    const keys = await chart.getByTestId('chart-series-legend-item').evaluateAll((els) => els.map((e) => e.getAttribute('data-series')))
+    expect(keys.slice(0, 4)).toEqual(['food', 'pinned:food', 'wood', 'pinned:wood'])
+    const stroke = (await path(page, 'chart-gather-rates', 'food').getAttribute('stroke'))!
+    for (const key of ['food', 'pinned:food']) {
+      const swatch = chart.locator(`[data-series="${key}"]`).getByTestId('chart-series-legend-swatch')
+      await expect(swatch).toHaveCSS('border-top-style', key === 'food' ? 'solid' : 'dashed')
+      await expect(swatch).toHaveCSS('border-top-color', hexToRgb(stroke))
+    }
+
     await item.click()
-    await expect(chart.locator('li.recharts-legend-item.inactive')).toHaveCount(1)
+    await expect(item).toHaveCSS('opacity', '0.5')
+    await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(1)
     await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(0)
     await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(1)
     await expect(path(page, 'chart-gather-rates', 'pinned:wood')).toHaveCount(1)
 
     await item.click()
-    await expect(chart.locator('li.recharts-legend-item.inactive')).toHaveCount(0)
+    await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(0)
     await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
     await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(1)
   })

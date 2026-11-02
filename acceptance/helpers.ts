@@ -90,3 +90,5 @@ export function expectedCompareKeys(current: SimulationResult, pinned: Simulatio
   }
   return COMPARE_ROW_KEYS.filter((key) => present(current, key) || present(pinned, key))
 }
+
+export const hexToRgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
