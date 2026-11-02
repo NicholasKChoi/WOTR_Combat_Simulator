@@ -1,0 +1,43 @@
+.runBar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bs-body-bg, #fff);
+}
+
+.editor {
+    display: flex;
+    align-items: flex-start;
+}
+
+.gutter,
+.textarea {
+    margin: 0;
+    font-family: var(--bs-font-monospace, monospace);
+    font-size: 1rem;
+    line-height: 1.5;
+    padding: 0.375rem 0;
+    border: 1px solid transparent;
+}
+
+.gutter {
+    flex: none;
+    min-width: 3rem;
+    padding-right: 0.5rem;
+    text-align: right;
+    color: #6c757d;
+    user-select: none;
+    list-style: none;
+}
+
+.textarea {
+    flex: 1;
+    min-width: 0;
+    padding: 0.375rem 0.75rem;
+    border-color: var(--bs-border-color, #dee2e6);
+    border-radius: 0.375rem;
+    overflow-y: hidden;
+    overflow-x: auto;
+    resize: none;
+    white-space: pre;
+}

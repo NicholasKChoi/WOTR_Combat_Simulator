@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
-import { SIMULATE_PATH, buildOrderFrom, openPage, runRejected, runSimulation } from './helpers'
+import { SIMULATE_PATH, buildOrderFrom, openPage, runRejected, runSimulation, showView } from './helpers'
 
 const textarea = (page: Page) => page.getByTestId('build-order-text')
 const issues = (page: Page) => page.getByTestId('build-order-issue')
@@ -9,11 +9,12 @@ const TWO_UNKNOWN_IDS = ['start -> sheep', 'produce knigt from stable', 'produce
 
 async function expectPostedChecked(page: Page, duration?: string) {
   if (duration !== undefined) await page.getByTestId('duration-seconds').fill(duration)
+  const text = await textarea(page).inputValue()
   const response = await runSimulation(page)
   expect(response.status()).toBe(200)
   const body = response.request().postDataJSON()
   expect(Object.keys(body).sort()).toEqual(['buildOrder', 'inputs'])
-  expect(body.buildOrder).toEqual(buildOrderFrom(await textarea(page).inputValue()))
+  expect(body.buildOrder).toEqual(buildOrderFrom(text))
   return body
 }
 
@@ -36,7 +37,9 @@ test.describe('AoE4 build order page checks the paste before posting', () => {
   test('a table edit posts a buildOrder that includes the edit and no text', async ({ page }) => {
     await openPage(page)
     const before = buildOrderFrom(await textarea(page).inputValue())
+    await showView(page, 'table')
     await page.getByTestId('step-add').click()
+    await showView(page, 'text')
     const body = await expectPostedChecked(page)
     expect(body.buildOrder.steps).toHaveLength(before.steps.length + 1)
   })
@@ -70,9 +73,12 @@ test.describe('AoE4 build order page checks the paste before posting', () => {
     await openPage(page)
     await textarea(page).fill(TWO_UNKNOWN_IDS)
     await runRejected(page)
-    const text = await textarea(page).boundingBox()
-    const list = await page.getByTestId('build-order-issues').boundingBox()
-    expect(list!.y).toBeGreaterThanOrEqual(text!.y + text!.height)
+    const { textBottom, listTop } = await page.evaluate(() => {
+      const text = document.querySelector('[data-testid="build-order-text"]')!.getBoundingClientRect()
+      const list = document.querySelector('[data-testid="build-order-issues"]')!.getBoundingClientRect()
+      return { textBottom: text.bottom, listTop: list.top }
+    })
+    expect(listTop).toBeGreaterThanOrEqual(textBottom)
   })
 
   test('a server 400 shows its issues in simulation-error and none in build-order-issues', async ({ page }) => {
@@ -135,10 +141,12 @@ test.describe('AoE4 build order page checks the paste before posting', () => {
 
   test('the table view of a prebuilt build offers catalog choices and its edits rewrite the text', async ({ page }) => {
     await openPage(page)
+    await showView(page, 'table')
     await expect(page.getByTestId('step-table')).toBeVisible()
     const unit = page.getByTestId('step-row').first().getByTestId('step-field-unit')
     await expect(unit.locator('option[value="scout"]')).toHaveCount(1)
     await unit.selectOption('scout')
+    await showView(page, 'text')
     await expect(textarea(page)).toHaveValue(/^produce scout from capital-town-center/m)
   })
 })

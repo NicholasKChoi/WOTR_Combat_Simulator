@@ -1,15 +1,18 @@
 import utilStyles from '../../styles/utils.module.css'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GetStaticProps } from 'next'
 import Head from 'next/head'
 import cn from 'classnames'
 
 import Layout from '../../components/layout'
-import { BuildInput, type PrebuiltBuild } from '../../components/apps/aoe4-build-order/build-input'
+import { BuildInput, type EditorView, type PrebuiltBuild } from '../../components/apps/aoe4-build-order/build-input'
+import { BuildTextEditor } from '../../components/apps/aoe4-build-order/build-text-editor'
+import { IssueList } from '../../components/apps/aoe4-build-order/issue-list'
 import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
 import { Results } from '../../components/apps/aoe4-build-order/results'
 import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
+import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-build-order/workbench-tabs'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { loadGameData } from '../../lib/aoe4-build-order/data'
 import { formatBuildOrderText, parseBuildOrderText } from '../../lib/aoe4-build-order/parse-text'
@@ -59,7 +62,21 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [clientIssues, setClientIssues] = useState<BuildOrderIssue[]>([])
     const [running, setRunning] = useState(false)
     const [infoExpanded, setInfoExpanded] = useState(false)
+    const [tab, setTab] = useState<WorkbenchTab>('build')
+    const [view, setView] = useState<EditorView>('text')
+    const [resultsShownCount, setResultsShownCount] = useState(0)
+    const resultsTop = useRef<HTMLDivElement>(null)
+    const runBar = useRef<HTMLFormElement>(null)
+    const resultsEnabled = result !== null || pinned !== null
+    const shownTab = resultsEnabled ? tab : 'build'
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
+
+    useEffect(() => {
+        const panel = resultsTop.current
+        if (resultsShownCount === 0 || !panel) return
+        panel.style.scrollMarginTop = `${runBar.current?.getBoundingClientRect().height ?? 0}px`
+        panel.scrollIntoView()
+    }, [resultsShownCount])
 
     async function runSimulation() {
         setIssues([])
@@ -69,6 +86,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         if (converted.ok === false) {
             setClientIssues(converted.issues)
             setResult(null)
+            setTab('build')
             return
         }
         setRunning(true)
@@ -81,14 +99,18 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
             })
             if (!response.ok) {
                 setResult(null)
+                setTab('build')
                 setIssues(await errorMessages(response))
                 return
             }
             const body: SimulateResponse = await response.json()
             setResult(body)
             setResultText(runText)
+            setTab('results')
+            setResultsShownCount((n) => n + 1)
         } catch {
             setResult(null)
+            setTab('build')
             setIssues(['The simulation could not be run. Please try again.'])
         } finally {
             setRunning(false)
@@ -104,41 +126,58 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                 <h1>{pageTitle}</h1>
                 <BuildInput
                     builds={builds}
-                    text={text}
                     onTextChange={setText}
                     duration={duration}
                     onDurationChange={setDuration}
                     running={running}
                     onRun={runSimulation}
-                    issues={clientIssues}
+                    view={view}
+                    onViewChange={setView}
+                    formRef={runBar}
                 />
-                {parsed.ok === true ? (
-                    <StepTable order={parsed.order} catalog={catalog} onChange={(order) => setText(formatBuildOrderText(order))} />
-                ) : (
-                    <div data-testid="step-table-unavailable" className="alert alert-secondary">
-                        {parsed.issues[0].message}
-                    </div>
-                )}
-                {issues.length > 0 ? (
-                    <div data-testid="simulation-error" role="alert" className="alert alert-danger">
-                        <ul className="mb-0">
-                            {issues.map((message, i) => (
-                                <li key={i}>{message}</li>
-                            ))}
-                        </ul>
-                    </div>
-                ) : null}
-                <h2 className="border-bottom">Results</h2>
-                <ComparePanel current={result} pinned={pinned} onPin={() => setPinned(result)} onUnpin={() => setPinned(null)} />
-                {result !== null ? (
-                    <Results
-                        result={result}
-                        pinned={pinned}
-                        text={resultText}
-                        infoExpanded={infoExpanded}
-                        onInfoToggle={() => setInfoExpanded((v) => !v)}
-                    />
-                ) : null}
+                <WorkbenchTabs
+                    active={shownTab}
+                    onSelect={setTab}
+                    resultsEnabled={resultsEnabled}
+                    build={
+                        <>
+                            {view === 'text' ? (
+                                <BuildTextEditor text={text} onChange={setText} />
+                            ) : parsed.ok === true ? (
+                                <StepTable order={parsed.order} catalog={catalog} onChange={(order) => setText(formatBuildOrderText(order))} />
+                            ) : (
+                                <div data-testid="step-table-unavailable" className="alert alert-secondary">
+                                    {parsed.issues[0].message}
+                                </div>
+                            )}
+                            <IssueList issues={clientIssues} />
+                            {issues.length > 0 ? (
+                                <div data-testid="simulation-error" role="alert" className="alert alert-danger">
+                                    <ul className="mb-0">
+                                        {issues.map((message, i) => (
+                                            <li key={i}>{message}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : null}
+                        </>
+                    }
+                    results={
+                        <div ref={resultsTop}>
+                            <h2 className="border-bottom">Results</h2>
+                            <ComparePanel current={result} pinned={pinned} onPin={() => setPinned(result)} onUnpin={() => setPinned(null)} />
+                            {result !== null ? (
+                                <Results
+                                    result={result}
+                                    pinned={pinned}
+                                    text={resultText}
+                                    infoExpanded={infoExpanded}
+                                    onInfoToggle={() => setInfoExpanded((v) => !v)}
+                                />
+                            ) : null}
+                        </div>
+                    }
+                />
             </section>
         </Layout>
     )

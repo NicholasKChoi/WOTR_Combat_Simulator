@@ -2,13 +2,14 @@ import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, openPage, runSimulation } from './helpers'
+import { SIMULATE_PATH, openPage, runSimulation, showTab } from './helpers'
 
 const LONG_WAIT_SECONDS = 60
 const EN_DASH = '–'
 const rows = (page: Page) => page.getByTestId('step-timeline-row')
 
 async function runWith(page: Page, text: string, duration: number) {
+  await showTab(page, 'build')
   await page.getByTestId('build-order-text').fill(text)
   await page.getByTestId('duration-seconds').fill(String(duration))
   const response = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH) && r.request().method() === 'POST')

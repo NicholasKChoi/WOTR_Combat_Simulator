@@ -1,25 +1,33 @@
-import { useState } from 'react'
+import { type Ref, useState } from 'react'
+import cn from 'classnames'
 
-import type { BuildOrderIssue } from '../../../lib/aoe4-build-order/model'
-import { IssueList } from './issue-list'
+import styles from './workbench.module.css'
 
 export interface PrebuiltBuild {
     name: string
     text: string
 }
 
+export type EditorView = 'text' | 'table'
+
 interface BuildInputProps {
     builds: PrebuiltBuild[]
-    text: string
     onTextChange: (text: string) => void
     duration: string
     onDurationChange: (duration: string) => void
     running: boolean
     onRun: () => void
-    issues: readonly BuildOrderIssue[]
+    view: EditorView
+    onViewChange: (view: EditorView) => void
+    formRef?: Ref<HTMLFormElement>
 }
 
-export function BuildInput({ builds, text, onTextChange, duration, onDurationChange, running, onRun, issues }: BuildInputProps) {
+const VIEWS: { view: EditorView; label: string }[] = [
+    { view: 'text', label: 'Text' },
+    { view: 'table', label: 'Table' },
+]
+
+export function BuildInput({ builds, onTextChange, duration, onDurationChange, running, onRun, view, onViewChange, formRef }: BuildInputProps) {
     const [selected, setSelected] = useState(builds[0]?.name ?? '')
 
     function selectBuild(name: string) {
@@ -30,14 +38,16 @@ export function BuildInput({ builds, text, onTextChange, duration, onDurationCha
 
     return (
         <form
-            className="row mb-2 pb-3 border-bottom border-info"
+            ref={formRef}
+            data-testid="run-bar"
+            className={cn(styles.runBar, 'd-flex flex-wrap align-items-end gap-3 py-2 mb-3 border-bottom border-info')}
             noValidate
             onSubmit={(e) => {
                 e.preventDefault()
                 onRun()
             }}
         >
-            <div className="col-md-6 mb-3">
+            <div>
                 <label htmlFor="build-order-select">Prebuilt build</label>
                 <select
                     id="build-order-select"
@@ -51,7 +61,7 @@ export function BuildInput({ builds, text, onTextChange, duration, onDurationCha
                     ))}
                 </select>
             </div>
-            <div className="col-md-3 mb-3">
+            <div>
                 <label htmlFor="duration-seconds">Duration (seconds)</label>
                 <input
                     type="number"
@@ -63,23 +73,22 @@ export function BuildInput({ builds, text, onTextChange, duration, onDurationCha
                     onChange={(e) => onDurationChange(e.target.value)}
                 />
             </div>
-            <div className="col-12 mb-3">
-                <label htmlFor="build-order-text">Build order</label>
-                <textarea
-                    id="build-order-text"
-                    data-testid="build-order-text"
-                    className="form-control font-monospace"
-                    rows={16}
-                    spellCheck={false}
-                    value={text}
-                    onChange={(e) => onTextChange(e.target.value)}
-                />
-                <IssueList issues={issues} />
-            </div>
-            <div className="col">
-                <button type="submit" data-testid="run-simulation" className="btn btn-primary" disabled={running}>
-                    Run simulation
-                </button>
+            <button type="submit" data-testid="run-simulation" className="btn btn-primary" disabled={running}>
+                Run simulation
+            </button>
+            <div className="btn-group" role="group" aria-label="Editor view">
+                {VIEWS.map(({ view: option, label }) => (
+                    <button
+                        key={option}
+                        type="button"
+                        data-testid={`editor-view-${option}`}
+                        aria-pressed={view === option}
+                        className={cn('btn btn-outline-secondary', view === option && 'active')}
+                        onClick={() => onViewChange(option)}
+                    >
+                        {label}
+                    </button>
+                ))}
             </div>
         </form>
     )

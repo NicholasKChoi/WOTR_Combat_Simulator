@@ -807,14 +807,20 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 
 ### Page
 
-The page is `/apps/aoe4-build-order`. It has a prebuilt build select, a build order textarea, a
-step table, a `durationSeconds` number input (default 1200) and a run button. Choosing a prebuilt build
-replaces the text with that build's paste text; editing the text leaves the select as it is. Run converts the
-text with `textToBuildOrder` and the English catalog and posts the checked `buildOrder` and
-`inputs.durationSeconds` to the route. When the text does not convert, Run lists its issues under the
-textarea, sends nothing and clears the shown result. Server 400 issues and network or HTTP failures show in
-the error list. The duration is not checked in the browser: an empty or non-numeric entry is sent as 0, and
-the route rejects any value outside its bounds.
+The page is `/apps/aoe4-build-order`. A run bar stays at the top of the viewport while the page scrolls. It
+holds the prebuilt build select, the `durationSeconds` number input (default 1200), the run button and a
+text/table toggle. Below it are two tabs, Build and Results. Results is enabled while there is a shown result or
+a pinned run; a successful run selects Results and scrolls it into view, and a rejected or failed run selects
+Build. Switching tabs changes nothing else, and both panels stay mounted. The Build tab shows one editor view
+at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
+rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the
+step table. The view and the tab survive runs but not a reload. Choosing a prebuilt build replaces the text
+with that build's paste text; editing the text
+leaves the select as it is. Run converts the text with `textToBuildOrder` and the English catalog and posts the
+checked `buildOrder` and `inputs.durationSeconds` to the route. When the text does not convert, Run lists its
+issues under the open editor view, sends nothing and clears the shown result. Server 400 issues and network or
+HTTP failures show in the error list under the editor view. The duration is not checked in the browser: an
+empty or non-numeric entry is sent as 0, and the route rejects any value outside its bounds.
 
 The page keeps one `text` state, and the step table is a view of it. The table renders
 `parseBuildOrderText(text)`: one row per step with a trigger kind select and its fields, an action select and
@@ -828,12 +834,12 @@ Customize button that inserts the civ's default `start` while the order has none
 that the counts sum to the civ's total, and Run reports that. Under 768 px each row, the start row included,
 is a card with its fields stacked. An edit builds the new order
 and sets `text` to `formatBuildOrderText(order)`, so a table edit drops comments and blank lines and keeps
-`start`; typing in the textarea never rewrites the text. While the text does not parse, the table is replaced
-by a notice (`step-table-unavailable`) holding the first parse issue's message, and the textarea stays
-editable. Id selects list the English data's choices (a unit select lists what the row's producer can make, a
+`start`; typing in the textarea never rewrites the text. While the text does not parse, the table view shows
+a notice (`step-table-unavailable`) holding the first parse issue's message instead of the table, and the
+toggle stays usable. Id selects list the English data's choices (a unit select lists what the row's producer can make, a
 research `at` select lists the buildings that research the tech); a pasted id the choices do not list shows as
 an extra selected `<id> (unknown)` choice that the table leaves alone, and Run reports it as an issue under
-the textarea. Number fields take unsigned integers (`move` count also takes `all`, and the trigger time is
+the editor view. Number fields take unsigned integers (`move` count also takes `all`, and the trigger time is
 whole seconds); clearing an optional number field omits it, while an empty or invalid entry in a required
 field leaves the step as it was. Bounds are checked on Run, not in the table. Editing while a run is in flight
 does not change the result shown.
@@ -869,7 +875,7 @@ adds `still waiting on <waitingOn>` (alone when the breakdown is empty) and a `n
 `not reached (<waitingOn>)`. A `waiting` or `not-reached` row is flagged. A row whose `waitSeconds` is 60 or more is
 highlighted as a long wait (exactly 60 counts, 59.9 does not). A reaction step's row is marked. The table scrolls
 horizontally inside its wrapper when it is wider than the page. The
-step text is the pasted text as it was when Run was clicked, so editing the textarea afterwards does not change
+step text is the pasted text as it was when Run was clicked, so editing the text afterwards does not change
 the labels until the next run. A result with empty `steps` (a `start`-only paste) shows no timeline, and a 400
 shows none.
 

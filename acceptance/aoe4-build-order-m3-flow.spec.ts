@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult, SimWarning } from '../lib/aoe4-build-order/model'
-import { INVALID_PASTE, expectedCompareKeys, openPage, runSimulation } from './helpers'
+import { INVALID_PASTE, expectedCompareKeys, openPage, runSimulation, showView, showTab } from './helpers'
 
 const FLOW_PASTE = [
   'start 6 sheep -> sheep',
@@ -14,6 +14,7 @@ test.describe('AoE4 build order M3 flow', () => {
     await openPage(page)
     const text = page.getByTestId('build-order-text')
     await text.fill(FLOW_PASTE)
+    await showView(page, 'table')
 
     await expect(page.getByTestId('step-table')).toBeVisible()
     await expect(page.getByTestId('step-row')).toHaveCount(2)
@@ -23,8 +24,11 @@ test.describe('AoE4 build order M3 flow', () => {
     const pinnedResult = (await (await runSimulation(page)).json()) as SimulationResult
     await page.getByTestId('pin-run').click()
 
+    await showTab(page, 'build')
     await count.fill('5')
+    await showView(page, 'text')
     await expect(text).toHaveValue(/produce villager from capital-town-center x5 -> sheep/)
+    await showView(page, 'table')
     await expect(page.getByTestId('step-row')).toHaveCount(2)
 
     const response = await runSimulation(page)
@@ -80,6 +84,8 @@ test.describe('AoE4 build order M3 flow', () => {
     const lastTimeline = page.getByTestId('step-timeline-row').last()
     await expect(lastTimeline).toHaveAttribute('data-reaction', 'true')
     await expect(lastTimeline).toHaveAttribute('data-status', 'completed')
+    await showTab(page, 'build')
+    await showView(page, 'table')
     await expect(page.getByTestId('step-row').last().getByTestId('step-field-reaction')).toBeChecked()
     await expect(page.getByTestId('simulation-warnings').getByTestId('simulation-message').filter({ hasText: /^gold ran out/ })).toHaveCount(0)
   })
@@ -88,10 +94,13 @@ test.describe('AoE4 build order M3 flow', () => {
     await openPage(page)
     const text = page.getByTestId('build-order-text')
     await text.fill(INVALID_PASTE)
+    await showView(page, 'table')
     await expect(page.getByTestId('step-table-unavailable')).toBeVisible()
     await expect(page.getByTestId('step-table')).toHaveCount(0)
 
+    await showView(page, 'text')
     await text.fill(FLOW_PASTE)
+    await showView(page, 'table')
     await expect(page.getByTestId('step-table')).toBeVisible()
     await expect(page.getByTestId('step-table-unavailable')).toHaveCount(0)
   })
