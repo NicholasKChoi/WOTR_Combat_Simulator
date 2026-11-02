@@ -27,6 +27,7 @@ export function Results({ result, pinned, text, infoExpanded, onInfoToggle }: Re
                 times={result.times}
                 markers={result.markers}
                 series={unitSeries(result)}
+                pinnedMarkers={pinned?.markers}
                 pinned={pinned ? { times: pinned.times, series: unitSeries(pinned) } : undefined}
             />
             <SeriesChart
@@ -36,6 +37,7 @@ export function Results({ result, pinned, text, infoExpanded, onInfoToggle }: Re
                 times={result.times}
                 markers={result.markers}
                 series={resourceSeries(result.gatherRates)}
+                pinnedMarkers={pinned?.markers}
                 pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.gatherRates) } : undefined}
             />
             <SeriesChart
@@ -45,6 +47,7 @@ export function Results({ result, pinned, text, infoExpanded, onInfoToggle }: Re
                 times={result.times}
                 markers={result.markers}
                 series={resourceSeries(result.floating)}
+                pinnedMarkers={pinned?.markers}
                 pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.floating) } : undefined}
             />
         </div>

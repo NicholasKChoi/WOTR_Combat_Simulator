@@ -55,6 +55,8 @@ export function placeMarkers(
     })
 }
 
+export const pinnedAgeUpMarkers = (markers: readonly ChartMarker[]): ChartMarker[] => markers.filter((m) => m.kind === 'age-up')
+
 interface SeriesChartProps {
     testId: string
     title: string
@@ -63,15 +65,17 @@ interface SeriesChartProps {
     series: ChartSeries[]
     pinned?: PinnedSeries
     markers?: readonly ChartMarker[]
+    pinnedMarkers?: readonly ChartMarker[]
 }
 
-export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [] }: SeriesChartProps) {
+export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [] }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
     const [chartWidth, setChartWidth] = useState<number | null>(null)
     const end = Math.max(1, ...times, ...(pinned?.times ?? []))
     const plotWidth = Math.max(1, (chartWidth ?? 0) - Y_AXIS_WIDTH - 2 * CHART_MARGIN_PX)
     const [labelWidths, setLabelWidths] = useState<ReadonlyMap<string, number>>(new Map())
     const measureRef = useRef<SVGTextElement>(null)
+    const pinnedAgeUps = pinnedAgeUpMarkers(pinnedMarkers)
     const labelKey = markers.map(markerLabel).join('\n')
 
     useEffect(() => {
@@ -146,6 +150,19 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             }}
                         />
                     ))}
+                    {pinnedAgeUps.map((marker) => (
+                        <ReferenceLine
+                            key={`pinned:${marker.label}:${marker.at}`}
+                            x={marker.at}
+                            stroke={MARKER_COLORS['age-up']}
+                            strokeDasharray="6 4"
+                            data-testid="chart-pinned-marker"
+                            data-label={marker.label}
+                            data-at={marker.at}
+                        >
+                            <title>{`${marker.label} (pinned) ${formatMinSec(marker.at)}`}</title>
+                        </ReferenceLine>
+                    ))}
                 </LineChart>
             </ResponsiveContainer>
             <SeriesLegend
@@ -154,7 +171,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                 hidden={hidden}
                 onToggle={(key) => setHidden((h) => toggleHidden(h, key))}
             />
-            <MarkerLegend markers={markers} />
+            <MarkerLegend markers={markers} pinnedAgeUps={pinnedAgeUps.length > 0} />
             <svg aria-hidden="true" width="0" height="0" style={{ position: 'absolute' }}>
                 <text ref={measureRef} fontSize={LABEL_FONT_SIZE} />
             </svg>

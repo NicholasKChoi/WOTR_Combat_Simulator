@@ -803,7 +803,9 @@ it again restores it; a pinned series' item follows its current series' item. Ea
 each stays readable. A marker legend titled "Markers", in its own row below the series legend, lists one entry per
 kind present: `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
 and `Other` (`#6b6bd6`). A run with no markers draws neither lines nor the marker legend. Clicking a series
-legend item does not hide markers, and the pinned run draws none. Messages come from `warnings` and `notes`, `warnings` entries first.
+legend item does not hide markers. The pinned run's `age-up` markers (no other kind) are drawn as dashed `6 4`
+vertical lines in the age-up colour without text labels (hover title `<age> (pinned) <m:ss>`), and the marker legend ends with an
+`Age-up (pinned)` item, shown even when the current run has no markers. Messages come from `warnings` and `notes`, `warnings` entries first.
 Those of severity `warning` appear in a warnings list. Those of severity `info` sit behind a toggle reading
 "Show N info messages" ("Show 1 info message" for one); clicking it lists them and the toggle reads
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
