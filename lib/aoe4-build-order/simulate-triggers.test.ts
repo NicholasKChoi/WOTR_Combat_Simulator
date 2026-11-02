@@ -4,10 +4,10 @@ import type { CivData } from './data'
 import type { Resources } from './engine-common'
 import { RESOURCE_TOLERANCE } from './engine-common'
 import type { BuildStart, BuildStep, FiniteNodeRef, NodeRef, SimulationResult, StepTiming, Trigger } from './model'
+import { buildOrderCatalog, checkBuildOrder } from './schema'
 import { simulateBuildOrder, stepHandlers, triggerWakeAt } from './simulate'
 import type { EngineState, StepHandler } from './simulate'
 import { ENGLISH, INFINITE_NODES, editGameData, inputsFor, run, series, withHandler } from './test-helpers'
-import { validateBuildOrder } from './validate'
 
 const noHouses = { autoHouses: false }
 const berryStart: BuildStart = { villagers: { berry: 3, wood: 3 }, rally: 'wood' }
@@ -66,7 +66,7 @@ describe('depleted trigger', () => {
             const stuck = run(steps, { start: berryStart, inputs })
             expect(depletedAt(stuck, node), node).toBeNull()
             expect(stuck.steps[0], node).toMatchObject({ status: 'not-reached', waitingOn: 'trigger' })
-            expect(validateBuildOrder({ civ: 'english', name: 'x', start: berryStart, steps }, ENGLISH).ok).toBe(true)
+            expect(checkBuildOrder({ civ: 'english', name: 'x', start: berryStart, steps }, buildOrderCatalog(ENGLISH)).ok).toBe(true)
         }
     })
 

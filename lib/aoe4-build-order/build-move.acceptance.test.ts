@@ -7,7 +7,7 @@ import { effectiveGatherRate } from './gather'
 import type { BuildOrder, BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
 import { INFINITE_NODES } from './test-helpers'
-import { resolveSimInputs } from './validate'
+import { resolveSimInputs } from './schema'
 
 const data = loadGameData('english')
 

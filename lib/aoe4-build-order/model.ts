@@ -49,41 +49,7 @@ export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
 
 export type StepWait = 'resources' | 'villagers' | 'population' | 'prerequisite' | 'trigger' | 'earlier-step';
 
-// An omitted trigger means the step has no condition. bank holds while the stock of resource is at least atLeast.
-export type Trigger =
-  | { kind: 'time'; seconds: number }
-  | { kind: 'villagers'; count: number }
-  | { kind: 'depleted'; node: FiniteNodeRef }
-  | { kind: 'bank'; resource: ResourceKind; atLeast: number };
-
-// A reaction (depleted trigger only) arms when its trigger holds, without waiting for earlier steps.
-export type BuildStep = { trigger?: Trigger; reaction?: true } & (
-  // No count means continuous production; rally only for villagers and sets the producer's rally; walkSeconds only with rally.
-  | { action: 'produce'; producer: string; instance?: number; unit: string; count?: number; rally?: NodeRef; walkSeconds?: number }
-  // Rallies villagers that start from this step on; costs nothing.
-  | { action: 'rally'; producer: string; instance?: number; to: NodeRef; walkSeconds?: number }
-  | { action: 'pause'; producer: string; instance?: number }
-  // builders defaults to 1, then defaults to from.
-  | { action: 'build'; building: string; builders?: number; from: NodeRef; then?: NodeRef; walkSeconds?: number }
-  // Technologies and unit upgrades (veterancy tiers).
-  | { action: 'research'; tech: string; at?: string }
-  // all takes every villager at from when the step starts, gathering or idle.
-  | { action: 'move'; count: number | 'all'; from: NodeRef; to: NodeRef; walkSeconds?: number }
-);
-
-export interface BuildOrder {
-  civ: CivId;
-  name: string;
-  source?: string;
-  start?: BuildStart;
-  steps: BuildStep[];
-}
-
-// The t=0 villager split (absent means the civ's default split) and the rally in effect at t=0.
-export interface BuildStart {
-  villagers?: Partial<Record<NodeRef, number>>;
-  rally?: NodeRef;
-}
+export type { BuildOrder, BuildStart, BuildStep, Trigger } from './schema';
 
 export interface HandValue<T> {
   value: T;

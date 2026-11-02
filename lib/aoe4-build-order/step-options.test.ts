@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { classifyTech } from './effects'
 import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS } from './model'
+import { buildOrderCatalog, checkBuildOrder } from './schema'
 import { stepOptions } from './step-options'
 import { buildOrder, editGameData, ENGLISH } from './test-helpers'
-import { validateBuildOrder } from './validate'
 
 const options = stepOptions(ENGLISH)
 
@@ -42,7 +42,7 @@ describe('stepOptions from game data', () => {
     it('lists only techs a research step validates', () => {
         expect(options.techs.length).toBeGreaterThan(0)
         for (const tech of options.techs) {
-            const result = validateBuildOrder(buildOrder([{ action: 'research', tech }]), ENGLISH)
+            const result = checkBuildOrder(buildOrder([{ action: 'research', tech }]), buildOrderCatalog(ENGLISH))
             expect(result.ok, tech).toBe(true)
         }
     })

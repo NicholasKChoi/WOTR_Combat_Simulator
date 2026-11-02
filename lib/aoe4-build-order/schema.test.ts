@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import englishSnapshot from '../../data/aoe4-build-order/aoe4world/english.json'
+import baseRules from '../../data/aoe4-build-order/rules/base.json'
+import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import { listBuilds } from './builds'
+import { type BaseRules, type CivData, type Snapshot, buildGameData } from './data'
 import { FINITE_NODE_REFS, nodeKindOf } from './model'
 import type { BuildStep } from './model'
 import {
@@ -11,6 +15,7 @@ import {
     checkBuildOrder,
     checkSimInputs,
     nearestId,
+    nodeRefIssue,
     resolveSimInputs,
 } from './schema'
 import { ENGLISH } from './test-helpers'
@@ -282,6 +287,345 @@ describe('nearestId', () => {
     })
 })
 
+describe('nearestId cost', () => {
+    function levenshtein(a: string, b: string): number {
+        const rows = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)))
+        for (let i = 1; i <= a.length; i++) {
+            for (let j = 1; j <= b.length; j++) {
+                rows[i][j] = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+            }
+        }
+        return rows[a.length][b.length]
+    }
+
+    function slowNearest(value: string, choices: readonly string[]): string | undefined {
+        const limit = Math.max(1, Math.floor(value.length / 3))
+        let best: string | undefined
+        let bestDistance = limit + 1
+        for (const choice of choices) {
+            const distance = levenshtein(value.toLowerCase(), choice.toLowerCase())
+            if (distance < bestDistance) [best, bestDistance] = [choice, distance]
+        }
+        return best
+    }
+
+    it.each(['knigt', 'KNIGHT', 'x', '', 'abcdefghijklmnopqrstuvwxyz0123456789abcd', 'spear', 'villagr', 'man-at-arm', 'longbowmen', 'scot'])(
+        'matches the full search for %j',
+        (value) => {
+            expect(nearestId(value, catalog.units)).toBe(slowNearest(value, catalog.units))
+        },
+    )
+
+    it('rejects a 900,000 character unit id quickly', () => {
+        const huge = 'k'.repeat(900_000)
+        const started = performance.now()
+        expect(nearestId(huge, catalog.units)).toBeUndefined()
+        const result = checkBuildOrder(order([{ action: 'produce', producer: 'stable', unit: huge }]), catalog)
+        expect(performance.now() - started).toBeLessThan(500)
+        if (result.ok) throw new Error('expected issues')
+        expect(result.issues.map(({ code, suggestion }) => [code, suggestion])).toEqual([['unknown-id', undefined]])
+    })
+})
+
+describe('checkBuildOrder accepted orders', () => {
+    const research = (tech: string) => ({ action: 'research', tech })
+    it.each([
+        ['techs with modeled, ignored and unmodeled effects', order(['bloomery', 'shaft-mining', 'survival-techniques', 'fitted-leatherwork', 'admiralty'].map(research))],
+        ['research at its building', order([{ action: 'research', tech: 'wheelbarrow', at: 'mill' }])],
+        ['two different techs', order([research('wheelbarrow'), research('textiles')])],
+        ['villagers from kings-palace', order([{ action: 'produce', producer: 'kings-palace', unit: 'villager' }])],
+        ['a scout without rally', order([{ action: 'produce', producer: TC, unit: 'scout' }])],
+        ['a rally on town-center', order([{ action: 'rally', producer: 'town-center', to: 'wood' }])],
+        ['a split start with a zero entry', order([], { rally: 'sheep', villagers: { sheep: 4, wood: 2, gold: 0 } })],
+        ['move all between deposits', order([{ action: 'move', count: 'all', from: 'gold', to: 'gold#2' }])],
+        ['bank 0 and depleted deposits', order([{ kind: 'bank', resource: 'wood', atLeast: 0 }, { kind: 'depleted', node: 'berry' }, { kind: 'depleted', node: 'gold#2' }].map((trigger) => ({ ...pause, trigger })))],
+    ])('accepts %s', (_, value) => {
+        expect(checkBuildOrder(value, catalog)).toStrictEqual({ ok: true, order: value })
+    })
+
+    it('needs no start.rally when no starting building makes villagers', () => {
+        const noProducers = { ...catalog, startVillagerProducers: [] }
+        expect(checkBuildOrder({ ...order([]), start: undefined }, noProducers).ok).toBe(true)
+        expect(messages({ ...order([]), start: undefined })).toEqual(['start: no start.rally while starting building capital-town-center produces villagers'])
+        expect(messages(order([], {}))).toEqual(messages({ ...order([]), start: undefined }))
+    })
+})
+
+describe('checkBuildOrder step bounds', () => {
+    const villager = (fields: object) => ({ action: 'produce', producer: TC, unit: 'villager', ...fields })
+    const shift = (fields: object) => ({ action: 'move', count: 1, from: 'sheep', to: 'wood', ...fields })
+    const bounded: [string, (n: number) => object, number[], number[]][] = [
+        ['trigger.seconds', (n) => ({ ...pause, trigger: { kind: 'time', seconds: n } }), [0, 3600], [-1, 3601, 1.5, Infinity]],
+        ['trigger.count', (n) => ({ ...pause, trigger: { kind: 'villagers', count: n } }), [1, 200], [0, 201, 2.5]],
+        ['trigger.atLeast', (n) => ({ ...pause, trigger: { kind: 'bank', resource: 'food', atLeast: n } }), [0, 100000], [-1, 100001, 400.5]],
+        ['produce count', (n) => villager({ count: n }), [1, 200], [0, 201, 2.5, Infinity]],
+        ['move count', (n) => shift({ count: n }), [1, 200], [0, 201, 1.5]],
+        ['builders', (n) => ({ action: 'build', building: 'house', from: 'wood', builders: n }), [1, 200], [0, 201, 1.5]],
+        ['instance', (n) => ({ ...pause, instance: n }), [1, 200], [0, 201, 1.5, NaN]],
+        ['rally walkSeconds', (n) => ({ action: 'rally', producer: TC, to: 'wood', walkSeconds: n }), [0, 4.5, 60], [-0.5, 60.5, Infinity, NaN]],
+        ['produce walkSeconds', (n) => villager({ rally: 'wood', walkSeconds: n }), [0, 60], [-1, 61]],
+        ['build walkSeconds', (n) => ({ action: 'build', building: 'house', from: 'wood', walkSeconds: n }), [0, 60], [-1, 60.5]],
+        ['move walkSeconds', (n) => shift({ walkSeconds: n }), [0, 60], [-1, 60.5]],
+    ]
+
+    it.each(bounded)('bounds %s', (_, make, inside, outside) => {
+        for (const n of inside) expect(messages(order([make(n)])), String(n)).toEqual([])
+        for (const n of outside) {
+            const found = onlyIssue(order([make(n)]))
+            expect([found.code, found.step], String(n)).toEqual(['out-of-range', 0])
+            expect(found.message).toContain(String(n))
+        }
+    })
+
+    it.each([-1, 201, 1.5])('bounds a start.villagers value of %j', (n) => {
+        const found = onlyIssue(order([], { rally: 'sheep', villagers: { sheep: 6, wood: n } }))
+        expect(found.code).toBe('out-of-range')
+        expect(found.message).toContain('start.villagers.wood')
+    })
+
+    it('reports only the step cap when 201 steps are also bad', () => {
+        expect(onlyIssue(order(Array(201).fill({ action: 'pause', producer: 'nowhere' }))).message).toBe('steps: 201 steps, more than 200')
+    })
+
+    it('freezes the bounds table', () => {
+        expect(Object.isFrozen(SIM_INPUT_BOUNDS) && Object.isFrozen(SIM_INPUT_BOUNDS.steps)).toBe(true)
+    })
+})
+
+describe('checkBuildOrder unknown ids', () => {
+    it.each([
+        [{ action: 'produce', producer: TC, unit: 'knight-x' }, 'knight-x'],
+        [{ action: 'pause', producer: 'castle' }, 'castle'],
+        [{ action: 'build', building: 'villager', from: 'wood' }, 'villager'],
+        [{ action: 'research', tech: 'forestry-1' }, 'forestry-1'],
+        [{ action: 'research', tech: 'villager' }, 'villager'],
+        [{ action: 'research', tech: 'wheelbarrow', at: 'wheelbarrow' }, 'wheelbarrow'],
+        [{ action: 'move', count: 1, from: 'sheep', to: 'fish' }, 'fish'],
+        [{ action: 'move', count: 1, from: '__proto__', to: 'wood' }, '__proto__'],
+        [{ action: 'rally', producer: TC, to: 'gold-mine' }, 'gold-mine'],
+        [{ action: 'produce', producer: 'nowhere', unit: 'villager' }, 'nowhere'],
+        [{ action: 'research', tech: 'no-such-tech', at: 'house' }, 'no-such-tech'],
+    ])('reports only the unknown id in %j', (step, id) => {
+        const found = onlyIssue(order([step]))
+        expect([found.code, found.step]).toEqual(['unknown-id', 0])
+        expect(found.message).toContain(`"${id}"`)
+    })
+
+    it.each([
+        ['an unknown start node key', { rally: 'sheep', villagers: { sheep: 5, fish: 1 } }, 'fish'],
+        ['an own __proto__ start key', JSON.parse('{"rally":"sheep","villagers":{"__proto__":6}}'), '__proto__'],
+        ['an unknown start.rally', { rally: 'fish' }, 'fish'],
+    ])('reports %s', (_, start, id) => {
+        const found = onlyIssue(order([], start))
+        expect(found).toEqual({ code: 'unknown-id', message: expect.stringContaining(`"${id}"`) })
+    })
+})
+
+describe('checkBuildOrder cross-field and start rules', () => {
+    it.each([
+        [{ action: 'produce', producer: TC, unit: 'scout', rally: 'wood' }, ['scout']],
+        [{ action: 'rally', producer: 'house', to: 'wood' }, ['house']],
+        [{ action: 'produce', producer: 'house', unit: 'villager' }, ['house', 'villager']],
+        [{ action: 'research', tech: 'wheelbarrow', at: 'house' }, ['wheelbarrow', 'house']],
+    ])('rejects %j naming %j', (step, names) => {
+        const found = onlyIssue(order([step]))
+        expect([found.code, found.step]).toEqual(['invalid', 0])
+        for (const name of names) expect(found.message).toContain(name)
+    })
+
+    it.each([{ sheep: 7 }, { sheep: 4, wood: 3 }, { sheep: 200 }])('rejects start.villagers %j for not summing to 6', (villagers) => {
+        expect(onlyIssue(order([], { rally: 'sheep', villagers })).message).toMatch(/^start: start\.villagers sums to \d+, the civ starts with 6$/)
+    })
+
+    it('needs an earlier kings-palace-wide rally source to build a kings-palace without start.rally', () => {
+        const palace = { action: 'build', building: 'kings-palace', from: 'wood' }
+        const toWood = { action: 'rally', producer: 'kings-palace', to: 'wood' }
+        const fed = { action: 'produce', producer: 'kings-palace', unit: 'villager', rally: 'wood' }
+        const stepIssues = (steps: unknown[]) => messages(order(steps, { villagers: { sheep: 6 } })).filter((text) => text.startsWith('steps'))
+        expect(stepIssues([toWood, palace])).toEqual([])
+        expect(stepIssues([fed, palace])).toEqual([])
+        expect(stepIssues([{ ...fed, instance: 1 }, palace])).toEqual(['steps[1]: build kings-palace with no start.rally and no earlier rally for every kings-palace'])
+        expect(stepIssues([palace, toWood])).toHaveLength(1)
+        expect(messages(order([palace]))).toEqual([])
+    })
+})
+
+describe('checkBuildOrder repeated research', () => {
+    const tech = (id: string, more: object = {}) => ({ action: 'research', tech: id, ...more })
+
+    it('reports each later repeat against the first', () => {
+        expect(messages(order([tech('wheelbarrow'), tech('wheelbarrow', { at: 'mill' }), tech('wheelbarrow')]))).toEqual([
+            'steps[1]: wheelbarrow is already researched by steps[0]',
+            'steps[2]: wheelbarrow is already researched by steps[0]',
+        ])
+    })
+
+    it.each([
+        ['no-such-tech', 'unknown-id'],
+        ['forestry', 'unknown-tech-effect'],
+    ])('reports %s twice with its own code and no repeat', (id, code) => {
+        const result = checkBuildOrder(order([tech(id), tech(id)]), catalog)
+        expect(result.ok ? [] : result.issues.map((found) => [found.code, found.step])).toEqual([
+            [code, 0],
+            [code, 1],
+        ])
+    })
+
+    it('counts a reaction step in list order', () => {
+        const reaction = { trigger: { kind: 'depleted', node: 'berry' }, reaction: true }
+        expect(messages(order([tech('wheelbarrow', reaction), tech('wheelbarrow')]))).toEqual(['steps[1]: wheelbarrow is already researched by steps[0]'])
+        const rallied = [{ action: 'rally', producer: 'town-center', to: 'wood', ...reaction }, { action: 'build', building: 'town-center', from: 'wood' }]
+        expect(messages(order(rallied, { villagers: { sheep: 6 } })).filter((text) => text.startsWith('steps'))).toEqual([])
+    })
+})
+
+describe('checkBuildOrder issue location', () => {
+    const badStart = { rally: 'sheep', villagers: { sheep: 5 } }
+    const castle = { action: 'pause', producer: 'castle' }
+
+    it('omits line where lines has no entry and on every issue without lines', () => {
+        const found = checkBuildOrder(order([pause, castle], badStart), catalog, { steps: [3] })
+        expect(found.ok ? [] : found.issues.map((issue) => [issue.step, issue.line, issue.message])).toEqual([
+            [undefined, undefined, 'start: start.villagers sums to 5, the civ starts with 6'],
+            [1, undefined, 'steps[1]: unknown building "castle" in producer'],
+        ])
+        const unlined = checkBuildOrder(order([castle, castle], badStart), catalog)
+        expect(unlined.ok ? [] : unlined.issues.filter((issue) => 'line' in issue)).toEqual([])
+        expect(unlined.ok ? 0 : unlined.issues.length).toBe(3)
+    })
+
+    it('orders one step by field: trigger, producer, instance, count', () => {
+        const step = { action: 'produce', producer: 'castle', instance: 0, unit: 'villager', count: 500, trigger: { kind: 'time', seconds: -1 } }
+        expect(messages(order([step]))).toEqual([
+            'steps[0]: trigger.seconds: -1 is outside 0..3600',
+            'steps[0]: unknown building "castle" in producer',
+            'steps[0]: instance: 0 is outside 1..200',
+            'steps[0]: count: 500 is outside 1..200',
+        ])
+    })
+
+    it('reports an unknown id and a type error on one step, both as field issues', () => {
+        expect(messages(order([{ action: 'produce', producer: 'nowhere', unit: 'villager', count: 'x' }]))).toEqual([
+            'steps[0]: unknown building "nowhere" in producer',
+            'steps[0]: count must be a number',
+        ])
+    })
+
+    it('reports a hole in steps as a null step', () => {
+        const sparse = checkBuildOrder(order([pause, , pause]), catalog)
+        expect(sparse).toStrictEqual(checkBuildOrder(order([pause, null, pause]), catalog))
+        expect(sparse.ok ? [] : sparse.issues).toStrictEqual([{ code: 'syntax', message: 'steps[1]: is not an object', step: 1 }])
+    })
+
+    it.each([undefined, 'build', 42, {}, order([undefined, []])])('rejects %j without throwing', (value) => {
+        expect(checkBuildOrder(value, catalog).ok).toBe(false)
+    })
+})
+
+describe('node refs in a build order', () => {
+    const refs: [string, string | null][] = [
+        ['gold', null],
+        ['gold#2', null],
+        ['gold#8', null],
+        ['wood', null],
+        ['gold#1', 'invalid'],
+        ['wood#2', 'invalid'],
+        ['berry#2', 'invalid'],
+        ['stone#2', 'invalid'],
+        ['gold#0', 'out-of-range'],
+        ['gold#9', 'out-of-range'],
+        ['iron', 'unknown-id'],
+        ['iron#2', 'unknown-id'],
+        ['gold#02', 'syntax'],
+        ['gold#', 'syntax'],
+        ['gold#x', 'syntax'],
+        ['gold#2#3', 'syntax'],
+    ]
+
+    it.each(refs)('classifies %s', (ref, code) => {
+        const problem = nodeRefIssue(ref, false)
+        expect(problem?.code ?? null).toBe(code)
+        if (problem) expect(problem.reason).toContain(`"${ref}"`)
+    })
+
+    it('rejects farm and wood only where the node must run out', () => {
+        expect(nodeRefIssue('farm', true)).toStrictEqual({ code: 'invalid', reason: 'node "farm" never runs out' })
+        expect([nodeRefIssue('wood', true)?.code, nodeRefIssue('gold#2', true), nodeRefIssue('farm', false)]).toEqual(['invalid', null, null])
+        expect(nodeRefIssue(3, false)).toStrictEqual({ code: 'syntax', reason: 'node must be a string' })
+    })
+
+    const villager = { action: 'produce', producer: TC, unit: 'villager' }
+    const places: [string, (ref: string) => unknown][] = [
+        ['rally', (ref) => order([{ ...villager, rally: ref }])],
+        ['to', (ref) => order([{ action: 'rally', producer: TC, to: ref }])],
+        ['from', (ref) => order([{ action: 'build', building: 'house', from: ref }])],
+        ['then', (ref) => order([{ action: 'build', building: 'house', from: 'sheep', then: ref }])],
+        ['from', (ref) => order([{ action: 'move', count: 1, from: ref, to: 'wood' }])],
+        ['to', (ref) => order([{ action: 'move', count: 1, from: 'sheep', to: ref }])],
+        ['start.rally', (ref) => order([], { villagers: { sheep: 6 }, rally: ref })],
+        ['start.villagers', (ref) => order([], { villagers: { sheep: 5, [ref]: 1 }, rally: 'sheep' })],
+    ]
+
+    it.each(places)('gives every ref the same issue in %s', (place, make) => {
+        for (const [ref, code] of refs) {
+            const result = checkBuildOrder(make(ref), catalog)
+            const found = result.ok ? [] : result.issues.map((issue) => [issue.code, issue.message.split(': ').slice(1).join(': ')])
+            expect(found, ref).toEqual(code === null ? [] : [[code, `${nodeRefIssue(ref, false)!.reason} in ${place}`]])
+        }
+    })
+})
+
+describe('triggers and reactions', () => {
+    const depleted = (node: unknown) => ({ kind: 'depleted', node })
+    const bank = (fields: object) => ({ kind: 'bank', resource: 'wood', atLeast: 400, ...fields })
+
+    it.each([
+        ['depleted without node', { kind: 'depleted' }, 'syntax'],
+        ['depleted farm', depleted('farm'), 'invalid'],
+        ['depleted iron', depleted('iron'), 'unknown-id'],
+        ['bank wood 400', bank({}), null],
+        ['bank without resource', { kind: 'bank', atLeast: 400 }, 'syntax'],
+        ['bank of a string amount', bank({ atLeast: '400' }), 'syntax'],
+        ['bank of sheep', bank({ resource: 'sheep' }), 'unknown-id'],
+        ['an unknown kind', { kind: 'event' }, 'unknown-trigger-kind'],
+    ])('classifies %s', (_, trigger, code) => {
+        const result = checkBuildOrder(order([{ ...pause, trigger }]), catalog)
+        expect(result.ok ? [] : result.issues.map((found) => found.code)).toEqual(code === null ? [] : [code])
+    })
+
+    it.each([
+        { action: 'produce', producer: TC, unit: 'villager' },
+        { action: 'rally', producer: TC, to: 'wood' },
+        pause,
+        { action: 'build', building: 'house', from: 'berry' },
+        { action: 'research', tech: 'wheelbarrow' },
+        { action: 'move', count: 'all', from: 'berry', to: 'wood' },
+    ])('accepts a depleted reaction on %o', (step) => {
+        expect(messages(order([{ ...step, trigger: depleted('berry'), reaction: true }]))).toEqual([])
+    })
+
+    it.each([undefined, { kind: 'time', seconds: 5 }, { kind: 'villagers', count: 7 }, bank({})])('rejects a reaction on trigger %j', (trigger) => {
+        expect(onlyIssue(order([{ ...pause, trigger, reaction: true }]))).toStrictEqual({
+            code: 'invalid',
+            message: 'steps[0]: only a step triggered by a node running out can be a reaction',
+            step: 0,
+        })
+    })
+
+    it('reports only the unknown kind on a reaction and a type error for reaction "yes"', () => {
+        expect(onlyIssue(order([{ ...pause, trigger: { kind: 'event' }, reaction: true }])).code).toBe('unknown-trigger-kind')
+        expect(onlyIssue(order([{ ...pause, trigger: depleted('berry'), reaction: 'yes' }])).message).toBe('steps[0]: reaction must be true')
+    })
+
+    it.each([
+        { action: 'move', count: 'All', from: 'sheep', to: 'wood' },
+        { action: 'move', count: '3', from: 'sheep', to: 'wood' },
+        { action: 'produce', producer: TC, unit: 'villager', count: 'all' },
+    ])('takes "all" as a count on move only: %j', (step) => {
+        expect(onlyIssue(order([step])).code).toBe('syntax')
+    })
+})
+
 describe('OPTIONAL_STEP_FIELDS', () => {
     const full: Record<BuildStep['action'], Record<string, unknown>> = {
         produce: { producer: TC, instance: 1, unit: 'villager', count: 1, rally: 'sheep', walkSeconds: 1 },
@@ -392,6 +736,121 @@ describe('checkSimInputs', () => {
 
     it.each([undefined, { durationSeconds: 59 }, { trips: { gold: { dropOffSeconds: 2 } } }])('matches resolveSimInputs for %j', (value) => {
         expect(resolveSimInputs(value, ENGLISH)).toStrictEqual(checkSimInputs(value, catalog))
+    })
+})
+
+describe('checkSimInputs fields', () => {
+    const resolved = () => {
+        const result = checkSimInputs({}, catalog)
+        if (!result.ok) throw new Error('defaults rejected')
+        return result.inputs
+    }
+    const issuesFor = (value: unknown) => {
+        const result = checkSimInputs(value, catalog)
+        return result.ok ? [] : result.issues
+    }
+
+    it('reads walkSeconds and trip defaults from the data the catalog was built from', () => {
+        const base = structuredClone(baseRules) as unknown as BaseRules
+        base.walkSeconds.value = 9
+        base.gatherNodes.farm.trip.walkSecondsCamp.value = 7.5
+        const changed = buildGameData('english', structuredClone(englishSnapshot) as unknown as Snapshot, base, structuredClone(englishRules) as unknown as CivData)
+        const result = checkSimInputs(undefined, buildOrderCatalog(changed))
+        expect(result.ok && [result.inputs.walkSeconds, result.inputs.trips.farm.walkSecondsCamp]).toEqual([9, 7.5])
+    })
+
+    it('takes every supplied scalar field', () => {
+        const given = { durationSeconds: 600, walkSeconds: 0, autoHouses: false, houseBuilders: 3, houseBuilderSource: 'gold', influenceCoverage: { mill: 0 } }
+        expect(checkSimInputs(given, catalog)).toStrictEqual({ ok: true, inputs: { ...resolved(), ...given } })
+    })
+
+    it.each([
+        ['durationSeconds', [60, 3600], [59, 3601, 60.5]],
+        ['walkSeconds', [0, 60], [-0.1, 60.5, Infinity]],
+        ['houseBuilders', [1, 200], [0, 201, 1.5]],
+    ])('bounds %s', (field, inside, outside) => {
+        for (const n of inside) expect(issuesFor({ [field]: n }), String(n)).toEqual([])
+        for (const n of outside) expect(issuesFor({ [field]: n }), String(n)).toEqual([{ code: 'out-of-range', message: expect.stringContaining(`inputs.${field}: `) }])
+    })
+
+    it.each([
+        ['walkSecondsCamp', 60],
+        ['walkSecondsTownCenter', 60],
+        ['dropOffSeconds', 30],
+    ])('bounds trips.wood.%s at 0..%d', (field, max) => {
+        for (const n of [0, max]) expect(issuesFor({ trips: { wood: { [field]: n } } })).toEqual([])
+        for (const n of [-1, max + 0.5]) {
+            expect(issuesFor({ trips: { wood: { [field]: n } } })).toEqual([{ code: 'out-of-range', message: expect.stringContaining(`inputs.trips.wood.${field}: `) }])
+        }
+    })
+
+    it('bounds influenceCoverage values at 0..1', () => {
+        expect(issuesFor({ influenceCoverage: { mill: 0, 'mining-camp': 1 } })).toEqual([])
+        for (const n of [-0.1, 1.1]) expect(issuesFor({ influenceCoverage: { mill: n } }).map((found) => found.code)).toEqual(['out-of-range'])
+    })
+
+    it.each([
+        [{ trips: 3 }, 'inputs.trips: must be an object'],
+        [{ trips: { farm: { dropOffSeconds: '1' } } }, 'inputs.trips.farm.dropOffSeconds: must be a number'],
+        [{ walkSeconds: '5' }, 'inputs.walkSeconds: must be a number'],
+        [{ houseBuilders: '1' }, 'inputs.houseBuilders: must be a number'],
+        [{ houseBuilderSource: 1 }, 'inputs.houseBuilderSource: must be a string'],
+        [{ influenceCoverage: [] }, 'inputs.influenceCoverage: must be an object'],
+        [{ influenceCoverage: { mill: '1' } }, 'inputs.influenceCoverage.mill: must be a number'],
+        [{ nodeAmounts: 5 }, 'inputs.nodeAmounts: must be an object'],
+    ])('reports %j as syntax', (value, message) => {
+        expect(issuesFor(value)).toStrictEqual([{ code: 'syntax', message }])
+    })
+
+    it.each([
+        [{ trips: { fish: {} } }, 'inputs.trips.fish'],
+        [JSON.parse('{"trips":{"__proto__":{}}}'), 'inputs.trips.__proto__'],
+        [{ houseBuilderSource: 'fish' }, 'inputs.houseBuilderSource'],
+        [{ influenceCoverage: { villager: 1 } }, 'inputs.influenceCoverage.villager'],
+    ])('reports an unknown id in %j', (value, path) => {
+        expect(issuesFor(value)).toEqual([{ code: 'unknown-id', message: expect.stringContaining(`${path}: `) }])
+    })
+
+    it('ignores extra keys and reports fields in declaration order', () => {
+        expect(issuesFor({ influenceCoverage: { mill: 2 }, durationSeconds: 1, extra: true }).map((found) => found.message.split(':')[0])).toEqual([
+            'inputs.durationSeconds',
+            'inputs.influenceCoverage.mill',
+        ])
+    })
+
+    it('returns fresh objects that share nothing with the catalog or data', () => {
+        const first = resolved()
+        first.trips.farm.walkSecondsCamp = 99
+        first.influenceCoverage.mill = 0
+        first.nodeAmounts.gold = 1
+        expect(resolved().trips.farm.walkSecondsCamp).toBe(ENGLISH.base.gatherNodes.farm.trip.walkSecondsCamp.value)
+        expect([resolved().influenceCoverage, resolved().nodeAmounts.gold]).toEqual([{ mill: 1 }, 4000])
+        expect(catalog.inputDefaults.trips.farm.walkSecondsCamp).not.toBe(99)
+    })
+
+    it('defaults every finite ref to its base amount and every deposit to the gold amount', () => {
+        const deposits = Object.fromEntries(FINITE_NODE_REFS.filter((ref) => ref.startsWith('gold#')).map((ref) => [ref, 4000]))
+        expect(Object.keys(resolved().nodeAmounts)).toEqual(FINITE_NODE_REFS)
+        expect(resolved().nodeAmounts).toEqual({ sheep: 3000, berry: 1500, deer: 1750, boar: 2000, gold: 4000, ...deposits, stone: 1200 })
+        const merged = checkSimInputs({ nodeAmounts: { gold: null, 'gold#3': 2500, berry: 0 } }, catalog)
+        expect(merged.ok && merged.inputs.nodeAmounts).toMatchObject({ gold: null, 'gold#2': 4000, 'gold#3': 2500, 'gold#8': 4000, berry: 0, sheep: 3000 })
+    })
+
+    it.each([
+        ['berry', 0, null],
+        ['stone', 100000, null],
+        ['gold#2', 2500, null],
+        ['farm', 500, 'invalid'],
+        ['gold#1', 5, 'invalid'],
+        ['wood#2', 5, 'invalid'],
+        ['gold#9', 5, 'out-of-range'],
+        ['iron', 5, 'unknown-id'],
+        ['gold', 1.5, 'out-of-range'],
+        ['gold', 100001, 'out-of-range'],
+        ['gold', Infinity, 'out-of-range'],
+        ['gold#02', 5, 'syntax'],
+    ])('reads nodeAmounts.%s = %j as %j', (ref, amount, code) => {
+        expect(issuesFor({ nodeAmounts: { [ref]: amount } })).toEqual(code === null ? [] : [{ code, message: expect.stringContaining(`inputs.nodeAmounts.${ref}: `) }])
     })
 })
 

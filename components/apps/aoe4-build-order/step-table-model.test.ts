@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildStep, Trigger } from '../../../lib/aoe4-build-order/model'
 import { formatBuildOrderText, parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
+import { buildOrderCatalog, checkBuildOrder } from '../../../lib/aoe4-build-order/schema'
 import { stepOptions } from '../../../lib/aoe4-build-order/step-options'
 import { buildOrder, ENGLISH } from '../../../lib/aoe4-build-order/test-helpers'
-import { validateBuildOrder } from '../../../lib/aoe4-build-order/validate'
 import {
     changeAction,
     changeProducer,
@@ -41,14 +41,14 @@ describe('defaults', () => {
     it.each(ACTIONS)('defaultStep(%s) has no trigger, validates and round-trips through the text', (action) => {
         const step = defaultStep(action, options)
         expect(step.trigger).toBeUndefined()
-        expect(validateBuildOrder(buildOrder([step]), ENGLISH).ok).toBe(true)
+        expect(checkBuildOrder(buildOrder([step]), buildOrderCatalog(ENGLISH)).ok).toBe(true)
         expect(reparsed([step])).toEqual([step])
     })
 
     it.each(KINDS)('defaultTrigger(%s) validates within the input bounds', (kind) => {
         const trigger = defaultTrigger(kind as Trigger['kind'], options)
         expect(trigger.kind).toBe(kind)
-        expect(validateBuildOrder(buildOrder([{ ...produce, trigger }]), ENGLISH).ok).toBe(true)
+        expect(checkBuildOrder(buildOrder([{ ...produce, trigger }]), buildOrderCatalog(ENGLISH)).ok).toBe(true)
     })
 })
 

@@ -1,12 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { MAX_REPORTED_ISSUES, type SimulateError, type SimulateRequest, type SimulateResponse } from '../../../lib/aoe4-build-order/api';
-import { loadGameData, type GameData } from '../../../lib/aoe4-build-order/data';
+import { loadGameData } from '../../../lib/aoe4-build-order/data';
 import type { BuildOrderIssue } from '../../../lib/aoe4-build-order/model';
-import { parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text';
+import { buildOrderCatalog, checkBuildOrder, checkSimInputs, type BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema';
 import { simulateBuildOrder } from '../../../lib/aoe4-build-order/simulate';
-import { resolveSimInputs, SIM_INPUT_BOUNDS, validateBuildOrder } from '../../../lib/aoe4-build-order/validate';
+import { textToBuildOrder } from '../../../lib/aoe4-build-order/text-to-build';
 
-type OrderResult = ReturnType<typeof validateBuildOrder>;
+type OrderResult = ReturnType<typeof checkBuildOrder>;
+
+let englishCatalog: BuildOrderCatalog | undefined;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -16,26 +18,19 @@ function rejected(code: BuildOrderIssue['code'], message: string): OrderResult {
   return { ok: false, issues: [{ code, message }] };
 }
 
-function checkOrder(body: SimulateRequest, data: GameData): OrderResult {
+function checkOrder(body: SimulateRequest, catalog: BuildOrderCatalog): OrderResult {
   if ((body.text === undefined) === (body.buildOrder === undefined)) {
     return rejected('syntax', 'request: send exactly one of text and buildOrder');
   }
   if (body.buildOrder !== undefined) {
-    return validateBuildOrder(body.buildOrder, data);
+    return checkBuildOrder(body.buildOrder, catalog);
   }
   const { text } = body;
   if (typeof text !== 'string') {
     return rejected('syntax', 'text: must be a string');
   }
-  const maxChars = SIM_INPUT_BOUNDS.textChars.max;
-  if (text.length > maxChars) {
-    return rejected('out-of-range', `text: ${text.length} characters, more than ${maxChars}`);
-  }
-  const parsed = parseBuildOrderText(text);
-  if (parsed.ok === false) {
-    return { ok: false, issues: parsed.issues };
-  }
-  return validateBuildOrder(parsed.order, data, { lines: parsed.lines });
+  const converted = textToBuildOrder(text, catalog);
+  return converted.ok ? { ok: true, order: converted.order } : { ok: false, issues: converted.issues };
 }
 
 export default function handler(req: NextApiRequest, res: NextApiResponse<SimulateResponse | SimulateError | Pick<SimulateError, 'error'>>) {
@@ -53,9 +48,10 @@ export default function handler(req: NextApiRequest, res: NextApiResponse<Simula
   }
 
   const data = loadGameData('english');
+  englishCatalog ??= buildOrderCatalog(data);
   const request = body as SimulateRequest;
-  const order = checkOrder(request, data);
-  const inputs = resolveSimInputs(request.inputs ?? {}, data);
+  const order = checkOrder(request, englishCatalog);
+  const inputs = checkSimInputs(request.inputs ?? {}, englishCatalog);
   if ('order' in order && 'inputs' in inputs) {
     res.status(200).json(simulateBuildOrder(order.order, data, inputs.inputs));
     return;

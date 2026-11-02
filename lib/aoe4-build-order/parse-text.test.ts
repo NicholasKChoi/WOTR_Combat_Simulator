@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { BuildOrder, BuildOrderIssue, BuildStep } from './model'
 import { formatBuildOrderText, formatBuildStep, parseBuildOrderText } from './parse-text'
+import { buildOrderCatalog, checkBuildOrder } from './schema'
 import { ENGLISH } from './test-helpers'
-import { validateBuildOrder } from './validate'
 
 function parsed(text: string) {
     const result = parseBuildOrderText(text)
@@ -31,7 +31,7 @@ function step(text: string) {
 }
 
 function validationCode(text: string): string | undefined {
-    const result = validateBuildOrder(parsed(`start -> sheep\n${text}`).order, ENGLISH)
+    const result = checkBuildOrder(parsed(`start -> sheep\n${text}`).order, buildOrderCatalog(ENGLISH))
     return result.ok === false ? result.issues[0].code : undefined
 }
 

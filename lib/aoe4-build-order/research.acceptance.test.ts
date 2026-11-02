@@ -9,7 +9,7 @@ import { listBuilds } from './builds'
 import { researchHandler, researchNotes, resolveUnitEntry } from './research'
 import { simulateBuildOrder, stepHandlers } from './simulate'
 import { INFINITE_NODES, researchedOf } from './test-helpers'
-import { resolveSimInputs } from './validate'
+import { resolveSimInputs } from './schema'
 
 const data = loadGameData('english')
 
