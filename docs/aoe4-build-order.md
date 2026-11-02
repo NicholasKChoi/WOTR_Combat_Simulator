@@ -809,9 +809,12 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 
 The page is `/apps/aoe4-build-order`. It has a prebuilt build select, a build order textarea, a
 step table, a `durationSeconds` number input (default 1200) and a run button. Choosing a prebuilt build
-replaces the text with that build's paste text; editing the text leaves the select as it is. Run posts the
-text and `inputs.durationSeconds` to the route. The duration is not checked in the browser: an empty or
-non-numeric entry is sent as 0, and the route rejects any value outside its bounds.
+replaces the text with that build's paste text; editing the text leaves the select as it is. Run converts the
+text with `textToBuildOrder` and the English catalog and posts the checked `buildOrder` and
+`inputs.durationSeconds` to the route. When the text does not convert, Run lists its issues under the
+textarea, sends nothing and clears the shown result. Server 400 issues and network or HTTP failures show in
+the error list. The duration is not checked in the browser: an empty or non-numeric entry is sent as 0, and
+the route rejects any value outside its bounds.
 
 The page keeps one `text` state, and the step table is a view of it. The table renders
 `parseBuildOrderText(text)`: one row per step with a trigger kind select and its fields, an action select and
@@ -821,13 +824,13 @@ producer>`. The `start` line is shown above the rows and is not editable there. 
 and sets `text` to `formatBuildOrderText(order)`, so a table edit drops comments and blank lines and keeps
 `start`; typing in the textarea never rewrites the text. While the text does not parse, the table is replaced
 by a notice (`step-table-unavailable`) holding the first parse issue's message, and the textarea stays
-editable. Id selects list the English data's choices (a unit select lists what the row's producer can make,
-a research `at` select lists the buildings that research the tech); a pasted id the choices do not list shows
-as an extra selected `<id> (unknown)` choice that the table leaves alone, and Run reports it. Number fields
-take unsigned integers (`move` count also takes `all`, and the trigger time is whole seconds); clearing an
-optional number field omits it, while an empty or invalid entry in a required field leaves the step as it was.
-Bounds are checked on Run, not in the table. Editing while a run is in flight does not change the result
-shown.
+editable. Id selects list the English data's choices (a unit select lists what the row's producer can make, a
+research `at` select lists the buildings that research the tech); a pasted id the choices do not list shows as
+an extra selected `<id> (unknown)` choice that the table leaves alone, and Run reports it as an issue under
+the textarea. Number fields take unsigned integers (`move` count also takes `all`, and the trigger time is
+whole seconds); clearing an optional number field omits it, while an empty or invalid entry in a required
+field leaves the step as it was. Bounds are checked on Run, not in the table. Editing while a run is in flight
+does not change the result shown.
 
 A 200 draws three line charts, each with a series legend titled "Series" (one toggle button per series):
 

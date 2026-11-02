@@ -1,5 +1,8 @@
 import { useState } from 'react'
 
+import type { BuildOrderIssue } from '../../../lib/aoe4-build-order/model'
+import { IssueList } from './issue-list'
+
 export interface PrebuiltBuild {
     name: string
     text: string
@@ -13,9 +16,10 @@ interface BuildInputProps {
     onDurationChange: (duration: string) => void
     running: boolean
     onRun: () => void
+    issues: readonly BuildOrderIssue[]
 }
 
-export function BuildInput({ builds, text, onTextChange, duration, onDurationChange, running, onRun }: BuildInputProps) {
+export function BuildInput({ builds, text, onTextChange, duration, onDurationChange, running, onRun, issues }: BuildInputProps) {
     const [selected, setSelected] = useState(builds[0]?.name ?? '')
 
     function selectBuild(name: string) {
@@ -70,6 +74,7 @@ export function BuildInput({ builds, text, onTextChange, duration, onDurationCha
                     value={text}
                     onChange={(e) => onTextChange(e.target.value)}
                 />
+                <IssueList issues={issues} />
             </div>
             <div className="col">
                 <button type="submit" data-testid="run-simulation" className="btn btn-primary" disabled={running}>

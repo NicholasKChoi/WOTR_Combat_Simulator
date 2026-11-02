@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, expectedCompareKeys, hexToRgb, openPage } from './helpers'
+import { INVALID_PASTE, SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys, hexToRgb, openPage, runRejected } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -11,7 +11,6 @@ const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating
 const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
 const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
-const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
 
 async function run(page: Page, opts: { duration?: number; text?: string } = {}) {
   if (opts.text !== undefined) await page.getByTestId('build-order-text').fill(opts.text)
@@ -184,15 +183,16 @@ test.describe('AoE4 build order pin and compare', () => {
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
   })
 
-  test('a 400 run removes charts and table but keeps the pin; the next valid run restores both', async ({ page }) => {
+  test('a rejected paste removes charts and table but keeps the pin; the next valid run restores both', async ({ page }) => {
     await openPage(page)
     await runOk(page, { duration: 300 })
     await pin(page)
     await runOk(page, { duration: 600 })
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
 
-    expect((await run(page, { text: INVALID_PASTE })).status()).toBe(400)
-    await expect(page.getByTestId('simulation-error')).toBeVisible()
+    await page.getByTestId('build-order-text').fill(INVALID_PASTE)
+    await runRejected(page)
+    await expectFlySyntaxIssue(page)
     await expect(page.getByTestId('compare-key-numbers')).toHaveCount(0)
     for (const chart of CHART_IDS) await expect(page.getByTestId(chart)).toHaveCount(0)
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
