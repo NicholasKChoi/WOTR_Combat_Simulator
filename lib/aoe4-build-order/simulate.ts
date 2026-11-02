@@ -15,7 +15,7 @@ import type { HouseDemand } from './houses';
 import { ageMarker, compareMarkers } from './markers';
 import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
 import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, Trigger, UnitSeries } from './model';
-import { researchHandler, researchNotes, resolveUnitEntry } from './research';
+import { recordUnits, researchHandler, researchNotes, resolveUnitEntry } from './research';
 
 // Output resolution, not a game number.
 export const SAMPLE_SECONDS = 5;
@@ -89,6 +89,9 @@ export interface EngineState extends EffectState {
   readonly spent: Record<SpendCategory, number>;
   // Popcap of spawned, living villagers and units; paid units still in production are in population only.
   spawnedPopulation: number;
+  // Unit entry id -> spawned units at that entry's tier; starting units are not in it. changes is in time
+  // order, so the units at time t are the sum of the deltas at or before t.
+  readonly spawned: Map<string, { entry: SnapshotEntry; held: number; changes: { time: number; delta: number }[] }>;
   // Events run in (time, insertion) order.
   schedule(time: number, apply: (state: EngineState) => void): void;
 }
@@ -114,7 +117,6 @@ interface Engine extends EngineState {
   populationCapReachedAt: number | null;
   // Sorted by time; ties keep schedule order.
   readonly events: ScheduledEvent[];
-  readonly spawns: Map<string, { entry: SnapshotEntry; times: number[] }>;
   // First non-reaction step not yet started; every earlier non-reaction step has started.
   cursor: number;
   // What the armed cursor step waits to afford, when it waits on resources alone.
@@ -273,10 +275,8 @@ function noteCapReached(engine: Engine): void {
 }
 
 function spawnUnit(state: EngineState, entry: SnapshotEntry, at: BuildingInstance): void {
-  const { spawns } = state as Engine;
-  const record = spawns.get(entry.id) ?? { entry, times: [] };
-  spawns.set(entry.id, record);
-  record.times.push(state.time);
+  const resolved = resolveUnitEntry(entry.baseId, state);
+  recordUnits(state, resolved && resolved.age >= entry.age ? resolved : entry, 1);
   state.spawnedPopulation += entry.costs.popcap;
   noteCapReached(state as Engine);
   if (entry.baseId !== VILLAGER_ID) {
@@ -791,7 +791,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
       engine.events.splice(i, 0, { time, apply });
     },
     events: [],
-    spawns: new Map(),
+    spawned: new Map(),
     cursor: 0,
     reserve: undefined,
     reactionNeeds: [],
@@ -850,16 +850,30 @@ function finalStatus(timing: StepTiming): StepTiming['status'] {
   return timing.completedAt === null ? 'in-progress' : 'completed';
 }
 
+// After all of an instant's changes, so a tier passed through within one instant is never held.
+function firstHeldAt(changes: readonly { time: number; delta: number }[]): number | undefined {
+  let held = 0;
+  for (const [i, change] of changes.entries()) {
+    held += change.delta;
+    if (held > 0 && changes[i + 1]?.time !== change.time) {
+      return change.time;
+    }
+  }
+  return undefined;
+}
+
 function unitSeries(engine: Engine, times: number[]): UnitSeries[] {
-  const byFirstSpawn = [...engine.spawns.values()].sort(
-    (a, b) => a.times[0] - b.times[0] || (a.entry.id < b.entry.id ? -1 : a.entry.id > b.entry.id ? 1 : 0),
-  );
-  return byFirstSpawn.map(({ entry, times: spawned }) => ({
+  const held = [...engine.spawned.values()].flatMap((record) => {
+    const first = firstHeldAt(record.changes);
+    return first === undefined ? [] : [{ ...record, first }];
+  });
+  const byFirstHeld = held.sort((a, b) => a.first - b.first || (a.entry.id < b.entry.id ? -1 : a.entry.id > b.entry.id ? 1 : 0));
+  return byFirstHeld.map(({ entry, changes }) => ({
     unitId: entry.id,
     baseId: entry.baseId,
     name: entry.name,
     tier: entry.age,
-    counts: times.map((t) => spawned.filter((at) => at <= t).length),
+    counts: times.map((t) => changes.reduce((sum, change) => (change.time <= t ? sum + change.delta : sum), 0)),
   }));
 }
 

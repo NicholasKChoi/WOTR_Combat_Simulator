@@ -63,8 +63,9 @@ export function sampleIndex(result: SimulationResult, t: number): number {
     return i
 }
 
+// Units of baseId produced by each sample, summed over its tiers.
 export function series(result: SimulationResult, baseId: string): number[] {
-    return result.unitsProduced.find((u) => u.baseId === baseId)?.counts ?? result.times.map(() => 0)
+    return result.times.map((_, i) => result.unitsProduced.reduce((sum, u) => (u.baseId === baseId ? sum + u.counts[i] : sum), 0))
 }
 
 export function countAt(result: SimulationResult, baseId: string, t: number): number {

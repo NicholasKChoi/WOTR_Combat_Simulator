@@ -8,7 +8,7 @@ import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
 import { researchEntry, researchHandler, researchNotes, resolveUnitEntry } from './research'
 import type { BuildingInstance, EngineState } from './simulate'
-import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, researchedOf, run, sampleIndex, withHandler } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, researchedOf, run, sampleIndex, series, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
@@ -83,9 +83,9 @@ describe('an upgrade delays production and changes the tier', () => {
     })
 
     it('pays the next spearman when the research ends, as the upgraded tier, 60 s later', () => {
-        expect(tierCountAt(result, 'spearman-3', 85)).toBe(0)
-        expect(tierCountAt(result, 'spearman-3', 90)).toBe(1)
-        expect(tierCountAt(result, 'spearman-2', 90)).toBe(1)
+        expect(tierCountAt(result, 'spearman-3', 85)).toBe(1)
+        expect(tierCountAt(result, 'spearman-3', 90)).toBe(2)
+        expect(tierCountAt(result, 'spearman-2', 90)).toBe(0)
         expect(tierCountAt(plain, 'spearman-2', 30)).toBe(2)
         expect(plain.unitsProduced.some((u) => u.unitId === 'spearman-3')).toBe(false)
     })
@@ -104,11 +104,14 @@ describe('an upgrade delays production and changes the tier', () => {
     })
 })
 
-describe('the tier is fixed when a unit is paid', () => {
-    const game = startingWith(3, ['capital-town-center', 'barracks', 'barracks', ...houses], plenty, (parts) => {
+describe('a unit spawns at the highest researched tier, with the cost and time of the tier it was paid at', () => {
+    const game = startingWith(3, ['barracks', 'barracks', ...houses], plenty, (parts) => {
         entriesOf(parts, 'spearman').forEach((e) => {
             e.costs.time = 100
         })
+        const upper = parts.snapshot.units.find((u) => u.id === 'spearman-3')!
+        upper.costs.food = 200
+        upper.costs.popcap = 2
     })
     const steps = (trigger: BuildStep['trigger']): BuildStep[] => [
         { action: 'produce', producer: 'barracks', instance: 2, unit: 'spearman', count: 1 },
@@ -117,23 +120,154 @@ describe('the tier is fixed when a unit is paid', () => {
     ]
     const timed = run(steps(at(70)), { game })
     const untimed = run(steps(undefined), { game })
+    const spearmen = (result: SimulationResult) => result.unitsProduced.filter((u) => u.baseId === 'spearman').map((u) => u.unitId)
 
-    it('keeps the lower tier for a unit paid before the upgrade completes', () => {
+    it('counts a unit paid before the upgrade completes and spawning after it at the upper tier only', () => {
         expect(timed.steps[1]).toMatchObject({ startedAt: 0, completedAt: 60 })
-        expect(tierCountAt(timed, 'spearman-2', 100)).toBe(1)
-        expect(tierCountAt(timed, 'spearman-3', 100)).toBe(0)
+        expect(tierCountAt(timed, 'spearman-3', 95)).toBe(0)
+        expect(tierCountAt(timed, 'spearman-3', 100)).toBe(1)
+        expect(spearmen(timed)).toEqual(['spearman-3'])
     })
 
     it('gives the upgraded tier to a unit paid after it', () => {
         expect(timed.steps[2].startedAt).toBe(70)
-        expect(tierCountAt(timed, 'spearman-3', 170)).toBe(1)
-        expect(tierCountAt(timed, 'spearman-2', 170)).toBe(1)
+        expect(tierCountAt(timed, 'spearman-3', 170)).toBe(2)
     })
 
-    it('reads the tier at payment, not at spawn', () => {
+    it('reads the tier at spawn, not at payment', () => {
         expect(untimed.steps[2].startedAt).toBe(0)
-        expect(tierCountAt(untimed, 'spearman-2', 160)).toBe(2)
-        expect(untimed.unitsProduced.some((u) => u.unitId === 'spearman-3')).toBe(false)
+        expect(tierCountAt(untimed, 'spearman-3', 160)).toBe(2)
+        expect(spearmen(untimed)).toEqual(['spearman-3'])
+    })
+
+    it('keeps the cost and popcap of the tier paid', () => {
+        const military = untimed.spent.military.at(-1)! - timed.spent.military.at(-1)!
+        expect(military).toBe(game.byId.get('spearman-2')!.costs.food - 200)
+        expect(untimed.spawnedPopulation.at(-1)! - timed.spawnedPopulation.at(-1)!).toBe(game.byId.get('spearman-2')!.costs.popcap - 2)
+    })
+})
+
+describe('veterancy converts units already spawned', () => {
+    // No town center, so spearmen are the only units produced.
+    function gameWith(edit: (parts: Parts) => void): GameData {
+        return startingWith(4, ['barracks', 'barracks', ...houses], plenty, (parts) => {
+            entriesOf(parts, 'veteran-spearmen').forEach((e) => {
+                e.costs.time = 50
+            })
+            edit(parts)
+        })
+    }
+    const produce = (count: number, trigger?: BuildStep['trigger']): BuildStep => ({ action: 'produce', producer: 'barracks', instance: 2, unit: 'spearman', count, trigger })
+    const research = (tech: string): BuildStep => ({ action: 'research', tech, at: 'barracks' })
+    const spearmen = (result: SimulationResult) => result.unitsProduced.filter((u) => u.baseId === 'spearman').map((u) => u.unitId)
+    const tiersAt = (result: SimulationResult, t: number) => [2, 3, 4].map((tier) => tierCountAt(result, `spearman-${tier}`, t))
+    const noTier = (id: string) => (parts: Parts) => {
+        parts.snapshot.units = parts.snapshot.units.filter((u) => u.id !== id)
+    }
+
+    it('moves every unit below the upgrade tier up at the completion instant', () => {
+        const result = run([produce(3), research('veteran-spearmen')], { game: gameWith(() => {}) })
+        expect(result.steps[1].completedAt).toBe(50)
+        expect(tiersAt(result, 45)).toEqual([3, 0, 0])
+        expect(tiersAt(result, 50)).toEqual([0, 3, 0])
+        expect(tiersAt(result, 100)).toEqual([0, 3, 0])
+    })
+
+    it('keeps the lower series listed at 0 and orders a series reached by conversion at its conversion instant', () => {
+        const game = startingWith(4, ['barracks', 'barracks', 'barracks', ...houses], plenty, (parts) => {
+            entriesOf(parts, 'veteran-spearmen').forEach((e) => {
+                e.costs.time = 50
+            })
+            entriesOf(parts, 'man-at-arms').forEach((e) => {
+                e.costs.time = 20
+            })
+        })
+        const menAtArms: BuildStep = { action: 'produce', producer: 'barracks', instance: 3, unit: 'man-at-arms', count: 1 }
+        const result = run([produce(3), research('veteran-spearmen'), menAtArms], { game })
+        expect(result.unitsProduced.map((u) => u.unitId)).toEqual(['spearman-2', 'man-at-arms-1', 'spearman-3'])
+        expect(result.unitsProduced[0].counts.at(-1)).toBe(0)
+    })
+
+    it('orders series that first hold units at one instant by unitId', () => {
+        const game = startingWith(4, ['barracks', 'barracks', 'barracks', ...houses], plenty, (parts) => {
+            entriesOf(parts, 'man-at-arms').forEach((e) => {
+                e.costs.time = 15
+            })
+        })
+        const menAtArms: BuildStep = { action: 'produce', producer: 'barracks', instance: 3, unit: 'man-at-arms', count: 1 }
+        const result = run([produce(1), menAtArms], { game })
+        expect(result.unitsProduced.map((u) => u.unitId)).toEqual(['man-at-arms-1', 'spearman-2'])
+        expect(result.unitsProduced.map((u) => u.counts[sampleIndex(result, 15)])).toEqual([1, 1])
+    })
+
+    it('converts nothing when the target unit has no entry at the upgrade age', () => {
+        const result = run([produce(3), research('veteran-spearmen'), produce(1, at(60))], { game: gameWith(noTier('spearman-3')) })
+        expect(tiersAt(result, 50)).toEqual([3, 0, 0])
+        expect(tiersAt(result, 75)).toEqual([4, 0, 0])
+        expect(spearmen(result)).toEqual(['spearman-2'])
+    })
+
+    it('creates no series when no unit exists yet, and a later spawn is at the new tier', () => {
+        const result = run([research('veteran-spearmen'), produce(2, at(55))], { game: gameWith(() => {}) })
+        expect(spearmen(result)).toEqual(['spearman-3'])
+        expect(tiersAt(result, 85)).toEqual([0, 2, 0])
+    })
+
+    it('never spawns a unit below the tier it was paid at when the highest upgrade has no entry at its age', () => {
+        const game = gameWith((parts) => {
+            noTier('spearman-4')(parts)
+            entriesOf(parts, 'spearman').forEach((e) => {
+                e.costs.time = 60
+            })
+            entriesOf(parts, 'elite-spearmen').forEach((e) => {
+                e.costs.time = 50
+            })
+        })
+        const result = run([produce(2), research('veteran-spearmen'), research('elite-spearmen')], { game })
+        expect(result.steps.slice(1).map((s) => s.completedAt)).toEqual([50, 100])
+        expect(tiersAt(result, 100)).toEqual([0, 1, 0])
+        expect(tiersAt(result, 120)).toEqual([0, 2, 0])
+        expect(spearmen(result)).toEqual(['spearman-3'])
+    })
+
+    it('leaves the units at the highest tier when two upgrades complete at one instant, listing no series for the tier passed through', () => {
+        const game = gameWith((parts) => {
+            entriesOf(parts, 'elite-spearmen').forEach((e) => {
+                e.costs.time = 0
+            })
+        })
+        const result = run([produce(3), research('veteran-spearmen'), research('elite-spearmen')], { game })
+        expect(result.steps.slice(1).map((s) => s.completedAt)).toEqual([50, 50])
+        expect(tiersAt(result, 45)).toEqual([3, 0, 0])
+        expect(tiersAt(result, 50)).toEqual([0, 0, 3])
+        expect(spearmen(result)).toEqual(['spearman-2', 'spearman-4'])
+    })
+
+    it('converts nothing when a lower upgrade completes after a higher one', () => {
+        const game = gameWith((parts) => {
+            entriesOf(parts, 'elite-spearmen').forEach((e) => {
+                e.costs.time = 20
+            })
+        })
+        const result = run([produce(3), research('elite-spearmen'), research('veteran-spearmen')], { game })
+        expect(result.steps.slice(1).map((s) => s.completedAt)).toEqual([20, 70])
+        expect(tiersAt(result, 15)).toEqual([1, 0, 0])
+        expect(tiersAt(result, 20)).toEqual([0, 0, 1])
+        expect(tiersAt(result, 70)).toEqual([0, 0, 3])
+        expect(spearmen(result)).toEqual(['spearman-2', 'spearman-4'])
+    })
+
+    it('sums, over the series of one unit, to the units produced by each sample', () => {
+        const game = gameWith(() => {})
+        const result = run([produce(5), research('veteran-spearmen')], { game })
+        const untargeted = run([produce(5), research('veteran-spearmen')], {
+            game: gameWith((parts) => {
+                delete parts.civData.upgradeTargets['veteran-spearmen']
+            }),
+        })
+        expect(spearmen(untargeted)).toEqual(['spearman-2'])
+        expect(series(result, 'spearman')).toEqual(untargeted.unitsProduced[0].counts)
+        expect(series(result, 'spearman').at(-1)).toBe(5)
     })
 })
 
@@ -178,7 +312,7 @@ describe('resolveUnitEntry', () => {
             ],
             { game, inputs: { nodeAmounts: INFINITE_NODES } },
         )
-        expect(tierCountAt(result, 'spearman-3', 400)).toBe(65)
+        expect(tierCountAt(result, 'spearman-3', 400)).toBe(66)
     })
 })
 

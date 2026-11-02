@@ -111,7 +111,8 @@ export interface SimInputs {
   nodeAmounts: Record<FiniteNodeRef, number | null>;
 }
 
-// tier is the entry's age; counts are cumulative and include produced units only.
+// tier is the entry's age; counts are the produced units of baseId at this tier at each sample, so a
+// veterancy upgrade moves units to a higher series. Summed over one baseId, counts are cumulative produced.
 export interface UnitSeries {
   unitId: string;
   baseId: string;

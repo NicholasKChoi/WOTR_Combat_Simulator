@@ -209,12 +209,15 @@ unit already paid. It never replaces the instance's order, which resumes (pays i
 research ends. A completed research adds a marker to the result's `markers`. It waits while no target instance exists or while no entry of the tech is at or below the
 current age, and it reserves resources only when it is short of resources alone.
 
-**Tiers.** A produced unit is the entry for the highest tier whose upgrade has been researched, else the
+**Tiers.** A unit's tier is the entry for the highest tier whose upgrade has been researched, else the
 lowest-age entry for its `baseId`. `upgradeTargets` maps an upgrade `baseId` to the unit `baseId` it
 upgrades, because aoe4world's `unlocks` is empty; the target tier is the unit entry whose `age` equals the
-`age` of the upgrade entry that was researched, not of any other entry of that upgrade. A veterancy upgrade occupies its building's queue for its research time, and units
-paid afterwards are the upgraded tier. A unit's tier is fixed when paid: a unit paid before an upgrade
-completes keeps the lower tier. An upgrade with no unit entry at its age does not change the tier.
+`age` of the upgrade entry that was researched, not of any other entry of that upgrade. A veterancy
+upgrade occupies its building's queue for its research time. When it completes, every spawned unit of its
+target below its tier becomes that tier, at that instant. A unit takes its cost, production time and
+population from the tier when it is paid, and spawns at the tier researched when it spawns, never below
+the tier it was paid at. An upgrade with no unit entry at its age changes no tier and converts nothing,
+and an upgrade below the tier units already hold converts nothing.
 
 **Ages and landmarks.** A building whose `classes` match `^age[1-3]_landmark\d$` advances the age from its
 `age` to `age + 1` when it completes, so any landmark reaches the next of the four ages. The age advances
@@ -351,8 +354,8 @@ The English farm bonus near a mill is four rows, one per age, with the wiki valu
 - combat-only technologies (Blacksmith, University: hitpoints, attack and similar), accepted for cost and
   queue time with the effect ignored; technologies whose effects aoe4world lists as `unknown` (such as
   `forestry-1`) are rejected with a clear error;
-- unit veterancy upgrades, researched at their building from data, after which produced units are the
-  upgraded tier and the units-produced graph shows tiers apart;
+- unit veterancy upgrades, researched at their building from data, which move the units already spawned
+  and every later one to the upgraded tier; the units-produced graph shows tiers apart;
 - houses, starting state and the population cap;
 - depletion of finite nodes (Depletion), on by default: the six finite nodes start at the `rules/base.json`
   amounts, a `null` override keeps a node infinite, and `farm` and `wood` never run out.
@@ -660,8 +663,11 @@ A `SimulationResult` holds:
   itself, after the last multiple below it. Every series below has one value per sample. The t=0 sample
   reflects the state after the zero-time steps at t=0 have started.
 - `unitsProduced`: one `UnitSeries` per unit entry and tier (`unitId`, `baseId`, `name`, `tier`, the
-  entry's age), ordered by first spawn time, then `unitId`, with cumulative `counts` of produced units. Starting units are not produced and never
-  appear in it, so every series starts at 0.
+  entry's age) that held a produced unit at some instant, ordered by the first instant it held one, then
+  `unitId`. `counts` are the produced units at that tier at each sample: a veterancy upgrade moves units to
+  a higher tier's series, and a series whose units all moved stays listed at 0. The series of one `baseId`
+  sum to its cumulative produced units. Starting units are not produced and never appear in it, so every
+  series starts at 0.
 - `gatherRates`: per `ResourceKind` (`food`, `wood`, `gold`, `stone`), the income rate per minute.
 - `floating`: per `ResourceKind`, the banked, unspent amount.
 - `spent`: per spend category (`villagers`, `military`, `buildings`, `research`), the cumulative resources
