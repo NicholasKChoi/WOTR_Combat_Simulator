@@ -12,7 +12,7 @@ export const RESOURCE_TOLERANCE = 1e-9;
 export const VILLAGER_ID = 'villager';
 export const HOUSE_ID = 'house';
 
-type Resources = Record<ResourceKind, number>;
+export type Resources = Record<ResourceKind, number>;
 
 export function costOf(entry: SnapshotEntry, units: number): Resources {
   const cost = {} as Resources;

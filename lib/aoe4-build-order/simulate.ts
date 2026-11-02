@@ -4,6 +4,7 @@ import { constructionSeconds } from './construction';
 import type { GameData, SnapshotEntry } from './data';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
+import type { Resources } from './engine-common';
 import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, costOf, markCompleted, payCost, villagerWalkSeconds } from './engine-common';
 import { effectiveGatherRate } from './gather';
 import { planAutoHouse } from './houses';
@@ -89,7 +90,6 @@ export type StepHandler<A extends BuildStep['action'] = BuildStep['action']> = (
   state: EngineState,
 ) => StepStart;
 
-type Resources = Record<ResourceKind, number>;
 
 interface ScheduledEvent {
   time: number;
