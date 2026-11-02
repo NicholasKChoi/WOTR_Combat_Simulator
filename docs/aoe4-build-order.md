@@ -48,11 +48,13 @@ later spread of outcomes is a new field beside the existing ones, not a change t
   input outside its bound is an `out-of-range` issue; nothing is simulated.
 
 A non-integer where an integer is required, and a non-finite number, are also `out-of-range`. The bounds
-apply to JSON and paste input alike: a paste line is checked after it is parsed.
+apply to a pasted order too: the page converts the paste with `textToBuildOrder`, which caps it at 20,000
+characters and checks each parsed line like a JSON step. The route accepts only JSON, so the character cap is
+not a route bound.
 
 | field | type | min..max | default |
 |---|---|---|---|
-| text / steps | | 20,000 chars / 200 steps | |
+| paste text (page-side conversion) / steps | | 20,000 chars / 200 steps | |
 | `durationSeconds` | int | 60..3600 | 1200 |
 | `Trigger.seconds` | int | 0..3600 (the largest `durationSeconds`) | |
 | `Trigger.count` (villagers) | int | 1..200 (the population cap) | |
@@ -581,10 +583,11 @@ Grammar details:
   an issue. A `start` line that fails to parse still counts as the first `start`. `formatBuildOrderText`
   emits it first, with nodes in node-ref order (`gold`, then `gold#2`..`gold#8`).
 
-**Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line?, suggestion? }`. A validation
-issue on a parsed paste step carries both `step` and the 1-based `line`; a `syntax` issue raised while
-parsing a paste line carries `line` only, as does a paste `start` issue; a JSON
-step issue carries `step` only and a JSON `start` issue carries neither. The codes are complete and the
+**Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line?, suggestion? }`. Only the
+page-side paste conversion (`textToBuildOrder`) sets `line`: a validation issue on a parsed paste step carries
+both `step` and the 1-based `line`; a `syntax` issue raised while parsing a paste line carries `line` only, as
+does a paste `start` issue. The route never sets `line`: a JSON step issue carries `step` only and a JSON
+`start` issue carries neither. The codes are complete and the
 same for JSON and paste. `suggestion` is set only on an `unknown-id` issue for a unit, building, producer,
 technology, research `at` or node field, and on an `unknown-trigger-kind` issue: it is the closest catalog
 id (or trigger kind) to the given value, by case-insensitive edit distance of at most a third of the value's
@@ -644,11 +647,12 @@ kind or property. Any issue stops the request; nothing is simulated.
 
 ```mermaid
 flowchart LR
-  text["paste text"] --> t2b["textToBuildOrder"]
-  t2b --> parse["parseBuildOrderText"]
-  json["BuildOrder JSON"] --> validate
-  parse -->|"order + lines"| validate["checkBuildOrder + checkSimInputs"]
-  parse -->|"syntax issues"| error
+  subgraph browser["browser: the page"]
+    text["paste text"] --> t2b["textToBuildOrder: 20,000-char cap, parseBuildOrderText, checkBuildOrder with lines"]
+    t2b -->|"issues with line"| pageIssues["page issue list"]
+  end
+  t2b -->|"order"| json["BuildOrder JSON"]
+  json --> validate["route: checkBuildOrder + checkSimInputs"]
   data["loadGameData: aoe4world/english.json + rules/*.json"] --> catalog["buildOrderCatalog"] & simulate
   catalog --> validate
   validate -->|"issues"| error["400: SimulateError"]
@@ -662,23 +666,24 @@ flowchart LR
 ## Route
 
 `POST /api/aoe4-build-order/simulate` (`operationId: simulateBuildOrder`) runs one simulation. The request
-is a `SimulateRequest` with exactly one of `text` (paste format, at most 20,000 characters) or
-`buildOrder` (JSON, at most 200 steps), and optional `inputs`, a `SimInputOverrides` whose absent fields
-take their defaults at any depth (`trips` per node, then per field; `influenceCoverage` and `nodeAmounts` per
-key). A key
-whose value is `null` counts as present, so `text: null` beside `buildOrder` is the both-present `syntax`
-issue. Longer `text` is one `out-of-range` issue and is not parsed.
+is a `SimulateRequest` `{ buildOrder, inputs? }`: `buildOrder` (JSON, at most 200 steps) is required, and
+optional `inputs` is a `SimInputOverrides` whose absent fields take their defaults at any depth (`trips` per
+node, then per field; `influenceCoverage` and `nodeAmounts` per key). The paste-format `text` field was removed
+in API 2.0.0: a body with a `text` key (any value) is a 400 with one `syntax` issue
+(`request: text is no longer accepted; convert the paste to buildOrder and send that`), `buildOrder` is not
+checked then, and `inputs` still is. A body with no `buildOrder` is one `syntax` issue
+`request: missing buildOrder`. To send a paste, use the page or convert it with `textToBuildOrder`
+(browser-safe, in `lib/aoe4-build-order/text-to-build.ts`) and send the result as `buildOrder`.
 
 - **200:** the `SimulationResult`.
-- **400:** `SimulateError` `{ error, issues, omittedIssues? }`. The order (`text` or `buildOrder`) is
+- **400:** `SimulateError` `{ error, issues, omittedIssues? }`. The order (`buildOrder` only) is
   checked first and `inputs` second, and both always run, so order issues come first, then inputs issues.
   The combined list is then capped at `MAX_REPORTED_ISSUES` = 100: `issues` holds the first 100 in that
   order, so inputs issues past the 100th are dropped too, and `omittedIssues` is the number dropped,
   present only when above 0 (100 issues give no `omittedIssues`, 101 give `1`). `error` is the first issue's
   message. A body that is not a JSON object (an array, string, number or `null`) gives one `syntax` issue
-  and nothing else is checked. A validation issue on a pasted step carries `line` and `step`; a `syntax`
-  issue raised while parsing a paste line carries `line` only; a pasted `start` issue carries `line` only;
-  a JSON step's issue carries `step` only; a JSON `start` issue and `inputs` issues carry neither.
+  and nothing else is checked. No route issue carries `line`: a step's issue carries `step` only; a `start`
+  issue, `inputs` issues and request-shape issues carry neither.
 - **405:** `{ error }` with an `Allow: POST` header, for any other method.
 - A body that is not valid JSON keeps Next's plain-text 400 `Invalid JSON`, and a body over Next's 1 MB
   default limit is its plain-text 413; neither reaches the handler.

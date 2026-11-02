@@ -151,11 +151,10 @@ test.describe('request shape', () => {
     })
   }
 
-  test('the neither-key issue names both keys', async ({ request }) => {
+  test('the empty body issue is request: missing buildOrder', async ({ request }) => {
     const issues = await issuesOf(request, {})
     expect(issues).toHaveLength(1)
-    expect(issues[0].message).toContain('text')
-    expect(issues[0].message).toContain('buildOrder')
+    expect(issues[0].message).toBe('request: missing buildOrder')
   })
 
   test('a civ other than english is unknown-id', async ({ request }) => {
@@ -200,11 +199,11 @@ test.describe('framework responses', () => {
     expect(await response.text()).toContain('Invalid JSON')
   })
 
-  test('a body under 1 MB with an oversized text reaches the handler caps, not the 413', async ({ request }) => {
+  test('a body under 1 MB with an oversized text is rejected by the handler, not the 413', async ({ request }) => {
     const response = await postSimulate(request, { text: 'x'.repeat(900_000) })
     expect(response.status()).toBe(400)
     const json = await response.json()
-    expect(json.issues).toEqual([expect.objectContaining({ code: 'out-of-range' })])
+    expect(json.issues).toEqual([{ code: 'syntax', message: 'request: text is no longer accepted; convert the paste to buildOrder and send that' }])
   })
 })
 

@@ -9,8 +9,7 @@ export type SimInputOverrides = Partial<Omit<SimInputs, 'trips' | 'nodeAmounts'>
 };
 
 export interface SimulateRequest {
-  text?: string;
-  buildOrder?: BuildOrder;
+  buildOrder: BuildOrder;
   inputs?: SimInputOverrides;
 }
 

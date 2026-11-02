@@ -1,10 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { MAX_REPORTED_ISSUES, type SimulateError, type SimulateRequest, type SimulateResponse } from '../../../lib/aoe4-build-order/api';
+import { MAX_REPORTED_ISSUES, type SimulateError, type SimulateResponse } from '../../../lib/aoe4-build-order/api';
 import { loadGameData } from '../../../lib/aoe4-build-order/data';
 import type { BuildOrderIssue } from '../../../lib/aoe4-build-order/model';
 import { buildOrderCatalog, checkBuildOrder, checkSimInputs, type BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema';
 import { simulateBuildOrder } from '../../../lib/aoe4-build-order/simulate';
-import { textToBuildOrder } from '../../../lib/aoe4-build-order/text-to-build';
 
 type OrderResult = ReturnType<typeof checkBuildOrder>;
 
@@ -18,19 +17,14 @@ function rejected(code: BuildOrderIssue['code'], message: string): OrderResult {
   return { ok: false, issues: [{ code, message }] };
 }
 
-function checkOrder(body: SimulateRequest, catalog: BuildOrderCatalog): OrderResult {
-  if ((body.text === undefined) === (body.buildOrder === undefined)) {
-    return rejected('syntax', 'request: send exactly one of text and buildOrder');
+function checkOrder(body: Record<string, unknown>, catalog: BuildOrderCatalog): OrderResult {
+  if (Object.hasOwn(body, 'text')) {
+    return rejected('syntax', 'request: text is no longer accepted; convert the paste to buildOrder and send that');
   }
-  if (body.buildOrder !== undefined) {
-    return checkBuildOrder(body.buildOrder, catalog);
+  if (body.buildOrder === undefined) {
+    return rejected('syntax', 'request: missing buildOrder');
   }
-  const { text } = body;
-  if (typeof text !== 'string') {
-    return rejected('syntax', 'text: must be a string');
-  }
-  const converted = textToBuildOrder(text, catalog);
-  return converted.ok ? { ok: true, order: converted.order } : { ok: false, issues: converted.issues };
+  return checkBuildOrder(body.buildOrder, catalog);
 }
 
 export default function handler(req: NextApiRequest, res: NextApiResponse<SimulateResponse | SimulateError | Pick<SimulateError, 'error'>>) {
@@ -49,9 +43,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse<Simula
 
   const data = loadGameData('english');
   englishCatalog ??= buildOrderCatalog(data);
-  const request = body as SimulateRequest;
-  const order = checkOrder(request, englishCatalog);
-  const inputs = checkSimInputs(request.inputs ?? {}, englishCatalog);
+  const order = checkOrder(body, englishCatalog);
+  const inputs = checkSimInputs(body.inputs ?? {}, englishCatalog);
   if ('order' in order && 'inputs' in inputs) {
     res.status(200).json(simulateBuildOrder(order.order, data, inputs.inputs));
     return;
