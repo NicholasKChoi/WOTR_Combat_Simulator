@@ -27,7 +27,7 @@ function rateAt(node: NodeRef): number {
 const rb = rateAt('berry')
 
 function depletion(result: SimulationResult, node: NodeRef) {
-    return result.depletions.find((d) => d.node === node)
+    return result.depletions.find((d) => d.node === node)!
 }
 
 function warningsFor(result: SimulationResult, code: SimWarning['code'], node: NodeRef) {
@@ -44,7 +44,7 @@ function probingMoves(probe: (state: EngineState) => void, fn: () => void): void
     const real = stepHandlers.move
     withHandler('move', (step, index, state) => {
         probe(state)
-        return real(step, index, state)
+        return real!(step, index, state)
     }, fn)
 }
 
@@ -53,7 +53,7 @@ describe('stock and run-out', () => {
     const amount = 601
     const result = run([PAUSE], { start, inputs: { ...noHouses, nodeAmounts: { berry: amount } } })
     const expected = amount / (3 * rb)
-    const runOut = depletion(result, 'berry').depletedAt
+    const runOut = depletion(result, 'berry').depletedAt!
 
     it('runs a stocked ref out at its exact time, not on a sample', () => {
         expect(depletion(result, 'berry')).toEqual({ node: 'berry', amount, depletedAt: runOut })
@@ -127,7 +127,7 @@ describe('gold deposits', () => {
         expect(depletion(result, 'gold').depletedAt).toBeCloseTo(50 / rg, 6)
         expect(depletion(result, 'gold#2').depletedAt).toBeCloseTo(600 / (3 * rg), 6)
         const alone = run([PAUSE], { start, inputs: { ...noHouses, nodeAmounts: { 'gold#2': 600 } } })
-        expect(depletion(alone, 'gold#2').depletedAt).toBeCloseTo(depletion(result, 'gold#2').depletedAt, 9)
+        expect(depletion(alone, 'gold#2').depletedAt).toBeCloseTo(depletion(result, 'gold#2').depletedAt!, 9)
         const mid = sampleIndex(result, 100)
         expect(result.gatherRates.gold[mid]).toBeCloseTo(3 * rg * 60, 9)
     })
@@ -143,7 +143,7 @@ describe('gold deposits', () => {
 describe('node-depleted idle count', () => {
     const start: BuildStart = { villagers: { berry: 3, wood: 3 }, rally: 'wood' }
     const inputs = { ...noHouses, nodeAmounts: { berry: 601 } }
-    const runOut = depletion(run([PAUSE], { start, inputs }), 'berry').depletedAt
+    const runOut = depletion(run([PAUSE], { start, inputs }), 'berry').depletedAt!
 
     it('is read at the end of the run-out instant', () => {
         const away = run([PAUSE, move('all', 'berry', 'wood', { trigger: at(runOut) })], { start, inputs })
@@ -187,7 +187,7 @@ describe('idle arrivals', () => {
 
     it('leave builders idle at a depleted then', () => {
         const result = run([PAUSE, { action: 'build', building: 'house', from: 'sheep', then: 'berry' }], { inputs: empty })
-        expect(warningsFor(result, 'idle-arrival', 'berry')).toEqual([expect.objectContaining({ at: result.steps[1].completedAt + 5, idleVillagers: 1 })])
+        expect(warningsFor(result, 'idle-arrival', 'berry')).toEqual([expect.objectContaining({ at: result.steps[1].completedAt! + 5, idleVillagers: 1 })])
     })
 
     it('leave an auto-house builder idle when its node ran out meanwhile', () => {
@@ -196,11 +196,11 @@ describe('idle arrivals', () => {
         const start: BuildStart = { villagers: { berry: 2, sheep: 4 }, rally: 'sheep' }
         const houseInputs = { houseBuilders: 1, houseBuilderSource: 'berry' }
         run([], { start, inputs: houseInputs, rules })
-        const house = ENGLISH.byBaseId.get('house')[0]
+        const house = ENGLISH.byBaseId.get('house')![0]
         const left = done[0] - 5 - constructionSeconds(house.costs.time, 1, ENGLISH)
         done.length = 0
         const result = run([], { start, inputs: { ...houseInputs, nodeAmounts: { berry: Math.round(rb * (2 * left + 5)) } }, rules })
-        const runOut = depletion(result, 'berry').depletedAt
+        const runOut = depletion(result, 'berry').depletedAt!
         expect(runOut).toBeGreaterThan(left)
         expect(runOut).toBeLessThan(done[0] + 5)
         expect(warningsFor(result, 'idle-arrival', 'berry')).toEqual([expect.objectContaining({ at: done[0] + 5, idleVillagers: 1 })])
@@ -213,7 +213,7 @@ describe('taking villagers from a ref', () => {
 
     it('takes idle villagers once the ref ran out, and never has gatherers and idle at once', () => {
         const { seen, probe } = snapshots()
-        let result: SimulationResult
+        let result!: SimulationResult
         probingMoves(probe, () => {
             result = run([PAUSE, move(6, 'berry', 'farm', { trigger: at(100) }), move(2, 'farm', 'berry'), move(50, 'wood', 'sheep')], { start, inputs })
         })
@@ -238,7 +238,7 @@ describe('taking villagers from a ref', () => {
 describe('move all', () => {
     it('takes everyone at its start and never waits', () => {
         const { seen, probe } = snapshots()
-        let result: SimulationResult
+        let result!: SimulationResult
         probingMoves(probe, () => {
             result = run([PAUSE, move('all', 'gold', 'gold#2', { trigger: at(10) })], { start: { villagers: { gold: 4, sheep: 2 }, rally: 'wood' }, inputs: noHouses })
         })
@@ -266,7 +266,7 @@ describe('move all', () => {
 
 describe('auto-house builders', () => {
     function firstHouse(start: BuildStart, inputs: Record<string, unknown>): EngineState {
-        let seen: EngineState
+        let seen!: EngineState
         const rules: CivRules = {
             onBuildingComplete: (state, ctx) => {
                 if (ctx.baseId === 'house' && !seen) {
@@ -300,12 +300,12 @@ describe('auto-house builders', () => {
 describe('build walk', () => {
     // Villagers at then and walking, read once the completion instant has run.
     function atCompletion(step: BuildStep): { then: number; walking: number } {
-        let seen: { then: number; walking: number }
+        let seen!: { then: number; walking: number }
         const then = (step as Extract<BuildStep, { action: 'build' }>).then
         const rules: CivRules = {
             onBuildingComplete: (state, ctx) => {
                 if (ctx.baseId !== 'house') {
-                    state.schedule(ctx.time, (s) => void (seen = { then: s.gatherers[then], walking: s.walking }))
+                    state.schedule(ctx.time, (s) => void (seen = { then: s.gatherers[then!], walking: s.walking }))
                 }
             },
         }

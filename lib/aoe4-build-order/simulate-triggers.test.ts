@@ -51,7 +51,7 @@ describe('depleted trigger', () => {
 
     it('arms and starts at the run-out instant, not on a sample', () => {
         expect(runOut).not.toBeNull()
-        expect(runOut % result.sampleSeconds).not.toBe(0)
+        expect(runOut! % result.sampleSeconds).not.toBe(0)
         expect(result.steps[0]).toMatchObject({ armedAt: runOut, startedAt: runOut, waitingOn: null })
     })
 
@@ -82,14 +82,14 @@ describe('bank trigger', () => {
     const bankRally = (resource: Trigger & { kind: 'bank' }) => [rally('wood', { trigger: resource })]
 
     it('arms at the exact instant the bank reaches atLeast', () => {
-        let result: SimulationResult
+        let result!: SimulationResult
         const seen = bankSeen('rally', 'wood', () => {
             result = run(bankRally({ kind: 'bank', resource: 'wood', atLeast: 400 }), { start: woodStart, inputs: noHouses })
         })
         expect(seen).toHaveLength(1)
         expect(Math.abs(seen[0] - 400)).toBeLessThanOrEqual(RESOURCE_TOLERANCE)
         expect(result.steps[0].armedAt).toBe(result.steps[0].startedAt)
-        expect(result.steps[0].armedAt % result.sampleSeconds).not.toBe(0)
+        expect(result.steps[0].armedAt! % result.sampleSeconds).not.toBe(0)
     })
 
     it('never arms without income and holds at once for 0', () => {
@@ -156,7 +156,7 @@ describe('reaction order', () => {
         const reacting = run([barracks, barracks, rally('wood', onBerry)], options)
         expect(reacting.steps[1].startedAt).toBe(plain.steps[1].startedAt)
         expect(reacting.steps[2].startedAt).toBe(depletedAt(reacting, 'berry'))
-        expect(reacting.steps[2].startedAt).toBeLessThan(reacting.steps[1].startedAt)
+        expect(reacting.steps[2].startedAt).toBeLessThan(reacting.steps[1].startedAt!)
     })
 
     it('starts reactions on one ref in step order, each seeing what the earlier left', () => {
@@ -164,7 +164,7 @@ describe('reaction order', () => {
         const runOut = depletedAt(result, 'berry')
         expect(result.steps[0]).toMatchObject({ startedAt: runOut, status: 'completed' })
         expect(result.steps[1]).toMatchObject({ armedAt: runOut, startedAt: null, status: 'waiting', waitingOn: 'villagers' })
-        expect(breakdownSum(result.steps[1])).toBeCloseTo(result.durationSeconds - runOut, 9)
+        expect(breakdownSum(result.steps[1])).toBeCloseTo(result.durationSeconds - runOut!, 9)
         expect(result.warnings.filter((w) => w.code === 'step-stuck')).toEqual([expect.objectContaining({ step: 1, waitingOn: 'villagers', at: runOut })])
     })
 
@@ -196,12 +196,12 @@ describe('reaction and the cursor step compete', () => {
     })
 
     it('starts a reaction short of resources at the exact affordability instant', () => {
-        let result: SimulationResult
+        let result!: SimulationResult
         const seen = bankSeen('build', 'wood', () => {
             result = run([{ action: 'build', building: 'house', from: 'berry', ...onBerry }], { game: withWood(0), start: berryStart, inputs: { ...noHouses, nodeAmounts: { berry: 30 } } })
         })
         const reaction = result.steps[0]
-        expect(reaction.startedAt).toBeGreaterThan(reaction.armedAt)
+        expect(reaction.startedAt).toBeGreaterThan(reaction.armedAt!)
         expect(seen).toHaveLength(1)
         expect(Math.abs(seen[0])).toBeLessThanOrEqual(RESOURCE_TOLERANCE)
         expect(breakdownSum(reaction)).toBeCloseTo(reaction.waitSeconds, 9)
@@ -216,16 +216,16 @@ describe('reaction and the cursor step compete', () => {
         const inputs = { ...noHouses, nodeAmounts: { ...INFINITE_NODES, berry: 30 } }
         const options = { game, start: { villagers: { berry: 3, gold: 3 }, rally: 'gold' as const }, inputs, rules: { supplyProvider: () => 200 } }
         const plain = run([menAtArms], options)
-        let reacting: SimulationResult
+        let reacting!: SimulationResult
         const seen = bankSeen('research', 'gold', () => {
             reacting = run([menAtArms, { action: 'research', tech: 'wheelbarrow', ...onBerry }], options)
         })
         const reaction = reacting.steps[1]
-        expect(reaction.startedAt).toBeGreaterThan(reaction.armedAt + reacting.sampleSeconds)
+        expect(reaction.startedAt).toBeGreaterThan(reaction.armedAt! + reacting.sampleSeconds)
         expect(Math.abs(seen[0])).toBeLessThanOrEqual(RESOURCE_TOLERANCE)
-        const before = reacting.times.filter((t) => t < reaction.startedAt).length
+        const before = reacting.times.filter((t) => t < reaction.startedAt!).length
         expect(series(reacting, 'man-at-arms').slice(0, before)).toEqual(series(plain, 'man-at-arms').slice(0, before))
-        expect(series(plain, 'man-at-arms')[before - 1]).toBeGreaterThan(series(plain, 'man-at-arms')[sampleBefore(reacting, reaction.armedAt)])
+        expect(series(plain, 'man-at-arms')[before - 1]).toBeGreaterThan(series(plain, 'man-at-arms')[sampleBefore(reacting, reaction.armedAt!)])
     })
 })
 
@@ -250,7 +250,7 @@ describe('node-depleted with a reaction', () => {
 
 describe('default amounts', () => {
     const eng1tc = listBuilds().find((build) => build.name.includes('1TC'))
-    const runEng = (inputs: unknown) => simulateBuildOrder(eng1tc, ENGLISH, inputsFor(ENGLISH, inputs))
+    const runEng = (inputs: unknown) => simulateBuildOrder(eng1tc!, ENGLISH, inputsFor(ENGLISH, inputs))
 
     it('starts every finite node at its shipped amount', () => {
         expect(inputsFor(ENGLISH).nodeAmounts).toMatchObject({ sheep: 3000, berry: 1500, deer: 1750, boar: 2000, gold: 4000, 'gold#2': 4000, stone: 1200 })

@@ -130,10 +130,10 @@ test.describe('spec structure', () => {
 
   test('every SimWarning variant is closed, requires every property and is tagged by a code const', () => {
     const variants: Schema[] = schemas.SimWarning.oneOf
-    expect(variants.map((v) => (v.properties.code as { const?: string }).const)).toEqual(['node-depleted', 'idle-arrival', 'step-stuck'])
+    expect(variants.map((v) => (v.properties!.code as { const?: string }).const)).toEqual(['node-depleted', 'idle-arrival', 'step-stuck'])
     for (const variant of variants) {
       expect(variant.additionalProperties).toBe(false)
-      expect([...variant.required].sort()).toEqual(keys(variant.properties))
+      expect([...variant.required!].sort()).toEqual(keys(variant.properties!))
     }
   })
 
@@ -174,7 +174,7 @@ test.describe('enums and node-ref unions match the TypeScript constants', () => 
 
   function acceptedValues(name: string): string[] {
     const schema = schemas[name]
-    return schema.enum ?? schema.oneOf.flatMap((variant: { $ref: string }) => acceptedValues(variant.$ref.split('/').pop()))
+    return schema.enum ?? schema.oneOf.flatMap((variant: { $ref: string }) => acceptedValues(variant.$ref.split('/').pop()!))
   }
 
   test('FiniteGatherNodeId, DepositRef, Severity and StepWait enumerate the TypeScript values', () => {

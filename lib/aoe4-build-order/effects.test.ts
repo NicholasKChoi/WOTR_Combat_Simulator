@@ -6,7 +6,7 @@ const data = loadGameData('english')
 const technologies = [...data.byId.values()].filter((e) => e.type === 'technology')
 
 function classify(id: string, game: GameData = data) {
-    return classifyTech(data.byId.get(id), game)
+    return classifyTech(data.byId.get(id)!, game)
 }
 
 function withoutOverlayFrom(baseId: string): GameData {
@@ -54,7 +54,7 @@ describe('classifyTech', () => {
     })
 
     it('supports a tech with empty effects when an overlay row grants its effect', () => {
-        expect(data.byId.get('shaft-mining-3').effects).toEqual([])
+        expect(data.byId.get('shaft-mining-3')!.effects).toEqual([])
         expect(classify('shaft-mining-3')).toEqual({ kind: 'supported' })
         expect(classify('shaft-mining-3', withoutOverlayFrom('shaft-mining'))).toEqual({ kind: 'effects-unmodeled' })
     })
@@ -76,7 +76,7 @@ describe('classifyTech', () => {
 
     it('rejects a supported property typed influence on a fixture tech', () => {
         const fixture: SnapshotEntry = {
-            ...data.byId.get('wheelbarrow-1'),
+            ...data.byId.get('wheelbarrow-1')!,
             effects: [{ property: 'woodGatherRate', select: { id: ['villager'] }, effect: 'multiply', value: 1.1, type: 'influence' }],
         }
         expect(classifyTech(fixture, data)).toEqual({ kind: 'rejected', code: 'unsupported-tech', property: 'woodGatherRate' })

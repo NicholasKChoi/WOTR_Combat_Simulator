@@ -282,7 +282,7 @@ function spawnUnit(state: EngineState, entry: SnapshotEntry, at: BuildingInstanc
   if (entry.baseId !== VILLAGER_ID) {
     return;
   }
-  const rally = at.rally;
+  const rally = at.rally!;
   const moveSpeedMultiplier = modifiedValue(1, 'moveSpeed', { baseId: entry.baseId, classes: entry.classes }, state);
   state.walking += 1;
   state.schedule(state.time + (rally.walkSeconds ?? state.inputs.walkSeconds) / moveSpeedMultiplier, (s) => {
@@ -488,7 +488,7 @@ function offerSteps(engine: Engine): void {
 
 function applyDueEvents(engine: Engine): void {
   while (engine.events.length > 0 && engine.events[0].time <= engine.time) {
-    engine.events.shift().apply(engine);
+    engine.events.shift()!.apply(engine);
   }
 }
 
@@ -504,7 +504,7 @@ function orderNeed(cost: Resources, reserve: Readonly<Resources> | undefined): R
 }
 
 function payOrder(engine: Engine, instance: BuildingInstance): void {
-  const order = instance.order;
+  const order = instance.order!;
   const entry = resolveUnitEntry(order.unit, engine);
   if (!entry || entry.age > engine.age || engine.population + entry.costs.popcap > engine.supply) {
     return;
@@ -612,7 +612,7 @@ function startAutoHouses(engine: Engine): void {
 // Runs before anything else in the instant, so steps and arrivals at this instant already see the ref dry.
 function collectRunOuts(engine: Engine): void {
   for (const ref of FINITE_NODE_REFS) {
-    if (isDepleted(engine.stock, ref) && engine.stock.get(ref).depletedAt === null && !engine.runOuts.includes(ref)) {
+    if (isDepleted(engine.stock, ref) && engine.stock.get(ref)!.depletedAt === null && !engine.runOuts.includes(ref)) {
       engine.idle[ref] += engine.gatherers[ref];
       engine.gatherers[ref] = 0;
       engine.runOuts.push(ref);
@@ -833,10 +833,10 @@ function stepStuckWarning(timing: StepTiming, engine: Engine): SimWarning {
   return {
     code: 'step-stuck',
     severity: 'warning',
-    message: `step ${timing.step + 1} (${action}) was still waiting on ${waitingOn} at ${formatMinSec(engine.inputs.durationSeconds)}, from ${formatMinSec(armedAt)}.`,
+    message: `step ${timing.step + 1} (${action}) was still waiting on ${waitingOn} at ${formatMinSec(engine.inputs.durationSeconds)}, from ${formatMinSec(armedAt!)}.`,
     step: timing.step,
-    waitingOn,
-    at: armedAt,
+    waitingOn: waitingOn!,
+    at: armedAt!,
   };
 }
 

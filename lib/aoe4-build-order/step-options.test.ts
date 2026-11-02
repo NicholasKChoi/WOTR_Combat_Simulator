@@ -8,7 +8,7 @@ import { validateBuildOrder } from './validate'
 const options = stepOptions(ENGLISH)
 
 function lowestAge(baseId: string): number {
-    return Math.min(...ENGLISH.byBaseId.get(baseId).map((entry) => entry.age))
+    return Math.min(...ENGLISH.byBaseId.get(baseId)!.map((entry) => entry.age))
 }
 
 describe('stepOptions constants', () => {
@@ -51,9 +51,9 @@ describe('stepOptions from game data', () => {
         const tech = options.techs[0]
         const data = editGameData(({ snapshot }) => {
             const entry = [...snapshot.technologies, ...snapshot.upgrades].find((e) => e.baseId === tech)
-            entry.effects = [{ property: 'woodGatherRate', select: { id: ['villager'] }, effect: 'multiply', value: 1.1, type: 'influence' }]
+            entry!.effects = [{ property: 'woodGatherRate', select: { id: ['villager'] }, effect: 'multiply', value: 1.1, type: 'influence' }]
         })
-        expect(classifyTech(data.byBaseId.get(tech)[0], data).kind).toBe('rejected')
+        expect(classifyTech(data.byBaseId.get(tech)![0], data).kind).toBe('rejected')
         expect(stepOptions(data).techs).not.toContain(tech)
         expect(stepOptions(data).techSites[tech]).toBeUndefined()
     })

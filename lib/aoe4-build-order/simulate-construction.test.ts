@@ -23,7 +23,7 @@ type Entry = { id: string; costs: Record<string, number>; age: number }
 
 function editEntry(parts: Parts, id: string, edit: (entry: Entry) => void) {
     const all = [...parts.snapshot.units, ...parts.snapshot.buildings] as unknown as Entry[]
-    edit(all.find((e) => e.id === id))
+    edit(all.find((e) => e.id === id)!)
 }
 
 const rw = rateOf('wood')
@@ -55,7 +55,7 @@ describe('build step', () => {
         for (const n of [1, 2, 4]) {
             const result = run([house(n, 'wood')], { start: { villagers: { sheep: 2, wood: 4 }, rally: 'sheep' }, inputs: noHouses })
             const [step] = result.steps
-            expect(step.completedAt - step.startedAt).toBeCloseTo(5 + (15 * 3) / (n + 2), 9)
+            expect(step.completedAt! - step.startedAt!).toBeCloseTo(5 + (15 * 3) / (n + 2), 9)
         }
     })
 
@@ -119,7 +119,7 @@ describe('build step', () => {
         expect(started).toBeCloseTo(50 / (6 * rw), 6)
         const payments = series(blocked, 'villager')
         expect(payments[sampleIndex(blocked, 20)]).toBe(0)
-        expect(payments[blocked.times.findIndex((t) => t >= started + 20)]).toBe(0)
+        expect(payments[blocked.times.findIndex((t) => t >= started! + 20)]).toBe(0)
         const aged = run([{ action: 'build', building: 'kings-palace', from: 'wood' }], options)
         expect(aged.steps[0].status).toBe('waiting')
         expect(aged.floating.wood[0]).toBe(50)
@@ -192,7 +192,7 @@ describe('build hooks', () => {
         const calls: string[] = []
         const rules: CivRules = {
             onBuildingComplete(state, ctx) {
-                const list = state.instances.get(ctx.baseId)
+                const list = state.instances.get(ctx.baseId)!
                 expect(list[list.length - 1].instance).toBe(ctx.instance)
                 calls.push(`built ${ctx.baseId}#${ctx.instance} count=${state.buildings.get(ctx.baseId)} age=${state.age}`)
             },
@@ -238,7 +238,7 @@ describe('ages', () => {
         expect(result.steps.map((s) => s.startedAt)).toEqual([0, 0, 100])
         expect(result.steps[2]).toMatchObject({ armedAt: 0, waitSeconds: 100 })
         expect(result.steps[1].completedAt).toBe(100)
-        const unit = (id: string) => result.unitsProduced.find((u) => u.unitId === id)
+        const unit = (id: string) => result.unitsProduced.find((u) => u.unitId === id)!
         expect(unit('man-at-arms-1')).toMatchObject({ tier: 1 })
         expect(unit('man-at-arms-1').counts[sampleIndex(result, 100)]).toBe(6)
         expect(unit('man-at-arms-1').counts.at(-1)).toBe(7)

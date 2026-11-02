@@ -145,7 +145,7 @@ describe('rules references', () => {
                 expect(resolves(row.grantedBy), row.grantedBy).toBe(true)
             }
             for (const baseId of [row.condition?.nearBuilding, row.condition?.producer].filter(Boolean)) {
-                expect(data.byBaseId.get(baseId)?.[0].type, baseId).toBe('building')
+                expect(data.byBaseId.get(baseId!)?.[0].type, baseId).toBe('building')
             }
         }
     })
@@ -157,7 +157,7 @@ describe('rules references', () => {
             const upgrade = data.byBaseId.get(upgradeId)?.[0]
             expect(upgrade?.type, upgradeId).toBe('upgrade')
             const tiers = data.byBaseId.get(target.value) ?? []
-            expect(tiers.some((t) => t.type === 'unit' && t.age === upgrade.age), `${upgradeId} -> ${target.value}`).toBe(true)
+            expect(tiers.some((t) => t.type === 'unit' && t.age === upgrade!.age), `${upgradeId} -> ${target.value}`).toBe(true)
         }
     })
 })
@@ -166,7 +166,7 @@ describe('loadGameData', () => {
     it('indexes entries by id and by baseId in ascending age', () => {
         expect(data.byId.get('wheelbarrow-1')?.baseId).toBe('wheelbarrow')
         expect(data.byBaseId.get('villager')?.[0].id).toBe('villager-1')
-        const ages = data.byBaseId.get('man-at-arms').map((e) => e.age)
+        const ages = data.byBaseId.get('man-at-arms')!.map((e) => e.age)
         expect(ages.length).toBeGreaterThan(1)
         expect(ages).toEqual([...ages].sort((a, b) => a - b))
     })
@@ -179,9 +179,9 @@ describe('loadGameData', () => {
         expect(() => {
             data.civData.startingState.age.value = 2
         }).toThrow(TypeError)
-        expect(() => (data.byBaseId.get('man-at-arms') as SnapshotEntry[]).push(data.byId.get('villager-1'))).toThrow(TypeError)
+        expect(() => (data.byBaseId.get('man-at-arms') as SnapshotEntry[]).push(data.byId.get('villager-1')!)).toThrow(TypeError)
         expect(() => {
-            data.byId.get('villager-1').costs.food = 0
+            data.byId.get('villager-1')!.costs.food = 0
         }).toThrow(TypeError)
         expect(() => {
             data.base.gatherNodes.wood.rate.value = 1
@@ -218,7 +218,7 @@ describe('buildGameData', () => {
         const reversed = snapshot.units.filter(isManAtArms).reverse()
         snapshot.units = [...snapshot.units.filter((e) => !isManAtArms(e)), ...reversed]
         expect(reversed.map((e) => e.age)).not.toEqual([...reversed.map((e) => e.age)].sort((a, b) => a - b))
-        const ages = buildGameData('english', snapshot, base, civData).byBaseId.get('man-at-arms').map((e) => e.age)
+        const ages = buildGameData('english', snapshot, base, civData).byBaseId.get('man-at-arms')!.map((e) => e.age)
         expect(ages).toEqual([...ages].sort((a, b) => a - b))
     })
 

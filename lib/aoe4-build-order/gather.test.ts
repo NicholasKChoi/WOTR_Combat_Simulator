@@ -71,7 +71,7 @@ describe('effectiveGatherRate with technologies', () => {
     })
 
     it('chains every rate property of a node', () => {
-        const foodRow = { ...data.civData.effects.find((row) => row.grantedBy === 'shaft-mining'), property: 'foodGatherRate', value: 2 }
+        const foodRow = { ...data.civData.effects.find((row) => row.grantedBy === 'shaft-mining')!, property: 'foodGatherRate', value: 2 }
         const game = { ...data, civData: { ...data.civData, effects: [...data.civData.effects, foodRow] } }
         const state = effectStateOf({ data: game, age: 2, buildings: new Map([['mill', 1]]), coverage: { mill: 1 }, ...researchedOf(['shaft-mining'], game) })
         expect(effectiveGatherRate('farm', state, inputs)).toBeCloseTo(cycleRate(10, 0.75 * 2 * 1.25, 3.01, 0), 12)

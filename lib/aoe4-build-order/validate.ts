@@ -452,7 +452,7 @@ function resolveTrips(overrides: Fields | undefined, data: GameData, issues: Bui
       issues.push(inputIssue('unknown-id', `trips.${node}`, `unknown node "${node}"`));
       continue;
     }
-    const trip = readRecord(overrides, node, `trips.${node}`, issues) ?? {};
+    const trip = readRecord(overrides!, node, `trips.${node}`, issues) ?? {};
     for (const field of TRIP_FIELDS) {
       const value = readNumber(trip, field, `trips.${node}.${field}`, field, issues);
       if (value !== undefined) trips[node as GatherNodeId][field] = value;
@@ -471,10 +471,10 @@ function resolveNodeAmounts(overrides: Fields | undefined, data: GameData, issue
     const problem = nodeRefIssue(ref, true);
     if (problem) {
       issues.push(inputIssue(problem.code, path, problem.reason));
-    } else if (overrides[ref] === null) {
+    } else if (overrides![ref] === null) {
       amounts[ref as FiniteNodeRef] = null;
     } else {
-      const value = readNumber(overrides, ref, path, 'nodeAmount', issues);
+      const value = readNumber(overrides!, ref, path, 'nodeAmount', issues);
       if (value !== undefined) amounts[ref as FiniteNodeRef] = value;
     }
   }
@@ -489,7 +489,7 @@ function resolveInfluence(overrides: Fields | undefined, data: GameData, issues:
       issues.push(inputIssue('unknown-id', path, `unknown building "${building}"`));
       continue;
     }
-    const value = readNumber(overrides, building, path, 'influenceCoverage', issues);
+    const value = readNumber(overrides!, building, path, 'influenceCoverage', issues);
     if (value !== undefined) coverage[building] = value;
   }
   return coverage;

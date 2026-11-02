@@ -230,7 +230,7 @@ function parseAction(t: Tokens, { trigger, reaction }: ParsedTrigger): BuildStep
   if (!parse) {
     throw new LineError(`expected ${trigger ? 'an action' : 'a trigger or action'}, got ${quote(word)}`);
   }
-  t.accept(word);
+  t.accept(word!);
   const step = parse(t);
   if (!trigger) {
     return step;

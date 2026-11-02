@@ -24,7 +24,7 @@ describe('canAfford', () => {
 
 describe('costOf', () => {
     it('scales every resource of the entry by the unit count', () => {
-        const villager = ENGLISH.byBaseId.get('villager')[0]
+        const villager = ENGLISH.byBaseId.get('villager')![0]
         const { food, wood, gold, stone } = villager.costs
         expect(costOf(villager, 3)).toEqual({ food: food * 3, wood: wood * 3, gold: gold * 3, stone: stone * 3 })
     })
