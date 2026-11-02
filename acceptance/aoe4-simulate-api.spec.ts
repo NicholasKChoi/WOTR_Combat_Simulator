@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
-import { SIMULATE_PATH, postSimulate, postSimulateRaw } from './helpers'
+import { SIMULATE_PATH, buildOrderFrom, postSimulate, postSimulateRaw } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -25,10 +25,6 @@ function order(steps: unknown[], start: unknown = START) {
   return { civ: 'english', name: 'Test', start, steps }
 }
 
-function paste(...stepLines: string[]) {
-  return [START_LINE, ...stepLines].join('\n')
-}
-
 async function expectOk(request: APIRequestContext, body: unknown) {
   const response = await postSimulate(request, body)
   expect(response.status(), await response.text()).toBe(200)
@@ -51,18 +47,18 @@ async function expectFirstCode(request: APIRequestContext, body: unknown, code: 
 }
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: PASTE }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom(PASTE) }, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('text and JSON paths', () => {
   test('a paste order with a start line and a rally step simulates English with one timing per step line', async ({ request }) => {
-    const body = await expectOk(request, { text: PASTE })
+    const body = await expectOk(request, { buildOrder: buildOrderFrom(PASTE) })
     expect(body.civ).toBe('english')
     expect(body.steps).toHaveLength(2)
   })
 
   test('the equivalent JSON build order gives the same units, steps and times as the paste', async ({ request }) => {
-    const fromText = await expectOk(request, { text: PASTE })
+    const fromText = await expectOk(request, { buildOrder: buildOrderFrom(PASTE) })
     const fromJson = await expectOk(request, { buildOrder: JSON_ORDER })
     expect(fromJson.unitsProduced).toEqual(fromText.unitsProduced)
     expect(fromJson.steps).toEqual(fromText.steps)
@@ -107,7 +103,7 @@ test.describe('each issue code over HTTP', () => {
     ['both text and buildOrder', { text: PASTE, buildOrder: JSON_ORDER }, /text.*buildOrder/],
     ['text null beside buildOrder counts as both', { text: null, buildOrder: JSON_ORDER }, /text.*buildOrder/],
     ['text that is not a string', { text: 42 }, /^text/],
-    ['a body that is an array', [{ text: PASTE }], /body/],
+    ['a body that is an array', [{ buildOrder: JSON_ORDER }], /body/],
     ['a step that is not an object', { buildOrder: order(['produce']) }, /steps\[0\]/],
   ]
   for (const [label, body, message] of syntaxCases) {
@@ -117,28 +113,23 @@ test.describe('each issue code over HTTP', () => {
     })
   }
 
-  test('syntax: a paste line that does not parse carries its line', async ({ request }) => {
-    const issue = await expectFirstCode(request, { text: paste('@1:61 produce villager from capital-town-center') }, 'syntax')
-    expect(issue.line).toBe(2)
-  })
-
   test('unknown-trigger-kind: a trigger of kind resource', async ({ request }) => {
     const step = { trigger: { kind: 'resource' }, action: 'produce', producer: 'capital-town-center', unit: 'villager' }
     await expectFirstCode(request, { buildOrder: order([step]) }, 'unknown-trigger-kind')
   })
 
   test('unknown-id: an unknown producer', async ({ request }) => {
-    const issue = await expectFirstCode(request, { text: paste('produce villager from no-such-building') }, 'unknown-id')
+    const issue = await expectFirstCode(request, { buildOrder: order([{ action: 'produce', producer: 'no-such-building', unit: 'villager' }]) }, 'unknown-id')
     expect(issue.message).toContain('no-such-building')
   })
 
   test('unsupported-tech: military-academy', async ({ request }) => {
-    const issue = await expectFirstCode(request, { text: paste('research military-academy') }, 'unsupported-tech')
+    const issue = await expectFirstCode(request, { buildOrder: order([{ action: 'research', tech: 'military-academy' }]) }, 'unsupported-tech')
     expect(issue.message).toContain('military-academy')
   })
 
   test('unknown-tech-effect: forestry', async ({ request }) => {
-    const issue = await expectFirstCode(request, { text: paste('research forestry') }, 'unknown-tech-effect')
+    const issue = await expectFirstCode(request, { buildOrder: order([{ action: 'research', tech: 'forestry' }]) }, 'unknown-tech-effect')
     expect(issue.message).toContain('forestry')
   })
 
@@ -170,19 +161,19 @@ test.describe('each issue code over HTTP', () => {
   })
 
   test('invalid: a producer that cannot produce the unit', async ({ request }) => {
-    await expectFirstCode(request, { text: paste('produce villager from house') }, 'invalid')
+    await expectFirstCode(request, { buildOrder: order([{ action: 'produce', producer: 'house', unit: 'villager' }]) }, 'invalid')
   })
 })
 
 test.describe('invalid rules', () => {
   const cases: [string, unknown, RegExp][] = [
-    ['start.villagers summing to 5', { text: 'start 5 sheep -> sheep' }, /line 1.*5/],
+    ['start.villagers summing to 5', { buildOrder: order([], { villagers: { sheep: 5 }, rally: 'sheep' }) }, /start.*5/],
     ['walkSeconds on a produce without rally', { buildOrder: order([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', walkSeconds: 4 }]) }, /steps\[0\].*walkSeconds/],
-    ['rally on a produce of scout', { text: paste('produce scout from capital-town-center -> sheep') }, /line 2.*scout/],
-    ['a rally step on house', { text: paste('rally house -> wood') }, /line 2.*house/],
-    ['no start.rally while English starts with capital-town-center', { text: 'start 6 sheep' }, /line 1.*capital-town-center/],
-    ['produce villager from house', { text: paste('produce villager from house') }, /line 2.*house.*villager/],
-    ['research wheelbarrow at house', { text: paste('research wheelbarrow at house') }, /line 2.*wheelbarrow.*house/],
+    ['rally on a produce of scout', { buildOrder: order([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', rally: 'sheep' }]) }, /steps\[0\].*scout/],
+    ['a rally step on house', { buildOrder: order([{ action: 'rally', producer: 'house', to: 'wood' }]) }, /steps\[0\].*house/],
+    ['no start.rally while English starts with capital-town-center', { buildOrder: order([], { villagers: { sheep: 6 } }) }, /start.*capital-town-center/],
+    ['produce villager from house', { buildOrder: order([{ action: 'produce', producer: 'house', unit: 'villager' }]) }, /steps\[0\].*house.*villager/],
+    ['research wheelbarrow at house', { buildOrder: order([{ action: 'research', tech: 'wheelbarrow', at: 'house' }]) }, /steps\[0\].*wheelbarrow.*house/],
   ]
   for (const [label, body, message] of cases) {
     test(label, async ({ request }) => {
@@ -192,16 +183,16 @@ test.describe('invalid rules', () => {
   }
 
   test('a build of town-center with no start.rally and no earlier rally source', async ({ request }) => {
-    const issues = await expectIssues(request, { text: 'start 6 sheep\nbuild town-center from wood' })
+    const issues = await expectIssues(request, { buildOrder: order([{ action: 'build', building: 'town-center', from: 'wood' }], { villagers: { sheep: 6 } }) })
     const build = issues.find((i) => i.step === 0)
     expect(build?.code).toBe('invalid')
-    expect(build?.message).toMatch(/line 2.*town-center/)
+    expect(build?.message).toMatch(/steps\[0\].*town-center/)
   })
 
   const neighbours: [string, unknown][] = [
-    ['start.villagers summing to 6 with start.rally', { text: START_LINE }],
-    ['produce villager from kings-palace', { text: paste('produce villager from kings-palace') }],
-    ['research wheelbarrow at mill', { text: paste('research wheelbarrow at mill') }],
+    ['start.villagers summing to 6 with start.rally', { buildOrder: order([]) }],
+    ['produce villager from kings-palace', { buildOrder: order([{ action: 'produce', producer: 'kings-palace', unit: 'villager' }]) }],
+    ['research wheelbarrow at mill', { buildOrder: order([{ action: 'research', tech: 'wheelbarrow', at: 'mill' }]) }],
   ]
   for (const [label, body] of neighbours) {
     test(`passing neighbour: ${label}`, async ({ request }) => {
@@ -211,9 +202,7 @@ test.describe('invalid rules', () => {
 })
 
 test.describe('issue location', () => {
-  test('a paste step issue carries line and step; the same fault as JSON carries step and no line', async ({ request }) => {
-    const [pasted] = await expectIssues(request, { text: paste('produce villager from house') })
-    expect(pasted).toMatchObject({ step: 0, line: 2 })
+  test('a JSON step issue carries step and no line', async ({ request }) => {
     const [json] = await expectIssues(request, { buildOrder: order([{ action: 'produce', producer: 'house', unit: 'villager' }]) })
     expect(json.step).toBe(0)
     expect(json).not.toHaveProperty('line')
@@ -223,7 +212,7 @@ test.describe('issue location', () => {
     const [start] = await expectIssues(request, { buildOrder: order([], { villagers: { sheep: 5 }, rally: 'sheep' }) })
     expect(start).not.toHaveProperty('step')
     expect(start).not.toHaveProperty('line')
-    const [inputs] = await expectIssues(request, { text: PASTE, inputs: { durationSeconds: 59 } })
+    const [inputs] = await expectIssues(request, { buildOrder: buildOrderFrom(PASTE), inputs: { durationSeconds: 59 } })
     expect(inputs).not.toHaveProperty('step')
     expect(inputs).not.toHaveProperty('line')
   })
@@ -258,7 +247,7 @@ test.describe('issue ordering', () => {
 test.describe('framework and method responses', () => {
   for (const method of ['get', 'put', 'delete'] as const) {
     test(`${method.toUpperCase()} returns 405 with Allow: POST`, async ({ request }) => {
-      const response = await request[method](SIMULATE_PATH, { data: { text: PASTE }, timeout: 10_000 })
+      const response = await request[method](SIMULATE_PATH, { data: { buildOrder: JSON_ORDER }, timeout: 10_000 })
       expect(response.status()).toBe(405)
       expect(response.headers()['allow']).toBe('POST')
       expect(typeof (await response.json()).error).toBe('string')

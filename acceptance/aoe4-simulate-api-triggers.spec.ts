@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { INFINITE_NODES, postSimulate } from './helpers'
+import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -60,7 +60,7 @@ const sum = (breakdown: Timing['waitBreakdown']) => Object.values(breakdown).red
 const stuck = (result: Result) => result.warnings.filter((w) => w.code === 'step-stuck')
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: 'start 6 sheep -> sheep' }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom('start 6 sheep -> sheep') }, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('a depleted trigger', () => {

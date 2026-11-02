@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
-import { postSimulate } from './helpers'
+import { buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -28,7 +28,7 @@ async function simulate(request: APIRequestContext, body: unknown): Promise<Resu
 const houseWarnings = (result: Result) => result.warnings.filter((w) => w.code.startsWith('auto-houses'))
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: 'start 6 sheep -> sheep' }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom('start 6 sheep -> sheep') }, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('auto-house warnings through the simulate API', () => {

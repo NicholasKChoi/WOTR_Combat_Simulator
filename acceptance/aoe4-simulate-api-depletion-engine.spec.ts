@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { INFINITE_NODES, postSimulate } from './helpers'
+import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -44,7 +44,7 @@ async function perVillagerRate(request: APIRequestContext, node: string, resourc
 }
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: 'start 6 sheep -> sheep' }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom('start 6 sheep -> sheep') }, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('a node with a finite stock', () => {
@@ -274,7 +274,7 @@ test.describe('the prebuilt English build against the pre-depletion engine', () 
   })
 
   test('leaves orders without a farm build exactly as before', async ({ request }) => {
-    const villagers = await simulate(request, { text: 'start 6 sheep -> sheep\nproduce villager from capital-town-center x20', inputs: { nodeAmounts: INFINITE_NODES } })
+    const villagers = await simulate(request, { buildOrder: buildOrderFrom('start 6 sheep -> sheep\nproduce villager from capital-town-center x20'), inputs: { nodeAmounts: INFINITE_NODES } })
     noDepletion(villagers)
     expect(villagers.steps[0]).toMatchObject({ completedAt: 400 })
     expect(last(villagers.floating.food)).toBeCloseTo(15780.897488678529, 6)

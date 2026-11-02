@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { INFINITE_NODES, postSimulate } from './helpers'
+import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -29,7 +29,7 @@ function expectTiming(timing: Timing, expected: { startedAt: number; completedAt
 }
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: 'start 6 sheep -> sheep' }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom('start 6 sheep -> sheep') }, WARM_UP_TIMEOUT_MS)
 })
 
 // The expected numbers are the engine's results for these orders; a change to payment, tolerance or

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { postSimulate } from './helpers'
+import { buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -35,7 +35,7 @@ const withHorizon = (durationSeconds: number) => ({ buildOrder: english1tc, inpu
 const villager = english1tc.steps[0]
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: 'start 6 sheep -> sheep' }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom('start 6 sheep -> sheep') }, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('markers on the prebuilt English build', () => {
