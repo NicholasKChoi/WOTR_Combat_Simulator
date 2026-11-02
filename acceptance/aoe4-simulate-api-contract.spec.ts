@@ -14,6 +14,7 @@ import type {
   NodeDepletion,
   SimWarning,
   SimulationResult,
+  SpendCategory,
   StepTiming,
   StepWait,
   UnitSeries,
@@ -63,7 +64,7 @@ function objectVariants(schema: Schema): Schema[] {
 
 const REQUEST_SCHEMAS = ['SimulateRequest', 'BuildOrder', 'BuildStart', 'BuildStep', 'Trigger', 'SimInputOverrides', 'TripInputOverrides']
 const RESPONSE_SCHEMAS = ['SimulateError', 'SimulationResult', 'UnitSeries', 'StepTiming', 'BuildOrderIssue', 'BuildOrderNote', 'NodeDepletion']
-const SHARED_SCHEMAS = ['GatherNodeId', 'ResourceKind', 'CivId', 'FiniteGatherNodeId', 'DepositRef', 'NodeRef', 'FiniteNodeRef', 'Severity', 'StepWait', 'SimWarning']
+const SHARED_SCHEMAS = ['GatherNodeId', 'ResourceKind', 'SpendCategory', 'CivId', 'FiniteGatherNodeId', 'DepositRef', 'NodeRef', 'FiniteNodeRef', 'Severity', 'StepWait', 'SimWarning']
 
 const PRODUCE = { action: 'produce', producer: 'capital-town-center', unit: 'villager' }
 const START = { villagers: { sheep: 6 }, rally: 'sheep' }
@@ -180,6 +181,11 @@ test.describe('enums and node-ref unions match the TypeScript constants', () => 
     expect(schemas.DepositRef.enum).toEqual(['gold#2', 'gold#3', 'gold#4', 'gold#5', 'gold#6', 'gold#7', 'gold#8'])
     expect(schemas.Severity.enum).toEqual(SEVERITIES)
     expect(schemas.StepWait.enum).toEqual(Object.keys(stepWaits))
+  })
+
+  test('SpendCategory enumerates the TypeScript categories', () => {
+    const spendCategories: Record<SpendCategory, true> = { villagers: true, military: true, buildings: true, research: true }
+    expect(schemas.SpendCategory.enum).toEqual(Object.keys(spendCategories))
   })
 
   test('NodeRef accepts exactly NODE_REFS and FiniteNodeRef exactly FINITE_NODE_REFS', () => {
@@ -304,6 +310,18 @@ test.describe('real responses against the schemas', () => {
     expectInvalid('SimulationResult', nested)
   })
 
+  test('a real 200 with a spent category removed, or an extra spent key, does not validate', async ({ request }) => {
+    const body = await expect200(request, requestExamples.buildOrder.value)
+
+    const missing = structuredClone(body)
+    delete missing.spent.research
+    expectInvalid('SimulationResult', missing)
+
+    const extra = structuredClone(body)
+    extra.spent.other = [0]
+    expectInvalid('SimulationResult', extra)
+  })
+
   test('a real 400 validates; an issue with an extra property does not', async ({ request }) => {
     const body = await expect400(request, buildOrderBody([{ ...PRODUCE, producer: 'house' }]))
     const mutated = structuredClone(body)
@@ -394,6 +412,9 @@ test.describe('exported types match the spec', () => {
     unitsProduced: true,
     gatherRates: true,
     floating: true,
+    spent: true,
+    spawnedPopulation: true,
+    populationCapReachedAt: true,
     steps: true,
     ages: true,
     notes: true,

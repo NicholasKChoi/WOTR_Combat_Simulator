@@ -419,6 +419,84 @@
                       0
                     ]
                   },
+                  "spent": {
+                    "villagers": [
+                      50,
+                      50,
+                      50,
+                      50,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100,
+                      100
+                    ],
+                    "military": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ],
+                    "buildings": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ],
+                    "research": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ]
+                  },
+                  "spawnedPopulation": [
+                    7,
+                    7,
+                    7,
+                    7,
+                    8,
+                    8,
+                    8,
+                    8,
+                    9,
+                    9,
+                    9,
+                    9,
+                    9
+                  ],
+                  "populationCapReachedAt": null,
                   "steps": [
                     {
                       "step": 0,
@@ -1463,7 +1541,10 @@
           "ages",
           "notes",
           "depletions",
-          "warnings"
+          "warnings",
+          "spent",
+          "spawnedPopulation",
+          "populationCapReachedAt"
         ],
         "additionalProperties": false,
         "properties": {
@@ -1587,6 +1668,42 @@
                 "description": "Banked amount of this resource at each sample."
               }
             }
+          },
+          "spent": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/SpendCategory"
+            },
+            "required": [
+              "villagers",
+              "military",
+              "buildings",
+              "research"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "description": "Cumulative resources paid by category (food, wood, gold and stone summed) at each sample; a payment at a sample time is included."
+          },
+          "spawnedPopulation": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Popcap of spawned villagers and units at each sample, start population included; paid units still in production are not counted."
+          },
+          "populationCapReachedAt": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Instant spawnedPopulation first reached the population cap (a spawn instant, not a sample time), or null."
           },
           "steps": {
             "type": "array",
@@ -2036,6 +2153,16 @@
             "description": "Count of issues dropped past the 100-issue cap; absent when none were dropped."
           }
         }
+      },
+      "SpendCategory": {
+        "type": "string",
+        "enum": [
+          "villagers",
+          "military",
+          "buildings",
+          "research"
+        ],
+        "description": "What a payment bought: villager production, any other unit, a building (including auto-houses) or a technology."
       }
     }
   }

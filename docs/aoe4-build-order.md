@@ -522,6 +522,14 @@ A `SimulationResult` holds:
   appear in it, so every series starts at 0.
 - `gatherRates`: per `ResourceKind` (`food`, `wood`, `gold`, `stone`), the income rate per minute.
 - `floating`: per `ResourceKind`, the banked, unspent amount.
+- `spent`: per spend category (`villagers`, `military`, `buildings`, `research`), the cumulative resources
+  paid, food, wood, gold and stone summed. `villagers` is villager production, `military` any other unit,
+  `buildings` every construction including auto-houses, `research` every technology.
+- `spawnedPopulation`: the popcap of villagers and units that have spawned, including the start villagers and
+  start units and villagers still walking or idle. A paid unit still in its production queue is not counted
+  until it spawns, unlike the supply-check population, which counts it at payment.
+- `populationCapReachedAt`: the instant `spawnedPopulation` first reaches the population cap (`0` when the
+  start already does), or `null`. It is a spawn instant, not rounded to a sample time.
 - `steps`: one `StepTiming` per step with `status`, `armedAt`, `startedAt`, `completedAt` and
   `waitSeconds`. `status` is one of `completed`, `in-progress`, `waiting` or `not-reached`.
 - `ages`: each age reached and its `reachedAt` time.
