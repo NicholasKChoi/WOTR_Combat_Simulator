@@ -528,6 +528,16 @@ A `SimulationResult` holds:
 - `notes`: `BuildOrderNote`s, non-fatal, one per research step of a technology whose effects are not all
   simulated, whether or not the step is reached, in step order: `tech-effect-ignored` (ignored combat
   properties listed) and `tech-effect-unmodeled` (empty `properties`).
+- `depletions`: `NodeDepletion`s (`node`, `amount`, `depletedAt`), one per finite node ref the run uses, in
+  node-ref order: `node` is a finite node (`sheep`, `berry`, `deer`, `boar`, `gold`, `stone`) or a numbered
+  gold deposit (`gold#2` to `gold#8`), `amount` its starting stock (`null` when infinite), and `depletedAt`
+  when it ran out (`null` if it still had stock at the horizon).
+- `warnings`: non-fatal `SimWarning`s, each with a `code` (`node-depleted`, `idle-arrival` or `step-stuck`),
+  a `severity` (one of `error`, `warning`, `info`), a `message` and an `at` time. They are sorted by `at`;
+  at the same `at`, node warnings come first in node-ref order with `node-depleted` before `idle-arrival`
+  for one node, then `step-stuck` by step index.
+- Both `depletions` and `warnings` are always empty today, because no node runs out: the engine still
+  treats every node as infinite.
 
 The page draws three graphs over time from it: units produced (by unit and tier), gather rates, and
 floating resources.

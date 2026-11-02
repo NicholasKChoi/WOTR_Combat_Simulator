@@ -443,7 +443,9 @@
                       "reachedAt": 0
                     }
                   ],
-                  "notes": []
+                  "notes": [],
+                  "depletions": [],
+                  "warnings": []
                 }
               }
             }
@@ -1296,6 +1298,57 @@
         ],
         "description": "A gather node villagers work at."
       },
+      "FiniteGatherNodeId": {
+        "type": "string",
+        "enum": [
+          "sheep",
+          "berry",
+          "deer",
+          "boar",
+          "gold",
+          "stone"
+        ],
+        "description": "A gather node that can run out; farm and wood never do."
+      },
+      "DepositRef": {
+        "type": "string",
+        "enum": [
+          "gold#2",
+          "gold#3",
+          "gold#4",
+          "gold#5",
+          "gold#6",
+          "gold#7",
+          "gold#8"
+        ],
+        "description": "A numbered gold deposit, gold#2 to gold#8. Deposit 1 is written plain gold."
+      },
+      "NodeRef": {
+        "description": "A gather node or a numbered gold deposit.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/GatherNodeId",
+            "description": "A gather node; gold is gold deposit 1."
+          },
+          {
+            "$ref": "#/components/schemas/DepositRef",
+            "description": "A numbered gold deposit."
+          }
+        ]
+      },
+      "FiniteNodeRef": {
+        "description": "A node ref that can run out: a finite gather node or a numbered gold deposit.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/FiniteGatherNodeId",
+            "description": "A finite gather node; gold is gold deposit 1."
+          },
+          {
+            "$ref": "#/components/schemas/DepositRef",
+            "description": "A numbered gold deposit."
+          }
+        ]
+      },
       "ResourceKind": {
         "type": "string",
         "enum": [
@@ -1408,7 +1461,9 @@
           "floating",
           "steps",
           "ages",
-          "notes"
+          "notes",
+          "depletions",
+          "warnings"
         ],
         "additionalProperties": false,
         "properties": {
@@ -1571,6 +1626,20 @@
               "$ref": "#/components/schemas/BuildOrderNote"
             },
             "description": "Non-fatal notes about technologies whose effects are not all simulated."
+          },
+          "depletions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NodeDepletion"
+            },
+            "description": "One entry per finite node ref the run uses (the six finite nodes plus every gold deposit the order names), in node-ref order. Empty today: every node is infinite."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SimWarning"
+            },
+            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then step-stuck by step. Empty today: no node runs out."
           }
         }
       },
@@ -1753,6 +1822,190 @@
             "description": "Effect properties not simulated; empty for tech-effect-unmodeled."
           }
         }
+      },
+      "Severity": {
+        "type": "string",
+        "enum": [
+          "error",
+          "warning",
+          "info"
+        ],
+        "description": "How serious a message is, most severe first. No result item is error today; request errors are the 400 issues."
+      },
+      "StepWait": {
+        "type": "string",
+        "enum": [
+          "resources",
+          "villagers",
+          "population",
+          "prerequisite",
+          "trigger",
+          "earlier-step"
+        ],
+        "description": "Why a step has not started yet."
+      },
+      "NodeDepletion": {
+        "type": "object",
+        "description": "Starting stock and run-out time of one node ref the run uses.",
+        "required": [
+          "node",
+          "amount",
+          "depletedAt"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "node": {
+            "$ref": "#/components/schemas/FiniteNodeRef",
+            "description": "The node ref."
+          },
+          "amount": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Starting stock; null when the ref is infinite."
+          },
+          "depletedAt": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Game time in seconds the ref ran out; null if it still had stock at durationSeconds."
+          }
+        }
+      },
+      "SimWarning": {
+        "description": "A non-fatal warning about the run, a oneOf tagged by the code const.",
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "A node ref ran out. severity is warning when villagers were left idle there, else info.",
+            "required": [
+              "code",
+              "severity",
+              "message",
+              "node",
+              "at",
+              "idleVillagers"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "const": "node-depleted",
+                "description": "Warning code: node-depleted."
+              },
+              "severity": {
+                "$ref": "#/components/schemas/Severity",
+                "description": "Severity of this warning."
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable warning naming the node by id."
+              },
+              "node": {
+                "$ref": "#/components/schemas/FiniteNodeRef",
+                "description": "The node ref the warning is about."
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Game time in seconds the ref ran out."
+              },
+              "idleVillagers": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Villagers idle at the ref at the end of the run-out instant."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Villagers arrived at a node ref that had already run out and are idle; severity is warning.",
+            "required": [
+              "code",
+              "severity",
+              "message",
+              "node",
+              "at",
+              "idleVillagers"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "const": "idle-arrival",
+                "description": "Warning code: idle-arrival."
+              },
+              "severity": {
+                "$ref": "#/components/schemas/Severity",
+                "description": "Severity of this warning."
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable warning naming the node by id."
+              },
+              "node": {
+                "$ref": "#/components/schemas/FiniteNodeRef",
+                "description": "The node ref the warning is about."
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Game time in seconds of the first such arrival."
+              },
+              "idleVillagers": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Total villagers that arrived idle there by durationSeconds."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A step was still waiting at durationSeconds; severity is warning.",
+            "required": [
+              "code",
+              "severity",
+              "message",
+              "step",
+              "waitingOn",
+              "at"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "const": "step-stuck",
+                "description": "Warning code: step-stuck."
+              },
+              "severity": {
+                "$ref": "#/components/schemas/Severity",
+                "description": "Severity of this warning."
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable warning naming the step (1-based) and its action."
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "0-based index of the waiting step."
+              },
+              "waitingOn": {
+                "$ref": "#/components/schemas/StepWait",
+                "description": "What the step was waiting on at durationSeconds."
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Game time in seconds the step was armed."
+              }
+            }
+          }
+        ]
       },
       "SimulateError": {
         "type": "object",

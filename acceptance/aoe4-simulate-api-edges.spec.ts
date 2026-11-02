@@ -45,7 +45,20 @@ test.describe('result shape', () => {
     expect(response.headers()['content-type']).toContain('application/json')
     const body = await response.json()
     expect(Object.keys(body).sort()).toEqual(
-      ['ages', 'civ', 'durationSeconds', 'floating', 'gatherRates', 'notes', 'sampleSeconds', 'steps', 'times', 'unitsProduced'].sort(),
+      [
+        'ages',
+        'civ',
+        'depletions',
+        'durationSeconds',
+        'floating',
+        'gatherRates',
+        'notes',
+        'sampleSeconds',
+        'steps',
+        'times',
+        'unitsProduced',
+        'warnings',
+      ].sort(),
     )
     expect(body.times[0]).toBe(0)
     expect(body.times[body.times.length - 1]).toBe(body.durationSeconds)

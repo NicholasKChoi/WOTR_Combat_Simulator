@@ -307,7 +307,7 @@ describe('repository constraints', () => {
         expect(grep(["(from|import\\()\\s*['\"].*(components|pages)/apps/", '--', 'lib/aoe4-build-order'])).toBe('')
     })
 
-    it('model.ts exports exactly the 19 documented types and the two shared lists', () => {
+    it('model.ts exports exactly the 27 documented types and the shared lists', () => {
         const src = readFileSync(new URL('./model.ts', import.meta.url), 'utf8')
         const names = [...src.matchAll(/^export (?:type|interface) ([A-Za-z]+)/gm)].map((m) => m[1]).sort()
         expect(names).toEqual([
@@ -318,20 +318,37 @@ describe('repository constraints', () => {
             'BuildStart',
             'BuildStep',
             'CivId',
+            'DepositRef',
+            'FiniteGatherNodeId',
+            'FiniteNodeRef',
             'GatherNodeId',
             'HandValue',
+            'NodeDepletion',
+            'NodeRef',
             'OverlayEffect',
             'ResourceKind',
+            'Severity',
             'SimInputs',
+            'SimWarning',
             'SimulationResult',
             'SpendCategory',
             'StepTiming',
+            'StepWait',
             'TechSupport',
             'Trigger',
             'TripInputs',
             'UnitSeries',
         ])
-        expect([...src.matchAll(/^export (?:const|function|class|enum) (\w+)/gm)].map((m) => m[1])).toEqual(['GATHER_NODES', 'RESOURCE_KINDS'])
+        expect([...src.matchAll(/^export (?:const|function|class|enum) (\w+)/gm)].map((m) => m[1])).toEqual([
+            'GATHER_NODES',
+            'RESOURCE_KINDS',
+            'FINITE_GATHER_NODES',
+            'MAX_DEPOSITS',
+            'NODE_REFS',
+            'FINITE_NODE_REFS',
+            'nodeKindOf',
+            'SEVERITIES',
+        ])
         expect(src).toMatch(/effects-unmodeled/)
         expect(src).toMatch(/walkSeconds/)
     })

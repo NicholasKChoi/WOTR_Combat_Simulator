@@ -18,6 +18,8 @@ function result(): SimulationResult {
         steps: [],
         ages: [{ age: 1, reachedAt: 0 }],
         notes: [],
+        depletions: [],
+        warnings: [],
     }
 }
 

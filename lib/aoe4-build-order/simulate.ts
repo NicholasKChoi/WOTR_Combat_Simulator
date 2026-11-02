@@ -2,6 +2,7 @@ import { civRules } from './civ-rules';
 import type { CivRuleContext, CivRules } from './civ-rules';
 import { constructionSeconds } from './construction';
 import type { GameData, SnapshotEntry } from './data';
+import { sortWarnings } from './depletion';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import type { Resources } from './engine-common';
@@ -666,5 +667,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     steps: engine.steps,
     ages: engine.ages,
     notes: researchNotes(order, data),
+    depletions: [],
+    warnings: sortWarnings([]),
   };
 }
