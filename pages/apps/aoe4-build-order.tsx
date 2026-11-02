@@ -17,7 +17,6 @@ import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-bui
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { loadGameData } from '../../lib/aoe4-build-order/data'
 import { formatBuildOrderText, parseBuildOrderText } from '../../lib/aoe4-build-order/parse-text'
-import type { BuildOrderIssue } from '../../lib/aoe4-build-order/model'
 import { type BuildOrderCatalog, buildOrderCatalog } from '../../lib/aoe4-build-order/schema'
 import { textToBuildOrder } from '../../lib/aoe4-build-order/text-to-build'
 import type { SimulateError, SimulateRequest, SimulateResponse } from '../../lib/aoe4-build-order/api'
@@ -61,7 +60,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [pinned, setPinned] = useState<SimulateResponse | null>(null)
     const [issues, setIssues] = useState<string[]>([])
     const [checked, setChecked] = useState(false)
-    const [rejection, setRejection] = useState<{ first: BuildOrderIssue } | null>(null)
+    const [rejection, setRejection] = useState<{ line: number | undefined } | null>(null)
     const [running, setRunning] = useState(false)
     const [infoExpanded, setInfoExpanded] = useState(false)
     const [tab, setTab] = useState<WorkbenchTab>('build')
@@ -87,7 +86,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     useEffect(() => {
         if (rejection === null) return
         const marginTop = `${runBar.current?.getBoundingClientRect().height ?? 0}px`
-        const { line } = rejection.first
+        const { line } = rejection
         const item = view === 'text' && line !== undefined ? editorBox.current?.querySelector(`[data-testid="build-order-line-number"][data-line="${line}"]`) : null
         const target = item ?? issuesBox.current
         if (!(target instanceof HTMLElement)) return
@@ -102,7 +101,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         if (converted.ok === false) {
             setResult(null)
             setTab('build')
-            setRejection({ first: converted.issues[0] })
+            setRejection({ line: converted.issues[0].line })
             return
         }
         setRunning(true)
