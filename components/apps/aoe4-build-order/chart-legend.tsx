@@ -1,27 +1,5 @@
 import { CHART_MARKER_KINDS, type ChartMarker } from '../../../lib/aoe4-build-order/model'
-import { type ChartSeries, MARKER_COLORS, MARKER_KIND_LABELS, type PinnedSeries, pinnedKey, seriesColor } from './chart-rows'
-
-interface LegendItem {
-    key: string
-    name: string
-    color: string
-    pinned: boolean
-}
-
-export function legendItems(series: readonly ChartSeries[], pinned?: PinnedSeries): LegendItem[] {
-    const pinnedSeries = pinned?.series ?? []
-    const pinnedItem = (s: ChartSeries, i: number): LegendItem => {
-        const current = series.findIndex((c) => c.key === s.key)
-        return { key: pinnedKey(s.key), name: `${s.name} (pinned)`, color: seriesColor(current >= 0 ? current : series.length + i), pinned: true }
-    }
-    const items = series.flatMap((s, i): LegendItem[] => {
-        const pinnedIndex = pinnedSeries.findIndex((p) => p.key === s.key)
-        const current = { key: s.key, name: s.name, color: seriesColor(i), pinned: false }
-        return pinnedIndex >= 0 ? [current, pinnedItem(pinnedSeries[pinnedIndex], pinnedIndex)] : [current]
-    })
-    const pinnedOnly = pinnedSeries.flatMap((s, i) => (series.some((c) => c.key === s.key) ? [] : [pinnedItem(s, i)]))
-    return [...items, ...pinnedOnly]
-}
+import { type ChartSeries, MARKER_COLORS, MARKER_KIND_LABELS, type PinnedSeries, legendItems } from './chart-rows'
 
 interface SeriesLegendProps {
     series: readonly ChartSeries[]

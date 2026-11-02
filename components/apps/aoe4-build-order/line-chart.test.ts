@@ -2,9 +2,8 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
-import { legendItems } from './chart-legend'
 import { type PlacedMarker, SeriesChart, placeMarkers } from './line-chart'
-import { markerLabel, seriesColor } from './chart-rows'
+import { legendItems, markerLabel, seriesColor } from './chart-rows'
 
 const render = (series: Parameters<typeof SeriesChart>[0]['series'], markers?: ChartMarker[]) =>
     renderToString(
@@ -45,8 +44,7 @@ describe('series and marker legends', () => {
         const html = render([{ key: 'a', name: 'A', values: [1, 2] }], [{ kind: 'age-up', label: 'Feudal', at: 2 }])
         expect(html).toMatch(/data-testid="chart-series-legend"[^>]*><h4[^>]*>Series<\/h4>/)
         expect(html).toMatch(/data-testid="chart-marker-legend"[^>]*><h4[^>]*>Markers<\/h4>/)
-        const seriesLegend = html.slice(html.indexOf('chart-series-legend'), html.indexOf('chart-marker-legend'))
-        expect(seriesLegend).not.toContain('chart-marker-legend')
+        expect(html).toMatch(/data-testid="chart-series-legend".*?<\/button><\/div><\/div><div[^>]*data-testid="chart-marker-legend"/)
     })
 
     it('renders one pressed-state button per series with its key', () => {
@@ -54,8 +52,10 @@ describe('series and marker legends', () => {
         expect([...html.matchAll(/data-series="([^"]+)" aria-pressed="false"/g)].map((m) => m[1])).toEqual(['a', 'b'])
     })
 
-    it('renders the label-row count, 0 without markers', () => {
+    it('renders the label-row count, 0 without markers and 0 on the server with markers', () => {
         expect(render([])).toContain('data-label-rows="0"')
+        const html = render([{ key: 'a', name: 'A', values: [1, 2] }], [{ kind: 'age-up', label: 'Feudal', at: 2 }, { kind: 'other', label: 'x', at: 3 }])
+        expect(html).toContain('data-label-rows="0"')
     })
 })
 

@@ -202,9 +202,13 @@ test.describe('AoE4 build order pin and compare', () => {
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
     await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
     // Same pin: its run was 300 s, so the pinned line still ends at 5:00 while the current one runs to 10:00.
-    const pinnedBox = (await path(page, 'chart-gather-rates', 'pinned:food').boundingBox())!
-    const currentBox = (await path(page, 'chart-gather-rates', 'food').boundingBox())!
-    expect(pinnedBox.width).toBeLessThan(currentBox.width)
+    await expect
+      .poll(async () => {
+        const pinnedBox = await path(page, 'chart-gather-rates', 'pinned:food').boundingBox()
+        const currentBox = await path(page, 'chart-gather-rates', 'food').boundingBox()
+        return pinnedBox !== null && currentBox !== null && pinnedBox.width < currentBox.width
+      })
+      .toBe(true)
   })
 
   test('pinning the shown result gives same on every row with a value; unpin removes overlay and table', async ({ page }) => {

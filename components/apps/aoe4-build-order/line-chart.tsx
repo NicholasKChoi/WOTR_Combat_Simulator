@@ -7,6 +7,7 @@ import {
     MARKER_COLORS,
     type PinnedSeries,
     markerLabel,
+    pinnedColor,
     pinnedKey,
     seriesColor,
     toChartRows,
@@ -111,23 +112,20 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             hide={hidden.has(s.key)}
                         />
                     ))}
-                    {pinned?.series.map((s, i) => {
-                        const current = series.findIndex((c) => c.key === s.key)
-                        return (
-                            <Line
-                                key={pinnedKey(s.key)}
-                                dataKey={pinnedKey(s.key)}
-                                name={`${s.name} (pinned)`}
-                                data-series={pinnedKey(s.key)}
-                                stroke={seriesColor(current >= 0 ? current : series.length + i)}
-                                strokeDasharray="6 4"
-                                dot={false}
-                                connectNulls={false}
-                                isAnimationActive={false}
-                                hide={hidden.has(pinnedKey(s.key))}
-                            />
-                        )
-                    })}
+                    {pinned?.series.map((s, i) => (
+                        <Line
+                            key={pinnedKey(s.key)}
+                            dataKey={pinnedKey(s.key)}
+                            name={`${s.name} (pinned)`}
+                            data-series={pinnedKey(s.key)}
+                            stroke={pinnedColor(series, s.key, i)}
+                            strokeDasharray="6 4"
+                            dot={false}
+                            connectNulls={false}
+                            isAnimationActive={false}
+                            hide={hidden.has(pinnedKey(s.key))}
+                        />
+                    ))}
                     {placed.map(({ marker, side, row, dx }) => (
                         <ReferenceLine
                             key={`${marker.kind}:${marker.label}:${marker.at}`}

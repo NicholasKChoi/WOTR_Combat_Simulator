@@ -50,6 +50,33 @@ export function seriesColor(index: number): string {
     return PALETTE[index % PALETTE.length]
 }
 
+// A pinned series keeps the colour of the current series with the same key, else follows the current series by pinned index.
+export function pinnedColor(series: readonly ChartSeries[], key: string, pinnedIndex: number): string {
+    const current = series.findIndex((c) => c.key === key)
+    return seriesColor(current >= 0 ? current : series.length + pinnedIndex)
+}
+
+export interface LegendItem {
+    key: string
+    name: string
+    color: string
+    pinned: boolean
+}
+
+export function legendItems(series: readonly ChartSeries[], pinned?: PinnedSeries): LegendItem[] {
+    const pinnedSeries = pinned?.series ?? []
+    const pinnedItem = (s: ChartSeries, i: number): LegendItem => {
+        return { key: pinnedKey(s.key), name: `${s.name} (pinned)`, color: pinnedColor(series, s.key, i), pinned: true }
+    }
+    const items = series.flatMap((s, i): LegendItem[] => {
+        const pinnedIndex = pinnedSeries.findIndex((p) => p.key === s.key)
+        const current = { key: s.key, name: s.name, color: seriesColor(i), pinned: false }
+        return pinnedIndex >= 0 ? [current, pinnedItem(pinnedSeries[pinnedIndex], pinnedIndex)] : [current]
+    })
+    const pinnedOnly = pinnedSeries.flatMap((s, i) => (series.some((c) => c.key === s.key) ? [] : [pinnedItem(s, i)]))
+    return [...items, ...pinnedOnly]
+}
+
 export function toggleHidden(hidden: ReadonlySet<string>, key: string): Set<string> {
     const next = new Set(hidden)
     if (!next.delete(key)) next.add(key)
