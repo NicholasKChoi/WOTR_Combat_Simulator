@@ -152,13 +152,13 @@ test.describe('request shape', () => {
     })
   }
 
-  test('text null alone is the removed-text issue, not a missing buildOrder', async ({ request }) => {
+  test('text null alone gives the removed-text issue, not a missing buildOrder', async ({ request }) => {
     const issues = await issuesOf(request, { text: null })
     expect(issues).toHaveLength(1)
     expect(issues[0].message).toBe('request: text is no longer accepted; convert the paste to buildOrder and send that')
   })
 
-  test('a text key beside a broken buildOrder is only the removed-text issue, the buildOrder is not checked', async ({ request }) => {
+  test('a text key beside a broken buildOrder gives only the removed-text issue and the buildOrder is not checked', async ({ request }) => {
     const brokenOrder = { civ: 'french', name: 'Broken', start: { rally: 'nowhere' }, steps: [{ action: 'produce', producer: 'house', unit: 'villager' }] }
     const issues = await issuesOf(request, { text: 'start 6 sheep -> sheep', buildOrder: brokenOrder })
     expect(issues).toEqual([{ code: 'syntax', message: 'request: text is no longer accepted; convert the paste to buildOrder and send that' }])

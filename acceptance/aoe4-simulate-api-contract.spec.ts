@@ -439,7 +439,6 @@ test.describe('schema and server agree on requests', () => {
     const body = { ...buildOrderBody([PRODUCE]), text: 'start 6 sheep -> sheep' }
     expectInvalid('SimulateRequest', body)
     const json = await expect400(request, body)
-    expect(json.issues[0].code).toBe('syntax')
     expect(json.issues).toEqual([{ code: 'syntax', message: 'request: text is no longer accepted; convert the paste to buildOrder and send that' }])
   })
 })
