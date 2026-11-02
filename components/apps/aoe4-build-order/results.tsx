@@ -6,11 +6,12 @@ import { resourceSeries, unitSeries } from './result-series'
 
 interface ResultsProps {
     result: SimulationResult
+    pinned: SimulationResult | null
     infoExpanded: boolean
     onInfoToggle: () => void
 }
 
-export function Results({ result, infoExpanded, onInfoToggle }: ResultsProps) {
+export function Results({ result, pinned, infoExpanded, onInfoToggle }: ResultsProps) {
     const messages = resultMessages(result)
     return (
         <div>
@@ -22,6 +23,7 @@ export function Results({ result, infoExpanded, onInfoToggle }: ResultsProps) {
                 yLabel="Units"
                 times={result.times}
                 series={unitSeries(result)}
+                pinned={pinned ? { times: pinned.times, series: unitSeries(pinned) } : undefined}
             />
             <SeriesChart
                 testId="chart-gather-rates"
@@ -29,6 +31,7 @@ export function Results({ result, infoExpanded, onInfoToggle }: ResultsProps) {
                 yLabel="Per minute"
                 times={result.times}
                 series={resourceSeries(result.gatherRates)}
+                pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.gatherRates) } : undefined}
             />
             <SeriesChart
                 testId="chart-floating-resources"
@@ -36,6 +39,7 @@ export function Results({ result, infoExpanded, onInfoToggle }: ResultsProps) {
                 yLabel="Resources"
                 times={result.times}
                 series={resourceSeries(result.floating)}
+                pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.floating) } : undefined}
             />
         </div>
     )

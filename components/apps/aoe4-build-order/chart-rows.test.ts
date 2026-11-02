@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PALETTE, seriesColor, toChartRows, toggleHidden } from './chart-rows'
+import { PALETTE, pinnedKey, seriesColor, toChartRows, toggleHidden } from './chart-rows'
 
 describe('toChartRows', () => {
     it('makes one row per time with a value per series', () => {
@@ -16,6 +16,37 @@ describe('toChartRows', () => {
 
     it('returns no rows for empty times', () => {
         expect(toChartRows([], [{ key: 'a', name: 'A', values: [] }])).toEqual([])
+    })
+})
+
+describe('toChartRows with a pinned run', () => {
+    const current = [{ key: 'a', name: 'A', values: [1, 2, 3] }]
+
+    it('uses the union of times and leaves absent keys out of rows outside a series own times', () => {
+        const rows = toChartRows([0, 5, 10], current, { times: [0, 5, 10, 15], series: [{ key: 'a', name: 'A', values: [7, 8, 9, 10] }] })
+        expect(rows).toEqual([
+            { t: 0, a: 1, 'pinned:a': 7 },
+            { t: 5, a: 2, 'pinned:a': 8 },
+            { t: 10, a: 3, 'pinned:a': 9 },
+            { t: 15, 'pinned:a': 10 },
+        ])
+        expect('a' in rows[3]).toBe(false)
+    })
+
+    it('leaves pinned keys out of times the pinned run lacks', () => {
+        const rows = toChartRows([0, 5, 10], current, { times: [0, 10], series: [{ key: 'a', name: 'A', values: [7, 9] }] })
+        expect(rows.map((r) => r.t)).toEqual([0, 5, 10])
+        expect('pinned:a' in rows[1]).toBe(false)
+        expect(rows[2]['pinned:a']).toBe(9)
+    })
+
+    it('sorts a union whose pinned times start earlier and drops duplicates', () => {
+        const rows = toChartRows([5, 10], current.map((s) => ({ ...s, values: [1, 2] })), { times: [0, 5], series: [] })
+        expect(rows.map((r) => r.t)).toEqual([0, 5, 10])
+    })
+
+    it('prefixes the pinned key', () => {
+        expect(pinnedKey('food')).toBe('pinned:food')
     })
 })
 

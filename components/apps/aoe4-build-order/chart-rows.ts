@@ -4,12 +4,36 @@ export interface ChartSeries {
     values: number[]
 }
 
-export function toChartRows(times: number[], series: ChartSeries[]): Array<{ t: number } & Record<string, number>> {
-    return times.map((t, i) => {
-        const row: { t: number } & Record<string, number> = { t }
-        for (const s of series) row[s.key] = s.values[i]
-        return row
-    })
+export interface PinnedSeries {
+    times: number[]
+    series: ChartSeries[]
+}
+
+export const pinnedKey = (key: string): string => 'pinned:' + key
+
+type ChartRow = { t: number } & Record<string, number>
+
+export function toChartRows(times: number[], series: ChartSeries[], pinned?: PinnedSeries): ChartRow[] {
+    if (!pinned) {
+        return times.map((t, i) => {
+            const row: ChartRow = { t }
+            for (const s of series) row[s.key] = s.values[i]
+            return row
+        })
+    }
+    const rows = new Map<number, ChartRow>()
+    for (const t of [...times, ...pinned.times].sort((a, b) => a - b)) {
+        if (!rows.has(t)) rows.set(t, { t })
+    }
+    const fill = (own: number[], list: ChartSeries[], keyOf: (key: string) => string) => {
+        own.forEach((t, i) => {
+            const row = rows.get(t)!
+            for (const s of list) row[keyOf(s.key)] = s.values[i]
+        })
+    }
+    fill(times, series, (key) => key)
+    fill(pinned.times, pinned.series, pinnedKey)
+    return [...rows.values()]
 }
 
 export const PALETTE: readonly string[] = [
