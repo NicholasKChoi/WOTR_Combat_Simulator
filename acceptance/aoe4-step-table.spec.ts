@@ -444,8 +444,8 @@ test.describe("AoE4 step table", () => {
       page,
       "start 3 sheep 1 wood -> sheep\n@1:00 build house from wood",
     );
-    const tops = (page2: Page, scope: string, ids: string[]) =>
-      page2.evaluate(
+    const tops = (scope: string, ids: string[]) =>
+      page.evaluate(
         ([root, list]) => {
           const el = document.querySelector(root)!;
           return list.map((id) => {
@@ -460,19 +460,19 @@ test.describe("AoE4 step table", () => {
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await expect(async () => {
-      const [trigger, action] = await tops(page, stepRow, ["step-trigger-kind", "step-action"]);
+      const [trigger, action] = await tops(stepRow, ["step-trigger-kind", "step-action"]);
       expect(Math.abs(trigger.y - action.y)).toBeLessThan(4);
-      const [rally, count] = await tops(page, startRow, ["start-field-rally", "start-villagers-count"]);
+      const [rally, count] = await tops(startRow, ["start-field-rally", "start-villagers-count"]);
       expect(Math.abs(rally.y - count.y)).toBeLessThan(4);
     }).toPass();
     await expect(row(page, 0)).toHaveAttribute("data-step", "0");
 
     await page.setViewportSize({ width: 390, height: 800 });
     await expect(async () => {
-      const [trigger, action] = await tops(page, stepRow, ["step-trigger-kind", "step-action"]);
+      const [trigger, action] = await tops(stepRow, ["step-trigger-kind", "step-action"]);
       expect(action.x).toBeCloseTo(trigger.x, 0);
       expect(action.y).toBeGreaterThan(trigger.y);
-      const [rally, count] = await tops(page, startRow, ["start-field-rally", "start-villagers-count"]);
+      const [rally, count] = await tops(startRow, ["start-field-rally", "start-villagers-count"]);
       expect(count.y).toBeGreaterThan(rally.y);
     }).toPass();
     await expect(row(page, 0)).toHaveAttribute("data-step", "0");
