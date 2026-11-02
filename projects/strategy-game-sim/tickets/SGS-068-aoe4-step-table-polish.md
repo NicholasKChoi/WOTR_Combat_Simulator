@@ -87,6 +87,8 @@ fields, optional fields behind a per-row More control that starts open when one 
 editing `start` (rally, villager counts per node, add and delete; "customize" while the order has no `start`), and card
 rows under 768 px. Grep `docs/` and both READMEs for any other statement of these (today only that paragraph).
 
+Any test that builds a catalog by hand must include `units` and `inputDefaults`.
+
 **Out of scope:** the 390 px no-horizontal-scroll check, the timeline and compare scroll boxes (the 390 px ticket);
 `catalog` prop rename and `page` edits (SGS-059); `schema.ts`, `OPTIONAL_STEP_FIELDS` values (SGS-057); the villager
 total rule on Run (the shared schema); the editor, tabs and issue list; the API and OpenAPI; `golang/`.

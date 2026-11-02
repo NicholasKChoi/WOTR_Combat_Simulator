@@ -1,0 +1,2 @@
+# SGS-057 acceptance-test 1
+PASS. New spec acceptance/aoe4-simulate-api-issue-shape.spec.ts (4 tests: OpenAPI suggestion optional string and version 1.0.0; BuildOrderIssue closed schema keys; unchanged route unknown-id 400; unchanged text cap message). Commit 89a16f9. 116 passed across it + contract + api specs. 5 mutations all fail the tests. schema.ts/text-to-build.ts internals are not HTTP-reachable until the route swap ticket; covered by unit tests.

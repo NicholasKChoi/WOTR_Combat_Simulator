@@ -49,7 +49,7 @@ Any other `validate.ts` name the moved code uses stays private; `VILLAGER`, `ste
   `validate.ts` lines 15 to 52. `resolveSimInputs(partial, data)` keeps its name and signature and returns
   `checkSimInputs`'s result for `buildOrderCatalog(data)`.
 - `BuildOrderCatalog extends StepOptions` with `civ`, `startVillagerTotal`, `defaultStart`,
-  `startVillagerProducers`, `rejectedTechs` as in C2. It is built only from `GameData` (A1) and
+  `startVillagerProducers`, `rejectedTechs`, `units`, `inputDefaults` as in C2. It is built only from `GameData` (A1) and
   `JSON.parse(JSON.stringify(catalog))` deep-equals it. `buildOrderCatalog` reuses `stepOptions(data)`; it does
   not copy its id lists.
 - `buildOrderShape` is data-free (types, enums, bounds, discriminators). `buildOrderSchema(catalog)` adds the
@@ -61,7 +61,7 @@ Any other `validate.ts` name the moved code uses stays private; `VILLAGER`, `ste
   (`superRefine` vs `check`, how node refs are typed) are the implementer's choice provided the types match.
 - Behavior (design "Validation (M4.1)"): issue order is `civ`, `name`, `steps` count, `start`, then steps by
   index, within a step in `STEP_FIELDS` order (trigger first), then that step's cross-field issues, then
-  cross-step issues by the later step's index. A step's cross-field checks run only when that step's fields
+  cross-step issues by the later step's index, all after all per-step issues. A step's cross-field checks run only when that step's fields
   passed; cross-step checks only when every step passed its field checks; start checks only when `start`
   passed its field checks. Unknown keys are ignored and dropped from the returned order. Empty `steps` is
   valid; 201 steps is `out-of-range` (`steps: 201 steps, more than 200`); `walkSeconds: 0.5` is valid.
@@ -120,7 +120,7 @@ unchanged. `validate.ts` and its two test files are otherwise untouched; SGS-075
 - `lib/aoe4-build-order/text-to-build.test.ts`: every issue case in the design's Behavior rules "Validation"
   table that can be written as paste is tested once, as text in and issues out with its `line`; 20000
   characters accepted, 20001 rejected with the `text:` message and not parsed; parse issues have no `lines`;
-  check issues have `lines`; `''` returns what `parseBuildOrderText('')` returns; repeat gives equal results.
+  check issues have `lines`; empty text parses to the empty order and returns that order's `checkBuildOrder` result (English: `ok: false`, one start no-rally issue, `lines` `{ steps: [] }`); repeat gives equal results.
 - Rule for existing tests: no existing expectation changes, because `validateBuildOrder` and the route are
   unchanged. A test the move of constants breaks (an import path) is the only permitted edit. The implementer
   lists every existing test it edits.
@@ -147,20 +147,20 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `npm ls zod` shows zod 4.x and `jq -r .dependencies.zod package.json` prints `^4.6.7`; no file imports `zod/v3` or `zod/mini` (`git grep -nE "zod/(v3|mini)" -- '*.ts' '*.tsx'` prints nothing).
-- [ ] `schema.ts` exports exactly the names listed in Scope 2 (C2 list, `nodeRefIssue`, `NodeRefProblem`, `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `isKnownId`, `entriesOf`, and the type exports `BoundKey`, `Where`, `Fields`, `IdKind`; type exports count) and no helper is defined in both `schema.ts` and `validate.ts`; `text-to-build.ts` exports `textToBuildOrder` and `TextToBuildResult`; neither imports `data.ts` as a value or any `fs` / `node:` module (`git grep -nE "^import [^t].*'(\./data|fs|node:[a-z]+)'" -- lib/aoe4-build-order/schema.ts lib/aoe4-build-order/text-to-build.ts` prints nothing).
-- [ ] One copy of each moved name: `git grep -nE "(const|function|interface) (SIM_INPUT_BOUNDS|INPUT_DEFAULTS|nodeRefIssue|NodeRefProblem|resolveSimInputs)\b" -- lib` prints 5 lines, all in `validate.ts`, today; after the change it prints 5 lines, all in `schema.ts`. `validate.ts` still exports `SIM_INPUT_BOUNDS`, `nodeRefIssue`, `NodeRefProblem`, `resolveSimInputs`, `validateBuildOrder` and `ValidateOptions`, and `validate.test.ts` and `validate.acceptance.test.ts` pass unedited.
-- [ ] Mutation check: changing `SIM_INPUT_BOUNDS.durationSeconds.max` in `schema.ts` from 3600 to 3601 fails the `checkSimInputs` bounds case in `schema.test.ts`.
-- [ ] `checkBuildOrder` of the pasted knight + longbow build text via `textToBuildOrder` with the English catalog returns `ok: true` with `lines`; `checkBuildOrder` returns `ok: true` for every build in `listBuilds()` (`schema.test.ts`).
-- [ ] `textToBuildOrder` of a paste with unit `knigt` produced at `stable` returns one `unknown-id` issue with `line` set to that paste line, message `line N: unknown unit "knigt" in unit`, and `suggestion: "knight"`. The paste grammar cannot produce an unknown trigger kind, so that case is JSON only in `schema.test.ts`: `{kind: "soon"}` returns `unknown-trigger-kind` with no `suggestion` (distance over the threshold of 1), and `{kind: "tme"}` returns it with `suggestion: "time"`. A parse failure from `textToBuildOrder` carries no `lines` (asserted in `text-to-build.test.ts`).
-- [ ] A text of 20000 characters is accepted for conversion; 20001 gives one `out-of-range` issue `text: 20001 characters, more than 20000` and is not parsed (unit test). The route is unchanged: `git diff --stat origin/main -- pages/api` is empty, and `POST /api/aoe4-build-order/simulate` with a `text` of 20001 characters still returns 400 with that issue (existing spec unchanged).
-- [ ] A step whose field fails (for example `unit: "knigt"`) reports no cross-field issue for that step, and a build with a field issue in any step reports no cross-step issue (`research` twice); both asserted in `schema.test.ts`.
-- [ ] `checkSimInputs` rejects `durationSeconds` 59 and 3601 with `out-of-range` `inputs.durationSeconds: 59 is outside 60..3600`, accepts 60 and 3600, and an empty `inputs` resolves to `INPUT_DEFAULTS` plus the data defaults; `resolveSimInputs(partial, data)` returns the same result.
-- [ ] `buildOrderCatalog(ENGLISH)` is deep-equal after a JSON round trip and `StepOptions.names` maps `knight` to the display name of its lowest-age `unit` entry (unit test).
-- [ ] `docs/api/openapi.json` `BuildOrderIssue.properties.suggestion` exists, is a string, and is not in `required`; `info.version` is still `1.0.0`; `npx playwright test acceptance/aoe4-simulate-api-contract.spec.ts` passes.
-- [ ] No existing test outside `step-options.test.ts`, `step-table-model.test.ts` fixtures and the contract spec rows changes its expected values; `docs/aoe4-build-order.md` is unchanged.
-- [ ] `npx tsc --noEmit` and `npm run lint:dup` pass; `npm test` passes; `npm run acceptance` passes (Node 24).
-- [ ] No INVARIANTS.md regressions
+- [x] `npm ls zod` shows zod 4.x and `jq -r .dependencies.zod package.json` prints `^4.6.7`; no file imports `zod/v3` or `zod/mini` (`git grep -nE "zod/(v3|mini)" -- '*.ts' '*.tsx'` prints nothing).
+- [x] `schema.ts` exports exactly the names listed in Scope 2 (C2 list, `nodeRefIssue`, `NodeRefProblem`, `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `isKnownId`, `entriesOf`, and the type exports `BoundKey`, `Where`, `Fields`, `IdKind`; type exports count) and no helper is defined in both `schema.ts` and `validate.ts`; `text-to-build.ts` exports `textToBuildOrder` and `TextToBuildResult`; neither imports `data.ts` as a value or any `fs` / `node:` module (`git grep -nE "^import [^t].*'(\./data|fs|node:[a-z]+)'" -- lib/aoe4-build-order/schema.ts lib/aoe4-build-order/text-to-build.ts` prints nothing).
+- [x] One copy of each moved name: `git grep -nE "(const|function|interface) (SIM_INPUT_BOUNDS|INPUT_DEFAULTS|nodeRefIssue|NodeRefProblem|resolveSimInputs)\b" -- lib` prints 5 lines, all in `validate.ts`, today; after the change it prints 5 lines, all in `schema.ts`. `validate.ts` still exports `SIM_INPUT_BOUNDS`, `nodeRefIssue`, `NodeRefProblem`, `resolveSimInputs`, `validateBuildOrder` and `ValidateOptions`, and `validate.test.ts` and `validate.acceptance.test.ts` pass unedited.
+- [x] Mutation check: changing `SIM_INPUT_BOUNDS.durationSeconds.max` in `schema.ts` from 3600 to 3601 fails the `checkSimInputs` bounds case in `schema.test.ts`.
+- [x] `checkBuildOrder` of the pasted knight + longbow build text via `textToBuildOrder` with the English catalog returns `ok: true` with `lines`; `checkBuildOrder` returns `ok: true` for every build in `listBuilds()` (`schema.test.ts`).
+- [x] `textToBuildOrder` of a paste with unit `knigt` produced at `stable` returns one `unknown-id` issue with `line` set to that paste line, message `line N: unknown unit "knigt" in unit`, and `suggestion: "knight"`. The paste grammar cannot produce an unknown trigger kind, so that case is JSON only in `schema.test.ts`: `{kind: "soon"}` returns `unknown-trigger-kind` with no `suggestion` (distance over the threshold of 1), and `{kind: "tme"}` returns it with `suggestion: "time"`. A parse failure from `textToBuildOrder` carries no `lines` (asserted in `text-to-build.test.ts`).
+- [x] A text of 20000 characters is accepted for conversion; 20001 gives one `out-of-range` issue `text: 20001 characters, more than 20000` and is not parsed (unit test). The route is unchanged: `git diff --stat origin/main -- pages/api` is empty, and `POST /api/aoe4-build-order/simulate` with a `text` of 20001 characters still returns 400 with that issue (existing spec unchanged).
+- [x] A step whose field fails (for example `unit: "knigt"`) reports no cross-field issue for that step, and a build with a field issue in any step reports no cross-step issue (`research` twice); both asserted in `schema.test.ts`.
+- [x] `checkSimInputs` rejects `durationSeconds` 59 and 3601 with `out-of-range` `inputs.durationSeconds: 59 is outside 60..3600`, accepts 60 and 3600, and an empty `inputs` resolves to `INPUT_DEFAULTS` plus the data defaults; `resolveSimInputs(partial, data)` returns the same result.
+- [x] `buildOrderCatalog(ENGLISH)` is deep-equal after a JSON round trip and `StepOptions.names` maps `knight` to the display name of its lowest-age `unit` entry (unit test).
+- [x] `docs/api/openapi.json` `BuildOrderIssue.properties.suggestion` exists, is a string, and is not in `required`; `info.version` is still `1.0.0`; `npx playwright test acceptance/aoe4-simulate-api-contract.spec.ts` passes.
+- [x] No existing test outside `step-options.test.ts`, `step-table-model.test.ts` fixtures and the contract spec rows changes its expected values; `docs/aoe4-build-order.md` is unchanged.
+- [x] `npx tsc --noEmit` and `npm run lint:dup` pass; `npm test` passes; `npm run acceptance` passes (Node 24).
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

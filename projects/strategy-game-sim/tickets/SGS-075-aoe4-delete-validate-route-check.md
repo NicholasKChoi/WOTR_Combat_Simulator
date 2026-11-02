@@ -78,8 +78,11 @@ here.
   order for each prebuilt build's formatted text (via `formatBuildOrderText` of `listBuilds()`), and throws an
   error whose message contains an issue message for text with an unknown unit.
 - Rule for existing tests (the issue-order and combined-issue behavior changes): a test whose expected issue
-  list changes only because of the field vs cross-field rule or the new issue order gets the new expected list;
-  any other test keeps its expected value. The implementer lists every test it edits. No API acceptance spec
+  list changes only because of the field vs cross-field rule, the new issue order (cross-step issues come after
+  all per-step issues) or the rule that an unknown action hides that step's trigger issues (a spec that expects
+  both issues on one step now expects the action issue only) gets the new expected list; any other test keeps
+  its expected value. A test that builds a catalog by hand must give it `units` and `inputDefaults` as well as
+  the other `BuildOrderCatalog` fields. The implementer lists every test it edits. No API acceptance spec
   is rewritten to `buildOrder` here.
 
 **6. Docs.**
@@ -87,14 +90,19 @@ here.
   shape and says when it is set (`unknown-id` and `unknown-trigger-kind`, SGS-057 added it to the type and
   OpenAPI; the route starts producing it here); the validation text states that a step's cross-field rules run
   only when its fields passed, cross-step rules only when every step passed, and start rules only when `start`
-  passed, and the issue order; the data-flow diagram (lines 614 to 619) renames `validateBuildOrder +
+  passed, and the issue order (cross-step issues come after all per-step issues), and that an unknown action
+  hides that step's trigger issues; the data-flow diagram (lines 614 to 619) renames `validateBuildOrder +
   resolveSimInputs` to `checkBuildOrder + checkSimInputs` and shows `textToBuildOrder` as the paste path; line
   270's "validation rules in Issues" and line 877's "validation kind table" keep their meaning and are
   reworded only if they name the removed validator. Grep `docs/` and `data/aoe4-build-order/README.md` for
   `validateBuildOrder`, `validate.ts` and the old combined-issue wording and fix each hit. The Route section is
   not changed (the route still accepts `text`).
 
-**Out of scope:** the zod schema, `text-to-build.ts`, `StepOptions.names`, OpenAPI `suggestion` and the contract
+**7. Un-export dead helpers.** Once `validate.ts` is deleted, nothing imports `isKnownId`, `isBoundKey` or `issue`
+from `schema.ts` (on the SGS-057 branch only `validate.ts` does). Un-export each that `schema.ts` still uses
+itself, and delete any it no longer uses. The rest of the SGS-057 export list stays.
+
+**Out of scope:** the zod schema (beyond item 7), `text-to-build.ts`, `StepOptions.names`, OpenAPI `suggestion` and the contract
 spec rows (SGS-057); `data-schema.ts` and the `data.test.ts` rewrite (SGS-058); the page, `PageProps`, the
 `StepTable` prop rename, `IssueList` and `runRejected` (SGS-059); rewriting any API spec body to `buildOrder`
 and any spec edit beyond the contract spec import (SGS-060); removing `text` from the route, `api.ts`, OpenAPI
@@ -130,6 +138,8 @@ flowchart LR
 - [ ] `builds.test.ts` checks every shipped build with `checkBuildOrder(build, buildOrderCatalog(ENGLISH))` and passes.
 - [ ] Every case of the two deleted validate test files is migrated, already covered, or dropped with a reason listed in the PR body; `npm run lint:dup` passes.
 - [ ] `docs/aoe4-build-order.md` and `data/aoe4-build-order/README.md` name no removed symbol (`git grep -nE "validateBuildOrder|validate\.ts" -- docs data` prints nothing; 1 hit in `docs/aoe4-build-order.md` today); the Issues section documents `suggestion` and the issue-order and field vs cross-field rules; the data-flow diagram names `checkBuildOrder + checkSimInputs`.
+- [ ] `schema.ts` exports the SGS-057 list minus `isKnownId`, `isBoundKey` and `issue` (`git grep -nE "^export .*\b(isKnownId|isBoundKey|issue)\b" -- lib/aoe4-build-order/schema.ts` prints nothing; 3 lines before the change) and `git grep -nwE "isKnownId|isBoundKey" -- . ':!golang'` outside `schema.ts` prints nothing. (respec 3)
+- [ ] An existing spec that expected both an action issue and a trigger issue on one step, or cross-step issues before later per-step issues, is edited to the new order and listed in the PR body (respec 3).
 - [ ] `npx tsc --noEmit` passes; `npm test` passes; `npm run acceptance` passes (Node 24).
 - [ ] No INVARIANTS.md regressions
 
@@ -142,3 +152,9 @@ None.
 - Underspecified: the lazy AoE4 catalog mechanism and its criterion; test title count; tsc mismatch handling.
 - Changed: Scope 3 and 4 and criteria 5 and 6 (memoised require, no top-level data import, 25 types, fix schema not casts).
 - Stands: all other scope, criteria and the gate-verified counts.
+
+## Re-spec 2026-11-02 (designer pass 5)
+
+- Underspecified: the new issue order, the unknown-action-hides-trigger rule, dead helper exports, and the catalog's `units` and `inputDefaults` fields.
+- Changed: Scope 5 rule, Scope 6 docs text, new Scope 7 and two criteria.
+- Stands: all other scope and criteria.
