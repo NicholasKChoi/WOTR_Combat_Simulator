@@ -655,12 +655,28 @@ A 200 draws three line charts, each with a toggleable legend:
 | Gather rates (per minute) | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 
-Each series' line carries its key as `data-series`. Clicking a legend item hides that series and clicking
+Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series and clicking
 it again restores it. Messages come from `warnings` and `notes`, `warnings` entries first.
 Those of severity `warning` appear in a warnings list. Those of severity `info` sit behind a toggle reading
 "Show N info messages" ("Show 1 info message" for one); clicking it lists them and the toggle reads
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
 message shows its `message` text only. With no message of a severity there is no list for it.
+
+Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown) keeps the shown
+result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is pinned) drops it. The pin
+survives later runs, text and build edits, and failed runs (a failed run clears the shown result but not the
+pin). With a pinned run, each chart also draws the pinned run's series dashed, in the same color as the
+current series with that key, with the name `<name> (pinned)` and the key `pinned:<key>`. The x axis covers
+the union of both runs' sample times; a series has a gap at times outside its own run. Each pinned line
+toggles from the legend like any series.
+
+With both a shown result and a pinned run, a compare table lists seven rows (`data-key`): military spent at
+10, 15 and 20 minutes (`military-600`, `military-900`, `military-1200`; the cumulative `spent.military` at the
+sample at that time, or a dash when the run is shorter), the Feudal, Castle and Imperial times (`age-2`,
+`age-3`, `age-4`; the `reachedAt` of that age, or a dash when not reached) and the time the population cap was
+reached (`pop-cap`, a dash when never). Each row shows the pinned value, the current value and the delta
+(current minus pinned, signed, `0` when equal, a dash when either value is missing). The table is hidden
+unless both exist.
 
 A 400 shows every returned issue's `message` (each names its line or step) and removes any earlier charts and message lists, so only the error list shows.
 When the body has `omittedIssues`, the list ends with one more item, "N more issues not shown." Any

@@ -7,6 +7,7 @@ import cn from 'classnames'
 
 import Layout from '../../components/layout'
 import { BuildInput, type PrebuiltBuild } from '../../components/apps/aoe4-build-order/build-input'
+import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
 import { Results } from '../../components/apps/aoe4-build-order/results'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../../lib/aoe4-build-order/parse-text'
@@ -43,6 +44,7 @@ export default function AoE4BuildOrder({ builds }: PageProps) {
     const [text, setText] = useState(builds[0]?.text ?? '')
     const [duration, setDuration] = useState(String(DEFAULT_DURATION_SECONDS))
     const [result, setResult] = useState<SimulateResponse | null>(null)
+    const [pinned, setPinned] = useState<SimulateResponse | null>(null)
     const [issues, setIssues] = useState<string[]>([])
     const [running, setRunning] = useState(false)
     const [infoExpanded, setInfoExpanded] = useState(false)
@@ -97,8 +99,14 @@ export default function AoE4BuildOrder({ builds }: PageProps) {
                     </div>
                 ) : null}
                 <h2 className="border-bottom">Results</h2>
+                <ComparePanel current={result} pinned={pinned} onPin={() => setPinned(result)} onUnpin={() => setPinned(null)} />
                 {result !== null ? (
-                    <Results result={result} infoExpanded={infoExpanded} onInfoToggle={() => setInfoExpanded((v) => !v)} />
+                    <Results
+                        result={result}
+                        pinned={pinned}
+                        infoExpanded={infoExpanded}
+                        onInfoToggle={() => setInfoExpanded((v) => !v)}
+                    />
                 ) : null}
             </section>
         </Layout>
