@@ -687,7 +687,8 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     idle[ref] = 0;
   }
   Object.assign(gatherers, order.start?.villagers ?? start.villagers.value);
-  const named = new Set<NodeRef>(runRefs(order));
+  const runOrderRefs = runRefs(order);
+  const named = new Set<NodeRef>(runOrderRefs);
   const units = Object.values(start.units.value).reduce((sum, n) => sum + n, 0);
   const engine: Engine = {
     data,
@@ -706,7 +707,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     heldRallies: new Map(),
     gatherers,
     idle,
-    stock: createNodeStock(runRefs(order), inputs),
+    stock: createNodeStock(runOrderRefs, inputs),
     walking: 0,
     population: 0,
     supply: 0,
