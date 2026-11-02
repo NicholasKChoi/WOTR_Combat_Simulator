@@ -809,11 +809,11 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 
 The page is `/apps/aoe4-build-order`. A run bar stays at the top of the viewport while the page scrolls. It
 holds the prebuilt build select, the `durationSeconds` number input (default 1200), the run button and a
-text/table toggle. Below it are two tabs, Build and Results. Results is disabled until a run succeeds or a run
-is pinned; a successful run selects Results and scrolls it into view, and a rejected or failed run selects
+text/table toggle. Below it are two tabs, Build and Results. Results is enabled while there is a shown result or
+a pinned run; a successful run selects Results and scrolls it into view, and a rejected or failed run selects
 Build. Switching tabs changes nothing else, and both panels stay mounted. The Build tab shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
-rows) and never scrolls inside, and the table view is the step table. The view and the tab survive runs but
+rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the step table. The view and the tab survive runs but
 not a reload. Choosing a prebuilt build replaces the text with that build's paste text; editing the text
 leaves the select as it is. Run converts the text with `textToBuildOrder` and the English catalog and posts the
 checked `buildOrder` and `inputs.durationSeconds` to the route. When the text does not convert, Run lists its

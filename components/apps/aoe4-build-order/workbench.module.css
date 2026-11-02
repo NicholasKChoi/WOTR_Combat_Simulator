@@ -5,10 +5,6 @@
     background: var(--bs-body-bg, #fff);
 }
 
-.panel {
-    scroll-margin-top: 8rem;
-}
-
 .editor {
     display: flex;
     align-items: flex-start;

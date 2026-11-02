@@ -13,7 +13,6 @@ import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-pan
 import { Results } from '../../components/apps/aoe4-build-order/results'
 import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
 import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-build-order/workbench-tabs'
-import workbenchStyles from '../../components/apps/aoe4-build-order/workbench.module.css'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { loadGameData } from '../../lib/aoe4-build-order/data'
 import { formatBuildOrderText, parseBuildOrderText } from '../../lib/aoe4-build-order/parse-text'
@@ -72,7 +71,11 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
 
     useEffect(() => {
-        if (resultsShownCount > 0) resultsTop.current?.scrollIntoView()
+        const panel = resultsTop.current
+        if (resultsShownCount === 0 || !panel) return
+        const runBar = panel.closest('section')?.querySelector('form')
+        panel.style.scrollMarginTop = `${runBar?.getBoundingClientRect().height ?? 0}px`
+        panel.scrollIntoView()
     }, [resultsShownCount])
 
     async function runSimulation() {
@@ -159,7 +162,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                         </>
                     }
                     results={
-                        <div ref={resultsTop} className={workbenchStyles.panel}>
+                        <div ref={resultsTop}>
                             <h2 className="border-bottom">Results</h2>
                             <ComparePanel current={result} pinned={pinned} onPin={() => setPinned(result)} onUnpin={() => setPinned(null)} />
                             {result !== null ? (

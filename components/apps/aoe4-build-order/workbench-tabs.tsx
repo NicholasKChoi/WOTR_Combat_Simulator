@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import cn from 'classnames'
 
 export type WorkbenchTab = 'build' | 'results'
 
@@ -21,7 +22,7 @@ export function WorkbenchTabs({ active, onSelect, resultsEnabled, build, results
                     data-testid="tab-build"
                     aria-selected={active === 'build'}
                     aria-controls="panel-build"
-                    className={`nav-link${active === 'build' ? ' active' : ''}`}
+                    className={cn('nav-link', active === 'build' && 'active')}
                     onClick={() => onSelect('build')}
                 >
                     Build
@@ -33,7 +34,7 @@ export function WorkbenchTabs({ active, onSelect, resultsEnabled, build, results
                     data-testid="tab-results"
                     aria-selected={active === 'results'}
                     aria-controls="panel-results"
-                    className={`nav-link${active === 'results' ? ' active' : ''}`}
+                    className={cn('nav-link', active === 'results' && 'active')}
                     disabled={!resultsEnabled}
                     onClick={() => onSelect('results')}
                 >

@@ -718,6 +718,7 @@ test.describe('AoE4 build order page', () => {
       await openPage(page)
       expect((await runSimulation(page)).status()).toBe(200)
       await expectChartsDrawn(page)
+      await page.getByTestId('pin-run').click()
       expect((await runSimulation(page)).status()).toBe(status)
     }
 
@@ -732,29 +733,31 @@ test.describe('AoE4 build order page', () => {
       await expect(page.getByTestId('step-table')).toHaveCount(0)
     })
 
-    test('a successful run selects Results below the run bar and both panels stay mounted', async ({ page }) => {
-      await openPage(page)
-      const text = await page.getByTestId('build-order-text').inputValue()
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-      expect((await runSimulation(page)).status()).toBe(200)
-      await selected(page, 'results')
-      await expect(page.getByTestId('tab-results')).toBeEnabled()
-      await expect(page.getByTestId('panel-results')).toBeVisible()
-      await expect(page.getByTestId('panel-build')).toBeHidden()
-      await expect
-        .poll(async () => {
-          const panel = (await page.getByTestId('panel-results').boundingBox())!
-          const bar = (await page.getByTestId('run-bar').boundingBox())!
-          const height = page.viewportSize()!.height
-          return panel.y >= bar.y + bar.height - 1 && panel.y < height
-        })
-        .toBe(true)
+    for (const width of [1280, 768, 390]) {
+      test(`a successful run selects Results below the run bar at ${width} px and both panels stay mounted`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await openPage(page)
+        const text = await page.getByTestId('build-order-text').inputValue()
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+        expect((await runSimulation(page)).status()).toBe(200)
+        await selected(page, 'results')
+        await expect(page.getByTestId('tab-results')).toBeEnabled()
+        await expect(page.getByTestId('panel-results')).toBeVisible()
+        await expect(page.getByTestId('panel-build')).toBeHidden()
+        await expect
+          .poll(async () => {
+            const heading = (await page.getByRole('heading', { name: 'Results', exact: true }).boundingBox())!
+            const bar = (await page.getByTestId('run-bar').boundingBox())!
+            return heading.y >= bar.y + bar.height - 1 && heading.y < page.viewportSize()!.height
+          })
+          .toBe(true)
 
-      await page.getByTestId('tab-build').click()
-      await expect(page.getByTestId('build-order-text')).toHaveValue(text)
-      await showTab(page, 'results')
-      await expectChartsDrawn(page)
-    })
+        await page.getByTestId('tab-build').click()
+        await expect(page.getByTestId('build-order-text')).toHaveValue(text)
+        await showTab(page, 'results')
+        await expectChartsDrawn(page)
+      })
+    }
 
     for (const pinned of [true, false]) {
       test(`a rejected paste after a run selects Build; Results is ${pinned ? 'still enabled with a pin' : 'disabled without one'}`, async ({ page }) => {
@@ -778,7 +781,7 @@ test.describe('AoE4 build order page', () => {
         await runThenFail(page, status)
         await selected(page, 'build')
         await expect(page.getByTestId('simulation-error')).toBeVisible()
-        await expect(page.getByTestId('tab-results')).toBeDisabled()
+        await expect(page.getByTestId('tab-results')).toBeEnabled()
         for (const chart of CHARTS) await expect(page.getByTestId(chart)).toHaveCount(0)
       })
     }
