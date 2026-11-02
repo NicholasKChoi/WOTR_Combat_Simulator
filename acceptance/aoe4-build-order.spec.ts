@@ -266,6 +266,50 @@ test.describe('AoE4 build order page', () => {
     await expect(page.getByTestId('simulation-notes-toggle')).toHaveText('Show 1 info message')
   })
 
+  test('warnings list warnings before warning-severity notes in result order; info expansion survives a failed run and resets on reload', async ({ page }) => {
+    await page.route(`**${SIMULATE_PATH}`, async (route) => {
+      const response = await route.fetch()
+      if (!response.ok()) return route.fulfill({ response })
+      const body = await response.json()
+      body.warnings = [
+        { code: 'w-first', severity: 'warning', message: 'First warning.' },
+        { code: 'i-one', severity: 'info', message: 'Info one.' },
+        { code: 'w-second', severity: 'warning', message: 'Second warning.' },
+      ]
+      body.notes = [
+        { code: 'n-warn', severity: 'warning', message: 'Note warning.', step: 0, tech: 'x', properties: [] },
+        { code: 'n-info', severity: 'info', message: 'Note info.', step: 0, tech: 'x', properties: [] },
+      ]
+      await route.fulfill({ response, json: body })
+    })
+    await openPage(page)
+    expect((await runSimulation(page)).status()).toBe(200)
+
+    const warnings = page.getByTestId('simulation-warnings').getByTestId('simulation-message')
+    await expect(warnings).toHaveText(['First warning.', 'Second warning.', 'Note warning.'])
+    await expect(warnings).toHaveCount(3)
+    await expect(page.getByTestId('simulation-notes-list')).toHaveCount(0)
+    await expect(page.getByTestId('simulation-notes-toggle')).toHaveText('Show 2 info messages')
+
+    await page.getByTestId('simulation-notes-toggle').click()
+    const infos = page.getByTestId('simulation-notes-list').getByTestId('simulation-message')
+    await expect(infos).toHaveText(['Info one.', 'Note info.'])
+
+    await page.getByTestId('build-order-text').fill(INVALID_PASTE)
+    expect((await runSimulation(page)).status()).toBe(400)
+    await expect(page.getByTestId('simulation-notes')).toHaveCount(0)
+    await page.getByTestId('build-order-text').fill('start -> sheep')
+    expect((await runSimulation(page)).status()).toBe(200)
+    await expect(page.getByTestId('simulation-notes-toggle')).toHaveAttribute('aria-expanded', 'true')
+    await expect(infos).toHaveCount(2)
+
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+    expect((await runSimulation(page)).status()).toBe(200)
+    await expect(page.getByTestId('simulation-notes-toggle')).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.getByTestId('simulation-notes-list')).toHaveCount(0)
+  })
+
   test('a failed run shows neither the warnings nor the info messages', async ({ page }) => {
     await openPage(page)
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
