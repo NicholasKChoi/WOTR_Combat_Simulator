@@ -6,6 +6,7 @@ import type { ResourceKind, SpendCategory } from './model';
 import type { EngineState } from './simulate';
 
 // Income credited up to the computed affordability time can land a hair under the cost in floating point.
+// The same margin absorbs float noise in the auto-house population shortfall.
 export const RESOURCE_TOLERANCE = 1e-9;
 
 export const VILLAGER_ID = 'villager';
