@@ -8,7 +8,7 @@
   <!-- strongModelTriggers: existing public schema/API behavior changes (`BuildOrderIssue.suggestion` added to the OpenAPI schema); over 250 lines
        of business logic. No REPO.md critical path symbol changes. The route and every validator caller behave as before. -->
 - **Invariants**: S3 (every request bounded: `SIM_INPUT_BOUNDS` and the 20000-character text cap are defined once in `schema.ts` and enforced by `textToBuildOrder`; the route keeps enforcing them until the route swap), A1 (the catalog is derived from the data files; no game number is written into schema code), A3 (checking is pure: same value and catalog, same issues in the same order)
-- **LOC estimate**: about 500 added, about 150 deleted (business logic only: `schema.ts` about 450 including catalog, shapes, refinements, inputs and `nearestId`; `text-to-build.ts` about 35; `step-options.ts` `names` about 15; `validate.ts` about -150 for its own copies of `SIM_INPUT_BOUNDS`, `INPUT_DEFAULTS`, `TRIP_FIELDS`, `nodeRefIssue`, `NodeRefProblem` and `resolveSimInputs`, replaced by an import and re-export). Tests, OpenAPI excluded. Above the ~400 line guide; design "M4.1 ticket order" row 2a fixes this scope after splitting the caller swap into SGS-075, and the new module cannot be split further without leaving `checkBuildOrder` and `textToBuildOrder` unusable.
+- **LOC estimate**: about 500 added, about 150 deleted (business logic only: `schema.ts` about 450 including catalog, shapes, refinements, inputs and `nearestId`; `text-to-build.ts` about 35; `step-options.ts` `names` about 15; `validate.ts` about -200 (lines 338 to 533 plus the constants and `nodeRefIssue` at the top, and the shared helpers `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`: `SIM_INPUT_BOUNDS`, `INPUT_DEFAULTS`, `TRIP_FIELDS`, `nodeRefIssue`, `NodeRefProblem`, `resolveSimInputs` and their helpers), replaced by an import and re-export). Tests, OpenAPI excluded. Above the ~400 line guide; design "M4.1 ticket order" row 2a fixes this scope after splitting the caller swap into SGS-075, and the new module cannot be split further without leaving `checkBuildOrder` and `textToBuildOrder` unusable.
 - **Depends on**: SGS-056 (`strictNullChecks`; `z.infer` needs it)
 - **On merge**: `REPO.md schemaLibrary: zod`; `CONTEXT.md Key surfaces`: add `lib/aoe4-build-order/schema.ts` (`checkBuildOrder`, `checkSimInputs`, `buildOrderCatalog`) and `lib/aoe4-build-order/text-to-build.ts` (`textToBuildOrder`) (no `REPO.md` command changes)
 - **Source**: M4 design contracts C1, C2, C3, C4a, Behavior rules "Validation (M4.1)" and "M4.1 ticket order" row 2a (`design/M4.md`); designer pass 4 (`reports/M4-designer-4.md`, Q1: split into 2a, 2b, 2c); plan outline B (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md`: DQ1, Spec gaps 1, "Outline changes" 2); `BACKLOG.md` line 42 (owner: replace hand-rolled parsing/validation with zod; front end converts the paste before POST)
@@ -34,7 +34,12 @@ All paths are relative to the repo root. Contract names are exactly those of C2,
 `buildOrderCatalog(data)`, `buildOrderShape`, `buildOrderSchema(catalog)`, `simInputsSchema(catalog)`,
 `checkBuildOrder(value, catalog, lines?)`, `checkSimInputs(value, catalog)`, `resolveSimInputs(partial, data)`,
 `nearestId(value, choices)`, `OPTIONAL_STEP_FIELDS`, `SIM_INPUT_BOUNDS`, `INPUT_DEFAULTS`, plus `nodeRefIssue`
-and `NodeRefProblem` moved from `validate.ts` unchanged (the node-ref reasons are reused by the schema).
+and `NodeRefProblem` moved from `validate.ts` unchanged (the node-ref reasons are reused by the schema), plus the shared helpers
+`issue`, `outOfRange`, `isRecord`, `isBoundKey` and the type `BoundKey` (all built on `SIM_INPUT_BOUNDS`; `validate.ts`'s `OrderChecker`
+keeps using them, so they live only in `schema.ts` and `validate.ts` imports them; there is one copy and `lint:dup` passes).
+`NodeRefProblem` stays an `interface` declaration in `schema.ts` (the criterion 3 grep counts it). `inputIssue`, `readNumber`,
+`readRecord`, `resolveTrips`, `resolveNodeAmounts` and `resolveInfluence` move with `resolveSimInputs` and need not be exported.
+So "exactly" means: the C2 list, `nodeRefIssue`, `NodeRefProblem`, `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`.
 - `SIM_INPUT_BOUNDS` (including `textChars` 0..20000) and `INPUT_DEFAULTS` keep their values from
   `validate.ts` lines 15 to 52. `resolveSimInputs(partial, data)` keeps its name and signature and returns
   `checkSimInputs`'s result for `buildOrderCatalog(data)`.
@@ -78,7 +83,7 @@ lines)`, issues returned with `lines`. Imports only `parse-text.ts`, `schema.ts`
 value or `fs`.
 
 **4. `lib/aoe4-build-order/step-options.ts`.** `StepOptions` gains `names: Readonly<Record<string, string>>`
-(baseId to the entry's display `name`, for every id in `buildings`, `producers`, the ids in
+(baseId to the display `name` of the lowest-age entry of the matching type for that baseId, consistent with `sortedByAge`, for every id in `buildings`, `producers`, the ids in
 `unitsByProducer` and `techs`). `stepOptions(data)` fills it. Update `step-options.test.ts` (covers `names`,
 including surviving JSON) and the `StepOptions` fixtures in `components/apps/aoe4-build-order/step-table-model.test.ts`
 if they build an object literal.
@@ -87,7 +92,7 @@ if they build an object literal.
 `INPUT_DEFAULTS`, `TRIP_FIELDS` (and any helper only the moved code used), `nodeRefIssue`, `NodeRefProblem` and
 `resolveSimInputs`; import them from `./schema` and re-export `SIM_INPUT_BOUNDS`, `nodeRefIssue`,
 `NodeRefProblem` and `resolveSimInputs` (the four it exports today) so every importer keeps working. A helper
-both files need lives only in `schema.ts`. `validateBuildOrder`, `ValidateOptions` and its behavior are
+both files need (`issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`) lives only in `schema.ts` and is imported here. `validateBuildOrder`, `ValidateOptions` and its behavior are
 unchanged. `validate.ts` and its two test files are otherwise untouched; SGS-075 deletes them.
 
 **6. `lib/aoe4-build-order/model.ts`.** `BuildOrderIssue` gains `suggestion?: string`. `BuildOrder`,
@@ -96,7 +101,7 @@ unchanged. `validate.ts` and its two test files are otherwise untouched; SGS-075
 
 **7. Tests (all new files written fresh: no block copied from `validate.test.ts` or
 `validate.acceptance.test.ts`, because the `lint:dup` jscpd threshold is 0).**
-- `lib/aoe4-build-order/schema.test.ts`: JSON-only cases (wrong types per field, `walkSeconds: 0.5` valid,
+- `lib/aoe4-build-order/schema.test.ts`: JSON-only cases (an unknown trigger kind `{kind: "soon"}` gives `unknown-trigger-kind` with no `suggestion`, and `{kind: "tme"}` gives `unknown-trigger-kind` with `suggestion: "time"`; wrong types per field, `walkSeconds: 0.5` valid,
   unknown keys dropped and never an issue, non-object root, `steps` length 201 invalid and 200 valid, empty
   `steps` valid); issue ordering and the field vs cross-field rule (a step with a bad field reports no
   cross-field issue; a bad step suppresses cross-step issues; a bad `start` suppresses the villager sum);
@@ -138,15 +143,15 @@ Single-component change outside the core control loop; no diagram required.
 ## Acceptance criteria
 
 - [ ] `npm ls zod` shows zod 4.x and `jq -r .dependencies.zod package.json` prints `^4.6.7`; no file imports `zod/v3` or `zod/mini` (`git grep -nE "zod/(v3|mini)" -- '*.ts' '*.tsx'` prints nothing).
-- [ ] `schema.ts` exports exactly the C2 names listed in Scope 2 (plus `nodeRefIssue`, `NodeRefProblem`); `text-to-build.ts` exports `textToBuildOrder` and `TextToBuildResult`; neither imports `data.ts` as a value or any `fs` / `node:` module (`git grep -nE "^import [^t].*'(\./data|fs|node:[a-z]+)'" -- lib/aoe4-build-order/schema.ts lib/aoe4-build-order/text-to-build.ts` prints nothing).
+- [ ] `schema.ts` exports exactly the names listed in Scope 2 (C2 list, `nodeRefIssue`, `NodeRefProblem`, `issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`) and no helper is defined in both `schema.ts` and `validate.ts`; `text-to-build.ts` exports `textToBuildOrder` and `TextToBuildResult`; neither imports `data.ts` as a value or any `fs` / `node:` module (`git grep -nE "^import [^t].*'(\./data|fs|node:[a-z]+)'" -- lib/aoe4-build-order/schema.ts lib/aoe4-build-order/text-to-build.ts` prints nothing).
 - [ ] One copy of each moved name: `git grep -nE "(const|function|interface) (SIM_INPUT_BOUNDS|INPUT_DEFAULTS|nodeRefIssue|NodeRefProblem|resolveSimInputs)\b" -- lib` prints 5 lines, all in `validate.ts`, today; after the change it prints 5 lines, all in `schema.ts`. `validate.ts` still exports `SIM_INPUT_BOUNDS`, `nodeRefIssue`, `NodeRefProblem`, `resolveSimInputs`, `validateBuildOrder` and `ValidateOptions`, and `validate.test.ts` and `validate.acceptance.test.ts` pass unedited.
 - [ ] Mutation check: changing `SIM_INPUT_BOUNDS.durationSeconds.max` in `schema.ts` from 3600 to 3601 fails the `checkSimInputs` bounds case in `schema.test.ts`.
 - [ ] `checkBuildOrder` of the pasted knight + longbow build text via `textToBuildOrder` with the English catalog returns `ok: true` with `lines`; `checkBuildOrder` returns `ok: true` for every build in `listBuilds()` (`schema.test.ts`).
-- [ ] `textToBuildOrder` of a paste with unit `knigt` produced at `stable` returns one `unknown-id` issue with `line` set to that paste line, message `line N: unknown unit "knigt" in unit`, and `suggestion: "knight"`; with `trigger kind` `soon` it returns `unknown-trigger-kind` with the `nearestId` suggestion or none when over the threshold.
+- [ ] `textToBuildOrder` of a paste with unit `knigt` produced at `stable` returns one `unknown-id` issue with `line` set to that paste line, message `line N: unknown unit "knigt" in unit`, and `suggestion: "knight"`. The paste grammar cannot produce an unknown trigger kind, so that case is JSON only in `schema.test.ts`: `{kind: "soon"}` returns `unknown-trigger-kind` with no `suggestion` (distance over the threshold of 1), and `{kind: "tme"}` returns it with `suggestion: "time"`. A parse failure from `textToBuildOrder` carries no `lines` (asserted in `text-to-build.test.ts`).
 - [ ] A text of 20000 characters is accepted for conversion; 20001 gives one `out-of-range` issue `text: 20001 characters, more than 20000` and is not parsed (unit test). The route is unchanged: `git diff --stat origin/main -- pages/api` is empty, and `POST /api/aoe4-build-order/simulate` with a `text` of 20001 characters still returns 400 with that issue (existing spec unchanged).
 - [ ] A step whose field fails (for example `unit: "knigt"`) reports no cross-field issue for that step, and a build with a field issue in any step reports no cross-step issue (`research` twice); both asserted in `schema.test.ts`.
 - [ ] `checkSimInputs` rejects `durationSeconds` 59 and 3601 with `out-of-range` `inputs.durationSeconds: 59 is outside 60..3600`, accepts 60 and 3600, and an empty `inputs` resolves to `INPUT_DEFAULTS` plus the data defaults; `resolveSimInputs(partial, data)` returns the same result.
-- [ ] `buildOrderCatalog(ENGLISH)` is deep-equal after a JSON round trip and `StepOptions.names` maps `knight` to the entry's display name (unit test).
+- [ ] `buildOrderCatalog(ENGLISH)` is deep-equal after a JSON round trip and `StepOptions.names` maps `knight` to the display name of its lowest-age `unit` entry (unit test).
 - [ ] `docs/api/openapi.json` `BuildOrderIssue.properties.suggestion` exists, is a string, and is not in `required`; `info.version` is still `1.0.0`; `npx playwright test acceptance/aoe4-simulate-api-contract.spec.ts` passes.
 - [ ] No existing test outside `step-options.test.ts`, `step-table-model.test.ts` fixtures and the contract spec rows changes its expected values; `docs/aoe4-build-order.md` is unchanged.
 - [ ] `npx tsc --noEmit` and `npm run lint:dup` pass; `npm test` passes; `npm run acceptance` passes (Node 24).
@@ -161,3 +166,9 @@ None.
 - Underspecified: the ticket bundled the new schema with the caller swap, deletion of `validate.ts` and the route change (about 620 lines added, 533 deleted); designer pass 4 split it (row 2a keeps this id, row 2b is SGS-075, row 2c is SGS-058).
 - Changed: narrowed to the new modules, `StepOptions.names`, `BuildOrderIssue.suggestion` with OpenAPI and contract-spec rows, and `validate.ts` re-exporting the moved names; the importer re-pointing, deletions, route swap, `model.ts` `z.infer` re-exports, `buildOrderFrom` and docs text moved to SGS-075; open question 1 (size) is answered by the split.
 - Branch work: none exists yet (status draft).
+
+## Re-spec 2026-11-02 (spec gate 1)
+
+- Underspecified: shared helpers (`issue`, `outOfRange`, `isRecord`, `isBoundKey`, `BoundKey`) were unnamed against the "exactly" export list; the `soon` trigger case was untestable as paste; `names` did not say which age entry; `validate.ts` deletion estimate.
+- Changed: export list widened and `NodeRefProblem` stays an `interface`; trigger-kind cases (`soon` no suggestion, `tme` suggests `time`) moved to JSON in `schema.test.ts`; `names` uses the lowest-age entry; LOC estimate corrected to about -200.
+- Branch work: none exists yet.

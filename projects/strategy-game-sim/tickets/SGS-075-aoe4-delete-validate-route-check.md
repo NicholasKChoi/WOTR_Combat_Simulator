@@ -50,14 +50,23 @@ catalog)` without `lines`. `lib/aoe4-build-order/api.ts` is not changed.
 declarations; node fields infer `NodeRef` / `FiniteNodeRef`, id fields `string`, `move.count` `number |
 'all'`). `schema.ts` drops the `z.ZodType<T>` annotation for these four, because the type now comes from the
 schema (a type-only import cycle with `model.ts` is fine). `BuildOrderLines` stays. The existing test
-`data.acceptance.test.ts` "model.ts exports exactly the 29 documented types" matches `^export (?:type|interface)
-<Name>` and so stops seeing the four moved names; update its expected list (the four names leave it) and say so
-in the summary of edited tests.
+`data.acceptance.test.ts` "model.ts exports exactly the 29 documented types and the shared lists" matches `^export (?:type|interface)
+<Name>` and so stops seeing the four moved names; update its expected list (the four names leave it) and its title to "25 documented types"
+(29 minus 4), and say so in the summary of edited tests. If `tsc --noEmit` reports a mismatch between a `z.infer`
+type and the old declarations or their uses, fix the schema so the inferred type matches; do not add casts.
 
 **4. `acceptance/helpers.ts`.** Add `export function buildOrderFrom(text: string): BuildOrder` (C4a): calls
-`textToBuildOrder` with the English catalog, built lazily on first call and reused (so the WOTR specs that
-import `helpers.ts` do not load AoE4 data), and throws an `Error` whose message joins the issue messages when
-the text does not convert. No other helper is added and no spec is migrated to it here.
+`textToBuildOrder` with the English catalog and throws an `Error` whose message joins the issue messages when
+the text does not convert. `lib/aoe4-build-order/data.ts` imports its JSON statically and `buildOrderFrom` is
+synchronous, so the lazy mechanism is a memoised `require` inside the function: a module-level
+`let catalog` and, on first call, `catalog ??= buildOrderCatalog((require('../lib/aoe4-build-order/data') as
+typeof import('../lib/aoe4-build-order/data')).loadGameData('english'))`. `package.json` has no `"type"`, so
+Playwright transpiles specs and helpers to CommonJS and `require` works; the implementer confirms this by
+running the new spec, and if `require` does not resolve, falls back to a small non-spec module
+(`acceptance/english-catalog.ts`) that `helpers.ts` loads the same way. `data` is the only module loaded lazily:
+`schema.ts`, `text-to-build.ts` and the catalog builder are data-free and may be imported statically (value
+imports of `data` are the only forbidden top-level ones). No other helper is added and no spec is migrated to it
+here.
 
 **5. Tests.**
 - Every case in the two deleted validate test files is either already covered by SGS-057's `schema.test.ts` or
@@ -116,8 +125,8 @@ flowchart LR
 - [ ] `git grep -n "validateBuildOrder" -- . ':!golang'` prints nothing (37 lines in 10 files before the change).
 - [ ] The route uses `checkBuildOrder`, `checkSimInputs` and `textToBuildOrder` and none of `parseBuildOrderText` or `SIM_INPUT_BOUNDS` (`git grep -nE "parseBuildOrderText|SIM_INPUT_BOUNDS|validate'" -- pages/api/aoe4-build-order/simulate.ts` prints nothing; 4 lines on origin/main); a `POST` with a `text` of 20001 characters still returns 400 with `text: 20001 characters, more than 20000` and one with 20000 is accepted for conversion.
 - [ ] The route behaves as before for requests that are valid and for every `text` / `buildOrder` / `inputs` rule except the documented issue-order and combined-issue change: the existing `aoe4-simulate-api*.spec.ts` suite passes, with every edited expectation listed in the PR body. A `buildOrder` step with a bad field returns that field's issue and no cross-field issue for the step; a `text` paste with unit `knigt` returns `line N: unknown unit "knigt" in unit` with `suggestion: "knight"`.
-- [ ] `model.ts` re-exports `BuildOrder`, `BuildStep`, `Trigger`, `BuildStart` from `schema.ts` and no longer declares them (`git grep -nE "^export (type|interface) (BuildOrder|BuildStep|Trigger|BuildStart)\b" -- lib/aoe4-build-order/model.ts` prints nothing; it prints 4 lines before the change); `data.acceptance.test.ts` "model.ts exports exactly the documented types" passes with those four names removed from its list.
-- [ ] `buildOrderFrom` exists in `acceptance/helpers.ts`, returns the order for valid text, and throws with the joined issue messages for text that does not convert (`aoe4-build-order-from.spec.ts` passes); `git grep -n "aoe4-build-order/data'" -- acceptance/helpers.ts` finds nothing outside the lazy catalog path (the WOTR specs importing `helpers.ts` do not load AoE4 data at import time).
+- [ ] `model.ts` re-exports `BuildOrder`, `BuildStep`, `Trigger`, `BuildStart` from `schema.ts` and no longer declares them (`git grep -nE "^export (type|interface) (BuildOrder|BuildStep|Trigger|BuildStart)\b" -- lib/aoe4-build-order/model.ts` prints nothing; it prints 4 lines before the change); `data.acceptance.test.ts` "model.ts exports exactly the 25 documented types and the shared lists" (renamed from 29) passes with those four names removed from its list.
+- [ ] `buildOrderFrom` exists in `acceptance/helpers.ts`, returns the order for valid text, and throws with the joined issue messages for text that does not convert (`aoe4-build-order-from.spec.ts` passes). `acceptance/helpers.ts` has no top-level value import of the data module (`git grep -nE "^import [^t].*aoe4-build-order/data" -- acceptance/helpers.ts` prints nothing; `import type` is allowed), and a Playwright run of one WOTR-only spec that imports `helpers.ts` (for example `npx playwright test <wotr spec> --list` plus one run, with `require.cache` checked via a throwaway log or `NODE_DEBUG`) does not load `data/aoe4-build-order/aoe4world/english.json`.
 - [ ] `builds.test.ts` checks every shipped build with `checkBuildOrder(build, buildOrderCatalog(ENGLISH))` and passes.
 - [ ] Every case of the two deleted validate test files is migrated, already covered, or dropped with a reason listed in the PR body; `npm run lint:dup` passes.
 - [ ] `docs/aoe4-build-order.md` and `data/aoe4-build-order/README.md` name no removed symbol (`git grep -nE "validateBuildOrder|validate\.ts" -- docs data` prints nothing; 1 hit in `docs/aoe4-build-order.md` today); the Issues section documents `suggestion` and the issue-order and field vs cross-field rules; the data-flow diagram names `checkBuildOrder + checkSimInputs`.
@@ -127,3 +136,9 @@ flowchart LR
 ## Open questions
 
 None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: the lazy AoE4 catalog mechanism and its criterion; test title count; tsc mismatch handling.
+- Changed: Scope 3 and 4 and criteria 5 and 6 (memoised require, no top-level data import, 25 types, fix schema not casts).
+- Stands: all other scope, criteria and the gate-verified counts.

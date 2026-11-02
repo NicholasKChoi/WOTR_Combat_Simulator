@@ -45,8 +45,8 @@ reports 177 errors; this ticket fixes them all and flips the flag.
    - `lib/combat-simulator/simulate.ts` 76 (`this.hitTallies[side][h]++`), 85 (`tallySurvivors(battle.outcome, battle.winner)` where `winner` may be `undefined`), 113 (`const count = this.outcomeCounts.get(kind)` used in `{ count, frequency: count / battles }`): add a guard that throws or an assertion. `kinds` are the keys the map was seeded with, so a missing entry cannot occur. Do not default to 0; that would hide a bug. This is on the `simulateBattles` critical path: results and the thrown-error behavior for valid input must not change.
    - `lib/aoe4-build-order/simulate.ts` 288/290 (`rally` possibly undefined in the walk callback), 491 (`engine.events.shift().apply` after a length check), 508 to 518 (`instance.order` possibly null in `payOrder`), 615, 836 to 839 (`step-stuck` warning built from nullable `waitingOn`, `armedAt`): assert or guard as in rule 3.
    - `validate.ts` (4 errors): a minimal assertion or guard is enough; the schema ticket deletes the file.
-5. Docs: grep `README.md`, `ARCHITECTURE.md`, `docs/*.md`, and comments for statements about `strict: false` or null handling that become untrue; fix any found. Expect none.
-6. The implementer lists every test file edited. Tests change only in how they reach values (`!`, a guard, a narrowed helper type); no expected value or scenario changes, because nothing about behavior changes.
+5. Docs: `ARCHITECTURE.md` line 11 reads "TypeScript 7 with `strict: false`"; reword it to "`strict: false` with `strictNullChecks: true`" (keep the rest of the sentence). Also grep `README.md`, `docs/*.md` and comments for other statements about `strict: false` or null handling that become untrue; fix any found.
+6. Run `npm run lint:dup` early and after each batch: many tests will gain the same repeated `!` lines and the jscpd threshold is 0. The implementer lists every test file edited. Tests change only in how they reach values (`!`, a guard, a narrowed helper type); no expected value or scenario changes, because nothing about behavior changes.
 
 **Out of scope:** any other `strict` flag (`noImplicitAny`, `strictFunctionTypes`, `strict: true`); zod and the schema (next ticket); behavior changes, even when a null-handling bug is found (list it in the report and in BACKLOG instead); deleting or rewriting `validate.ts`; `golang/`; `.js` pages (`allowJs` is on but `checkJs` is not).
 
@@ -68,3 +68,9 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: Scope 5 said "Expect none" while `ARCHITECTURE.md` line 11 says `strict: false`.
+- Changed: Scope 5 names that line and its new wording; Scope 6 adds an early `npm run lint:dup` note.
+- Branch work: none exists yet.

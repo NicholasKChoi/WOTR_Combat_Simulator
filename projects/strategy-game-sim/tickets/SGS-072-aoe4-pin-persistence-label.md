@@ -10,7 +10,7 @@
        it adds page state and a restore request on load, so not low. -->
 - **Invariants**: S1 (new code imports only from `lib/aoe4-build-order/` and `components/apps/aoe4-build-order/`); S3 (a restored pin goes through `textToBuildOrder`, which enforces the 20000-character cap, and the route, which enforces `SIM_INPUT_BOUNDS`, so a tampered storage value cannot reach the engine unbounded); A3 (a pin stores inputs, and the same inputs give the same result, so "already pinned" is decided on inputs)
 - **LOC estimate**: about 115 (`pages/apps/aoe4-build-order.tsx` about 55: pin state, run snapshot, restore effect, stale flag; new `pin-storage.ts` about 35; new `pin-name.ts` about 8; `compare-panel.tsx` about 14; `build-input.tsx` about -6 net; `results.tsx` about 5). Business logic only; specs, unit tests and docs excluded.
-- **Depends on**: SGS-067, SGS-069 (SGS-067 is last of the page chain SGS-059 -> SGS-066 -> SGS-067; SGS-069 reworks `compare-panel.tsx` and no longer declares `pinnedName` or `alreadyPinned`; this ticket adds them). Also edits `results.tsx` after SGS-070 and SGS-071 (it is the last edit of that file in the milestone; SGS-071 depends on SGS-070 and the merge order on the page is enforced by SGS-067, so only a rebase is needed).
+- **Depends on**: SGS-067, SGS-069, SGS-070, SGS-071 (SGS-067 is last of the page chain SGS-059 -> SGS-066 -> SGS-067; SGS-069 reworks `compare-panel.tsx` and no longer declares `pinnedName` or `alreadyPinned`; this ticket adds them; SGS-070 and SGS-071 edit `results.tsx` first, so this ticket is the last edit of that file in the milestone and the `pinnedMarkers` lines it keeps exist).
 - **On merge**: none
 - **Source**: M4 design C13, C8 (rows `results-stale`, `pinned-label`; `BuildInput` `selected`, `onSelectedChange`), C11 (`ComparePanel` props), C13 (pin storage), designer pass 4 (`reports/M4-designer-4.md` item 7), Behavior rules "Compare and pin" rows pin name (source, label, restore), Pin (already pinned, repeat or replace), Unpin, stale, pin restore (on load, bad storage, race), pin cross-tab, and Run ordering step 5 (`design/M4.md`); plan outline P (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md`: DQ4 and "Outline changes" 5)
 
@@ -122,8 +122,9 @@ build edits, and failed runs"). `docs/api/openapi.json` is not changed.
   helpers and `openPage` are reused; Playwright contexts isolate `localStorage` per test):
   1. Reload keeps the pin: run the default build at 1200, pin, `page.reload()`: `tab-results` is enabled (without any Run),
      `unpin-run` is enabled, `pinned-label` has text `Pinned: <first prebuilt name>, 20:00`, `build-order-text` holds the
-     default text, and the page POSTed once with a `buildOrder` body and the stored `durationSeconds`. After a run, `pin-run`
-     is enabled and the compare table appears (a different duration, so it is not already pinned).
+     default text, and the page POSTed once with a `buildOrder` body and the stored `durationSeconds`. After a run at a changed
+     duration (not the default 1200 s: a run at 1200 s equals the pin and `pin-run` stays disabled), `pin-run`
+     is enabled and the compare table appears.
   2. Label: unchanged default at 1200 gives `Pinned: <name>, 20:00`; after one edited line, `<name> (edited), 20:00`; choosing
      another prebuilt in the select and pasting the first prebuilt's exact text gives the first prebuilt's name; pasting a text
      that matches none under another selected prebuilt gives `<that selected name> (edited)`. The label never changes after the
@@ -151,7 +152,8 @@ build edits, and failed runs"). `docs/api/openapi.json` is not changed.
   disabled: grep `pin-run` in `acceptance/aoe4-build-order-pin-compare.spec.ts`, `aoe4-build-order-m3-flow.spec.ts` and
   `aoe4-build-order.spec.ts`, for example "pinning the shown result gives zero or dash deltas on every row"), and a test that
   edits the text after a run and asserts nothing about staleness keeps its value. No test needs a `localStorage` clear (each
-  Playwright test has its own context). The implementer lists every test it edits.
+  Playwright test has its own context). The implementer lists every test it edits. Check first the `pin-run` clicks at `acceptance/aoe4-build-order-m3-flow.spec.ts:26` and
+  `acceptance/aoe4-build-order.spec.ts:461` (lines on `origin/main`): they may now find Pin disabled.
 
 **Out of scope:** pinned age-up markers (SGS-071); the compare table, delta and blank-key reason work (SGS-069); `line-chart.tsx`;
 tab selection after restore (no auto-switch to Results); syncing the pin across tabs; persisting the view, tab or text (the design
@@ -205,6 +207,12 @@ flowchart LR
 ## Open questions
 
 None.
+
+## Re-spec 2026-11-02 (second pass: spec gate 1)
+
+- Underspecified: Depends on missed SGS-070 and SGS-071; the spec 1 rerun duration was ambiguous; the two pin-run clicks to check first were unnamed.
+- Changed: Depends on adds SGS-070 and SGS-071 and no longer claims SGS-067 orders the page; spec 1 uses a changed duration; the two clicks are named.
+- Stands: all other scope and criteria.
 
 ## Re-spec 2026-11-02
 

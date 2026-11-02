@@ -28,7 +28,7 @@ of `design/M4.md` and the seven tickets above; this ticket adds no test id, prop
 - `workbench.module.css`: the sticky run bar (`run-bar`: wraps its controls onto more than one row under 768 px, the
   select and number input take the full row width, `position: sticky; top: 0` unchanged), the tab bar, the editor
   and gutter (`min-width: 0` on the editor flex child so the textarea's own sideways scroll holds, see item 2), the issue
-  list (`overflow-wrap: anywhere` so a 20001-character unbroken paste in a message cannot widen the page), the
+  list (`overflow-wrap: anywhere` so a 3000-character unbroken token quoted in a message cannot widen the page), the
   `results-stale` and `pinned-label` lines.
 - `results.module.css`: the timeline and compare scroll boxes (item 3), the chart legends (`chart-series-legend`,
   `chart-marker-legend`: items wrap to further lines), the chart wrapper (`min-width: 0`), the simulation message lists.
@@ -55,20 +55,20 @@ the page container there). Remove the `table-responsive` class if SGS-069 left i
 box per table.
 
 **4. Cards.** Verify, do not redo, SGS-068's card layout: at 390 px each `step-row` and `step-start-row` stacks its
-labelled fields and every control stays inside the page width. Fix any overflow that breaks the rule in item 2 in
+labelled fields (the start card's `start-field-rally` and first `start-villagers-count` included) and every control stays inside the page width. Fix any overflow that breaks the rule in item 2 in
 `step-table.module.css`.
 
-**5. Playwright check (respec 1: this spec is the only whole-page 390 px `scrollWidth` test; SGS-074 does not repeat it).** New `acceptance/aoe4-narrow-layout.spec.ts`, using `openPage`, `runSimulation` from
+**5. Playwright check (respec 1: this spec is the only whole-page 390 px `scrollWidth` test; SGS-074 does not repeat it).** New `acceptance/aoe4-narrow-layout.spec.ts`, using `openPage`, `runSimulation` and `runRejected` (SGS-059, covered by the dependencies) from
 `acceptance/helpers.ts` and `test.use({ viewport: { width: 390, height: 844 } })`:
 - Build tab, text view (the default build): scrollWidth <= 390.
 - Choose the knight + longbow prebuilt (the longest text) by label with `build-order-select`, then Build tab, table
   view (`editor-view-table`): scrollWidth <= 390.
-- Run (200), then `pin-run`, run again at another `duration-seconds`, and on the Results tab: scrollWidth <= 390
+- Run (200), then `pin-run`, run again at another `duration-seconds`, click `tab-results`, and on the Results tab: scrollWidth <= 390
   with `chart-series-legend`, `chart-marker-legend`, `step-timeline-scroll` and `compare-scroll` all visible.
 - `step-timeline-scroll` and `compare-scroll` each have computed `overflow-x` of `auto` and `scrollWidth >
   clientWidth` at 390 px (they scroll, the page does not); at a 1280x720 viewport both have `scrollWidth <=
   clientWidth`.
-- A text that is one 3000-character line without spaces (`'a'.repeat(3000)`) gives an issue on Run and scrollWidth stays <= 390 on the Build tab.
+- Long issue message: fill the text with `start -> sheep` then `at 8 vils ${'a'.repeat(3000)}` (the design's invalid paste with the 3000-character token in place of `fly`; under the 20000 cap, so the parser quotes the token in a `syntax` issue). The text is rejected client side, so no POST is sent: use `runRejected(page)` (not `runSimulation`, which would time out), assert one `build-order-issue` is visible and its text contains `'a'.repeat(3000)`, then scrollWidth <= 390 on the Build tab. If the parser does not quote the token, the implementer picks the input that does and says so.
 
 **6. Docs.** `docs/aoe4-build-order.md` section "Page" (line 762 on main): add one short paragraph for the narrow
 layout (under 768 px rows are cards, the run bar wraps, the timeline and compare tables scroll in their own boxes,
@@ -90,7 +90,7 @@ Single-component change outside the core control loop; no diagram required.
 
 - [ ] At 390x844, `document.documentElement.scrollWidth <= 390` on the Build tab text view, the Build tab table view (knight + longbow build), and the Results tab with a result and a pinned run (new spec, three tests).
 - [ ] At 390 px `step-timeline-scroll` and `compare-scroll` have `overflow-x: auto` and `scrollWidth > clientWidth`; at 1280 px both have `scrollWidth <= clientWidth`.
-- [ ] A 3000-character unbroken line that fails the check leaves `scrollWidth <= 390` on the Build tab.
+- [ ] A rejected paste whose `build-order-issue` text contains a 3000-character unbroken token leaves `scrollWidth <= 390` on the Build tab.
 - [ ] `ls components/apps/aoe4-build-order/*.module.css` lists `step-table.module.css`, `workbench.module.css` and `results.module.css` (today it lists none).
 - [ ] `git grep -nE "overflow-x: ?hidden" -- components pages styles` prints nothing for `html`, `body`, `main` or the page section (review check).
 - [ ] No `data-testid`, `id`, `aria-*` or `data-*` attribute is added, removed or renamed (`git diff origin/main -- components pages | grep -E "^[-+].*(data-testid|data-[a-z-]+=|aria-[a-z]+=|id=)"` shows only lines that moved with their element).
@@ -103,6 +103,12 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 None.
+
+## Re-spec 2026-11-02 (second pass: spec gate 1)
+
+- Underspecified: the 3000-character test would have waited for a POST that never comes and might not reach the message wrap; 20001 vs 3000 disagreed; the Results test did not switch tab.
+- Changed: the test uses `runRejected`, a named input and an assertion that the issue text contains the run; figures are 3000; `tab-results` is clicked; the start card controls are named.
+- Stands: all other scope and criteria.
 
 ## Re-spec 2026-11-02
 
