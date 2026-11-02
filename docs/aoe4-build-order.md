@@ -664,7 +664,12 @@ A 200 draws three line charts, each with a toggleable legend:
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series and clicking
-it again restores it. Messages come from `warnings` and `notes`, `warnings` entries first.
+it again restores it. Each chart also draws the result's `markers` as dashed vertical lines labeled
+`<label> <m:ss>` (for example `Castle 13:24`); markers that fall close in time stack their labels in rows so
+each stays readable. A marker legend under the chart, separate from the series legend, lists one entry per
+kind present: `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
+and `Other` (`#6b6bd6`). A run with no markers draws neither lines nor the marker legend. Clicking a series
+legend item does not hide markers, and the pinned run draws none. Messages come from `warnings` and `notes`, `warnings` entries first.
 Those of severity `warning` appear in a warnings list. Those of severity `info` sit behind a toggle reading
 "Show N info messages" ("Show 1 info message" for one); clicking it lists them and the toggle reads
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each

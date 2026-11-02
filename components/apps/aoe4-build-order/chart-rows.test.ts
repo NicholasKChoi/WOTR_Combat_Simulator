@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PALETTE, pinnedKey, seriesColor, toChartRows, toggleHidden } from './chart-rows'
+import { MARKER_COLORS, MARKER_KIND_LABELS, PALETTE, markerLabel, pinnedKey, seriesColor, toChartRows, toggleHidden } from './chart-rows'
 
 describe('toChartRows', () => {
     it('makes one row per time with a value per series', () => {
@@ -73,5 +73,49 @@ describe('toggleHidden', () => {
         const input = new Set<string>(start)
         expect(toggleHidden(input, key)).toEqual(new Set(expected))
         expect(input).toEqual(new Set(start))
+    })
+})
+
+const luminance = (hex: string): number => {
+    const [r, g, b] = [1, 3, 5].map((i) => {
+        const c = parseInt(hex.slice(i, i + 2), 16) / 255
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+const contrast = (a: string, b: string): number => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+    return (hi + 0.05) / (lo + 0.05)
+}
+
+describe('marker styling', () => {
+    it('pins the color and legend name of every kind', () => {
+        expect(MARKER_COLORS).toEqual({
+            'age-up': '#b8860b',
+            economy: '#008080',
+            'unit-tier': '#c43bb0',
+            blacksmith: '#5f7d8c',
+            other: '#6b6bd6',
+        })
+        expect(MARKER_KIND_LABELS).toEqual({
+            'age-up': 'Age-up',
+            economy: 'Economy',
+            'unit-tier': 'Unit tier',
+            blacksmith: 'Blacksmith',
+            other: 'Other',
+        })
+    })
+
+    it('keeps every marker color readable on white and on dark text and apart from the series palette', () => {
+        for (const color of Object.values(MARKER_COLORS)) {
+            expect(contrast(color, '#ffffff')).toBeGreaterThanOrEqual(3)
+            expect(contrast(color, '#212529')).toBeGreaterThanOrEqual(3)
+            expect(PALETTE).not.toContain(color)
+        }
+    })
+
+    it('labels a marker with its name and m:ss time', () => {
+        expect(markerLabel({ kind: 'age-up', label: 'Castle', at: 804 })).toBe('Castle 13:24')
+        expect(markerLabel({ kind: 'unit-tier', label: 'veteran-longbowmen', at: 870 })).toBe('veteran-longbowmen 14:30')
     })
 })

@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
+import { formatMinSec } from '../lib/aoe4-build-order/format-time'
+import { MARKER_COLORS, MARKER_KIND_LABELS } from '../components/apps/aoe4-build-order/chart-rows'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import type { BuildOrder, SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
@@ -17,6 +19,8 @@ const RALLY_PASTE = [
 ].join('\n')
 const RESEARCH_PASTE = ['start -> sheep', 'research fitted-leatherwork at blacksmith'].join('\n')
 const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
+
+const hexToRgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 async function openPage(page: Page) {
   await page.goto(PAGE)
@@ -352,5 +356,96 @@ test.describe('AoE4 build order page', () => {
         expect(disjoint || label.y + label.height <= box.y || box.y + box.height <= label.y).toBe(true)
       }
     }
+  })
+
+  test.describe('chart markers', () => {
+    const KINDS = ['age-up', 'economy', 'unit-tier', 'blacksmith', 'other']
+    const GRID_DASH = '3 3'
+
+    test('each chart draws the result markers as labeled dashed lines with a kind legend, stacked without overlap', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(formatBuildOrderText(english1tc as BuildOrder))
+      const response = await runSimulation(page)
+      expect(response.status()).toBe(200)
+      const { markers } = (await response.json()) as SimulationResult
+      expect(markers.length).toBeGreaterThan(1)
+      expect(markers.some((m) => m.kind === 'age-up')).toBe(true)
+      expect(markers.filter((m) => m.at === markers[1].at).length).toBeGreaterThan(1)
+      await expectChartsDrawn(page)
+
+      const kinds = KINDS.filter((k) => markers.some((m) => m.kind === k))
+      for (const chart of CHARTS) {
+        const root = page.getByTestId(chart)
+        const lines = root.locator('svg [data-testid="chart-marker"]')
+        await expect(lines).toHaveCount(markers.length)
+        for (const [i, marker] of markers.entries()) {
+          const line = lines.nth(i)
+          await expect(line).toHaveAttribute('data-kind', marker.kind)
+          await expect(line).toHaveAttribute('data-label', marker.label)
+          await expect(line).toHaveAttribute('data-at', String(marker.at))
+          const dash = await line.getAttribute('stroke-dasharray')
+          expect(dash).toBeTruthy()
+          expect(dash).not.toBe(GRID_DASH)
+          await expect(line).toHaveAttribute('stroke', MARKER_COLORS[marker.kind])
+        }
+        expect(await root.locator('path[data-series][stroke-dasharray]').count()).toBe(0)
+
+        const legend = root.getByTestId('chart-marker-legend')
+        await expect(legend).toBeVisible()
+        await expect(legend.locator('.recharts-legend-wrapper')).toHaveCount(0)
+        await expect(legend.getByTestId('chart-marker-legend-item')).toHaveCount(kinds.length)
+        for (const [i, kind] of kinds.entries()) {
+          const item = legend.getByTestId('chart-marker-legend-item').nth(i)
+          await expect(item).toHaveAttribute('data-kind', kind)
+          await expect(item).toHaveText(MARKER_KIND_LABELS[kind])
+          await expect(item.locator('span')).toHaveCSS('background-color', hexToRgb(MARKER_COLORS[kind]))
+        }
+
+        const boxes = []
+        for (const marker of markers) {
+          const text = root.locator('svg text.recharts-label', { hasText: `${marker.label} ${formatMinSec(marker.at)}` })
+          await expect(text).toHaveCount(1)
+          boxes.push((await text.boundingBox())!)
+        }
+        for (let a = 0; a < boxes.length; a++) {
+          for (let b = a + 1; b < boxes.length; b++) {
+            const [p, q] = [boxes[a], boxes[b]]
+            const apart = p.x + p.width <= q.x || q.x + q.width <= p.x || p.y + p.height <= q.y || q.y + q.height <= p.y
+            expect(apart, `labels ${a} and ${b} in ${chart} overlap`).toBe(true)
+          }
+        }
+      }
+
+      const chart = page.getByTestId('chart-gather-rates')
+      await chart.locator('li.recharts-legend-item', { hasText: 'Food' }).click()
+      await expect(chart.locator('li.recharts-legend-item.inactive')).toHaveCount(1)
+      await expect(chart.locator('svg [data-testid="chart-marker"]')).toHaveCount(markers.length)
+      await expect(chart.getByTestId('chart-marker-legend')).toBeVisible()
+    })
+
+    test('a run with no markers draws no marker and no marker legend', async ({ page }) => {
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill('start -> sheep')
+      expect((await runSimulation(page)).status()).toBe(200)
+      await expectChartsDrawn(page)
+      await expect(page.getByTestId('chart-marker')).toHaveCount(0)
+      await expect(page.getByTestId('chart-marker-legend')).toHaveCount(0)
+    })
+
+    test('a marker at the end of the horizon is still drawn', async ({ page }) => {
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(formatBuildOrderText(english1tc as BuildOrder))
+      const first = await runSimulation(page)
+      const feudalAt = ((await first.json()) as SimulationResult).markers[0].at
+      await page.getByTestId('duration-seconds').fill(String(Math.ceil(feudalAt)))
+      const response = await runSimulation(page)
+      const { markers, durationSeconds } = (await response.json()) as SimulationResult
+      expect(Math.max(...markers.map((m) => m.at))).toBeLessThanOrEqual(durationSeconds)
+      await expectChartsDrawn(page)
+      for (const chart of CHARTS) {
+        await expect(page.getByTestId(chart).locator('svg [data-testid="chart-marker"]')).toHaveCount(markers.length)
+      }
+    })
   })
 })

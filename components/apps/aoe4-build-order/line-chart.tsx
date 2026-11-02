@@ -1,7 +1,43 @@
 import { useState } from 'react'
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
-import { type ChartSeries, type PinnedSeries, pinnedKey, seriesColor, toChartRows, toggleHidden } from './chart-rows'
+import { CHART_MARKER_KINDS, type ChartMarker } from '../../../lib/aoe4-build-order/model'
+import {
+    type ChartSeries,
+    MARKER_COLORS,
+    MARKER_KIND_LABELS,
+    type PinnedSeries,
+    markerLabel,
+    pinnedKey,
+    seriesColor,
+    toChartRows,
+    toggleHidden,
+} from './chart-rows'
+
+const LABEL_LINE_HEIGHT = 14
+const LABEL_CHAR_PX = 7
+const PLOT_WIDTH_PX = 900
+
+interface PlacedMarker {
+    marker: ChartMarker
+    side: 'left' | 'right'
+    row: number
+}
+
+// Labels are stacked in rows: a marker takes the first row whose last label ends before this one starts, so
+// markers close in time never share a row. Labels near the right edge extend leftward to stay inside the plot.
+function placeMarkers(markers: readonly ChartMarker[], end: number): PlacedMarker[] {
+    const rowEnds: number[] = []
+    return markers.map((marker) => {
+        const width = (markerLabel(marker).length * LABEL_CHAR_PX * end) / PLOT_WIDTH_PX
+        const side = marker.at + width > end ? 'right' : 'left'
+        const [from, to] = side === 'left' ? [marker.at, marker.at + width] : [marker.at - width, marker.at]
+        let row = rowEnds.findIndex((rowEnd) => rowEnd < from)
+        if (row < 0) row = rowEnds.length
+        rowEnds[row] = to
+        return { marker, side, row }
+    })
+}
 
 interface SeriesChartProps {
     testId: string
@@ -10,10 +46,13 @@ interface SeriesChartProps {
     times: number[]
     series: ChartSeries[]
     pinned?: PinnedSeries
+    markers?: readonly ChartMarker[]
 }
 
-export function SeriesChart({ testId, title, yLabel, times, series, pinned }: SeriesChartProps) {
+export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [] }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
+    const end = Math.max(1, ...times, ...(pinned?.times ?? []))
+    const kinds = CHART_MARKER_KINDS.filter((kind) => markers.some((m) => m.kind === kind))
 
     return (
         <div data-testid={testId}>
@@ -54,8 +93,40 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned }: Se
                             />
                         )
                     })}
+                    {placeMarkers(markers, end).map(({ marker, side, row }, i) => (
+                        <ReferenceLine
+                            key={i}
+                            x={marker.at}
+                            stroke={MARKER_COLORS[marker.kind]}
+                            strokeDasharray="8 2"
+                            data-testid="chart-marker"
+                            data-kind={marker.kind}
+                            data-label={marker.label}
+                            data-at={marker.at}
+                            label={{
+                                value: markerLabel(marker),
+                                position: side === 'left' ? 'insideTopLeft' : 'insideTopRight',
+                                fill: MARKER_COLORS[marker.kind],
+                                fontSize: 12,
+                                dy: row * LABEL_LINE_HEIGHT,
+                            }}
+                        />
+                    ))}
                 </LineChart>
             </ResponsiveContainer>
+            {kinds.length > 0 && (
+                <ul className="list-inline small mb-0" data-testid="chart-marker-legend">
+                    {kinds.map((kind) => (
+                        <li key={kind} className="list-inline-item" data-testid="chart-marker-legend-item" data-kind={kind}>
+                            <span
+                                className="d-inline-block me-1 align-middle"
+                                style={{ width: 12, height: 12, backgroundColor: MARKER_COLORS[kind] }}
+                            />
+                            {MARKER_KIND_LABELS[kind]}
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     )
 }
