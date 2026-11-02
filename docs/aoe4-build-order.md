@@ -455,7 +455,7 @@ prefix comes first, then the action:
 | `when <node> runs out ` | depleted | |
 | `whenever <node> runs out ` | depleted, as a reaction | |
 | `when <resource> >= N ` | bank | |
-| (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move N|all <node> to <node> [walk Ns]`; `rally <producer>[#k] -> <node> [walk Ns]` |
+| (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move <N or all> <node> to <node> [walk Ns]`; `rally <producer>[#k] -> <node> [walk Ns]` |
 
 One example per action; each line is a separate example:
 

@@ -518,7 +518,7 @@ describe('formatBuildStep', () => {
         [{ action: 'move', count: 3, from: 'sheep', to: 'wood' }, 'move 3 sheep to wood'],
     ])('prints %j as one line', (input, text) => {
         expect(formatBuildStep(input)).toBe(text)
-        expect(text).not.toContain('\n')
+        expect(formatBuildStep(input)).not.toContain('\n')
     })
 
     it('prints a reaction flag without whenever unless the trigger is depleted, and never throws', () => {
@@ -549,6 +549,16 @@ describe('formatBuildOrderText', () => {
             steps: [{ action: 'pause', producer: 'tc' }],
         })
         expect(text).toBe('start 3 sheep 0 berry 2 wood 1 stone -> wood\npause tc')
+    })
+
+    it('prints start deposits in gather node order whatever the key order', () => {
+        const text = formatBuildOrderText({
+            civ: 'english',
+            name: 'x',
+            start: { villagers: { stone: 1, 'gold#3': 1, gold: 2, 'gold#2': 1 } },
+            steps: [],
+        })
+        expect(text).toBe('start 2 gold 1 gold#2 1 gold#3 1 stone')
     })
 
     it('omits start when it is empty or absent', () => {
