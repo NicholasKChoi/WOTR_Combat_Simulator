@@ -817,9 +817,14 @@ rows) and never scrolls vertically (a line longer than the box scrolls sideways)
 step table. The view and the tab survive runs but not a reload. Choosing a prebuilt build replaces the text
 with that build's paste text; editing the text
 leaves the select as it is. Run converts the text with `textToBuildOrder` and the English catalog and posts the
-checked `buildOrder` and `inputs.durationSeconds` to the route. When the text does not convert, Run lists its
-issues under the open editor view, sends nothing and clears the shown result. Server 400 issues and network or
-HTTP failures show in the error list under the editor view. The duration is not checked in the browser: an
+checked `buildOrder` and `inputs.durationSeconds` to the route. The issues list under the open editor view is
+live: parse issues (and the length cap) show at once, and check issues show from the first Run on (of any
+outcome), tracking every edit. It lists every issue in check order, adds `did you mean <id>?` where an issue
+has a near match, and marks each issue's line in the gutter. An edit never clears a shown result. When the text
+does not convert, Run sends nothing, clears the shown result, selects Build and scrolls to the first issue's
+line, or to the list when that issue has no line or the table view is open. Server 400 issues stay in the
+error list under the editor view, without lines. Gold run-outs and other info notes are in the collapsed info
+list in Results. The duration is not checked in the browser: an
 empty or non-numeric entry is sent as 0, and the route rejects any value outside its bounds.
 
 The page keeps one `text` state, and the step table is a view of it. The table renders

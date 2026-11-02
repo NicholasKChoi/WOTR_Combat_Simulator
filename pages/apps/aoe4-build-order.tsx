@@ -9,6 +9,7 @@ import Layout from '../../components/layout'
 import { BuildInput, type EditorView, type PrebuiltBuild } from '../../components/apps/aoe4-build-order/build-input'
 import { BuildTextEditor } from '../../components/apps/aoe4-build-order/build-text-editor'
 import { IssueList } from '../../components/apps/aoe4-build-order/issue-list'
+import { issueLines } from '../../components/apps/aoe4-build-order/text-lines'
 import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
 import { Results } from '../../components/apps/aoe4-build-order/results'
 import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
@@ -59,7 +60,8 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [resultText, setResultText] = useState('')
     const [pinned, setPinned] = useState<SimulateResponse | null>(null)
     const [issues, setIssues] = useState<string[]>([])
-    const [clientIssues, setClientIssues] = useState<BuildOrderIssue[]>([])
+    const [checked, setChecked] = useState(false)
+    const [rejection, setRejection] = useState<{ first: BuildOrderIssue } | null>(null)
     const [running, setRunning] = useState(false)
     const [infoExpanded, setInfoExpanded] = useState(false)
     const [tab, setTab] = useState<WorkbenchTab>('build')
@@ -67,9 +69,13 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [resultsShownCount, setResultsShownCount] = useState(0)
     const resultsTop = useRef<HTMLDivElement>(null)
     const runBar = useRef<HTMLFormElement>(null)
+    const editorBox = useRef<HTMLDivElement>(null)
+    const issuesBox = useRef<HTMLDivElement>(null)
     const resultsEnabled = result !== null || pinned !== null
     const shownTab = resultsEnabled ? tab : 'build'
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
+    const converted = useMemo(() => textToBuildOrder(text, catalog), [text, catalog])
+    const clientIssues = converted.ok || (converted.lines !== undefined && !checked) ? [] : converted.issues
 
     useEffect(() => {
         const panel = resultsTop.current
@@ -78,15 +84,25 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         panel.scrollIntoView()
     }, [resultsShownCount])
 
+    useEffect(() => {
+        if (rejection === null) return
+        const marginTop = `${runBar.current?.getBoundingClientRect().height ?? 0}px`
+        const { line } = rejection.first
+        const item = view === 'text' && line !== undefined ? editorBox.current?.querySelector(`[data-line="${line}"]`) : null
+        const target = item ?? issuesBox.current
+        if (!(target instanceof HTMLElement)) return
+        target.style.scrollMarginTop = marginTop
+        target.scrollIntoView({ block: 'center' })
+    }, [rejection])
+
     async function runSimulation() {
+        setChecked(true)
         setIssues([])
-        setClientIssues([])
         const runText = text
-        const converted = textToBuildOrder(runText, catalog)
         if (converted.ok === false) {
-            setClientIssues(converted.issues)
             setResult(null)
             setTab('build')
+            setRejection({ first: converted.issues[0] })
             return
         }
         setRunning(true)
@@ -142,7 +158,9 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                     build={
                         <>
                             {view === 'text' ? (
-                                <BuildTextEditor text={text} onChange={setText} />
+                                <div ref={editorBox}>
+                                    <BuildTextEditor text={text} onChange={setText} errorLines={issueLines(clientIssues)} />
+                                </div>
                             ) : parsed.ok === true ? (
                                 <StepTable order={parsed.order} catalog={catalog} onChange={(order) => setText(formatBuildOrderText(order))} />
                             ) : (
@@ -150,7 +168,9 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                                     {parsed.issues[0].message}
                                 </div>
                             )}
-                            <IssueList issues={clientIssues} />
+                            <div ref={issuesBox}>
+                                <IssueList issues={clientIssues} />
+                            </div>
                             {issues.length > 0 ? (
                                 <div data-testid="simulation-error" role="alert" className="alert alert-danger">
                                     <ul className="mb-0">

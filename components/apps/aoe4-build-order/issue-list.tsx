@@ -7,7 +7,12 @@ export function IssueList({ issues }: { issues: readonly BuildOrderIssue[] }) {
             <ul className="mb-0">
                 {issues.map((issue, i) => (
                     <li key={i} data-testid="build-order-issue" data-code={issue.code} data-line={issue.line}>
-                        {issue.message}
+                        <span>{issue.message}</span>
+                        {issue.suggestion !== undefined ? (
+                            <span data-testid="build-order-issue-suggestion" className="ms-2">
+                                {`did you mean ${issue.suggestion}?`}
+                            </span>
+                        ) : null}
                     </li>
                 ))}
             </ul>

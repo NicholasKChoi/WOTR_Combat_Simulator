@@ -133,7 +133,7 @@ test.describe('AoE4 build order page', () => {
     await openPage(page)
     await page.getByTestId('build-order-text').fill('x'.repeat(20001))
     await runRejected(page)
-    await expect(page.getByTestId('build-order-issue')).toHaveText('text: 20001 characters, more than 20000')
+    await expect(page.getByTestId('build-order-issue')).toContainText('text: 20001 characters, more than 20000')
     await expect(page.getByTestId('build-order-issue')).toHaveAttribute('data-code', 'out-of-range')
     await expect(page.getByTestId('simulation-error')).toHaveCount(0)
   })
@@ -831,7 +831,7 @@ test.describe('AoE4 build order page', () => {
       await expect(lineNumbers(page)).toHaveText(['1'])
       await page.getByTestId('build-order-text').fill('a\nb\n')
       await expect(lineNumbers(page)).toHaveText(['1', '2', '3'])
-      await expect(lineNumbers(page).first()).not.toHaveAttribute('data-error', /.*/)
+      await expect(lineNumbers(page).last()).not.toHaveAttribute('data-error', /.*/)
     })
 
     test('the textarea grows to its text without an inner scroll and line numbers sit level with their lines', async ({ page }) => {

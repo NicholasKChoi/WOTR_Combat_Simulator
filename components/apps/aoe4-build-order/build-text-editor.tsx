@@ -6,9 +6,10 @@ import { lineCount } from './text-lines'
 interface BuildTextEditorProps {
     text: string
     onChange: (text: string) => void
+    errorLines: readonly number[]
 }
 
-export function BuildTextEditor({ text, onChange }: BuildTextEditorProps) {
+export function BuildTextEditor({ text, onChange, errorLines }: BuildTextEditorProps) {
     const lines = lineCount(text)
     return (
         <div className="mb-3">
@@ -16,7 +17,12 @@ export function BuildTextEditor({ text, onChange }: BuildTextEditorProps) {
             <div className={styles.editor}>
                 <ol data-testid="build-order-gutter" aria-hidden="true" className={styles.gutter}>
                     {Array.from({ length: lines }, (_, i) => (
-                        <li key={i} data-testid="build-order-line-number" data-line={i + 1}>
+                        <li
+                            key={i}
+                            data-testid="build-order-line-number"
+                            data-line={i + 1}
+                            data-error={errorLines.includes(i + 1) ? 'true' : undefined}
+                        >
                             {i + 1}
                         </li>
                     ))}
