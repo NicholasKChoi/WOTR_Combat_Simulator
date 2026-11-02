@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
 import rules from '../data/aoe4-build-order/rules/english.json'
 import snapshot from '../data/aoe4-build-order/aoe4world/english.json'
-import { INFINITE_NODES, postSimulate } from './helpers'
+import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -47,7 +47,7 @@ const finalCount = (body: Body, baseId: string) => body.unitsProduced.find((s) =
 const last = <T,>(series: T[]) => series[series.length - 1]
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: 'start 6 sheep -> sheep' }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom('start 6 sheep -> sheep') }, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('spent on the prebuilt English build', () => {

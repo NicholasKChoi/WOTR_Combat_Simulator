@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { INFINITE_NODES, postSimulate } from './helpers'
+import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
 import { FINITE_GATHER_NODES } from '../lib/aoe4-build-order/model'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
@@ -9,11 +9,11 @@ test.describe.configure({ timeout: 60_000 })
 
 const START_LINE = 'start 6 sheep -> sheep'
 const ORDERS: [string, unknown, unknown[]][] = [
-  ['the start line alone', { text: START_LINE }, []],
-  ['villagers from the town center', { text: [START_LINE, 'produce villager from capital-town-center x3'].join('\n') }, []],
+  ['the start line alone', { buildOrder: buildOrderFrom(START_LINE) }, []],
+  ['villagers from the town center', { buildOrder: buildOrderFrom([START_LINE, 'produce villager from capital-town-center x3'].join('\n')) }, []],
   [
     'a research step above the age',
-    { text: [START_LINE, 'produce villager from capital-town-center x3', 'research textiles'].join('\n') },
+    { buildOrder: buildOrderFrom([START_LINE, 'produce villager from capital-town-center x3', 'research textiles'].join('\n')) },
     [
       {
         code: 'step-stuck',
@@ -41,7 +41,7 @@ const ORDERS: [string, unknown, unknown[]][] = [
 ]
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: START_LINE }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom(START_LINE) }, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('depletions and warnings with every node infinite', () => {

@@ -338,8 +338,8 @@ test.describe('SimulateError issue cap', () => {
   const issues = (count: number) => Array.from({ length: count }, (_, i) => issue(i))
 
   test('a real capped response validates', async ({ request }) => {
-    const text = Array.from({ length: 101 }, (_, i) => `bogus ${i}`).join('\n')
-    const json = await expect400(request, { text })
+    const unknownUnits = Array.from({ length: 101 }, (_, i) => ({ ...PRODUCE, unit: `no-such-unit-${i}` }))
+    const json = await expect400(request, buildOrderBody(unknownUnits))
     expect(json.omittedIssues).toBe(1)
   })
 

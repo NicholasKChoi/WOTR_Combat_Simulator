@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { postSimulate } from './helpers'
+import { buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -26,13 +26,13 @@ const sum = (breakdown: Timing['waitBreakdown']) => Object.values(breakdown).red
 const stuck = (result: Result) => result.warnings.filter((w) => w.code === 'step-stuck')
 
 async function simulate(request: APIRequestContext, text: string, inputs: Record<string, unknown> = {}): Promise<Result> {
-  const response = await postSimulate(request, { text, inputs })
+  const response = await postSimulate(request, { buildOrder: buildOrderFrom(text), inputs })
   expect(response.status(), await response.text()).toBe(200)
   return response.json()
 }
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: START }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom(START) }, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('each wait reason is reachable through the API', () => {

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { SIMULATE_PATH, postSimulate, postSimulateRaw } from './helpers'
+import { SIMULATE_PATH, buildOrderFrom, postSimulate, postSimulateRaw } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -21,7 +21,7 @@ const RESEARCH_ORDER = {
 }
 
 test.beforeAll(async ({ request }) => {
-  await postSimulate(request, { text: START_LINE }, WARM_UP_TIMEOUT_MS)
+  await postSimulate(request, { buildOrder: buildOrderFrom(START_LINE) }, WARM_UP_TIMEOUT_MS)
 })
 
 async function okBody(request: Parameters<typeof postSimulate>[0], body: unknown) {
@@ -40,7 +40,7 @@ async function issuesOf(request: Parameters<typeof postSimulate>[0], body: unkno
 
 test.describe('result shape', () => {
   test('a villager-only order returns every result field, aligned to the times axis', async ({ request }) => {
-    const response = await postSimulate(request, { text: VILLAGERS_TEXT })
+    const response = await postSimulate(request, { buildOrder: buildOrderFrom(VILLAGERS_TEXT) })
     expect(response.status()).toBe(200)
     expect(response.headers()['content-type']).toContain('application/json')
     const body = await response.json()
@@ -76,7 +76,7 @@ test.describe('result shape', () => {
   })
 
   test('a research step returns a timing for each step and a note for an unmodelled effect', async ({ request }) => {
-    const body = await okBody(request, { text: RESEARCH_TEXT })
+    const body = await okBody(request, { buildOrder: buildOrderFrom(RESEARCH_TEXT) })
     expect(body.steps).toHaveLength(2)
     expect(body.steps.map((s: { step: number }) => s.step)).toEqual([0, 1])
     expect(body.notes).toEqual([expect.objectContaining({ code: 'tech-effect-ignored', step: 1, tech: 'textiles' })])
@@ -84,9 +84,9 @@ test.describe('result shape', () => {
 
   test('the research order gives the same result as paste and as JSON, and is stable across repeats', async ({ request }) => {
     const [fromText, fromJson, again] = [
-      await okBody(request, { text: RESEARCH_TEXT }),
+      await okBody(request, { buildOrder: buildOrderFrom(RESEARCH_TEXT) }),
       await okBody(request, { buildOrder: RESEARCH_ORDER }),
-      await okBody(request, { text: RESEARCH_TEXT }),
+      await okBody(request, { buildOrder: buildOrderFrom(RESEARCH_TEXT) }),
     ]
     expect(fromJson.steps).toEqual(fromText.steps)
     expect(fromJson.unitsProduced).toEqual(fromText.unitsProduced)
@@ -94,51 +94,45 @@ test.describe('result shape', () => {
     expect(fromJson.notes).toEqual(fromText.notes)
     expect(again).toEqual(fromText)
   })
-
-  test('CRLF line endings give the same result as LF', async ({ request }) => {
-    const lf = await okBody(request, { text: VILLAGERS_TEXT })
-    const crlf = await okBody(request, { text: VILLAGERS_TEXT.replace(/\n/g, '\r\n') })
-    expect(crlf).toEqual(lf)
-  })
 })
 
 test.describe('inputs', () => {
   test('null inputs behave as absent inputs', async ({ request }) => {
-    expect(await okBody(request, { text: VILLAGERS_TEXT, inputs: null })).toEqual(await okBody(request, { text: VILLAGERS_TEXT }))
+    expect(await okBody(request, { buildOrder: buildOrderFrom(VILLAGERS_TEXT), inputs: null })).toEqual(await okBody(request, { buildOrder: buildOrderFrom(VILLAGERS_TEXT) }))
   })
 
   test('a non-object inputs is one syntax issue', async ({ request }) => {
-    const issues = await issuesOf(request, { text: VILLAGERS_TEXT, inputs: 'x' })
+    const issues = await issuesOf(request, { buildOrder: buildOrderFrom(VILLAGERS_TEXT), inputs: 'x' })
     expect(issues).toEqual([expect.objectContaining({ code: 'syntax' })])
     expect(issues[0].message).toContain('inputs')
   })
 
   test('a trip override changes the gather rates the engine reports', async ({ request }) => {
-    const base = await okBody(request, { text: VILLAGERS_TEXT })
-    const near = await okBody(request, { text: VILLAGERS_TEXT, inputs: { trips: { sheep: { walkSecondsTownCenter: 30 } } } })
+    const base = await okBody(request, { buildOrder: buildOrderFrom(VILLAGERS_TEXT) })
+    const near = await okBody(request, { buildOrder: buildOrderFrom(VILLAGERS_TEXT), inputs: { trips: { sheep: { walkSecondsTownCenter: 30 } } } })
     expect(near.gatherRates).not.toEqual(base.gatherRates)
   })
 
   test('a trips key that is not a gather node is unknown-id', async ({ request }) => {
-    const issues = await issuesOf(request, { text: VILLAGERS_TEXT, inputs: { trips: { bogus: {} } } })
+    const issues = await issuesOf(request, { buildOrder: buildOrderFrom(VILLAGERS_TEXT), inputs: { trips: { bogus: {} } } })
     expect(issues[0].code).toBe('unknown-id')
     expect(issues[0].message).toContain('inputs.trips.bogus')
   })
 
   test('durationSeconds 60 and 3600 are accepted and 3601 is out of range', async ({ request }) => {
-    expect((await okBody(request, { text: START_LINE, inputs: { durationSeconds: 60 } })).times.at(-1)).toBe(60)
-    expect((await okBody(request, { text: START_LINE, inputs: { durationSeconds: 3600 } })).times.at(-1)).toBe(3600)
-    expect((await issuesOf(request, { text: START_LINE, inputs: { durationSeconds: 3601 } }))[0].code).toBe('out-of-range')
+    expect((await okBody(request, { buildOrder: buildOrderFrom(START_LINE), inputs: { durationSeconds: 60 } })).times.at(-1)).toBe(60)
+    expect((await okBody(request, { buildOrder: buildOrderFrom(START_LINE), inputs: { durationSeconds: 3600 } })).times.at(-1)).toBe(3600)
+    expect((await issuesOf(request, { buildOrder: buildOrderFrom(START_LINE), inputs: { durationSeconds: 3601 } }))[0].code).toBe('out-of-range')
   })
 
   test('a fractional or string durationSeconds is rejected', async ({ request }) => {
-    expect((await issuesOf(request, { text: START_LINE, inputs: { durationSeconds: 60.5 } }))[0].code).toBe('out-of-range')
-    expect((await issuesOf(request, { text: START_LINE, inputs: { durationSeconds: '60' } }))[0].code).toBe('syntax')
+    expect((await issuesOf(request, { buildOrder: buildOrderFrom(START_LINE), inputs: { durationSeconds: 60.5 } }))[0].code).toBe('out-of-range')
+    expect((await issuesOf(request, { buildOrder: buildOrderFrom(START_LINE), inputs: { durationSeconds: '60' } }))[0].code).toBe('syntax')
   })
 
   test('unknown input and body properties are ignored', async ({ request }) => {
-    const plain = await okBody(request, { text: START_LINE })
-    expect(await okBody(request, { text: START_LINE, extra: 1, inputs: { sampleSeconds: 7, zzz: true } })).toEqual(plain)
+    const plain = await okBody(request, { buildOrder: buildOrderFrom(START_LINE) })
+    expect(await okBody(request, { buildOrder: buildOrderFrom(START_LINE), extra: 1, inputs: { sampleSeconds: 7, zzz: true } })).toEqual(plain)
   })
 })
 
@@ -215,7 +209,9 @@ test.describe('framework responses', () => {
 })
 
 test.describe('issue cap', () => {
-  const junkLines = (count: number, tag = 'bogus') => Array.from({ length: count }, (_, i) => `${tag} ${i + 1}`).join('\n')
+  const badSteps = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ action: 'produce', producer: 'capital-town-center', unit: `no-such-unit-${i}` }))
+  const order = (steps: unknown[]) => ({ civ: 'english', name: 'Test', start: START, steps })
   const unknownBuildings = (count: number) =>
     Object.fromEntries(Array.from({ length: count }, (_, i) => [`no-such-building-${i + 1}`, 1]))
 
@@ -224,38 +220,38 @@ test.describe('issue cap', () => {
     expect(response.status(), await response.text()).toBe(400)
     const json = await response.json()
     expect(json.error).toBe(json.issues[0].message)
-    return json as { error: string; issues: { code: string; message: string; line?: number }[]; omittedIssues?: number }
+    return json as { error: string; issues: { code: string; message: string; step?: number }[]; omittedIssues?: number }
   }
 
   for (const count of [99, 100]) {
     test(`${count} issues are all listed with no omittedIssues key`, async ({ request }) => {
-      const json = await rejected(request, { text: junkLines(count) })
+      const json = await rejected(request, { buildOrder: order(badSteps(count)) })
       expect(json.issues).toHaveLength(count)
       expect('omittedIssues' in json).toBe(false)
     })
   }
 
-  for (const [count, omitted] of [[101, 1], [250, 150]]) {
+  for (const [count, omitted] of [[101, 1], [200, 100]]) {
     test(`${count} issues return the first 100 and omittedIssues ${omitted}`, async ({ request }) => {
-      const json = await rejected(request, { text: junkLines(count) })
+      const json = await rejected(request, { buildOrder: order(badSteps(count)) })
       expect(json.issues).toHaveLength(100)
       expect(json.omittedIssues).toBe(omitted)
-      expect(json.issues.map((i) => i.line)).toEqual(Array.from({ length: 100 }, (_, i) => i + 1))
+      expect(json.issues.map((i) => i.step)).toEqual(Array.from({ length: 100 }, (_, i) => i))
     })
   }
 
-  test('the cap applies after paste issues and inputs issues are combined, paste first', async ({ request }) => {
-    const json = await rejected(request, { text: junkLines(60), inputs: { influenceCoverage: unknownBuildings(60) } })
+  test('the cap applies after order issues and inputs issues are combined, order first', async ({ request }) => {
+    const json = await rejected(request, { buildOrder: order(badSteps(60)), inputs: { influenceCoverage: unknownBuildings(60) } })
     expect(json.issues).toHaveLength(100)
     expect(json.omittedIssues).toBe(20)
-    expect(json.issues.slice(0, 60).map((i) => i.line)).toEqual(Array.from({ length: 60 }, (_, i) => i + 1))
+    expect(json.issues.slice(0, 60).map((i) => i.step)).toEqual(Array.from({ length: 60 }, (_, i) => i))
     expect(json.issues.slice(60).map((i) => i.message)).toEqual(
       Array.from({ length: 40 }, (_, i) => `inputs.influenceCoverage.no-such-building-${i + 1}: unknown building "no-such-building-${i + 1}"`),
     )
   })
 
   test('a capped body is the same on repeat', async ({ request }) => {
-    const body = { text: junkLines(101) }
+    const body = { buildOrder: order(badSteps(101)) }
     expect(await rejected(request, body)).toEqual(await rejected(request, body))
   })
 })
