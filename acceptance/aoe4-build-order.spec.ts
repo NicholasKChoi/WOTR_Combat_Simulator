@@ -1,9 +1,9 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { MARKER_COLORS, MARKER_KIND_LABELS } from '../components/apps/aoe4-build-order/chart-rows'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
-import type { BuildOrder, SimulationResult } from '../lib/aoe4-build-order/model'
+import { CHART_MARKER_KINDS, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { SIMULATE_PATH } from './helpers'
 
@@ -359,7 +359,37 @@ test.describe('AoE4 build order page', () => {
   })
 
   test.describe('chart markers', () => {
-    const KINDS = ['age-up', 'economy', 'unit-tier', 'blacksmith', 'other']
+    async function expectMarkerLabelsApart(root: Locator, markers: SimulationResult['markers'], chart: string) {
+      const boxes = []
+      for (const marker of markers) {
+        const text = root.locator('svg text.recharts-label', { hasText: `${marker.label} ${formatMinSec(marker.at)}` })
+        await expect(text).toHaveCount(1)
+        boxes.push((await text.boundingBox())!)
+      }
+      for (let a = 0; a < boxes.length; a++) {
+        for (let b = a + 1; b < boxes.length; b++) {
+          const [p, q] = [boxes[a], boxes[b]]
+          const apart = p.x + p.width <= q.x || q.x + q.width <= p.x || p.y + p.height <= q.y || q.y + q.height <= p.y
+          expect(apart, `labels ${a} and ${b} in ${chart} overlap`).toBe(true)
+        }
+      }
+    }
+
+    test('marker labels stay apart on a narrow screen', async ({ page }) => {
+      await page.setViewportSize({ width: 768, height: 900 })
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(formatBuildOrderText(english1tc as BuildOrder))
+      const response = await runSimulation(page)
+      expect(response.status()).toBe(200)
+      const { markers } = (await response.json()) as SimulationResult
+      expect(markers.length).toBeGreaterThan(1)
+      await expectChartsDrawn(page)
+      for (const chart of CHARTS) {
+        await expect(page.getByTestId(chart).locator('svg [data-testid="chart-marker"]')).toHaveCount(markers.length)
+        await expectMarkerLabelsApart(page.getByTestId(chart), markers, chart)
+      }
+    })
+
     const GRID_DASH = '3 3'
 
     test('each chart draws the result markers as labeled dashed lines with a kind legend, stacked without overlap', async ({ page }) => {
@@ -374,7 +404,7 @@ test.describe('AoE4 build order page', () => {
       expect(markers.filter((m) => m.at === markers[1].at).length).toBeGreaterThan(1)
       await expectChartsDrawn(page)
 
-      const kinds = KINDS.filter((k) => markers.some((m) => m.kind === k))
+      const kinds = CHART_MARKER_KINDS.filter((k) => markers.some((m) => m.kind === k))
       for (const chart of CHARTS) {
         const root = page.getByTestId(chart)
         const lines = root.locator('svg [data-testid="chart-marker"]')
@@ -402,19 +432,7 @@ test.describe('AoE4 build order page', () => {
           await expect(item.locator('span')).toHaveCSS('background-color', hexToRgb(MARKER_COLORS[kind]))
         }
 
-        const boxes = []
-        for (const marker of markers) {
-          const text = root.locator('svg text.recharts-label', { hasText: `${marker.label} ${formatMinSec(marker.at)}` })
-          await expect(text).toHaveCount(1)
-          boxes.push((await text.boundingBox())!)
-        }
-        for (let a = 0; a < boxes.length; a++) {
-          for (let b = a + 1; b < boxes.length; b++) {
-            const [p, q] = [boxes[a], boxes[b]]
-            const apart = p.x + p.width <= q.x || q.x + q.width <= p.x || p.y + p.height <= q.y || q.y + q.height <= p.y
-            expect(apart, `labels ${a} and ${b} in ${chart} overlap`).toBe(true)
-          }
-        }
+        await expectMarkerLabelsApart(root, markers, chart)
       }
 
       const chart = page.getByTestId('chart-gather-rates')
@@ -441,6 +459,7 @@ test.describe('AoE4 build order page', () => {
       await page.getByTestId('duration-seconds').fill(String(Math.ceil(feudalAt)))
       const response = await runSimulation(page)
       const { markers, durationSeconds } = (await response.json()) as SimulationResult
+      expect(markers.length).toBeGreaterThan(0)
       expect(Math.max(...markers.map((m) => m.at))).toBeLessThanOrEqual(durationSeconds)
       await expectChartsDrawn(page)
       for (const chart of CHARTS) {

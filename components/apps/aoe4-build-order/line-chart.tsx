@@ -16,7 +16,8 @@ import {
 
 const LABEL_LINE_HEIGHT = 14
 const LABEL_CHAR_PX = 7
-const PLOT_WIDTH_PX = 900
+const Y_AXIS_WIDTH = 110
+const CHART_MARGIN_PX = 5
 
 interface PlacedMarker {
     marker: ChartMarker
@@ -25,11 +26,11 @@ interface PlacedMarker {
 }
 
 // Labels are stacked in rows: a marker takes the first row whose last label ends before this one starts, so
-// markers close in time never share a row. Labels near the right edge extend leftward to stay inside the plot.
-function placeMarkers(markers: readonly ChartMarker[], end: number): PlacedMarker[] {
+// markers close in time never share a row. plotWidth is the measured pixel width of the plot, so row choice tracks the screen. Labels near the right edge extend leftward to stay inside the plot.
+function placeMarkers(markers: readonly ChartMarker[], end: number, plotWidth: number): PlacedMarker[] {
     const rowEnds: number[] = []
     return markers.map((marker) => {
-        const width = (markerLabel(marker).length * LABEL_CHAR_PX * end) / PLOT_WIDTH_PX
+        const width = (markerLabel(marker).length * LABEL_CHAR_PX * end) / plotWidth
         const side = marker.at + width > end ? 'right' : 'left'
         const [from, to] = side === 'left' ? [marker.at, marker.at + width] : [marker.at - width, marker.at]
         let row = rowEnds.findIndex((rowEnd) => rowEnd < from)
@@ -51,17 +52,19 @@ interface SeriesChartProps {
 
 export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [] }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
+    const [chartWidth, setChartWidth] = useState<number | null>(null)
     const end = Math.max(1, ...times, ...(pinned?.times ?? []))
+    const plotWidth = Math.max(1, (chartWidth ?? 0) - Y_AXIS_WIDTH - 2 * CHART_MARGIN_PX)
     const kinds = CHART_MARKER_KINDS.filter((kind) => markers.some((m) => m.kind === kind))
 
     return (
         <div data-testid={testId}>
             <h3 className="h5">{title}</h3>
-            <ResponsiveContainer width="100%" height={360}>
+            <ResponsiveContainer width="100%" height={360} onResize={(width) => setChartWidth(width)}>
                 <LineChart data={toChartRows(times, series, pinned)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} />
-                    <YAxis width={110} label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
+                    <YAxis width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
                     <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} />
                     <Legend onClick={(d) => setHidden((h) => toggleHidden(h, String(d.dataKey)))} />
                     {series.map((s, i) => (
@@ -93,9 +96,9 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             />
                         )
                     })}
-                    {placeMarkers(markers, end).map(({ marker, side, row }, i) => (
+                    {placeMarkers(markers, end, plotWidth).map(({ marker, side, row }, i) => (
                         <ReferenceLine
-                            key={i}
+                            key={`${marker.kind}:${marker.label}:${marker.at}`}
                             x={marker.at}
                             stroke={MARKER_COLORS[marker.kind]}
                             strokeDasharray="8 2"
@@ -115,7 +118,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                 </LineChart>
             </ResponsiveContainer>
             {kinds.length > 0 && (
-                <ul className="list-inline small mb-0" data-testid="chart-marker-legend">
+                <ul className="list-inline small mb-3" data-testid="chart-marker-legend">
                     {kinds.map((kind) => (
                         <li key={kind} className="list-inline-item" data-testid="chart-marker-legend-item" data-kind={kind}>
                             <span
