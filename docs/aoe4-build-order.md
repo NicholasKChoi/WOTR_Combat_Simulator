@@ -8,7 +8,7 @@ states the rule; the code and its tests implement it.
 
 The simulator plays an *Age of Empires IV* build order step by step for the English civilization: villager
 production, gathering, construction, research and age-ups. It returns one deterministic result per build
-order and data set: when each step started and finished and why it waited, graphs over time of units
+order and data set: when each step started and finished and why it waited, series over time of units
 produced, gather rates, floating resources, spending and population, chart markers for age-ups and research,
 and warnings and notes. English is the only civilization; other civilizations are a later extension
 through the seams in Extension points.
@@ -354,7 +354,7 @@ The English farm bonus near a mill is four rows, one per age, with the wiki valu
 - unit veterancy upgrades, researched at their building from data, after which produced units are the
   upgraded tier and the units-produced graph shows tiers apart;
 - houses, starting state and the population cap;
-- Resource depletion (Depletion), on by default: the six finite nodes start at the `rules/base.json`
+- resource depletion (Depletion), on by default: the six finite nodes start at the `rules/base.json`
   amounts, a `null` override keeps a node infinite, and `farm` and `wood` never run out.
 
 Later: Council Hall longbow production speed, Network of Castles, Abbey of Kings. Out: sacred sites,
@@ -392,7 +392,7 @@ before `idle-arrival` for the same ref.
 
 ## Severity
 
-Every message the simulator returns has a severity: `error`, `warning` or `info`, most severe first.
+Every message the simulator returns has a severity level: `error`, `warning` or `info`, most severe first.
 
 | item | severity |
 |---|---|
@@ -440,7 +440,7 @@ Effects stated only in a technology's description text, beside non-empty `effect
 
 Unit combat stats are not modeled. Combat technologies (blacksmith, university) and unit upgrades cost
 resources and queue time and mark the charts, but change no unit stat: hitpoints, attack, armor and similar
-properties are in `IGNORED_EFFECT_PROPERTIES` and never read.
+properties are in `IGNORED_EFFECT_PROPERTIES` and never applied.
 
 ## Build order input
 
@@ -485,8 +485,9 @@ form (`town-center#2`). A node ref is accepted in every node field of every step
 | `farm`, `wood` in a `depleted` trigger or as a `nodeAmounts` key | `invalid`: that node cannot run out |
 | a value that is not a string | `syntax` |
 
-The issue message is `<reason> in <path>`, where the reason quotes the value, as in `unknown node "iron" in
-start.rally`. In paste, any token shaped `<id>` or `<id>#<chars>` in a node position reaches validation
+The reason quotes the value. For a step field, `start` and the `depleted` trigger the message reads
+`<reason> in <path>`, as in `unknown node "iron" in start.rally`; for a `nodeAmounts` key it reads
+`inputs.nodeAmounts.<ref>: <reason>`, as in `inputs.nodeAmounts.iron: unknown node "iron"`. In paste, any token shaped `<id>` or `<id>#<chars>` in a node position reaches validation
 unchanged; the paste parser reports no node issue of its own.
 
 `inputs.trips` and `inputs.houseBuilderSource` are checked against the gather node ids only:
@@ -666,7 +667,7 @@ A `SimulationResult` holds:
 - `spent`: per spend category (`villagers`, `military`, `buildings`, `research`), the cumulative resources
   paid, food, wood, gold and stone summed. `villagers` is villager production, `military` any other unit,
   `buildings` every construction including auto-houses, `research` every technology.
-- `spawnedPopulation`: the count of villagers and units that have spawned, including the start villagers and
+- `spawnedPopulation`: the population (summed `popcap`) of the villagers and units that have spawned, including the start villagers and
   start units and villagers still walking or idle. A paid unit still in its production queue is not counted
   until it spawns, unlike the supply-check population, which counts it at payment.
 - `populationCapReachedAt`: the instant `spawnedPopulation` first reaches the population cap (`0` when the
@@ -708,7 +709,7 @@ A `SimulationResult` holds:
   at the same `at`, node warnings come first in node-ref order with `node-depleted` before `idle-arrival`
   for one node, then `step-stuck` by step index. See Severity.
 
-The page draws three graphs over time from it, with the markers and warnings (see Page): units produced (by
+The page draws three graphs over time from it, with the chart markers (see Page; the warnings are lists beside them): units produced (by
 unit and tier), gather rates, and floating resources. `spent` and `populationCapReachedAt` feed the compare
 table, and `spawnedPopulation` has no graph.
 
