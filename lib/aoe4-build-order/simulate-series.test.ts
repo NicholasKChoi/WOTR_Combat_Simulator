@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { CivRules } from './civ-rules'
-import type { BuildStep, ResourceKind, SimulationResult } from './model'
+import { RESOURCE_KINDS } from './model'
+import type { BuildStep, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
 import { ENGLISH, at, buildOrder, editGameData, inputsFor, run, sampleIndex } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const noHouses = { autoHouses: false }
-const KINDS: ResourceKind[] = ['food', 'wood', 'gold', 'stone']
 
-function costOf(baseId: string): number {
+function totalCostOf(baseId: string): number {
     const { costs } = ENGLISH.byBaseId.get(baseId)![0]
-    return KINDS.reduce((sum, kind) => sum + costs[kind], 0)
+    return RESOURCE_KINDS.reduce((sum, kind) => sum + costs[kind], 0)
 }
 
 function popcapOf(baseId: string): number {
@@ -37,10 +37,10 @@ describe('spent', () => {
     const last = result.times.length - 1
 
     it('ends at the snapshot cost of exactly the payments in each category', () => {
-        expect(result.spent.villagers[last]).toBe(2 * costOf('villager'))
-        expect(result.spent.military[last]).toBe(costOf('man-at-arms'))
-        expect(result.spent.buildings[last]).toBe(costOf('house'))
-        expect(result.spent.research[last]).toBe(costOf('wheelbarrow'))
+        expect(result.spent.villagers[last]).toBe(2 * totalCostOf('villager'))
+        expect(result.spent.military[last]).toBe(totalCostOf('man-at-arms'))
+        expect(result.spent.buildings[last]).toBe(totalCostOf('house'))
+        expect(result.spent.research[last]).toBe(totalCostOf('wheelbarrow'))
     })
 
     it('has one non-decreasing value per sample and starts at 0 when nothing is paid at t=0', () => {
@@ -52,20 +52,20 @@ describe('spent', () => {
                 expect(value).toBeGreaterThanOrEqual(series[i - 1] ?? 0)
             })
         }
-        expect(later.spent.villagers[sampleIndex(later, 30)]).toBe(costOf('villager'))
+        expect(later.spent.villagers[sampleIndex(later, 30)]).toBe(totalCostOf('villager'))
         expect(later.spent.villagers[sampleIndex(later, 25)]).toBe(0)
     })
 
     it('includes a payment made at exactly a sample time in that sample', () => {
         const paid = run([{ trigger: at(10), action: 'research', tech: 'wheelbarrow' }], { game, inputs: noHouses })
         expect(paid.spent.research[sampleIndex(paid, 5)]).toBe(0)
-        expect(paid.spent.research[sampleIndex(paid, 10)]).toBe(costOf('wheelbarrow'))
+        expect(paid.spent.research[sampleIndex(paid, 10)]).toBe(totalCostOf('wheelbarrow'))
     })
 
     it('counts an auto-house under buildings', () => {
         const auto = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager' }], { game })
         expect(auto.spent.buildings[auto.times.length - 1]).toBeGreaterThan(0)
-        expect(auto.spent.buildings[auto.times.length - 1] % costOf('house')).toBe(0)
+        expect(auto.spent.buildings[auto.times.length - 1] % totalCostOf('house')).toBe(0)
     })
 })
 
@@ -153,6 +153,19 @@ describe('populationCapReachedAt', () => {
         expect(result.populationCapReachedAt! % 5).not.toBe(0)
         expect(result.spawnedPopulation[sampleIndex(result, 20)]).toBeLessThan(cap)
         expect(result.spawnedPopulation[sampleIndex(result, 25)]).toBe(cap)
+    })
+
+    it('stays set after later spawns', () => {
+        const lowSupply = editGameData((parts) => {
+            rich(parts)
+            parts.snapshot.units.filter((u) => u.baseId === 'scout').forEach((u) => (u.costs.popcap = 4))
+            parts.base.maxPopCap.value = 11
+        })
+        const result = run(produce(3), { game: lowSupply, inputs: noHouses })
+        expect(result.populationCapReachedAt).toBeCloseTo(2 + villagerSeconds, 9)
+        const last = result.times.length - 1
+        expect(result.spawnedPopulation[last]).toBe(result.spawnedPopulation[0] + 3)
+        expect(result.spawnedPopulation[last]).toBeGreaterThan(11)
     })
 
     it('is null when the cap is never reached', () => {
