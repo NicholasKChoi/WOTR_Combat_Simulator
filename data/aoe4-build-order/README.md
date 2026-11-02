@@ -55,6 +55,7 @@ with its reason.
   wood; the abbey builders return to sheep and, at 4:00, build the mill and the three farms from there;
   the 5:00 builders and the 6:00 blacksmith builder come from wood; the 5:15 military production is
   continuous because the guide gives no count.
+
 - `english-spear-longbow-maa-crossbow` "ENG Spear/Longbow into MAA/Crossbow", hand-authored for this
   simulator (no guide). Feudal through the Council Hall, spearmen and longbowmen from the barracks and
   archery range, Castle through the King's Palace, then men-at-arms and crossbowmen. Villager production is
@@ -81,7 +82,7 @@ with its reason.
   are built before the King's Palace: auto-houses count the palace's supply as soon as it is under
   construction, so without them population stalls at the cap until the palace completes. Farms are added
   in blocks of four at 10:00, 14:00, 16:00 and 18:00; the 14:00, 16:00 and 18:00 blocks start at their
-  times and the 10:00 block starts at 10:01. The four blacksmith techs
+  times and the 10:00 block starts about 1.5 s after 10:00 (10:02 as the page shows it). The four blacksmith techs
   (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after `build kings-palace` in
   the list, so they queue behind the landmark instead of taking its gold first; `veteran-longbowmen` and
   the Castle blacksmith techs (`balanced-projectiles`, `wedge-rivets`, `decarbonization`, `insulated-helm`)
