@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { listBuilds } from "../lib/aoe4-build-order/builds";
+import { formatBuildOrderText } from "../lib/aoe4-build-order/parse-text";
 import { SIMULATE_PATH } from "./helpers";
 
 const PAGE = "/apps/aoe4-build-order";
@@ -253,6 +254,24 @@ test.describe("AoE4 step table", () => {
     await expect(page.getByTestId("step-table")).toBeVisible();
     await expect(textarea(page)).toHaveValue(
       "start -> sheep\nbuild house from wood\nproduce villager from capital-town-center",
+    );
+  });
+
+  test("choosing the other prebuilt rewrites the table rows to that build's step lines", async ({
+    page,
+  }) => {
+    await openPage(page);
+    const select = page.getByTestId("build-order-select");
+    const [first, second] = listBuilds();
+    for (const build of [second, first]) {
+      await select.selectOption({ label: build.name });
+      await expect(page.getByTestId("step-row")).toHaveCount(
+        build.steps.length,
+      );
+      await expect(textarea(page)).toHaveValue(formatBuildOrderText(build));
+    }
+    await expect(row(page, 0).getByTestId("step-action")).toHaveValue(
+      first.steps[0].action,
     );
   });
 });
