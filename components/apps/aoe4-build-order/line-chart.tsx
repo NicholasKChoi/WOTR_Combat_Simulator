@@ -21,7 +21,7 @@ export function SeriesChart({ testId, title, yLabel, times, series }: SeriesChar
                 <LineChart data={toChartRows(times, series)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} />
-                    <YAxis label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
+                    <YAxis width={110} label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
                     <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} />
                     <Legend onClick={(d) => setHidden((h) => toggleHidden(h, String(d.dataKey)))} />
                     {series.map((s, i) => (
