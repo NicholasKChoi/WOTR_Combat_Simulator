@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys, hexToRgb, openPage, runRejected } from './helpers'
+import { INVALID_PASTE, SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys, hexToRgb, openPage, runRejected } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -11,7 +11,6 @@ const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating
 const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
 const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
-const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
 
 async function run(page: Page, opts: { duration?: number; text?: string } = {}) {
   if (opts.text !== undefined) await page.getByTestId('build-order-text').fill(opts.text)

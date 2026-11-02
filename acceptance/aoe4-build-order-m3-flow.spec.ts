@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult, SimWarning } from '../lib/aoe4-build-order/model'
-import { expectedCompareKeys, openPage, runSimulation } from './helpers'
+import { INVALID_PASTE, expectedCompareKeys, openPage, runSimulation } from './helpers'
 
 const FLOW_PASTE = [
   'start 6 sheep -> sheep',
   'produce villager from capital-town-center x3 -> sheep',
   '@25:00 produce villager from capital-town-center x1 -> sheep',
 ].join('\n')
-const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
 const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
 
 test.describe('AoE4 build order M3 flow', () => {

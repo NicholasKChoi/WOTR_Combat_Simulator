@@ -6,7 +6,7 @@ import { MARKER_COLORS, MARKER_KIND_LABELS } from '../components/apps/aoe4-build
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { CHART_MARKER_KINDS, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { expectFlySyntaxIssue, buildOrderFrom, hexToRgb, openPage, runRejected, runSimulation, SIMULATE_PATH } from './helpers'
+import { INVALID_PASTE, expectFlySyntaxIssue, buildOrderFrom, hexToRgb, openPage, runRejected, runSimulation, SIMULATE_PATH } from './helpers'
 
 const TITLE = 'AoE4 Build Order Simulator'
 const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
@@ -18,7 +18,6 @@ const RALLY_PASTE = [
   'at 8 vils rally capital-town-center -> wood',
 ].join('\n')
 const RESEARCH_PASTE = ['start -> sheep', 'research fitted-leatherwork at blacksmith'].join('\n')
-const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
 
 async function expectChartsDrawn(page: Page) {
   for (const chart of CHARTS) {

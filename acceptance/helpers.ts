@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, type APIRequestContext, type Page, type Request } from '@playwright/test'
 import { FINITE_GATHER_NODES, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { buildOrderCatalog, type BuildOrderCatalog } from '../lib/aoe4-build-order/schema'
 import { textToBuildOrder } from '../lib/aoe4-build-order/text-to-build'
@@ -94,13 +94,20 @@ export async function runSimulation(page: Page) {
 // Clicks Run and expects the page to reject the text itself: issues appear under the editor and nothing is posted.
 export async function runRejected(page: Page): Promise<void> {
   const posted: string[] = []
-  page.on('request', (r) => {
+  const onRequest = (r: Request) => {
     if (r.url().endsWith(SIMULATE_PATH) && r.method() === 'POST') posted.push(r.url())
-  })
-  await page.getByTestId('run-simulation').click()
-  await expect(page.getByTestId('build-order-issues')).toBeVisible()
+  }
+  page.on('request', onRequest)
+  try {
+    await page.getByTestId('run-simulation').click()
+    await expect(page.getByTestId('build-order-issues')).toBeVisible()
+  } finally {
+    page.off('request', onRequest)
+  }
   expect(posted).toEqual([])
 }
+
+export const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
 
 // The one issue INVALID_PASTE (`at 8 vils fly ...` on line 2) must produce, and no server error list.
 export async function expectFlySyntaxIssue(page: Page): Promise<void> {
