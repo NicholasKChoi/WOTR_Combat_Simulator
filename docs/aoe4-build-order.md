@@ -23,9 +23,9 @@ The model treats the game as a small set of ordinary rules:
 - Every construction pulls its builders off their resource for the whole build time; they gather nothing
   while walking and building. Build time depends on the builder count.
 - A finite node (sheep, berry, deer, boar, gold, stone) holds a starting stock and runs out; farm and wood
-  are infinite. Starting amounts come from `gatherNodes.<node>.amount` in `rules/base.json` and
-  `inputs.nodeAmounts`; no amount ships in the data yet, so every node is infinite unless a request sets
-  one (see Depletion).
+  are infinite. By default the six finite nodes start at the owner-supplied, unverified amounts in
+  `gatherNodes.<node>.amount` in `rules/base.json`; `inputs.nodeAmounts` overrides them per node, and a
+  `null` override keeps a node infinite (see Depletion).
 
 Every quantity that could vary between games (walk time, idle time, distance to each resource) is a named
 simulator input, never a constant inside the step logic. The result and the API response are additive: a
@@ -51,6 +51,7 @@ apply to JSON and paste input alike: a paste line is checked after it is parsed.
 | `durationSeconds` | int | 60..3600 | 1200 |
 | `Trigger.seconds` | int | 0..3600 (the largest `durationSeconds`) | |
 | `Trigger.count` (villagers) | int | 1..200 (the population cap) | |
+| `Trigger.atLeast` (bank) | int | 0..100,000 | |
 | `produce.count`, `move.count` | int (`move.count` also `"all"`) | 1..200 | continuous (produce) |
 | `builders`, `houseBuilders` | int | 1..200 | 1 |
 | `instance` | int | 1..200 | every instance |
@@ -59,7 +60,7 @@ apply to JSON and paste input alike: a paste line is checked after it is parsed.
 | `walkSecondsCamp`, `walkSecondsTownCenter` | number | 0..60 | `rules/base.json` |
 | `dropOffSeconds` | number | 0..30 | `rules/base.json` |
 | `influenceCoverage` values | number | 0..1 | `{ mill: 1 }` |
-| `nodeAmounts` values | int or `null` (infinite) | 0..100,000 | `gatherNodes.<node>.amount` (gold's for `gold#k`), else infinite |
+| `nodeAmounts` values | int or `null` (infinite) | 0..100,000 | `gatherNodes.<node>.amount` (gold's for `gold#k`); `null` is infinite |
 
 Unknown extra properties on a build order, its `start`, its steps, their triggers and `inputs` are
 ignored. Every omitted `inputs` field takes its default at any depth: `trips` merges per node and then
@@ -89,7 +90,7 @@ snapshot of aoe4world data (github.com/aoe4world/data), committed as
 
 Every hand-entered value carries its own `source` and its own `unverified` label: as a `HandValue`, or,
 for an overlay effect row, as fields of the `OverlayEffect` itself. Supply, the starting state, the overlay
-effect rows, and the trip walk and drop-off defaults are labeled unverified. Not every value is: the sheep,
+effect rows, the trip walk and drop-off defaults, and the six starting node amounts are labeled unverified. Not every value is: the sheep,
 deer and boar carry capacities are observed in game and are not labeled unverified. The rules files are
 the record of which value is which.
 
@@ -141,20 +142,30 @@ for the starting villager producers. Both `start` fields are optional in the sch
 well-formed (not a `syntax` issue). An English order still needs `start.rally`, because its starting town
 center is a villager producer.
 
-**Ordering and triggers.** Steps run in list order. A trigger is either a time (`@m:ss`, meaning "not
-before" that time) or a villager count (`at N vils`, counting villagers alive). A step arms when its
-trigger holds and every earlier step has started; a step without a trigger arms as soon as the earlier
-steps have started. Once armed, it waits until it is affordable and supply allows it, then starts.
-`waitSeconds = startedAt - armedAt`. At the horizon, a step that never armed is `not-reached`, and a step
-that armed but never started is `waiting`.
+**Ordering and triggers.** Steps run in list order. A trigger is one of four kinds: a time (`@m:ss`,
+meaning "not before" that time), a villager count (`at N vils`, counting villagers alive), a node running
+out (`depleted`, holding from the instant that node ref's stock reaches 0) or a bank amount (`bank`,
+holding while the banked amount of one resource is at least `atLeast`; it reads the bank and never
+changes it). A non-reaction step arms when its trigger holds and every earlier non-reaction step has
+started; a step without a trigger arms as soon as those steps have started. Once armed, it waits until it
+is affordable and supply allows it, then starts. `waitSeconds = startedAt - armedAt`. At the horizon, a
+step that never armed is `not-reached`, and a step that armed but never started is `waiting`.
 
-At one instant, steps start in list order before villagers spawn. A step armed by a spawn (a `villagers`
+A step marked `reaction` (only a `depleted` step may be one) arms when its trigger holds, without waiting
+for earlier steps, and never delays a later step. Because run-outs apply first in the instant, its
+`armedAt` is the node's `depletedAt`. Once armed it stays armed and is offered again at every later
+instant until it starts, at most once. A reaction waiting on resources starts at the exact instant it
+becomes affordable. At one instant, every armed reaction is offered in step order before the first
+unstarted non-reaction step, so a reaction wins villagers or resources both need; several reactions on
+one ref each see the villagers the earlier ones left.
+
+At one instant, steps start (reactions first, then the rest in list order) before villagers spawn. A step armed by a spawn (a `villagers`
 trigger) starts at that instant, after the spawn. So `@T rally` routes the villager spawning at T, and
 `at N vils rally` routes villager N+1 onward.
 
-**Priority.** At most one step is armed and not started at a time. While it waits on resources only, it
-reserves its cost: a producer's order skips paying its next unit if that would drop any resource the unit
-costs below the step's cost of that resource. A step waiting on supply, on an age or on a building
+**Priority.** At most one non-reaction step is armed and not started at a time. While it waits on resources
+only, it reserves its cost; a reaction never reserves. A producer's order skips paying its next unit if
+that would drop any resource the unit costs below the reserving step's cost of that resource. A step waiting on supply, on an age or on a building
 instance that does not exist reserves nothing. At one instant, steps start before orders pay, so a step
 wins a tie with an order payment.
 
@@ -340,16 +351,17 @@ The English farm bonus near a mill is four rows, one per age, with the wiki valu
 - houses, starting state and the population cap.
 
 Later: Council Hall longbow production speed, Network of Castles, Abbey of Kings. Out: sacred sites,
-relics, trade, fishing and cattle. Resource depletion is in (Depletion), with every node infinite by
-default until amounts ship in `rules/base.json`.
+relics, trade, fishing and cattle. Resource depletion is in (Depletion) and on by default: the six finite
+nodes start at the `rules/base.json` amounts, a `null` override keeps a node infinite, and `farm` and
+`wood` never run out.
 
 ## Depletion
 
 **Stock.** Each run ref has a stock: the six finite nodes plus every gold deposit the order names
 (`gold#2`..`gold#8`; deposit 1 is plain `gold`). It starts at `inputs.nodeAmounts[ref]`, whose default is
 `gatherNodes.<node>.amount` in `rules/base.json` (`gold`'s for every `gold#k`), and `null` is infinite.
-No amount ships yet, so a ref is finite only when the request sets `nodeAmounts`. `farm` and `wood` never
-run out. Over each interval a ref loses what its gatherers earn, the same amount credited to its resource,
+The six finite nodes ship owner-supplied, unverified amounts, so every ref is finite by default; a `null`
+override keeps a ref infinite. `farm` and `wood` never run out. Over each interval a ref loses what its gatherers earn, the same amount credited to its resource,
 and never goes below 0. Deposits draw down independently.
 
 **Run-out instant.** The time a stocked ref reaches 0 is a wake, so a run-out lands on its exact time, not
@@ -422,8 +434,11 @@ optional `trigger` and one `action`:
 | `move` | `count` (a number or `"all"`), `from`, `to`, `walkSeconds?` |
 | `rally` | `producer`, `instance?`, `to`, `walkSeconds?` |
 
-A trigger is a tagged object: `{ "kind": "time", "seconds": 90 }` or `{ "kind": "villagers", "count": 17 }`.
-An unknown `kind` is an `unknown-trigger-kind` issue. Gather nodes (`GatherNodeId`) are `sheep`, `berry`,
+A trigger is a tagged object of one of four kinds: `{ "kind": "time", "seconds": 90 }`,
+`{ "kind": "villagers", "count": 17 }`, `{ "kind": "depleted", "node": "gold" }` (`node` is a finite node
+ref: `wood`, `farm` and `gold#1` are `invalid`) or `{ "kind": "bank", "resource": "wood", "atLeast": 400 }`
+(`resource` is a `ResourceKind`). Any other `kind` is an `unknown-trigger-kind` issue. Every step also takes
+an optional `"reaction": true`, allowed only beside a `depleted` trigger (any other value is `syntax`). Gather nodes (`GatherNodeId`) are `sheep`, `berry`,
 `deer`, `boar`, `farm`, `wood`, `gold` and `stone`. Every node field (`rally`, `to`, `from`, `then`,
 `start.rally` and `start.villagers` keys) takes a node ref (`NodeRef`): a gather node, or a numbered gold
 deposit `gold#2`..`gold#8`, where deposit 1 is plain `gold`. `gold#1` and `wood#2` are `invalid`,
@@ -491,14 +506,17 @@ same for JSON and paste:
 | code | meaning |
 |---|---|
 | `syntax` | text cannot be parsed, or JSON structure is wrong: bad paste grammar, a step that is not an object, a missing or mistyped field, an unknown `action` value, a wrong-typed `trigger` |
-| `unknown-trigger-kind` | the trigger's `kind` is not `time` or `villagers` (an omitted trigger means no condition) (paste: unknown line prefix is `syntax`) |
+| `unknown-trigger-kind` | the trigger's `kind` is not `time`, `villagers`, `depleted` or `bank` (an omitted trigger means no condition) (paste: unknown line prefix is `syntax`) |
 | `unknown-id` | a well-formed id not in the civilization's data (unit, producer, building, technology, node, civilization), including an unknown `start` node key |
 | `unsupported-tech`, `unknown-tech-effect` | a technology rejected by `classifyTech` |
 | `out-of-range` | a number outside `SIM_INPUT_BOUNDS` (including a `start.villagers` value outside 0..200), a non-integer, or a non-finite number |
 | `invalid` | well-formed, known ids, in range, but a cross-field rule fails (the rules below) |
 
-Shape or spelling is `syntax`; value size is `out-of-range`; a field combination is `invalid`. The six
-`invalid` rules for `start` and rally are:
+Shape or spelling is `syntax`; value size is `out-of-range`; a field combination is `invalid`. One
+`invalid` rule covers reactions: `reaction: true` with no trigger, or with a `time`, `villagers` or `bank`
+trigger (with an unknown trigger kind only the `unknown-trigger-kind` issue is reported). Reactions are
+otherwise validated like any step, in list order, although a reaction may never fire. The six `invalid`
+rules for `start` and rally are:
 
 - `start.villagers` values do not sum to the civ's starting villager count;
 - `walkSeconds` without `rally` on a `produce`;
@@ -519,7 +537,7 @@ Three more `invalid` rules cover producers and research:
 
 These three run only once the step's ids resolve, so an `unknown-id` step gets no second issue, and a
 technology that is unknown or rejected does not count as an earlier research. The simulator assumes all
-nine rules hold and has no runtime check for them.
+ten rules hold and has no runtime check for them.
 
 A villager `produce` without `rally` is valid and uses the standing rally. Each issue is reported on its
 step or `start`, with the location fields above. A message names the step or line and the offending id,
@@ -591,8 +609,9 @@ A `SimulationResult` holds:
 - `steps`: one `StepTiming` per step with `status`, `armedAt`, `startedAt`, `completedAt`,
   `waitSeconds`, `waitingOn` and `waitBreakdown`. `status` is one of `completed`, `in-progress`, `waiting` or
   `not-reached`. `waitingOn` is why the step has not started: `null` once it has started, the reason of its
-  last failed check while `waiting`, `trigger` for a `not-reached` step whose own trigger never held, and
-  `earlier-step` for a `not-reached` step behind an unstarted one. `waitBreakdown` is the seconds from
+  last failed check while `waiting`, `trigger` for a `not-reached` step whose own trigger never held (every
+  unarmed reaction, and the first unstarted non-reaction step), and `earlier-step` for a `not-reached`
+  non-reaction step behind an unstarted non-reaction step; a reaction is never `earlier-step`. `waitBreakdown` is the seconds from
   `armedAt` spent on each of `resources`, `villagers`, `population` and `prerequisite`; the values sum to
   `waitSeconds` for a started step and to the time from `armedAt` to the horizon for a `waiting` one, and a
   reason with 0 seconds is absent.
@@ -621,18 +640,19 @@ A `SimulationResult` holds:
   at the same `at`, node warnings come first in node-ref order with `node-depleted` before `idle-arrival`
   for one node, then `step-stuck` by step index.
 - `depletions` always lists the six finite nodes, plus any deposit the order names. With no
-  `nodeAmounts` every `amount` is `null`.
+  `nodeAmounts` the six finite nodes start at their `rules/base.json` amounts and `depletions` lists those
+  amounts, so a default run can emit `node-depleted` and `idle-arrival` warnings.
 
 The page draws three graphs over time from it: units produced (by unit and tier), gather rates, and
 floating resources.
 
-The life of one step is shown below. The diagram is conceptual: its states are not values in the result.
-At the horizon each state maps to a `StepTiming.status`:
+The life of one non-reaction step is shown below. The diagram is conceptual: its states are not values in
+the result. At the horizon each state maps to a `StepTiming.status`:
 
 ```mermaid
 stateDiagram-v2
   [*] --> Unarmed
-  Unarmed --> Armed: trigger holds and every earlier step started (armedAt)
+  Unarmed --> Armed: trigger holds and every earlier non-reaction step started (armedAt)
   Armed --> Waiting: a check fails (prerequisite, villagers, population or resources)
   Waiting --> Started: every check passes (startedAt)
   Armed --> Started: every check passes (startedAt)
@@ -642,15 +662,19 @@ stateDiagram-v2
 
 | state at the horizon | `StepTiming.status` |
 |---|---|
-| Unarmed (trigger not met, or an earlier step not started) | `not-reached` |
+| Unarmed (trigger not met, or an earlier non-reaction step not started) | `not-reached` |
 | Armed or Waiting, not started | `waiting` |
 | Started, not completed | `in-progress` |
 | Completed | `completed` |
 
+A reaction skips the earlier-step condition: it is `not-reached` only while its node has not run out, and
+otherwise follows the same states.
+
 A step waits while it cannot be paid, while supply has no room, while the unit's entry is above the
 current age, or while no building instance it targets exists. A `build` step also waits while its
 building's entry is above the current age or while fewer than `builders` villagers gather at `from`; a
-`move` step waits while fewer than `count` villagers gather at `from`. Each reason is reported: `waitingOn`
+`move` step waits while fewer than `count` villagers gather at `from`. A reaction waits for the same
+reasons from its run-out instant on, without waiting for earlier steps or holding back later ones. Each reason is reported: `waitingOn`
 holds the current one and `waitBreakdown` the seconds spent on each. A handler checks in a fixed order
 and reports the first check that fails:
 
@@ -714,7 +738,10 @@ error shows "The simulation could not be run. Please try again."
 
 Prebuilt builds live in `data/aoe4-build-order/builds/`, one `BuildOrder` JSON file per build, each
 with a `source`. Every prebuilt build is paste-representable: it re-parses from its own paste text to the
-same `start` and `steps`.
+same `start` and `steps`. At default inputs, with depletion on, every prebuilt build meets this bar: at
+1200 s and at 3600 s no step is `waiting`, every non-reaction step has started, and a `not-reached`
+reaction has `waitingOn: 'trigger'`; at 1200 s every gold deposit that has run out has a `move all`
+reaction from it whose `startedAt` is its `depletedAt`, and no gold warning has severity `warning`.
 
 ## CivRules seams
 
@@ -747,12 +774,12 @@ fields and results unchanged.
 | direction | seam |
 |---|---|
 | Other civilizations | a new `CivId` value with `aoe4world/<civ>.json` and `rules/<civ>.json`; the engine keys on ids only; `CivRules` hooks for rules the data cannot express |
-| Event or resource triggers, combinators | a new `Trigger.kind`, handled in one `triggerHolds(trigger, state)` switch in `simulate.ts`; validation keeps rejecting unknown kinds |
+| More triggers, combinators | four kinds exist (`time`, `villagers`, `depleted`, `bank`); a new `Trigger.kind` is one `triggerHolds` case and one `triggerWakeAt` case in `simulate.ts`, plus its row in the validation kind table; validation keeps rejecting unknown kinds |
 | A spread of outcomes | every variable quantity is already in `SimInputs` and the simulator uses no randomness or clock; a `spread` field on `SimulationResult` and `runs` and `seed` on `SimulateRequest` |
 | New step kinds (idle, sacred sites, trade) | `BuildStep` is tagged on `action`; one handler per action |
 | Military rally points, more `start` fields (resources, units) | an optional `unit` on the `rally` step; new optional `BuildStart` fields |
 | More technology effects (`buildTime`, `influence`), combat | move a property into `SUPPORTED_EFFECT_PROPERTIES` and the interpreter; `IGNORED_EFFECT_PROPERTIES` shrinks |
 | More English bonuses (Council Hall, Network of Castles, Abbey of Kings) | `OverlayEffect` rows in `rules/english.json`; no code |
-| Shipped node amounts, positions, per-deposit trips | `gatherNodes.<node>.amount` data (stock and run-outs already in `depletion.ts`) and `TripInputs`; rates live only in `gather.ts` |
+| Node positions, per-deposit trips | `TripInputs` (stock and run-outs already in `depletion.ts`); rates live only in `gather.ts` |
 | More series or notes (rates by node, idle villagers) | new `SimulationResult` fields; new `BuildOrderNote` codes |
 | Community build order formats | a new parser beside `parseBuildOrderText` that produces a `BuildOrder` |

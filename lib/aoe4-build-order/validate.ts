@@ -1,7 +1,7 @@
 import type { GameData, SnapshotEntry } from './data';
 import { classifyTech } from './effects';
-import { FINITE_NODE_REFS, GATHER_NODES, MAX_DEPOSITS, nodeKindOf } from './model';
-import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStep, FiniteNodeRef, GatherNodeId, SimInputs, TripInputs } from './model';
+import { FINITE_NODE_REFS, GATHER_NODES, MAX_DEPOSITS, RESOURCE_KINDS, nodeKindOf } from './model';
+import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStep, FiniteNodeRef, GatherNodeId, ResourceKind, SimInputs, Trigger, TripInputs } from './model';
 
 interface InputBound {
   readonly min: number;
@@ -21,6 +21,7 @@ export const SIM_INPUT_BOUNDS = Object.freeze({
   durationSeconds: bound(60, 3600),
   triggerSeconds: bound(0, 3600),
   triggerCount: bound(1, 200),
+  triggerAtLeast: bound(0, 100000),
   count: bound(1, 200),
   builders: bound(1, 200),
   houseBuilders: bound(1, 200),
@@ -160,13 +161,46 @@ function isKnownId(data: GameData, kind: IdKind, id: string): boolean {
   return kind === 'node' ? Object.hasOwn(data.base.gatherNodes, id) : entriesOf(data, id, kind).length > 0;
 }
 
+const TRIGGER_FIELDS: Readonly<Record<Trigger['kind'], [string, 'number' | 'string'][]>> = {
+  time: [['seconds', 'number']],
+  villagers: [['count', 'number']],
+  depleted: [['node', 'string']],
+  bank: [
+    ['resource', 'string'],
+    ['atLeast', 'number'],
+  ],
+};
+
+function isTriggerKind(kind: unknown): kind is Trigger['kind'] {
+  return typeof kind === 'string' && Object.hasOwn(TRIGGER_FIELDS, kind);
+}
+
 function triggerShape(trigger: unknown): string | undefined {
   if (!isRecord(trigger)) return 'trigger must be an object';
   if (typeof trigger.kind !== 'string') return 'trigger.kind must be a string';
-  if (trigger.kind === 'time' && typeof trigger.seconds !== 'number') return 'trigger.seconds must be a number';
-  if (trigger.kind === 'villagers' && typeof trigger.count !== 'number') return 'trigger.count must be a number';
-  return undefined;
+  const wrong = isTriggerKind(trigger.kind) ? TRIGGER_FIELDS[trigger.kind].find(([name, type]) => typeof trigger[name] !== type) : undefined;
+  return wrong && `trigger.${wrong[0]} must be a ${wrong[1]}`;
 }
+
+type TriggerProblem = [BuildOrderIssue['code'], string] | null;
+
+function rangeProblem(value: unknown, key: BoundKey, path: string): TriggerProblem {
+  const problem = outOfRange(value as number, key);
+  return problem ? ['out-of-range', `${path}: ${problem}`] : null;
+}
+
+const TRIGGER_CHECKS: Readonly<Record<Trigger['kind'], (trigger: Fields) => TriggerProblem>> = {
+  time: (trigger) => rangeProblem(trigger.seconds, 'triggerSeconds', 'trigger.seconds'),
+  villagers: (trigger) => rangeProblem(trigger.count, 'triggerCount', 'trigger.count'),
+  depleted: (trigger) => {
+    const problem = nodeRefIssue(trigger.node, true);
+    return problem && [problem.code, `${problem.reason} in trigger.node`];
+  },
+  bank: (trigger) =>
+    RESOURCE_KINDS.includes(trigger.resource as ResourceKind)
+      ? rangeProblem(trigger.atLeast, 'triggerAtLeast', 'trigger.atLeast')
+      : ['unknown-id', `unknown resource "${trigger.resource}" in trigger.resource`],
+};
 
 function stepShape(step: unknown): string[] {
   if (!isRecord(step)) return ['is not an object'];
@@ -175,6 +209,7 @@ function stepShape(step: unknown): string[] {
     const problem = triggerShape(step.trigger);
     if (problem) problems.push(problem);
   }
+  if (step.reaction !== undefined && step.reaction !== true) problems.push('reaction must be true');
   const { action } = step;
   if (typeof action !== 'string') return [...problems, action === undefined ? 'missing action' : 'action must be a string'];
   if (!Object.hasOwn(STEP_FIELDS, action)) return [...problems, `unknown action "${action}"`];
@@ -278,6 +313,7 @@ class OrderChecker {
     }
     const fields = step as Fields;
     this.checkTrigger(fields.trigger as Fields | undefined, where);
+    if (fields.reaction === true) this.checkReaction(fields.trigger as Fields | undefined, where);
     const resolved = new Set<string>();
     for (const field of STEP_FIELDS[fields.action as BuildStep['action']]) {
       const value = fields[field.name];
@@ -288,13 +324,20 @@ class OrderChecker {
 
   private checkTrigger(trigger: Fields | undefined, where: Where): void {
     if (trigger === undefined) return;
-    if (trigger.kind !== 'time' && trigger.kind !== 'villagers') {
-      this.issues.push(issue('unknown-trigger-kind', where, `unknown trigger kind "${trigger.kind}"`));
+    if (!isTriggerKind(trigger.kind)) {
+      const kinds = Object.keys(TRIGGER_CHECKS).join(', ');
+      this.issues.push(issue('unknown-trigger-kind', where, `unknown trigger kind "${trigger.kind}"; the kinds are ${kinds}`));
       return;
     }
-    const [name, key]: [string, BoundKey] = trigger.kind === 'time' ? ['seconds', 'triggerSeconds'] : ['count', 'triggerCount'];
-    const problem = outOfRange(trigger[name] as number, key);
-    if (problem) this.issues.push(issue('out-of-range', where, `trigger.${name}: ${problem}`));
+    const problem = TRIGGER_CHECKS[trigger.kind](trigger);
+    if (problem) this.issues.push(issue(problem[0], where, problem[1]));
+  }
+
+  // An unknown trigger kind is already reported by checkTrigger.
+  private checkReaction(trigger: Fields | undefined, where: Where): void {
+    const kind = trigger?.kind;
+    if (kind === 'depleted' || (kind !== undefined && !isTriggerKind(kind))) return;
+    this.issues.push(issue('invalid', where, 'only a step triggered by a node running out can be a reaction'));
   }
 
   private checkNode(value: unknown, path: string, where: Where): boolean {

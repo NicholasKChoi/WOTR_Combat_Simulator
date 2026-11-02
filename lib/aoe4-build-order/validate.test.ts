@@ -581,6 +581,89 @@ describe('node refs', () => {
     })
 })
 
+describe('triggers and reactions', () => {
+    const depleted = (node: unknown) => ({ kind: 'depleted', node })
+    const bank = (fields: Record<string, unknown>) => ({ kind: 'bank', resource: 'wood', atLeast: 400, ...fields })
+    const table: [string, unknown, string | null][] = [
+        ['depleted berry', depleted('berry'), null],
+        ['depleted gold#2', depleted('gold#2'), null],
+        ['depleted without node', { kind: 'depleted' }, 'syntax'],
+        ['depleted with a numeric node', depleted(3), 'syntax'],
+        ['depleted wood', depleted('wood'), 'invalid'],
+        ['depleted farm', depleted('farm'), 'invalid'],
+        ['depleted gold#1', depleted('gold#1'), 'invalid'],
+        ['depleted gold#9', depleted('gold#9'), 'out-of-range'],
+        ['depleted iron', depleted('iron'), 'unknown-id'],
+        ['bank wood 400', bank({}), null],
+        ['bank 0', bank({ atLeast: 0 }), null],
+        ['bank without atLeast', { kind: 'bank', resource: 'wood' }, 'syntax'],
+        ['bank with a string atLeast', bank({ atLeast: '400' }), 'syntax'],
+        ['bank without resource', { kind: 'bank', atLeast: 400 }, 'syntax'],
+        ['bank of sheep', bank({ resource: 'sheep' }), 'unknown-id'],
+        ['bank 400.5', bank({ atLeast: 400.5 }), 'out-of-range'],
+        ['bank -1', bank({ atLeast: -1 }), 'out-of-range'],
+        ['bank 100001', bank({ atLeast: 100001 }), 'out-of-range'],
+        ['an unknown kind', { kind: 'event' }, 'unknown-trigger-kind'],
+    ]
+
+    it.each(table)('classifies %s', (_, trigger, code) => {
+        const issues = issuesOf(order([{ ...PAUSE, trigger }]))
+        expect(issues.map((i) => i.code)).toEqual(code === null ? [] : [code])
+    })
+
+    it('reports a node problem at the trigger path and names every kind for an unknown one', () => {
+        expect(stepIssue({ ...PAUSE, trigger: depleted('gold#9') }).message).toContain(`${nodeRefIssue('gold#9', true).reason} in trigger.node`)
+        expect(stepIssue({ ...PAUSE, trigger: depleted('wood') }).message).toContain('in trigger.node')
+        const unknown = stepIssue({ ...PAUSE, trigger: { kind: 'event' } }).message
+        for (const kind of ['time', 'villagers', 'depleted', 'bank']) {
+            expect(unknown).toContain(kind)
+        }
+    })
+
+    const actions: unknown[] = [
+        { action: 'produce', producer: 'capital-town-center', unit: 'villager' },
+        { action: 'rally', producer: 'capital-town-center', to: 'wood' },
+        PAUSE,
+        { action: 'build', building: 'house', from: 'berry' },
+        { action: 'research', tech: 'wheelbarrow' },
+        { action: 'move', count: 'all', from: 'berry', to: 'wood' },
+    ]
+
+    it.each(actions)('accepts a depleted reaction on %o', (step) => {
+        expect(issuesOf(order([{ ...(step as object), trigger: depleted('berry'), reaction: true }]))).toEqual([])
+    })
+
+    it('rejects a reaction with no trigger or one that is not depleted', () => {
+        for (const trigger of [undefined, { kind: 'time', seconds: 5 }, { kind: 'villagers', count: 7 }, bank({})]) {
+            expect(stepIssue({ ...PAUSE, trigger, reaction: true })).toEqual({
+                code: 'invalid',
+                step: 0,
+                message: expect.stringContaining('only a step triggered by a node running out can be a reaction'),
+            })
+        }
+    })
+
+    it('reports only the unknown kind for a reaction on an unknown trigger', () => {
+        expect(issuesOf(order([{ ...PAUSE, trigger: { kind: 'event' }, reaction: true }])).map((i) => i.code)).toEqual(['unknown-trigger-kind'])
+    })
+
+    it('rejects a reaction flag that is not true', () => {
+        for (const reaction of [false, 'yes']) {
+            expect(stepIssue({ ...PAUSE, trigger: depleted('berry'), reaction })).toEqual({ code: 'syntax', step: 0, message: expect.stringContaining('reaction must be true') })
+        }
+    })
+
+    it('counts a reaction in list order as an earlier rally source and an earlier research', () => {
+        const reaction = { trigger: depleted('berry'), reaction: true }
+        const rallied = order([{ action: 'rally', producer: 'town-center', to: 'wood', ...reaction }, { action: 'build', building: 'town-center', from: 'wood' }], {
+            start: { villagers: { sheep: 6 } },
+        })
+        expect(issuesOf(rallied).filter((i) => i.step !== undefined)).toEqual([])
+        const repeated = only(order([{ action: 'research', tech: 'wheelbarrow', ...reaction }, { action: 'research', tech: 'wheelbarrow' }]))
+        expect(repeated).toEqual({ code: 'invalid', step: 1, message: expect.stringContaining('steps[0]') })
+    })
+})
+
 describe('move count all', () => {
     it('accepts "all" on move only', () => {
         expect(issuesOf(order([{ action: 'move', count: 'all', from: 'gold', to: 'gold#2' }]))).toEqual([])
@@ -592,20 +675,17 @@ describe('move count all', () => {
 })
 
 describe('resolveSimInputs nodeAmounts', () => {
-    it('returns every finite ref, null when no amount ships', () => {
+    it('returns every finite ref at its base.json amount', () => {
         const { nodeAmounts } = defaults()
         expect(Object.keys(nodeAmounts)).toEqual(FINITE_NODE_REFS)
-        expect(Object.values(nodeAmounts).every((v) => v === null)).toBe(true)
+        const deposits = Object.fromEntries(FINITE_NODE_REFS.filter((ref) => ref.startsWith('gold#')).map((ref) => [ref, 4000]))
+        expect(nodeAmounts).toEqual({ sheep: 3000, berry: 1500, deer: 1750, boar: 2000, gold: 4000, ...deposits, stone: 1200 })
     })
 
     it('defaults every deposit to the gold amount and merges overrides per key', () => {
-        const base = structuredClone(baseRules) as unknown as BaseRules
-        base.gatherNodes.gold.amount = { value: 4000, source: 'test', unverified: true }
-        base.gatherNodes.berry.amount = { value: 900, source: 'test', unverified: true }
-        const game = buildGameData('english', englishSnapshot as unknown as Snapshot, base, englishRules as unknown as CivData)
-        const result = resolveSimInputs({ nodeAmounts: { gold: null, 'gold#3': 2500, berry: 0 } }, game)
+        const result = resolveSimInputs({ nodeAmounts: { gold: null, 'gold#3': 2500, berry: 0 } }, data)
         if (result.ok === false) throw new Error('rejected')
-        expect(result.inputs.nodeAmounts).toMatchObject({ gold: null, 'gold#2': 4000, 'gold#3': 2500, 'gold#8': 4000, berry: 0, sheep: null })
+        expect(result.inputs.nodeAmounts).toMatchObject({ gold: null, 'gold#2': 4000, 'gold#3': 2500, 'gold#8': 4000, berry: 0, sheep: 3000 })
     })
 
     it.each([

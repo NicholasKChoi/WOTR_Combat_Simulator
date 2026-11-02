@@ -1,6 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { postSimulate } from './helpers'
+import { INFINITE_NODES, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -254,7 +254,7 @@ test.describe('the prebuilt English build against the pre-depletion engine', () 
   }
 
   test('differs only by the farm builders joining at completion: the 1200 second bank and the farm-walk food rates', async ({ request }) => {
-    const result = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 1200 } })
+    const result = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 1200, nodeAmounts: INFINITE_NODES } })
     noDepletion(result)
 
     expect(last(result.floating.food)).toBeCloseTo(400.1852203506393, 6)
@@ -274,7 +274,7 @@ test.describe('the prebuilt English build against the pre-depletion engine', () 
   })
 
   test('leaves orders without a farm build exactly as before', async ({ request }) => {
-    const villagers = await simulate(request, { text: 'start 6 sheep -> sheep\nproduce villager from capital-town-center x20' })
+    const villagers = await simulate(request, { text: 'start 6 sheep -> sheep\nproduce villager from capital-town-center x20', inputs: { nodeAmounts: INFINITE_NODES } })
     noDepletion(villagers)
     expect(villagers.steps[0]).toMatchObject({ completedAt: 400 })
     expect(last(villagers.floating.food)).toBeCloseTo(15780.897488678529, 6)
@@ -285,7 +285,7 @@ test.describe('the prebuilt English build against the pre-depletion engine', () 
         { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 8 },
         { action: 'build', building: 'mill', from: 'sheep', then: 'berry' },
         { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 4 },
-      ], { autoHouses: true }),
+      ], { autoHouses: true, nodeAmounts: INFINITE_NODES }),
     )
     expect(mill.steps.map((s) => s.completedAt)).toEqual([0, 25, 100])
     expect(last(mill.floating.food)).toBeCloseTo(7786.373096630632, 6)

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
 import rules from '../data/aoe4-build-order/rules/english.json'
 import snapshot from '../data/aoe4-build-order/aoe4world/english.json'
-import { postSimulate } from './helpers'
+import { INFINITE_NODES, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -65,7 +65,7 @@ test.describe('spent on the prebuilt English build', () => {
   })
 
   test('ends at the snapshot costs of the research and buildings it started, whole auto-houses, and each continuous producer paid one unit ahead', async ({ request }) => {
-    const body = await simulate(request, { buildOrder: english1tc })
+    const body = await simulate(request, { buildOrder: english1tc, inputs: { nodeAmounts: INFINITE_NODES } })
     const started = english1tc.steps.filter((_, i) => body.steps[i].startedAt !== null)
     const sumOf = (action: string, key: 'building' | 'tech') =>
       started.filter((s) => s.action === action).reduce((sum, s) => sum + costOf((s as Record<string, string>)[key]), 0)
@@ -102,7 +102,7 @@ test.describe('spent on the prebuilt English build', () => {
       start: { villagers: { sheep: 6 }, rally: 'sheep' },
       steps: [{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 40 }],
     }
-    const body = await simulate(request, { buildOrder })
+    const body = await simulate(request, { buildOrder, inputs: { nodeAmounts: INFINITE_NODES } })
     expect(last(body.spent.villagers)).toBe(40 * costOf('villager'))
     expect(last(body.spent.buildings)).toBeGreaterThan(0)
     expect(last(body.spent.buildings) % costOf('house')).toBe(0)

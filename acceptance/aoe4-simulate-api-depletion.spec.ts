@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { postSimulate } from './helpers'
+import { INFINITE_NODES, postSimulate } from './helpers'
 import { FINITE_GATHER_NODES } from '../lib/aoe4-build-order/model'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
@@ -47,7 +47,8 @@ test.beforeAll(async ({ request }) => {
 test.describe('depletions and warnings with every node infinite', () => {
   for (const [name, body, expected] of ORDERS) {
     test(`${name} returns one null depletion row per finite node and ${expected.length === 0 ? 'no warnings' : 'only its step-stuck warning'}`, async ({ request }) => {
-      const response = await postSimulate(request, body)
+      const { inputs, ...rest } = body as { inputs?: object }
+      const response = await postSimulate(request, { ...rest, inputs: { ...inputs, nodeAmounts: INFINITE_NODES } })
       expect(response.status(), await response.text()).toBe(200)
       const result = await response.json()
       expect(result.depletions).toEqual(FINITE_GATHER_NODES.map((node) => ({ node, amount: null, depletedAt: null })))

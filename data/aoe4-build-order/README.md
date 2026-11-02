@@ -36,8 +36,12 @@ none.
 Each file in `builds/` is one `BuildOrder` the page offers in its prebuilt list, and one import line in
 `lib/aoe4-build-order/builds.ts`. Every number is a non-negative integer, so the build re-parses from its
 paste text unchanged. Ids are aoe4world `baseId`s. A guide step the paste grammar cannot express is left
-out, never approximated, and is listed under its build below. So is any step that does not complete or
-keep running by 3600 s in the simulation, with its reason.
+out, never approximated, and is listed under its build below. Every build meets a bar in the simulation,
+at default inputs with depletion on: at 1200 s and at 3600 s no step is waiting, every non-reaction step
+has started, and a reaction that is not reached is only waiting for its trigger; at 1200 s every gold
+deposit that has run out has a `move all` reaction from it that starts at the run-out instant, and no gold
+warning is a `warning`. A guide step that would break the bar is left out and listed under its build
+with its reason.
 
 - `english-1tc` "ENG 1TC", https://aoe4guides.com/builds/reinDv5vkVX6KUny571E (English, Season 13).
   Villager production is continuous from the start, following the guide's villager counts. Omitted:
@@ -67,5 +71,6 @@ plus `grantedBy`, an optional `condition`, `source` and `unverified`.
   per-resource carry capacity property.
 - `shaft-mining-3`: its `effects` are empty upstream. Its +15% gold and stone gather rate comes from the
   two overlay rows in `rules/english.json`.
-- The five starting sheep are not units. They are the `sheep` gather node with unlimited food, so sheep
-  food is never depleted and herding is not modeled.
+- The five starting sheep are not units. They are the `sheep` gather node, with a finite starting total
+  from `rules/base.json` (owner-supplied, unverified) that runs out like any finite node; herding is
+  still not modeled.

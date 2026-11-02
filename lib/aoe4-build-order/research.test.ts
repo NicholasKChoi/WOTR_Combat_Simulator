@@ -8,7 +8,7 @@ import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
 import { researchEntry, researchHandler, researchNotes, resolveUnitEntry } from './research'
 import type { BuildingInstance, EngineState } from './simulate'
-import { ENGLISH, at, buildOrder, editGameData, effectStateOf, inputsFor, researchedOf, run, sampleIndex, withHandler } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, researchedOf, run, sampleIndex, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
@@ -176,7 +176,7 @@ describe('resolveUnitEntry', () => {
                 { action: 'research', tech: 'veteran-spearmen', at: 'barracks' },
                 { action: 'produce', producer: 'barracks', unit: 'spearman' },
             ],
-            { game },
+            { game, inputs: { nodeAmounts: INFINITE_NODES } },
         )
         expect(tierCountAt(result, 'spearman-3', 400)).toBe(65)
     })

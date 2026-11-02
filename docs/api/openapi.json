@@ -529,32 +529,32 @@
                   "depletions": [
                     {
                       "node": "sheep",
-                      "amount": null,
+                      "amount": 3000,
                       "depletedAt": null
                     },
                     {
                       "node": "berry",
-                      "amount": null,
+                      "amount": 1500,
                       "depletedAt": null
                     },
                     {
                       "node": "deer",
-                      "amount": null,
+                      "amount": 1750,
                       "depletedAt": null
                     },
                     {
                       "node": "boar",
-                      "amount": null,
+                      "amount": 2000,
                       "depletedAt": null
                     },
                     {
                       "node": "gold",
-                      "amount": null,
+                      "amount": 4000,
                       "depletedAt": null
                     },
                     {
                       "node": "stone",
-                      "amount": null,
+                      "amount": 1200,
                       "depletedAt": null
                     }
                   ],
@@ -1061,7 +1061,7 @@
       },
       "BuildOrder": {
         "type": "object",
-        "description": "A build order: steps run in list order, each once its trigger holds and every earlier step has started. Unknown extra keys are ignored.",
+        "description": "A build order: steps run in list order, each once its trigger holds and every earlier non-reaction step has started; a reaction starts once its trigger holds, without waiting for earlier steps. Unknown extra keys are ignored.",
         "required": [
           "civ",
           "name",
@@ -1136,6 +1136,10 @@
                 "$ref": "#/components/schemas/Trigger",
                 "description": "When the step may start; omitted means no condition."
               },
+              "reaction": {
+                "const": true,
+                "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
+              },
               "producer": {
                 "type": "string",
                 "minLength": 1,
@@ -1187,6 +1191,10 @@
                 "$ref": "#/components/schemas/Trigger",
                 "description": "When the step may start; omitted means no condition."
               },
+              "reaction": {
+                "const": true,
+                "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
+              },
               "producer": {
                 "type": "string",
                 "minLength": 1,
@@ -1226,6 +1234,10 @@
                 "$ref": "#/components/schemas/Trigger",
                 "description": "When the step may start; omitted means no condition."
               },
+              "reaction": {
+                "const": true,
+                "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
+              },
               "producer": {
                 "type": "string",
                 "minLength": 1,
@@ -1255,6 +1267,10 @@
               "trigger": {
                 "$ref": "#/components/schemas/Trigger",
                 "description": "When the step may start; omitted means no condition."
+              },
+              "reaction": {
+                "const": true,
+                "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
               },
               "building": {
                 "type": "string",
@@ -1299,6 +1315,10 @@
                 "$ref": "#/components/schemas/Trigger",
                 "description": "When the step may start; omitted means no condition."
               },
+              "reaction": {
+                "const": true,
+                "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
+              },
               "tech": {
                 "type": "string",
                 "minLength": 1,
@@ -1328,6 +1348,10 @@
               "trigger": {
                 "$ref": "#/components/schemas/Trigger",
                 "description": "When the step may start; omitted means no condition."
+              },
+              "reaction": {
+                "const": true,
+                "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
               },
               "count": {
                 "oneOf": [
@@ -1363,7 +1387,7 @@
         ]
       },
       "Trigger": {
-        "description": "A oneOf on the kind const. A trigger whose kind is neither time nor villagers is invalid under this schema, and the server rejects it with an unknown-trigger-kind issue; a trigger that is not an object or has a mistyped field is a syntax issue.",
+        "description": "A oneOf on the kind const. A trigger whose kind is not time, villagers, depleted or bank is invalid under this schema, and the server rejects it with an unknown-trigger-kind issue; a trigger that is not an object or has a mistyped field is a syntax issue.",
         "oneOf": [
           {
             "type": "object",
@@ -1402,6 +1426,49 @@
                 "minimum": 1,
                 "maximum": 200,
                 "description": "Villager count, 1..200."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Holds from the instant a node ref runs out on; never for a ref that does not run out by durationSeconds (an infinite amount, no gatherers, or stock left).",
+            "required": [
+              "kind",
+              "node"
+            ],
+            "properties": {
+              "kind": {
+                "const": "depleted",
+                "description": "Trigger kind: depleted."
+              },
+              "node": {
+                "$ref": "#/components/schemas/FiniteNodeRef",
+                "description": "Node ref to watch; a gold deposit named only here still gets its own stock and depletions entry."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Holds once the bank of resource reaches atLeast; armed at the exact instant income reaches it.",
+            "required": [
+              "kind",
+              "resource",
+              "atLeast"
+            ],
+            "properties": {
+              "kind": {
+                "const": "bank",
+                "description": "Trigger kind: bank."
+              },
+              "resource": {
+                "$ref": "#/components/schemas/ResourceKind",
+                "description": "Resource whose bank is watched."
+              },
+              "atLeast": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100000,
+                "description": "Banked amount, 0..100000."
               }
             }
           }
@@ -1562,7 +1629,7 @@
                 }
               ]
             },
-            "description": "Starting stock per finite node ref, each an integer 0..100000 or null for infinite; keys left out keep their default, gatherNodes.<node>.amount in rules/base.json (gold#k uses gold's), infinite when absent. gold sets deposit 1 only. farm and wood never run out and are invalid keys. An override for a deposit the order does not name is accepted and unused."
+            "description": "Starting stock per finite node ref, each an integer 0..100000 or null for infinite; keys left out keep their default, gatherNodes.<node>.amount in rules/base.json (gold#k uses gold's), which ships for all six finite nodes; null makes a node infinite. gold sets deposit 1 only. farm and wood never run out and are invalid keys. An override for a deposit the order does not name is accepted and unused."
           }
         }
       },
@@ -1907,7 +1974,7 @@
               "null"
             ],
             "minimum": 0,
-            "description": "When the trigger held and every earlier step had started; null if never."
+            "description": "When the trigger held and every earlier non-reaction step had started; a reaction arms when its trigger holds, without waiting for earlier steps. null if never."
           },
           "startedAt": {
             "type": [
@@ -1986,7 +2053,7 @@
               "out-of-range",
               "invalid"
             ],
-            "description": "syntax: shape or spelling; unknown-trigger-kind: trigger kind other than time or villagers; unknown-id: id not in the civ data; unsupported-tech and unknown-tech-effect: a technology that cannot be simulated; out-of-range: a number outside its bound, non-integer where an integer is required, or non-finite; invalid: a cross-field rule fails."
+            "description": "syntax: shape or spelling; unknown-trigger-kind: trigger kind other than time, villagers, depleted or bank; unknown-id: id not in the civ data; unsupported-tech and unknown-tech-effect: a technology that cannot be simulated; out-of-range: a number outside its bound, non-integer where an integer is required, or non-finite; invalid: a cross-field rule fails."
           },
           "message": {
             "type": "string",
