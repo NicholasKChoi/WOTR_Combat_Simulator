@@ -1,6 +1,7 @@
 import type { GameData, SnapshotEntry } from './data';
 import { classifyTech } from './effects';
-import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStep, GatherNodeId, SimInputs, TripInputs } from './model';
+import { FINITE_NODE_REFS, GATHER_NODES, MAX_DEPOSITS, nodeKindOf } from './model';
+import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStep, FiniteNodeRef, GatherNodeId, SimInputs, TripInputs } from './model';
 
 interface InputBound {
   readonly min: number;
@@ -30,6 +31,7 @@ export const SIM_INPUT_BOUNDS = Object.freeze({
   walkSecondsTownCenter: bound(0, 60, false),
   dropOffSeconds: bound(0, 30, false),
   influenceCoverage: bound(0, 1, false),
+  nodeAmount: bound(0, 100000),
 });
 
 type BoundKey = keyof typeof SIM_INPUT_BOUNDS;
@@ -54,6 +56,8 @@ interface FieldSpec {
   name: string;
   kind: IdKind | BoundKey;
   optional?: boolean;
+  // Also accepts the string 'all'.
+  all?: boolean;
 }
 
 const req = (name: string, kind: FieldSpec['kind']): FieldSpec => ({ name, kind });
@@ -65,7 +69,7 @@ const STEP_FIELDS: Record<BuildStep['action'], readonly FieldSpec[]> = {
   pause: [req('producer', 'building'), opt('instance', 'instance')],
   build: [req('building', 'building'), opt('builders', 'builders'), req('from', 'node'), opt('then', 'node'), opt('walkSeconds', 'walkSeconds')],
   research: [req('tech', 'tech'), opt('at', 'building')],
-  move: [req('count', 'count'), req('from', 'node'), req('to', 'node'), opt('walkSeconds', 'walkSeconds')],
+  move: [{ ...req('count', 'count'), all: true }, req('from', 'node'), req('to', 'node'), opt('walkSeconds', 'walkSeconds')],
 };
 
 const ENTRY_TYPES: Record<Exclude<IdKind, 'node'>, readonly SnapshotEntry['type'][]> = {
@@ -120,6 +124,38 @@ function producedBy(entries: readonly SnapshotEntry[]): Set<string> {
   return new Set(entries.flatMap((e) => e.producedBy));
 }
 
+export interface NodeRefProblem {
+  code: 'syntax' | 'unknown-id' | 'out-of-range' | 'invalid';
+  reason: string;
+}
+
+const DEPOSIT_NUMBER = /^(0|[1-9][0-9]*)$/;
+
+function isGatherNode(id: string): id is GatherNodeId {
+  return (GATHER_NODES as readonly string[]).includes(id);
+}
+
+// Returns null for a valid ref. finiteOnly also rejects farm and wood, which never run dry.
+export function nodeRefIssue(value: unknown, finiteOnly: boolean): NodeRefProblem | null {
+  if (typeof value !== 'string') return { code: 'syntax', reason: 'node must be a string' };
+  const [node, ...suffix] = value.split('#');
+  if (!isGatherNode(node)) return { code: 'unknown-id', reason: `unknown node "${value}"` };
+  if (suffix.length === 0) {
+    const infinite = finiteOnly && (node === 'farm' || node === 'wood');
+    return infinite ? { code: 'invalid', reason: `node "${value}" never runs out` } : null;
+  }
+  if (suffix.length > 1 || !DEPOSIT_NUMBER.test(suffix[0])) {
+    return { code: 'syntax', reason: `node "${value}" is not a node or a numbered deposit such as gold#2` };
+  }
+  if (node !== 'gold') return { code: 'invalid', reason: `node "${value}": only gold has numbered deposits` };
+  const deposit = Number(suffix[0]);
+  if (deposit === 1) return { code: 'invalid', reason: `node "${value}": deposit 1 is written gold` };
+  if (deposit < 1 || deposit > MAX_DEPOSITS) {
+    return { code: 'out-of-range', reason: `node "${value}": deposit number is outside 2..${MAX_DEPOSITS}` };
+  }
+  return null;
+}
+
 function isKnownId(data: GameData, kind: IdKind, id: string): boolean {
   return kind === 'node' ? Object.hasOwn(data.base.gatherNodes, id) : entriesOf(data, id, kind).length > 0;
 }
@@ -147,8 +183,8 @@ function stepShape(step: unknown): string[] {
     const type = isBoundKey(field.kind) ? 'number' : 'string';
     if (value === undefined) {
       if (!field.optional) problems.push(`missing ${field.name}`);
-    } else if (typeof value !== type) {
-      problems.push(`${field.name} must be a ${type}`);
+    } else if (typeof value !== type && !(field.all && value === 'all')) {
+      problems.push(`${field.name} must be a ${type}${field.all ? ' or "all"' : ''}`);
     }
   }
   return problems;
@@ -201,7 +237,7 @@ class OrderChecker {
     if (rally !== undefined) {
       this.hasStartRally = true;
       if (typeof rally !== 'string') this.issues.push(issue('syntax', where, 'start.rally must be a string'));
-      else if (!isKnownId(this.data, 'node', rally)) this.issues.push(issue('unknown-id', where, `unknown node "${rally}" in start.rally`));
+      else this.checkNode(rally, 'start.rally', where);
       return;
     }
     const producers = this.data.civData.startingState.buildings.value.filter((b) => this.villagerProducers.has(b));
@@ -225,7 +261,7 @@ class OrderChecker {
         if (problem) this.issues.push(issue('out-of-range', where, `start.villagers.${node}: ${problem}`));
         total += count;
       }
-      if (!isKnownId(this.data, 'node', node)) this.issues.push(issue('unknown-id', where, `unknown node "${node}" in start.villagers`));
+      this.checkNode(node, 'start.villagers', where);
     }
     const expected = Object.values(this.data.civData.startingState.villagers.value).reduce((sum, n) => sum + n, 0);
     if (this.issues.length === before && total !== expected) {
@@ -261,8 +297,16 @@ class OrderChecker {
     if (problem) this.issues.push(issue('out-of-range', where, `trigger.${name}: ${problem}`));
   }
 
+  private checkNode(value: unknown, path: string, where: Where): boolean {
+    const problem = nodeRefIssue(value, false);
+    if (problem) this.issues.push(issue(problem.code, where, `${problem.reason} in ${path}`));
+    return problem === null;
+  }
+
   // True when the value is in range or resolves to a known, usable id.
   private checkField(field: FieldSpec, value: unknown, where: Where): boolean {
+    if (field.kind === 'node') return this.checkNode(value, field.name, where);
+    if (field.all && value === 'all') return true;
     if (isBoundKey(field.kind)) {
       const problem = outOfRange(value as number, field.kind);
       if (problem) this.issues.push(issue('out-of-range', where, `${field.name}: ${problem}`));
@@ -374,6 +418,26 @@ function resolveTrips(overrides: Fields | undefined, data: GameData, issues: Bui
   return trips;
 }
 
+function resolveNodeAmounts(overrides: Fields | undefined, data: GameData, issues: BuildOrderIssue[]): Record<FiniteNodeRef, number | null> {
+  const amounts = {} as Record<FiniteNodeRef, number | null>;
+  for (const ref of FINITE_NODE_REFS) {
+    amounts[ref] = data.base.gatherNodes[nodeKindOf(ref)].amount?.value ?? null;
+  }
+  for (const ref of Object.keys(overrides ?? {})) {
+    const path = `nodeAmounts.${ref}`;
+    const problem = nodeRefIssue(ref, true);
+    if (problem) {
+      issues.push(inputIssue(problem.code, path, problem.reason));
+    } else if (overrides[ref] === null) {
+      amounts[ref as FiniteNodeRef] = null;
+    } else {
+      const value = readNumber(overrides, ref, path, 'nodeAmount', issues);
+      if (value !== undefined) amounts[ref as FiniteNodeRef] = value;
+    }
+  }
+  return amounts;
+}
+
 function resolveInfluence(overrides: Fields | undefined, data: GameData, issues: BuildOrderIssue[]): Record<string, number> {
   const coverage: Record<string, number> = { ...INPUT_DEFAULTS.influenceCoverage };
   for (const building of Object.keys(overrides ?? {})) {
@@ -408,6 +472,7 @@ export function resolveSimInputs(partial: unknown, data: GameData): { ok: true; 
     issues.push(inputIssue('syntax', 'houseBuilderSource', 'must be a string'));
   }
   const influenceCoverage = resolveInfluence(readRecord(given, 'influenceCoverage', 'influenceCoverage', issues), data, issues);
+  const nodeAmounts = resolveNodeAmounts(readRecord(given, 'nodeAmounts', 'nodeAmounts', issues), data, issues);
   if (issues.length > 0) return { ok: false, issues };
   return {
     ok: true,
@@ -419,6 +484,7 @@ export function resolveSimInputs(partial: unknown, data: GameData): { ok: true; 
       houseBuilders: houseBuilders ?? INPUT_DEFAULTS.houseBuilders,
       houseBuilderSource: (houseBuilderSource as GatherNodeId | undefined) ?? INPUT_DEFAULTS.houseBuilderSource,
       influenceCoverage,
+      nodeAmounts,
     },
   };
 }

@@ -2,7 +2,8 @@ import { civRules } from './civ-rules';
 import type { CivRuleContext, CivRules } from './civ-rules';
 import { constructionSeconds } from './construction';
 import type { GameData, SnapshotEntry } from './data';
-import { sortWarnings } from './depletion';
+import { createNodeStock, depletionResults, drawDown, isDepleted, nextRunOut, recordIdleArrival, recordRunOut, runRefs } from './depletion';
+import type { NodeStock } from './depletion';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import type { Resources } from './engine-common';
@@ -10,8 +11,8 @@ import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, costOf, markCompl
 import { effectiveGatherRate } from './gather';
 import { planAutoHouse } from './houses';
 import type { HouseDemand } from './houses';
-import { GATHER_NODES, RESOURCE_KINDS } from './model';
-import type { BuildOrder, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult, SpendCategory, StepTiming, Trigger, UnitSeries } from './model';
+import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
+import type { BuildOrder, BuildStep, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SpendCategory, StepTiming, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 
 // Output resolution, not a game number.
@@ -22,7 +23,7 @@ const SECONDS_PER_MINUTE = 60;
 const LANDMARK_CLASS = /^age[1-3]_landmark\d$/;
 
 export interface RallySource {
-  node: GatherNodeId;
+  node: NodeRef;
   walkSeconds?: number;
 }
 
@@ -70,7 +71,10 @@ export interface EngineState extends EffectState {
   readonly rallyDefaults: Map<string, RallySource>;
   // baseId -> instance k not yet built -> rally.
   readonly heldRallies: Map<string, Map<number, RallySource>>;
-  readonly gatherers: Record<GatherNodeId, number>;
+  readonly gatherers: Record<NodeRef, number>;
+  // Alive at a depleted ref, gathering nothing; only a step moves them on.
+  readonly idle: Record<NodeRef, number>;
+  readonly stock: NodeStock;
   // Villagers alive and walking, gathering nothing.
   walking: number;
   // Alive villagers and units plus the popcap reserved by paid items.
@@ -115,6 +119,10 @@ interface Engine extends EngineState {
   // baseIds under construction, explicit or auto.
   readonly constructing: string[];
   readonly ages: SimulationResult['ages'];
+  // Run refs that ran out this instant, recorded once the instant ends.
+  readonly runOuts: FiniteNodeRef[];
+  // Auto-house fallback candidates: every node ref but the deposits the order never names.
+  readonly houseSources: readonly NodeRef[];
 }
 
 function ruleContext(state: EngineState): CivRuleContext {
@@ -122,7 +130,34 @@ function ruleContext(state: EngineState): CivRuleContext {
 }
 
 function aliveVillagers(state: EngineState): number {
-  return Object.values(state.gatherers).reduce((sum, n) => sum + n, state.walking);
+  return NODE_REFS.reduce((sum, ref) => sum + state.gatherers[ref] + state.idle[ref], state.walking);
+}
+
+// farm, wood and refs the order never names have no stock and never run out.
+function isDry(state: EngineState, ref: NodeRef): boolean {
+  return isDepleted(state.stock, ref as FiniteNodeRef);
+}
+
+function availableAt(state: EngineState, ref: NodeRef): number {
+  return state.gatherers[ref] + state.idle[ref];
+}
+
+// Every arrival at a ref goes through here.
+export function assignGatherers(state: EngineState, ref: NodeRef, count: number): void {
+  if (isDry(state, ref)) {
+    state.idle[ref] += count;
+    recordIdleArrival(state.stock, ref as FiniteNodeRef, state.time, count);
+  } else {
+    state.gatherers[ref] += count;
+  }
+}
+
+// Gatherers first, then idle ones.
+function sendWalking(state: EngineState, ref: NodeRef, count: number): void {
+  const gathering = Math.min(count, state.gatherers[ref]);
+  state.gatherers[ref] -= gathering;
+  state.idle[ref] -= count - gathering;
+  state.walking += count;
 }
 
 function isVillagerProducer(state: EngineState, baseId: string): boolean {
@@ -222,7 +257,7 @@ function spawnUnit(state: EngineState, entry: SnapshotEntry, at: BuildingInstanc
   state.walking += 1;
   state.schedule(state.time + (rally.walkSeconds ?? state.inputs.walkSeconds) / moveSpeedMultiplier, (s) => {
     s.walking -= 1;
-    s.gatherers[rally.node] += 1;
+    assignGatherers(s, rally.node, 1);
   });
 }
 
@@ -285,8 +320,8 @@ const rally: StepHandler<'rally'> = (step, index, state) => {
 interface Construction {
   entry: SnapshotEntry;
   builders: number;
-  from: GatherNodeId;
-  then: GatherNodeId;
+  from: NodeRef;
+  then: NodeRef;
   walkSeconds: number | undefined;
   // null for an auto-house.
   step: number | null;
@@ -294,8 +329,7 @@ interface Construction {
 
 function startConstruction(state: EngineState, job: Construction): void {
   payCost(state, costOf(job.entry, 1), 'buildings');
-  state.gatherers[job.from] -= job.builders;
-  state.walking += job.builders;
+  sendWalking(state, job.from, job.builders);
   (state as Engine).constructing.push(job.entry.baseId);
   const done = state.time + villagerWalkSeconds(state, job.walkSeconds ?? state.inputs.walkSeconds) + constructionSeconds(job.entry.costs.time, job.builders, state.data);
   state.schedule(done, (s) => completeConstruction(s, job));
@@ -315,16 +349,21 @@ function completeConstruction(state: EngineState, job: Construction): void {
   if (job.step !== null) {
     markCompleted(state, job.step);
   }
-  state.schedule(state.time + villagerWalkSeconds(state, job.walkSeconds ?? state.inputs.walkSeconds), (s) => {
+  const arrive = (s: EngineState) => {
     s.walking -= job.builders;
-    s.gatherers[job.then] += job.builders;
-  });
+    assignGatherers(s, job.then, job.builders);
+  };
+  if (state.data.base.gatherNodes[nodeKindOf(job.then)].createdBy === entry.baseId) {
+    arrive(state);
+  } else {
+    state.schedule(state.time + villagerWalkSeconds(state, job.walkSeconds ?? state.inputs.walkSeconds), arrive);
+  }
 }
 
 const build: StepHandler<'build'> = (step, index, state) => {
   const entry = state.data.byBaseId.get(step.building)?.[0];
   const builders = step.builders ?? 1;
-  if (!entry || entry.age > state.age || state.gatherers[step.from] < builders) {
+  if (!entry || entry.age > state.age || availableAt(state, step.from) < builders) {
     return { started: false };
   }
   const cost = costOf(entry, 1);
@@ -336,14 +375,19 @@ const build: StepHandler<'build'> = (step, index, state) => {
 };
 
 const move: StepHandler<'move'> = (step, index, state) => {
-  if (state.gatherers[step.from] < step.count) {
+  const available = availableAt(state, step.from);
+  const count = step.count === 'all' ? available : step.count;
+  if (available < count) {
     return { started: false };
   }
-  state.gatherers[step.from] -= step.count;
-  state.walking += step.count;
+  if (count === 0) {
+    markCompleted(state, index);
+    return { started: true };
+  }
+  sendWalking(state, step.from, count);
   state.schedule(state.time + villagerWalkSeconds(state, step.walkSeconds ?? state.inputs.walkSeconds), (s) => {
-    s.walking -= step.count;
-    s.gatherers[step.to] += step.count;
+    s.walking -= count;
+    assignGatherers(s, step.to, count);
     markCompleted(s, index);
   });
   return { started: true };
@@ -466,12 +510,13 @@ function houseGateOpen(engine: Engine): boolean {
   return true;
 }
 
-function houseBuilderSource(engine: Engine): GatherNodeId | undefined {
+// Reads gatherers only: idle villagers never build houses.
+function houseBuilderSource(engine: Engine): NodeRef | undefined {
   const { gatherers, inputs } = engine;
   if (gatherers[inputs.houseBuilderSource] >= inputs.houseBuilders) {
     return inputs.houseBuilderSource;
   }
-  const fullest = GATHER_NODES.reduce((best, node) => (gatherers[node] > gatherers[best] ? node : best));
+  const fullest = engine.houseSources.reduce((best, ref) => (gatherers[ref] > gatherers[best] ? ref : best));
   return gatherers[fullest] >= inputs.houseBuilders ? fullest : undefined;
 }
 
@@ -496,7 +541,26 @@ function startAutoHouses(engine: Engine): void {
   }
 }
 
+// Runs before anything else in the instant, so steps and arrivals at this instant already see the ref dry.
+function collectRunOuts(engine: Engine): void {
+  for (const ref of FINITE_NODE_REFS) {
+    if (isDepleted(engine.stock, ref) && engine.stock.get(ref).depletedAt === null && !engine.runOuts.includes(ref)) {
+      engine.idle[ref] += engine.gatherers[ref];
+      engine.gatherers[ref] = 0;
+      engine.runOuts.push(ref);
+    }
+  }
+}
+
+function recordRunOuts(engine: Engine): void {
+  for (const ref of engine.runOuts) {
+    recordRunOut(engine.stock, ref, engine.time, engine.idle[ref]);
+  }
+  engine.runOuts.length = 0;
+}
+
 function runInstant(engine: Engine): void {
+  collectRunOuts(engine);
   offerSteps(engine);
   applyDueEvents(engine);
   offerSteps(engine);
@@ -511,7 +575,8 @@ function tripView(inputs: SimInputs, node: GatherNodeId, hasDropOff: boolean): S
   return { ...inputs, trips: { ...inputs.trips, [node]: { ...trip, ...walk } } };
 }
 
-function nodeRate(engine: Engine, node: GatherNodeId): number {
+function nodeRate(engine: Engine, ref: NodeRef): number {
+  const node = nodeKindOf(ref);
   const ctx = { ...ruleContext(engine), node };
   const byDefault = engine.data.base.gatherNodes[node].dropOffs.some((baseId) => hasBuilding(engine, baseId));
   const hasDropOff = engine.rules.dropOffRule?.(byDefault, ctx) ?? byDefault;
@@ -520,14 +585,43 @@ function nodeRate(engine: Engine, node: GatherNodeId): number {
   return engine.rules.gatherRateModifier?.(rate, ctx) ?? rate;
 }
 
-function incomePerSecond(engine: Engine): Resources {
+type RefRate = (ref: NodeRef) => number;
+
+// Per-villager rate of each ref someone gathers.
+function gatherRatesOf(engine: Engine): RefRate {
+  const rates = new Map<NodeRef, number>();
+  for (const ref of NODE_REFS) {
+    if (engine.gatherers[ref] > 0) {
+      rates.set(ref, nodeRate(engine, ref));
+    }
+  }
+  return (ref) => rates.get(ref) ?? 0;
+}
+
+function hasStock(engine: Engine, ref: NodeRef): boolean {
+  return (engine.stock.get(ref as FiniteNodeRef)?.remaining ?? null) !== null;
+}
+
+function incomePerSecond(engine: Engine, rateOf: RefRate, include: (ref: NodeRef) => boolean = () => true): Resources {
   const income = { food: 0, wood: 0, gold: 0, stone: 0 };
-  for (const node of Object.keys(engine.gatherers) as GatherNodeId[]) {
-    if (engine.gatherers[node] > 0) {
-      income[engine.data.base.gatherNodes[node].resource] += engine.gatherers[node] * nodeRate(engine, node);
+  for (const ref of NODE_REFS) {
+    if (engine.gatherers[ref] > 0 && include(ref)) {
+      income[engine.data.base.gatherNodes[nodeKindOf(ref)].resource] += engine.gatherers[ref] * rateOf(ref);
     }
   }
   return income;
+}
+
+// A stocked ref pays only what it still holds.
+function creditIncome(engine: Engine, rateOf: RefRate, seconds: number): void {
+  const unstocked = incomePerSecond(engine, rateOf, (ref) => !hasStock(engine, ref));
+  for (const kind of RESOURCE_KINDS) {
+    engine.resources[kind] += unstocked[kind] * seconds;
+  }
+  const drawn = drawDown(engine.stock, engine.gatherers, rateOf, seconds);
+  for (const ref of engine.stock.keys()) {
+    engine.resources[engine.data.base.gatherNodes[nodeKindOf(ref)].resource] += drawn[ref] ?? 0;
+  }
 }
 
 function affordableAt(engine: Engine, need: Readonly<Resources>, income: Resources): number {
@@ -542,8 +636,12 @@ function affordableAt(engine: Engine, need: Readonly<Resources>, income: Resourc
 }
 
 // Events due now are handled by the caller; this is the next later time anything can change.
-function nextWake(engine: Engine, income: Resources, nextSample: number): number {
+function nextWake(engine: Engine, income: Resources, rateOf: RefRate, nextSample: number): number {
   const candidates = [nextSample];
+  const runOut = nextRunOut(engine.stock, engine.gatherers, rateOf, engine.time);
+  if (runOut !== null) {
+    candidates.push(runOut);
+  }
   if (engine.events.length > 0) {
     candidates.push(engine.events[0].time);
   }
@@ -582,11 +680,15 @@ function startUnitPopulation(data: GameData, units: Readonly<Record<string, numb
 function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rules: CivRules): Engine {
   const civStart = data.civData.startingState;
   const start = rules.startingState?.(civStart, { data, inputs, time: 0 }) ?? civStart;
-  const gatherers = {} as Record<GatherNodeId, number>;
-  for (const node of Object.keys(data.base.gatherNodes) as GatherNodeId[]) {
-    gatherers[node] = 0;
+  const gatherers = {} as Record<NodeRef, number>;
+  const idle = {} as Record<NodeRef, number>;
+  for (const ref of NODE_REFS) {
+    gatherers[ref] = 0;
+    idle[ref] = 0;
   }
   Object.assign(gatherers, order.start?.villagers ?? start.villagers.value);
+  const runOrderRefs = runRefs(order);
+  const named = new Set<NodeRef>(runOrderRefs);
   const units = Object.values(start.units.value).reduce((sum, n) => sum + n, 0);
   const engine: Engine = {
     data,
@@ -604,6 +706,8 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     rallyDefaults: new Map(),
     heldRallies: new Map(),
     gatherers,
+    idle,
+    stock: createNodeStock(runOrderRefs, inputs),
     walking: 0,
     population: 0,
     supply: 0,
@@ -625,6 +729,8 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     needs: [],
     constructing: [],
     ages: [{ age: start.age.value, reachedAt: 0 }],
+    runOuts: [],
+    houseSources: NODE_REFS.filter((ref) => nodeKindOf(ref) === ref || named.has(ref)),
   };
   engine.population = aliveVillagers(engine) + units;
   engine.spawnedPopulation = aliveVillagers(engine) + startUnitPopulation(data, start.units.value);
@@ -669,7 +775,9 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     if (engine.events.length > 0 && engine.events[0].time <= engine.time) {
       continue;
     }
-    const income = incomePerSecond(engine);
+    recordRunOuts(engine);
+    const rateOf = gatherRatesOf(engine);
+    const income = incomePerSecond(engine, rateOf);
     for (; sample < times.length && times[sample] <= engine.time; sample += 1) {
       for (const kind of RESOURCE_KINDS) {
         gatherRates[kind].push(income[kind] * SECONDS_PER_MINUTE);
@@ -683,15 +791,14 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     if (sample === times.length) {
       break;
     }
-    const next = nextWake(engine, income, times[sample]);
-    for (const kind of RESOURCE_KINDS) {
-      engine.resources[kind] += income[kind] * (next - engine.time);
-    }
+    const next = nextWake(engine, income, rateOf, times[sample]);
+    creditIncome(engine, rateOf, next - engine.time);
     engine.time = next;
   }
   engine.steps.forEach((timing) => {
     timing.status = finalStatus(timing);
   });
+  const { depletions, warnings } = depletionResults(engine.stock);
   return {
     civ: order.civ,
     durationSeconds: inputs.durationSeconds,
@@ -706,7 +813,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     steps: engine.steps,
     ages: engine.ages,
     notes: researchNotes(order, data),
-    depletions: [],
-    warnings: sortWarnings([]),
+    depletions,
+    warnings,
   };
 }

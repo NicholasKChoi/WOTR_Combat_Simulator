@@ -522,7 +522,38 @@
                     }
                   ],
                   "notes": [],
-                  "depletions": [],
+                  "depletions": [
+                    {
+                      "node": "sheep",
+                      "amount": null,
+                      "depletedAt": null
+                    },
+                    {
+                      "node": "berry",
+                      "amount": null,
+                      "depletedAt": null
+                    },
+                    {
+                      "node": "deer",
+                      "amount": null,
+                      "depletedAt": null
+                    },
+                    {
+                      "node": "boar",
+                      "amount": null,
+                      "depletedAt": null
+                    },
+                    {
+                      "node": "gold",
+                      "amount": null,
+                      "depletedAt": null
+                    },
+                    {
+                      "node": "stone",
+                      "amount": null,
+                      "depletedAt": null
+                    }
+                  ],
                   "warnings": []
                 }
               }
@@ -1065,17 +1096,17 @@
           "villagers": {
             "type": "object",
             "propertyNames": {
-              "$ref": "#/components/schemas/GatherNodeId"
+              "$ref": "#/components/schemas/NodeRef"
             },
             "additionalProperties": {
               "type": "integer",
               "minimum": 0,
               "maximum": 200
             },
-            "description": "Villagers per gather node at t=0, each 0..200. When present it replaces the civ split whole (omitted nodes get 0) and the values must sum to the civ starting count (6 for english), else an invalid issue. An unknown node key is an unknown-id issue."
+            "description": "Villagers per node ref at t=0, each 0..200. When present it replaces the civ split whole (omitted nodes get 0) and the values must sum to the civ starting count (6 for english), else an invalid issue. Node keys are checked like any node ref (for example unknown-id for iron, invalid for gold#1)."
           },
           "rally": {
-            "$ref": "#/components/schemas/GatherNodeId",
+            "$ref": "#/components/schemas/NodeRef",
             "description": "Rally node at t=0 for the starting villager producers. Required (as an invalid issue) when a starting building produces villagers, which is true for english (capital-town-center)."
           }
         }
@@ -1123,7 +1154,7 @@
                 "description": "Units to produce, 1..200; omitted means continuous."
               },
               "rally": {
-                "$ref": "#/components/schemas/GatherNodeId",
+                "$ref": "#/components/schemas/NodeRef",
                 "description": "Villager only (else invalid): sets the producer rally for villagers it spawns from this step on."
               },
               "walkSeconds": {
@@ -1163,7 +1194,7 @@
                 "description": "1-based instance of the producer to target, 1..200; omitted targets every instance of that baseId."
               },
               "to": {
-                "$ref": "#/components/schemas/GatherNodeId",
+                "$ref": "#/components/schemas/NodeRef",
                 "description": "Rally node."
               },
               "walkSeconds": {
@@ -1232,12 +1263,12 @@
                 "description": "Villagers that build, 1..200; default 1."
               },
               "from": {
-                "$ref": "#/components/schemas/GatherNodeId",
-                "description": "Node the builders are taken from."
+                "$ref": "#/components/schemas/NodeRef",
+                "description": "Node ref the builders are taken from, gathering first and then idle; the step waits until it holds builders villagers."
               },
               "then": {
-                "$ref": "#/components/schemas/GatherNodeId",
-                "description": "Node the builders go to afterwards; default from."
+                "$ref": "#/components/schemas/NodeRef",
+                "description": "Node ref the builders go to afterwards; default from. When it is the node the building creates (farm for a farm), they start there at completion with no walk back."
               },
               "walkSeconds": {
                 "type": "number",
@@ -1294,18 +1325,27 @@
                 "description": "When the step may start; omitted means no condition."
               },
               "count": {
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 200,
-                "description": "Villagers to move, 1..200."
+                "oneOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200,
+                    "description": "Villagers to move, 1..200; the step waits until from holds that many, gathering or idle."
+                  },
+                  {
+                    "const": "all",
+                    "description": "Every villager at from when the step starts, gathering or idle; never waits, and with none there it completes at once moving nobody."
+                  }
+                ],
+                "description": "Villagers to move: a count or all."
               },
               "from": {
-                "$ref": "#/components/schemas/GatherNodeId",
-                "description": "Node the villagers leave."
+                "$ref": "#/components/schemas/NodeRef",
+                "description": "Node ref the villagers leave, gathering first and then idle."
               },
               "to": {
-                "$ref": "#/components/schemas/GatherNodeId",
-                "description": "Node the villagers go to."
+                "$ref": "#/components/schemas/NodeRef",
+                "description": "Node ref the villagers go to; arriving at a depleted ref leaves them idle."
               },
               "walkSeconds": {
                 "type": "number",
@@ -1446,7 +1486,7 @@
       },
       "SimInputOverrides": {
         "type": "object",
-        "description": "Simulation input overrides. Every property is optional and every absent field takes its default at any depth: trips merges per node and then per field, influenceCoverage per key. An out-of-range value is an out-of-range issue whose message names its path, for example inputs.trips.farm.walkSecondsCamp. Unknown extra keys are ignored.",
+        "description": "Simulation input overrides. Every property is optional and every absent field takes its default at any depth: trips merges per node and then per field, influenceCoverage and nodeAmounts per key. An out-of-range value is an out-of-range issue whose message names its path, for example inputs.trips.farm.walkSecondsCamp. Unknown extra keys are ignored.",
         "properties": {
           "durationSeconds": {
             "type": "integer",
@@ -1499,6 +1539,25 @@
               "mill": 1
             },
             "description": "Share of gatherers inside a building influence once one exists, keyed by building baseId, each 0..1; keys left out keep their default ({ mill: 1 }). An unknown building key is an unknown-id issue."
+          },
+          "nodeAmounts": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/FiniteNodeRef"
+            },
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100000
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": "Starting stock per finite node ref, each an integer 0..100000 or null for infinite; keys left out keep their default, gatherNodes.<node>.amount in rules/base.json (gold#k uses gold's), infinite when absent. gold sets deposit 1 only. farm and wood never run out and are invalid keys. An override for a deposit the order does not name is accepted and unused."
           }
         }
       },
@@ -1749,14 +1808,14 @@
             "items": {
               "$ref": "#/components/schemas/NodeDepletion"
             },
-            "description": "One entry per finite node ref the run uses (the six finite nodes plus every gold deposit the order names), in node-ref order. Empty today: every node is infinite."
+            "description": "One entry per finite node ref the run uses (the six finite nodes plus every gold deposit the order names), in node-ref order. The six finite nodes are always present; amount is null when infinite, depletedAt null while stocked."
           },
           "warnings": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SimWarning"
             },
-            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then step-stuck by step. Empty today: no node runs out."
+            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then step-stuck by step. node-depleted and idle-arrival come from run-outs (see nodeAmounts); nothing emits step-stuck yet."
           }
         }
       },

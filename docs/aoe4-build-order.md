@@ -22,7 +22,10 @@ The model treats the game as a small set of ordinary rules:
 - An age-up is a landmark build. There is no separate age-up action.
 - Every construction pulls its builders off their resource for the whole build time; they gather nothing
   while walking and building. Build time depends on the builder count.
-- Resources are infinite: a resource node never runs out.
+- A finite node (sheep, berry, deer, boar, gold, stone) holds a starting stock and runs out; farm and wood
+  are infinite. Starting amounts come from `gatherNodes.<node>.amount` in `rules/base.json` and
+  `inputs.nodeAmounts`; no amount ships in the data yet, so every node is infinite unless a request sets
+  one (see Depletion).
 
 Every quantity that could vary between games (walk time, idle time, distance to each resource) is a named
 simulator input, never a constant inside the step logic. The result and the API response are additive: a
@@ -48,7 +51,7 @@ apply to JSON and paste input alike: a paste line is checked after it is parsed.
 | `durationSeconds` | int | 60..3600 | 1200 |
 | `Trigger.seconds` | int | 0..3600 (the largest `durationSeconds`) | |
 | `Trigger.count` (villagers) | int | 1..200 (the population cap) | |
-| `produce.count`, `move.count` | int | 1..200 | continuous (produce) |
+| `produce.count`, `move.count` | int (`move.count` also `"all"`) | 1..200 | continuous (produce) |
 | `builders`, `houseBuilders` | int | 1..200 | 1 |
 | `instance` | int | 1..200 | every instance |
 | `walkSeconds` (`SimInputs`) and per-step `walkSeconds` (`produce`, `build`, `move`, `rally`) | number | 0..60 | `rules/base.json`; step: inherit |
@@ -56,6 +59,7 @@ apply to JSON and paste input alike: a paste line is checked after it is parsed.
 | `walkSecondsCamp`, `walkSecondsTownCenter` | number | 0..60 | `rules/base.json` |
 | `dropOffSeconds` | number | 0..30 | `rules/base.json` |
 | `influenceCoverage` values | number | 0..1 | `{ mill: 1 }` |
+| `nodeAmounts` values | int or `null` (infinite) | 0..100,000 | `gatherNodes.<node>.amount` (gold's for `gold#k`), else infinite |
 
 Unknown extra properties on a build order, its `start`, its steps, their triggers and `inputs` are
 ignored. Every omitted `inputs` field takes its default at any depth: `trips` merges per node and then
@@ -222,7 +226,9 @@ the trip model uses, read when the walk starts. The villager is idle and gathers
 walk is paid:
 
 - once per villager on `move`, from `from` to `to`;
-- twice on `build`: once to the site, then once from the site to `then`;
+- twice on `build`: once to the site, then once from the site to `then`. When `then` is the node the
+  building creates (`gatherNodes.<node>.createdBy`, so `then farm` on a farm build), the builders start
+  there at completion with no second walk;
 - once per spawned villager, from spawn to its producer instance's rally node. The walk is
   `(source.walkSeconds ?? inputs.walkSeconds) / moveSpeedMultiplier`, where the source is the `rally` step
   or `produce` that set the rally; a `start.rally` route uses `inputs.walkSeconds / moveSpeedMultiplier`;
@@ -255,16 +261,20 @@ numerator 3 and offset 2 in `rules/base.json`:
 |---|---|---|---|---|
 | share of base build time | 100% | 75% | 50% | 30% |
 
-A `build` step pays the building's cost when it starts. Its builders come from the villagers gathering at
-`from`; the step waits while fewer than `builders` gather there. Builders count as villagers for an
+A `build` step pays the building's cost when it starts. Its builders come from the villagers at `from`,
+gathering ones first, then idle ones (Depletion); the step waits while fewer than `builders` are there. Builders count as villagers for an
 `at N vils` trigger throughout. Construction starts when they arrive at the site. The building counts for
 nothing until it completes: its supply, its instance and its drop-off appear at that instant, which is
-also the step's `completedAt`. The builders then walk to `then` (default `from`). A `build` step waits
-while its building's entry is above the current age, while `from` has too few gatherers, or while its cost
-cannot be paid; only the last reserves resources.
+also the step's `completedAt`. The builders then walk to `then` (default `from`), or start there at once
+when `then` is the node the building creates. A `build` step waits while its building's entry is above the
+current age, while `from` has too few villagers, or while its cost cannot be paid; only the last reserves
+resources.
 
-A `move` step waits until `count` villagers gather at `from`, costs nothing, and takes them off `from`
-for the walk. Its `completedAt` is their arrival at `to`.
+A `move` step waits until `count` villagers are at `from` (gathering or idle), costs nothing, and takes
+them off `from` for the walk, gathering ones first. Its `completedAt` is their arrival at `to`.
+`move all` takes every villager at `from` when the step starts and never waits; with none there it
+starts and completes at that instant and moves nobody, so a second `move all` from the same node at the
+same instant is a no-op.
 
 **Houses and supply.** `supply` in `rules/english.json` gives the supply each building provides; total
 supply is capped at `maxPopCap`, 200. With `autoHouses` on (the default), the simulator builds houses on
@@ -275,10 +285,12 @@ producer with an order, in population per second. When it passes the supply plus
 under construction, enough houses start at once to cover the difference, each with its own `houseBuilders`
 builders; houses run concurrently. Planning stops once supply plus pending supply reaches `maxPopCap`.
 
-`houseBuilderSource` is the preferred node. When it has fewer than `houseBuilders` villagers gathering,
-builders come from the node with the most gatherers (ties: the first in node order, `sheep, berry, deer,
-boar, farm, wood, gold, stone`). Builders walk `inputs.walkSeconds / moveSpeedMultiplier` each way and return to the node they
-came from. A house pays its whole cost (all four resources) when it starts. A house waits only when no node
+`houseBuilderSource` is the preferred node (`gold` is deposit 1). When it has fewer than `houseBuilders`
+villagers gathering, builders come from the node ref with the most gatherers (ties: the first in node order,
+`sheep, berry, deer, boar, farm, wood, gold, gold#2..gold#8, stone`, counting only the deposits the order
+names). Builders are taken from gatherers only, never from idle villagers. They walk
+`inputs.walkSeconds / moveSpeedMultiplier` each way and return to the node they came from; returning to a
+node that ran out meanwhile leaves them idle there. A house pays its whole cost (all four resources) when it starts. A house waits only when no node
 has enough gatherers or a resource of its cost is short; supply may block production meanwhile. Auto-houses
 are not order payments: they ignore a waiting step's resource reservation, and never take a resource below
 zero.
@@ -328,7 +340,38 @@ The English farm bonus near a mill is four rows, one per age, with the wiki valu
 - houses, starting state and the population cap.
 
 Later: Council Hall longbow production speed, Network of Castles, Abbey of Kings. Out: sacred sites,
-relics, trade, fishing, cattle, and resource depletion.
+relics, trade, fishing and cattle. Resource depletion is in (Depletion), with every node infinite by
+default until amounts ship in `rules/base.json`.
+
+## Depletion
+
+**Stock.** Each run ref has a stock: the six finite nodes plus every gold deposit the order names
+(`gold#2`..`gold#8`; deposit 1 is plain `gold`). It starts at `inputs.nodeAmounts[ref]`, whose default is
+`gatherNodes.<node>.amount` in `rules/base.json` (`gold`'s for every `gold#k`), and `null` is infinite.
+No amount ships yet, so a ref is finite only when the request sets `nodeAmounts`. `farm` and `wood` never
+run out. Over each interval a ref loses what its gatherers earn, the same amount credited to its resource,
+and never goes below 0. Deposits draw down independently.
+
+**Run-out instant.** The time a stocked ref reaches 0 is a wake, so a run-out lands on its exact time, not
+on a sample; a stock within `RESOURCE_TOLERANCE` of 0 counts as empty, and a ref starting at 0 runs out at
+t=0. Run-outs apply first in the instant, before any step: the ref's gatherers become idle there. A ref runs
+out at most once and never refills.
+
+**Idle villagers.** Idle villagers are alive: they count in `at N vils` and in population, and gather
+nothing. Nothing moves them on its own; `move` and `build` take them from their node like gatherers. Every
+arrival at a node that has run out (a spawn walking to its rally, a `move`, `build` builders at `then`, an
+auto-house builder returning) leaves the villagers idle there.
+
+**Results.** `depletions` has one entry per run ref in node-ref order: `amount` (the starting stock, `null`
+when infinite) and `depletedAt` (`null` when the ref is still stocked at the horizon). `warnings` gets:
+
+| code | severity | when |
+|---|---|---|
+| `node-depleted` | `warning` with villagers idle there, else `info` | once per run-out; `idleVillagers` is the idle count at the end of the run-out instant, so a step that moves them away at that instant leaves `info` |
+| `idle-arrival` | `warning` | at most once per ref, at the first arrival at the depleted ref; `idleVillagers` adds up every villager that arrived idle there. The run-out's own gatherers do not count; an arrival at the run-out instant counts here and in `node-depleted` |
+
+Warnings are sorted by `at`; at one instant node warnings come first in node-ref order, with `node-depleted`
+before `idle-arrival` for the same ref.
 
 ## Technologies
 
@@ -366,7 +409,7 @@ Effects stated only in a technology's description text, beside non-empty `effect
 ## Build order input
 
 **JSON.** A `BuildOrder` is `{ civ, name, source?, start?, steps }` with `civ` = `english`.
-`BuildStart` is `{ villagers?, rally? }`: `villagers` maps gather nodes to villager counts at t=0 (see
+`BuildStart` is `{ villagers?, rally? }`: `villagers` maps node refs to villager counts at t=0 (see
 Starting state), and `rally` is the rally node for starting villager producers. Each `BuildStep` has an
 optional `trigger` and one `action`:
 
@@ -376,12 +419,16 @@ optional `trigger` and one `action`:
 | `pause` | `producer`, `instance?` |
 | `build` | `building`, `builders?` (default 1), `from`, `then?` (default `from`), `walkSeconds?` |
 | `research` | `tech`, `at?` (technologies and veterancy upgrades) |
-| `move` | `count`, `from`, `to`, `walkSeconds?` |
+| `move` | `count` (a number or `"all"`), `from`, `to`, `walkSeconds?` |
 | `rally` | `producer`, `instance?`, `to`, `walkSeconds?` |
 
 A trigger is a tagged object: `{ "kind": "time", "seconds": 90 }` or `{ "kind": "villagers", "count": 17 }`.
 An unknown `kind` is an `unknown-trigger-kind` issue. Gather nodes (`GatherNodeId`) are `sheep`, `berry`,
-`deer`, `boar`, `farm`, `wood`, `gold` and `stone`.
+`deer`, `boar`, `farm`, `wood`, `gold` and `stone`. Every node field (`rally`, `to`, `from`, `then`,
+`start.rally` and `start.villagers` keys) takes a node ref (`NodeRef`): a gather node, or a numbered gold
+deposit `gold#2`..`gold#8`, where deposit 1 is plain `gold`. `gold#1` and `wood#2` are `invalid`,
+`gold#9` is `out-of-range`, `iron` is `unknown-id` and `gold#02` is `syntax`, in every node field alike.
+The paste format does not accept deposits or `move all` yet; use JSON for them.
 
 **Paste format.** One step per line. `#` comment lines and blank lines are ignored. An optional trigger
 prefix comes first, then the action:
@@ -556,8 +603,8 @@ A `SimulationResult` holds:
   a `severity` (one of `error`, `warning`, `info`), a `message` and an `at` time. They are sorted by `at`;
   at the same `at`, node warnings come first in node-ref order with `node-depleted` before `idle-arrival`
   for one node, then `step-stuck` by step index.
-- Both `depletions` and `warnings` are always empty today, because no node runs out: the engine still
-  treats every node as infinite.
+- `depletions` always lists the six finite nodes, plus any deposit the order names. With no
+  `nodeAmounts` every `amount` is `null` and `warnings` is empty; nothing emits `step-stuck` yet.
 
 The page draws three graphs over time from it: units produced (by unit and tier), gather rates, and
 floating resources.
@@ -658,6 +705,6 @@ fields and results unchanged.
 | Military rally points, more `start` fields (resources, units) | an optional `unit` on the `rally` step; new optional `BuildStart` fields |
 | More technology effects (`buildTime`, `influence`), combat | move a property into `SUPPORTED_EFFECT_PROPERTIES` and the interpreter; `IGNORED_EFFECT_PROPERTIES` shrinks |
 | More English bonuses (Council Hall, Network of Castles, Abbey of Kings) | `OverlayEffect` rows in `rules/english.json`; no code |
-| Depletion, positions, per-trip deposits | `gatherNodes` data and `TripInputs`; rates and crediting live only in `gather.ts` |
+| Shipped node amounts, positions, per-deposit trips | `gatherNodes.<node>.amount` data (stock and run-outs already in `depletion.ts`) and `TripInputs`; rates live only in `gather.ts` |
 | More series or notes (rates by node, idle villagers) | new `SimulationResult` fields; new `BuildOrderNote` codes |
 | Community build order formats | a new parser beside `parseBuildOrderText` that produces a `BuildOrder` |

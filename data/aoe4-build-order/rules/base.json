@@ -161,6 +161,7 @@
     },
     "farm": {
       "resource": "food",
+      "createdBy": "farm",
       "rate": {
         "value": 0.75,
         "source": "fandom \"Resource (Age of Empires IV)\", Resource gather rates table, read 2026-10-30, patch not stated",

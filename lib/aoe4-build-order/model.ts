@@ -54,15 +54,16 @@ export type Trigger = { kind: 'time'; seconds: number } | { kind: 'villagers'; c
 
 export type BuildStep = { trigger?: Trigger } & (
   // No count means continuous production; rally only for villagers and sets the producer's rally; walkSeconds only with rally.
-  | { action: 'produce'; producer: string; instance?: number; unit: string; count?: number; rally?: GatherNodeId; walkSeconds?: number }
+  | { action: 'produce'; producer: string; instance?: number; unit: string; count?: number; rally?: NodeRef; walkSeconds?: number }
   // Rallies villagers that start from this step on; costs nothing.
-  | { action: 'rally'; producer: string; instance?: number; to: GatherNodeId; walkSeconds?: number }
+  | { action: 'rally'; producer: string; instance?: number; to: NodeRef; walkSeconds?: number }
   | { action: 'pause'; producer: string; instance?: number }
   // builders defaults to 1, then defaults to from.
-  | { action: 'build'; building: string; builders?: number; from: GatherNodeId; then?: GatherNodeId; walkSeconds?: number }
+  | { action: 'build'; building: string; builders?: number; from: NodeRef; then?: NodeRef; walkSeconds?: number }
   // Technologies and unit upgrades (veterancy tiers).
   | { action: 'research'; tech: string; at?: string }
-  | { action: 'move'; count: number; from: GatherNodeId; to: GatherNodeId; walkSeconds?: number }
+  // all takes every villager at from when the step starts, gathering or idle.
+  | { action: 'move'; count: number | 'all'; from: NodeRef; to: NodeRef; walkSeconds?: number }
 );
 
 export interface BuildOrder {
@@ -75,8 +76,8 @@ export interface BuildOrder {
 
 // The t=0 villager split (absent means the civ's default split) and the rally in effect at t=0.
 export interface BuildStart {
-  villagers?: Partial<Record<GatherNodeId, number>>;
-  rally?: GatherNodeId;
+  villagers?: Partial<Record<NodeRef, number>>;
+  rally?: NodeRef;
 }
 
 export interface HandValue<T> {
@@ -101,6 +102,8 @@ export interface SimInputs {
   houseBuilderSource: GatherNodeId;
   // Share of gatherers inside a building's influence once one exists, keyed by building baseId.
   influenceCoverage: Record<string, number>;
+  // Starting stock per finite ref; null is infinite.
+  nodeAmounts: Record<FiniteNodeRef, number | null>;
 }
 
 // tier is the entry's age; counts are cumulative and include produced units only.

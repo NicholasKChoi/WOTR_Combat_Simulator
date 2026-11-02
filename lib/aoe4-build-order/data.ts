@@ -44,6 +44,10 @@ export interface GatherNodeRules {
   capacityProperties: string[];
   dropOffs: string[];
   trip: { walkSecondsCamp: HandValue<number>; walkSecondsTownCenter: HandValue<number>; dropOffSeconds: HandValue<number> };
+  // Starting stock of one deposit; absent is infinite.
+  amount?: HandValue<number>;
+  // baseId of the building that creates this node; its builders start gathering it with no walk back.
+  createdBy?: string;
 }
 
 export interface BaseRules {

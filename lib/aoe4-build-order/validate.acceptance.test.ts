@@ -23,7 +23,7 @@ function inIssues(partial: unknown) {
 
 describe('acceptance: exports', () => {
     it('exports exactly the runtime names validateBuildOrder, resolveSimInputs, SIM_INPUT_BOUNDS', () => {
-        expect(Object.keys(validateModule).sort()).toEqual(['SIM_INPUT_BOUNDS', 'resolveSimInputs', 'validateBuildOrder'])
+        expect(Object.keys(validateModule).sort()).toEqual(['SIM_INPUT_BOUNDS', 'nodeRefIssue', 'resolveSimInputs', 'validateBuildOrder'])
     })
 })
 
