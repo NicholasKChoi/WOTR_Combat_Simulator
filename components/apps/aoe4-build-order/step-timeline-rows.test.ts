@@ -55,6 +55,24 @@ describe('timelineRows', () => {
         ])
     })
 
+    it.each([
+        ['completed', { prerequisite: 4, resources: 2, villagers: 3 }, null, 'resources 0:02, villagers 0:03, prerequisite 0:04'],
+        ['completed', {}, null, ''],
+        ['in-progress', { villagers: 3 }, null, 'villagers 0:03'],
+        ['waiting', { resources: 2 }, 'prerequisite', 'resources 0:02, still waiting on prerequisite'],
+        ['waiting', {}, 'resources', 'still waiting on resources'],
+        ['not-reached', {}, 'trigger', 'not reached (trigger)'],
+        ['not-reached', {}, 'earlier-step', 'not reached (earlier-step)'],
+    ] as const)('blockedBy for a %s row with breakdown %j and waitingOn %s is %j', (status, waitBreakdown, waitingOn, expected) => {
+        const [row] = timelineRows([timing(0, { status, waitBreakdown, waitingOn })], TEXT)
+        expect(row.blockedBy).toBe(expected)
+    })
+
+    it('highlights a long wait from exactly 60 seconds', () => {
+        const rows = timelineRows([59.9, 60, 61].map((waitSeconds) => timing(0, { waitSeconds })), TEXT)
+        expect(rows.map((r) => r.longWait)).toEqual([false, true, true])
+    })
+
     it('falls back to a 1-based step label for unparsable text or an index past the steps', () => {
         expect(timelineRows([timing(0), timing(1)], 'start -> fly').map((r) => r.label)).toEqual(['step 1', 'step 2'])
         const rows = timelineRows([timing(7)], TEXT)

@@ -2,12 +2,13 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, openPage } from './helpers'
+import { SIMULATE_PATH, expectedCompareKeys, openPage } from './helpers'
 
 const DASH = '—'
+const MINUS = '−'
+const NOT_REACHED = 'not reached'
 const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
 const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
-const ROW_KEYS = ['military-600', 'military-900', 'military-1200', 'age-2', 'age-3', 'age-4', 'pop-cap']
 const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
 const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
@@ -34,8 +35,8 @@ function militaryAt(result: SimulationResult, t: number): number | null {
   return i < 0 ? null : result.spent.military[i]
 }
 
-function signed(delta: number): string {
-  return delta === 0 ? '0' : `${delta > 0 ? '+' : '-'}${Math.abs(Math.round(delta))}`
+function militaryDelta(delta: number): string {
+  return delta === 0 ? 'same' : `${delta > 0 ? '+' : MINUS}${Math.abs(Math.round(delta))} resources`
 }
 
 test.describe('AoE4 build order pin and compare', () => {
@@ -95,7 +96,7 @@ test.describe('AoE4 build order pin and compare', () => {
     await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(1)
   })
 
-  test('the compare table appears only with a pin and a result, with seven rows and delta = current - pinned', async ({ page }) => {
+  test('the compare table appears only with a pin and a result, omits rows blank on both sides and shows delta = current - pinned', async ({ page }) => {
     await openPage(page)
     const table = page.getByTestId('compare-key-numbers')
     const pinnedRun = await runOk(page, { duration: 1200, text: NO_MILITARY_PASTE })
@@ -105,8 +106,8 @@ test.describe('AoE4 build order pin and compare', () => {
     const current = await runOk(page, { duration: 1200, text: DEFAULT_PASTE })
 
     const rows = table.getByTestId('compare-row')
-    await expect(rows).toHaveCount(7)
-    expect(await rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-key')))).toEqual(ROW_KEYS)
+    const keys = await rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-key')))
+    expect(keys).toEqual(expectedCompareKeys(current, pinnedRun))
 
     let nonZero = 0
     for (const [key, t] of [['military-600', 600], ['military-900', 900], ['military-1200', 1200]] as const) {
@@ -115,7 +116,16 @@ test.describe('AoE4 build order pin and compare', () => {
       const pin0 = militaryAt(pinnedRun, t)
       await expect(cells.nth(1)).toHaveText(String(Math.round(pin0!)))
       await expect(cells.nth(2)).toHaveText(String(Math.round(cur!)))
-      await expect(cells.nth(3)).toHaveText(signed(cur! - pin0!))
+      await expect(cells.nth(3)).toHaveText(militaryDelta(cur! - pin0!))
+      const row = rows.and(page.locator(`[data-key="${key}"]`))
+      if (cur! === pin0!) await expect(row).toHaveAttribute('data-direction', 'same')
+      else if (cur! > pin0!) {
+        await expect(row).toHaveAttribute('data-direction', 'better')
+        await expect(cells.nth(3)).toHaveClass(/text-success/)
+      } else {
+        await expect(row).toHaveAttribute('data-direction', 'worse')
+        await expect(cells.nth(3)).toHaveClass(/text-danger/)
+      }
       if (cur! !== pin0!) nonZero++
     }
     expect(nonZero).toBeGreaterThan(0)
@@ -123,12 +133,13 @@ test.describe('AoE4 build order pin and compare', () => {
     const missing = current.ages.find((a) => !pinnedRun.ages.some((p) => p.age === a.age))
     expect(missing).toBeDefined()
     const ageCells = rows.and(page.locator(`[data-key="age-${missing!.age}"]`)).locator('td')
-    await expect(ageCells.nth(1)).toHaveText(DASH)
+    await expect(ageCells.nth(1)).toHaveText(NOT_REACHED)
     await expect(ageCells.nth(3)).toHaveText(DASH)
-    await expect(ageCells.nth(2)).not.toHaveText(DASH)
+    await expect(ageCells.nth(2)).not.toHaveText(NOT_REACHED)
+    await expect(rows.and(page.locator(`[data-key="age-${missing!.age}"]`))).not.toHaveAttribute('data-direction', /.*/)
   })
 
-  test('a pinned 1200 s run against a 300 s run shows dashes for later military rows and a gap in current lines', async ({ page }) => {
+  test('a pinned 1200 s run against a 300 s run shows the run end for later military rows and a gap in current lines', async ({ page }) => {
     await openPage(page)
     await runOk(page, { duration: 1200 })
     await pin(page)
@@ -137,7 +148,7 @@ test.describe('AoE4 build order pin and compare', () => {
     for (const key of ['military-900', 'military-1200']) {
       const cells = page.locator(`[data-testid="compare-row"][data-key="${key}"] td`)
       await expect(cells.nth(1)).not.toHaveText(DASH)
-      await expect(cells.nth(2)).toHaveText(DASH)
+      await expect(cells.nth(2)).toHaveText('run ends at 5:00')
       await expect(cells.nth(3)).toHaveText(DASH)
     }
     // The shared x axis runs out to the pinned run's 1200 s, past the 300 s current run.
@@ -186,23 +197,25 @@ test.describe('AoE4 build order pin and compare', () => {
     expect(pinnedBox.width).toBeLessThan(currentBox.width)
   })
 
-  test('pinning the shown result gives zero or dash deltas on every row; unpin removes overlay and table', async ({ page }) => {
+  test('pinning the shown result gives same on every row with a value; unpin removes overlay and table', async ({ page }) => {
     await openPage(page)
     await runOk(page, { duration: 900 })
     await pin(page)
 
     const rows = page.getByTestId('compare-row')
-    await expect(rows).toHaveCount(7)
     const texts = await rows.evaluateAll((els) => els.map((e) => ({
       key: e.getAttribute('data-key'),
+      direction: e.getAttribute('data-direction'),
       cells: Array.from(e.querySelectorAll('td')).map((td) => td.textContent),
     })))
-    for (const { cells } of texts) {
+    expect(texts.length).toBeGreaterThan(0)
+    for (const { cells, direction } of texts) {
       const [, pinnedValue, currentValue, delta] = cells
       expect(currentValue).toBe(pinnedValue)
-      expect(delta).toBe(pinnedValue === DASH ? DASH : '0')
+      expect(delta).toBe('same')
+      expect(direction).toBe('same')
     }
-    expect(texts.find((r) => r.key === 'military-1200')!.cells[3]).toBe(DASH)
+    expect(texts.map((r) => r.key)).not.toContain('military-1200')
     await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
 
     await page.getByTestId('unpin-run').click()
@@ -212,6 +225,23 @@ test.describe('AoE4 build order pin and compare', () => {
       await expect(page.getByTestId(chart).locator('path[data-series]').first()).toBeVisible()
     }
     await expect(page.getByTestId('unpin-run')).toBeDisabled()
+  })
+
+  test('shows compare-empty when both runs are blank on every row', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, { duration: 300, text: NO_MILITARY_PASTE })
+    await pin(page)
+    await expect(page.getByTestId('compare-empty')).toHaveText('Nothing to compare yet')
+    await expect(page.getByTestId('compare-row')).toHaveCount(0)
+    await expect(page.getByTestId('compare-scroll')).toHaveCount(0)
+  })
+
+  test('the compare table sits in a scroll wrapper', async ({ page }) => {
+    await openPage(page)
+    await runOk(page)
+    await pin(page)
+    await expect(page.getByTestId('compare-scroll').getByTestId('compare-key-numbers')).toBeVisible()
+    await expect(page.getByTestId('compare-scroll')).toHaveCSS('overflow-x', 'auto')
   })
 
   test('with a pin, axis labels do not overlap the tick labels at 1280 px wide', async ({ page }) => {

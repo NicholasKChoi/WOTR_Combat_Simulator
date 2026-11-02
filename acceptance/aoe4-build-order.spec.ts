@@ -522,6 +522,8 @@ test.describe('AoE4 build order page', () => {
 
   test.describe('step timeline', () => {
     const WAITING_PASTE = ['start -> sheep', 'build kings-palace from wood'].join('\n')
+    const LONG_WAIT_PASTE = ['start 6 sheep -> sheep', 'build barracks with 9 from sheep'].join('\n')
+    const ONGOING_PASTE = ['start 6 sheep -> sheep', 'produce villager from capital-town-center x30'].join('\n')
     const rows = (page: Page) => page.getByTestId('step-timeline-row')
 
     test('lists one row per step with the response status, flagging the unreached ENG 1TC reaction', async ({ page }) => {
@@ -554,6 +556,39 @@ test.describe('AoE4 build order page', () => {
       await expect(row).toHaveAttribute('data-status', 'waiting')
       await expect(row).toHaveAttribute('data-flagged', 'true')
       await expect(row).toContainText(timing.waitingOn as string)
+    })
+
+    test('highlights a long wait and names the blocker in Blocked by', async ({ page }) => {
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(LONG_WAIT_PASTE)
+      const result = (await (await runSimulation(page)).json()) as SimulationResult
+      expect(result.steps[0].waitSeconds).toBeGreaterThanOrEqual(60)
+      const row = rows(page).first()
+      await expect(row).toHaveAttribute('data-long-wait', 'true')
+      await expect(row).toHaveClass(/table-warning/)
+      await expect(row.locator('td').nth(4)).toContainText('villagers 1:0')
+      await expect(page.getByTestId('step-timeline').locator('th')).toHaveText(['Step', 'Started', 'Finished', 'Waited', 'Blocked by'])
+      await expect(page.getByTestId('step-timeline-scroll').getByTestId('step-timeline')).toBeVisible()
+    })
+
+    test('a waiting step shows an en dash in Finished and names what it still waits on', async ({ page }) => {
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(WAITING_PASTE)
+      const result = (await (await runSimulation(page)).json()) as SimulationResult
+      const row = rows(page).first()
+      await expect(row.locator('td').nth(2)).toHaveText('–')
+      await expect(row.locator('td').nth(4)).toContainText(`still waiting on ${result.steps[0].waitingOn}`)
+      await expect(row).not.toHaveAttribute('data-long-wait', 'true')
+    })
+
+    test('a step still running at the end of the run reads ongoing in Finished', async ({ page }) => {
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(ONGOING_PASTE)
+      const result = (await (await runSimulation(page)).json()) as SimulationResult
+      expect(result.steps[0].status).toBe('in-progress')
+      const row = rows(page).first()
+      await expect(row).toHaveAttribute('data-status', 'in-progress')
+      await expect(row.locator('td').nth(2)).toHaveText('ongoing')
     })
 
     test('editing the text after a run keeps the labels until the next run', async ({ page }) => {
