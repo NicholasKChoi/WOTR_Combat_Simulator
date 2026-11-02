@@ -382,6 +382,37 @@ test.describe('schema and server agree on requests', () => {
     expect(json.issues[0].code).toBe('out-of-range')
   })
 
+  test('a request with a numbered deposit, move all and nodeAmounts is schema-valid and its 200 validates as a SimulationResult', async ({ request }) => {
+    const body = {
+      buildOrder: {
+        civ: 'english',
+        name: 'Deposits',
+        start: { villagers: { gold: 6 }, rally: 'gold' },
+        steps: [{ action: 'move', count: 'all', from: 'gold', to: 'gold#2', trigger: { kind: 'time', seconds: 120 } }],
+      },
+      inputs: { nodeAmounts: { gold: 300, 'gold#2': 2500, berry: null } },
+    }
+    expectValid('SimulateRequest', body)
+    const json = await expect200(request, body)
+    expect(json.depletions.map((d: NodeDepletion) => d.node)).toContain('gold#2')
+    expect(json.depletions.find((d: NodeDepletion) => d.node === 'gold#2').amount).toBe(2500)
+    expect(json.warnings.some((w: SimWarning) => w.code === 'node-depleted')).toBe(true)
+  })
+
+  test('nodeAmounts on an infinite node is schema-invalid and the server rejects it', async ({ request }) => {
+    const body = { ...buildOrderBody([PRODUCE]), inputs: { nodeAmounts: { farm: 500 } } }
+    expectInvalid('SimulateRequest', body)
+    const json = await expect400(request, body)
+    expect(json.issues[0].code).toBe('invalid')
+  })
+
+  test('count all on produce is schema-invalid and the server rejects it', async ({ request }) => {
+    const body = buildOrderBody([{ ...PRODUCE, count: 'all' }])
+    expectInvalid('SimulateRequest', body)
+    const json = await expect400(request, body)
+    expect(json.issues[0].code).toBe('syntax')
+  })
+
   test('both text and buildOrder is schema-invalid and the server rejects it', async ({ request }) => {
     const body = { ...buildOrderBody([PRODUCE]), text: 'start 6 sheep -> sheep' }
     expectInvalid('SimulateRequest', body)
