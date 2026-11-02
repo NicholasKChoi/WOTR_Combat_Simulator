@@ -3,7 +3,7 @@ import { join } from 'path'
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020'
 import { SIMULATE_PATH, postSimulate, postSimulateRaw } from './helpers'
-import { SIM_INPUT_BOUNDS } from '../lib/aoe4-build-order/validate'
+import { SIM_INPUT_BOUNDS } from '../lib/aoe4-build-order/schema'
 import { FINITE_GATHER_NODES, FINITE_NODE_REFS, NODE_REFS, SEVERITIES } from '../lib/aoe4-build-order/model'
 import type { SimInputOverrides, SimulateError, SimulateRequest, TripInputOverrides } from '../lib/aoe4-build-order/api'
 import type {

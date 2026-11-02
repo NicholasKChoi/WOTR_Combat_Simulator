@@ -5,9 +5,9 @@ import { loadGameData } from './data'
 import { nodeKindOf } from './model'
 import type { NodeRef } from './model'
 import { formatBuildOrderText, parseBuildOrderText } from './parse-text'
+import { buildOrderCatalog, checkBuildOrder, resolveSimInputs } from './schema'
 import { simulateBuildOrder } from './simulate'
-import { countAt, inputsFor } from './test-helpers'
-import { resolveSimInputs, validateBuildOrder } from './validate'
+import { countAt, ENGLISH, inputsFor } from './test-helpers'
 
 const BUILDS_DIR = new URL('../../data/aoe4-build-order/builds/', import.meta.url)
 const OWNER_BUILD_SOURCE = 'https://aoe4guides.com/builds/reinDv5vkVX6KUny571E'
@@ -53,7 +53,7 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
     })
 
     it('validates', () => {
-        const result = validateBuildOrder(build, data)
+        const result = checkBuildOrder(build, buildOrderCatalog(ENGLISH))
         expect(result.ok === false ? result.issues : []).toEqual([])
     })
 

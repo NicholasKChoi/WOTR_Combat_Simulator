@@ -4,18 +4,14 @@ import { classifyTech } from './effects';
 import { VILLAGER_ID } from './engine-common';
 import { FINITE_NODE_REFS, GATHER_NODES, MAX_DEPOSITS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
 import type {
-  BuildOrder,
   BuildOrderIssue,
   BuildOrderLines,
-  BuildStart,
-  BuildStep,
   CivId,
   FiniteNodeRef,
   GatherNodeId,
   NodeRef,
   ResourceKind,
   SimInputs,
-  Trigger,
   TripInputs,
 } from './model';
 import { stepOptions, type StepOptions } from './step-options';
@@ -93,11 +89,7 @@ export function isRecord(value: unknown): value is Fields {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function isBoundKey(kind: string): kind is BoundKey {
-  return Object.hasOwn(SIM_INPUT_BOUNDS, kind);
-}
-
-export function issue(code: BuildOrderIssue['code'], where: Where, text: string): BuildOrderIssue {
+function issue(code: BuildOrderIssue['code'], where: Where, text: string): BuildOrderIssue {
   const found: BuildOrderIssue = { code, message: `${where.label}: ${text}` };
   if (where.step !== undefined) found.step = where.step;
   if (where.line !== undefined) found.line = where.line;
@@ -146,10 +138,6 @@ export function nodeRefIssue(value: unknown, finiteOnly: boolean): NodeRefProble
     return { code: 'out-of-range', reason: `node "${value}": deposit number is outside 2..${MAX_DEPOSITS}` };
   }
   return null;
-}
-
-export function isKnownId(data: GameData, kind: IdKind, id: string): boolean {
-  return kind === 'node' ? Object.hasOwn(data.base.gatherNodes, id) : entriesOf(data, id, kind).length > 0;
 }
 
 type RejectedTech = { code: 'unsupported-tech' | 'unknown-tech-effect'; property: string };
@@ -234,9 +222,13 @@ function editDistance(a: string, b: string): number {
 export function nearestId(value: string, choices: readonly string[]): string | undefined {
   const wanted = value.toLowerCase();
   let best: string | undefined;
-  let bestDistance = Math.max(1, Math.floor(value.length / 3)) + 1;
+  const threshold = Math.max(1, Math.floor(value.length / 3));
+  let bestDistance = threshold + 1;
   for (const choice of choices) {
-    const distance = editDistance(wanted, choice.toLowerCase());
+    // The edit distance is at least the length difference, so this skips only candidates that cannot win.
+    const candidate = choice.toLowerCase();
+    if (Math.abs(wanted.length - candidate.length) > threshold) continue;
+    const distance = editDistance(wanted, candidate);
     if (distance < bestDistance) {
       best = choice;
       bestDistance = distance;
@@ -313,7 +305,7 @@ function knownId(name: string, kind: CatalogKind, catalog: BuildOrderCatalog | u
   };
 }
 
-const TRIGGER_KINDS: readonly Trigger['kind'][] = ['time', 'villagers', 'depleted', 'bank'];
+const TRIGGER_KINDS = ['time', 'villagers', 'depleted', 'bank'] as const;
 
 const triggerNumber = (name: string, key: BoundKey) => field<number>(typed(`trigger.${name}`, 'number', inRange(`trigger.${name}`, key), { missing: false }));
 
@@ -332,7 +324,8 @@ const triggerKindCheck: Check = (trigger) => {
   };
 };
 
-const triggerSchema: z.ZodType<Trigger> = z
+// An omitted trigger means the step has no condition. bank holds while the stock of resource is at least atLeast.
+const triggerSchema = z
   .unknown()
   .check((payload) => {
     const problem = triggerKindCheck(payload.value);
@@ -380,17 +373,19 @@ function crossFieldProblems(step: BuildStep, catalog: BuildOrderCatalog): string
   return problems;
 }
 
-function stepSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildStep> {
+function stepUnion(catalog: BuildOrderCatalog | undefined) {
   const id = (name: string, kind: CatalogKind) => field<string>(typed(name, 'string', knownId(name, kind, catalog)));
   const node = (name: string) => field<NodeRef>(typed(name, 'string', nodeAt(name, false)));
   const count = (name: BoundKey) => field<number>(typed(name, 'number', inRange(name, name)));
+  // A reaction (depleted trigger only) arms when its trigger holds, without waiting for earlier steps.
   const common = {
     trigger: triggerSchema.optional(),
     reaction: z.literal(true, { error: 'reaction must be true' }).optional(),
   };
-  const step = z.discriminatedUnion(
+  return z.discriminatedUnion(
     'action',
     [
+      // No count means continuous production; rally only for villagers and sets the producer's rally; walkSeconds only with rally.
       z.object({
         ...common,
         action: z.literal('produce'),
@@ -401,8 +396,10 @@ function stepSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildStep
         rally: node('rally').optional(),
         walkSeconds: count('walkSeconds').optional(),
       }),
+      // Rallies villagers that start from this step on; costs nothing.
       z.object({ ...common, action: z.literal('rally'), producer: id('producer', 'building'), instance: count('instance').optional(), to: node('to'), walkSeconds: count('walkSeconds').optional() }),
       z.object({ ...common, action: z.literal('pause'), producer: id('producer', 'building'), instance: count('instance').optional() }),
+      // builders defaults to 1, then defaults to from.
       z.object({
         ...common,
         action: z.literal('build'),
@@ -412,7 +409,9 @@ function stepSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildStep
         then: node('then').optional(),
         walkSeconds: count('walkSeconds').optional(),
       }),
+      // Technologies and unit upgrades (veterancy tiers).
       z.object({ ...common, action: z.literal('research'), tech: id('tech', 'tech'), at: id('at', 'building').optional() }),
+      // all takes every villager at from when the step starts, gathering or idle.
       z.object({
         ...common,
         action: z.literal('move'),
@@ -424,6 +423,13 @@ function stepSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildStep
     ],
     { error: (found) => stepProblem(found.input) },
   );
+}
+
+export type Trigger = z.output<typeof triggerSchema>;
+export type BuildStep = z.output<ReturnType<typeof stepUnion>>;
+
+function stepSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildStep> {
+  const step = stepUnion(catalog);
   if (catalog === undefined) return step;
   return step.superRefine((checked, payload) => {
     for (const text of crossFieldProblems(checked, catalog)) report(payload, { code: 'invalid', text }, [], 'cross-field');
@@ -452,13 +458,16 @@ const startVillagersSchema = z.custom<Partial<Record<NodeRef, number>>>().check(
   }
 });
 
-const startSchema: z.ZodType<BuildStart> = z.object(
+// The t=0 villager split (absent means the civ's default split) and the rally in effect at t=0.
+const startSchema = z.object(
   {
     villagers: startVillagersSchema.optional(),
     rally: field<NodeRef>(typed('start.rally', 'string', nodeAt('start.rally', false))).optional(),
   },
   { error: 'must be an object' },
 );
+
+export type BuildStart = z.output<typeof startSchema>;
 
 const text = <T extends string = string>(then?: Check) => field<T>((value) => (typeof value === 'string' ? then?.(value) : syntax('must be a string')));
 
@@ -494,8 +503,8 @@ function crossStepProblems(order: Fields, steps: readonly BuildStep[], catalog: 
   return problems;
 }
 
-function orderSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildOrder> {
-  const order = z.object(
+function orderObject(catalog: BuildOrderCatalog | undefined) {
+  return z.object(
     {
       civ: text<CivId>((civ) => (catalog === undefined || civ === catalog.civ ? undefined : { code: 'unknown-id', text: `unknown civ "${civ}"` })),
       name: text(),
@@ -505,6 +514,12 @@ function orderSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildOrd
     },
     { error: 'must be an object' },
   );
+}
+
+export type BuildOrder = z.output<ReturnType<typeof orderObject>>;
+
+function orderSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildOrder> {
+  const order = orderObject(catalog);
   if (catalog === undefined) return order;
   return order.superRefine(
     (value, payload) => {

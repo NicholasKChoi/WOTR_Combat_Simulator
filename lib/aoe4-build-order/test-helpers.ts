@@ -4,9 +4,9 @@ import type { BaseRules, CivData, GameData, Snapshot } from './data'
 import type { EffectState } from './effects'
 import { FINITE_GATHER_NODES, GATHER_NODES } from './model'
 import type { BuildOrder, BuildStart, BuildStep, FiniteGatherNodeId, GatherNodeId, SimInputs, SimulationResult, Trigger, TripInputs } from './model'
+import { resolveSimInputs } from './schema'
 import { simulateBuildOrder, stepHandlers } from './simulate'
 import type { StepHandler } from './simulate'
-import { resolveSimInputs } from './validate'
 
 export const ENGLISH: GameData = loadGameData('english')
 

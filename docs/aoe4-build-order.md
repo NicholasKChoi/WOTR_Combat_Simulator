@@ -581,11 +581,14 @@ Grammar details:
   an issue. A `start` line that fails to parse still counts as the first `start`. `formatBuildOrderText`
   emits it first, with nodes in node-ref order (`gold`, then `gold#2`..`gold#8`).
 
-**Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line? }`. A validation
+**Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line?, suggestion? }`. A validation
 issue on a parsed paste step carries both `step` and the 1-based `line`; a `syntax` issue raised while
 parsing a paste line carries `line` only, as does a paste `start` issue; a JSON
 step issue carries `step` only and a JSON `start` issue carries neither. The codes are complete and the
-same for JSON and paste:
+same for JSON and paste. `suggestion` is set only on an `unknown-id` issue for a unit, building, producer,
+technology, research `at` or node field, and on an `unknown-trigger-kind` issue: it is the closest catalog
+id (or trigger kind) to the given value, by case-insensitive edit distance of at most a third of the value's
+length (at least 1), and is absent when nothing is that close.
 
 | code | meaning |
 |---|---|
@@ -619,10 +622,21 @@ These `invalid` rules cover producers and research:
 - a `research` of a technology an earlier `research` step already names, with or without `at`; the issue is
   on the later step and names the earlier one.
 
-These three run only once the step's ids resolve, so an `unknown-id` step gets no second issue, and a
-technology that is unknown or rejected does not count as an earlier research. Node refs have their own
-`invalid` cases (see Node references). The simulator assumes every rule above holds and has no runtime check
-for them.
+Node refs have their own `invalid` cases (see Node references). The simulator assumes every rule above holds
+and has no runtime check for them.
+
+Checks run in three tiers. Field checks (type, presence, id, bound and node ref of each field) always run.
+A step's cross-field rules (producer can produce the unit, `rally` on a non-villager, `rally` step on a
+building with no villagers, `walkSeconds` without `rally`, research `at`) run only when that step's fields
+passed. The cross-step rules (repeated research, a villager producer built with no rally source) run only
+when every step's fields passed. The `start` rules (villager sum, required `start.rally`) run only when
+`start`'s fields passed. So an `unknown-id` step gets no second issue, and the whole order gets one round of
+field issues before any rule issue. A step whose `action` is unknown gets only its `unknown action` issue:
+its other fields, `trigger` included, are not checked.
+
+Issues come in this order: `civ`, `name`, the step-count cap, `start` (fields, then its rules), then each
+step by index (its fields in field order with `trigger` first, then its cross-field issues), and last the
+cross-step issues by the later step's index. A cross-step issue therefore follows every step's own issues.
 
 A villager `produce` without `rally` is valid and uses the standing rally. Each issue is reported on its
 step or `start`, with the location fields above. A message names the step or line and the offending id,
@@ -630,11 +644,13 @@ kind or property. Any issue stops the request; nothing is simulated.
 
 ```mermaid
 flowchart LR
-  text["paste text"] --> parse["parseBuildOrderText"]
+  text["paste text"] --> t2b["textToBuildOrder"]
+  t2b --> parse["parseBuildOrderText"]
   json["BuildOrder JSON"] --> validate
-  parse --> validate["validateBuildOrder + resolveSimInputs"]
+  parse -->|"order + lines"| validate["checkBuildOrder + checkSimInputs"]
   parse -->|"syntax issues"| error
-  data["loadGameData: aoe4world/english.json + rules/*.json"] --> validate & simulate
+  data["loadGameData: aoe4world/english.json + rules/*.json"] --> catalog["buildOrderCatalog"] & simulate
+  catalog --> validate
   validate -->|"issues"| error["400: SimulateError"]
   validate -->|"valid"| simulate["simulateBuildOrder"]
   simulate --> result["SimulationResult"]

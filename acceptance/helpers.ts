@@ -1,5 +1,7 @@
 import type { APIRequestContext, Page } from '@playwright/test'
-import { FINITE_GATHER_NODES, type SimulationResult } from '../lib/aoe4-build-order/model'
+import { FINITE_GATHER_NODES, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
+import { buildOrderCatalog, type BuildOrderCatalog } from '../lib/aoe4-build-order/schema'
+import { textToBuildOrder } from '../lib/aoe4-build-order/text-to-build'
 
 export const FIELDS = [
   'attack-regs',
@@ -62,6 +64,16 @@ export function postSimulateRaw(request: APIRequestContext, raw: string, timeout
     headers: { 'Content-Type': 'application/json' },
     timeout,
   })
+}
+
+let catalog: BuildOrderCatalog | undefined
+
+// The game data is required on first call so specs that never convert paste (the WOTR ones) do not load it.
+export function buildOrderFrom(text: string): BuildOrder {
+  catalog ??= buildOrderCatalog((require('../lib/aoe4-build-order/data') as typeof import('../lib/aoe4-build-order/data')).loadGameData('english'))
+  const converted = textToBuildOrder(text, catalog)
+  if (converted.ok === false) throw new Error(converted.issues.map((found) => found.message).join('\n'))
+  return converted.order
 }
 
 export const AOE4_PAGE = '/apps/aoe4-build-order'
