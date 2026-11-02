@@ -111,42 +111,42 @@ flowchart LR
 
 ## Acceptance criteria
 
-- [ ] `researchMarkerKind` returns `economy` for `wheelbarrow`, `double-broadax`, `horticulture`; `unit-tier` for
+- [x] `researchMarkerKind` returns `economy` for `wheelbarrow`, `double-broadax`, `horticulture`; `unit-tier` for
       `veteran-longbowmen`, `men-at-arms`, `elite-knights-or-lancers`; `blacksmith` for `steeled-arrow`, `bloomery`,
       `military-academy`; `other` for `textiles`, `professional-scouts`, `arrow-volley` (each taken from the loaded English
       snapshot, not hand-built entries). I checked these twelve against `english.json` before writing: each matches exactly one row's test.
-- [ ] Priority is pinned with hand-built entries: an entry with `economic_upgrade` and `producedBy: ['blacksmith']` is `economy`;
+- [x] Priority is pinned with hand-built entries: an entry with `economic_upgrade` and `producedBy: ['blacksmith']` is `economy`;
       an entry with `type: 'upgrade'` and `producedBy: ['blacksmith']` is `unit-tier`; an entry matching none is `other`.
       `researchMarkerKind` never returns `age-up`.
-- [ ] `researchMarker(entry, 870)` equals `{ kind: researchMarkerKind(entry), label: entry.baseId, at: 870 }`;
+- [x] `researchMarker(entry, 870)` equals `{ kind: researchMarkerKind(entry), label: entry.baseId, at: 870 }`;
       `ageMarker(3, 804)` equals `{ kind: 'age-up', label: 'Castle', at: 804 }`; `AGE_NAMES` is `{2: 'Feudal', 3: 'Castle', 4: 'Imperial'}`.
-- [ ] `compareMarkers` orders `at` first, then `CHART_MARKER_KINDS` index, then `label` ascending: markers with equal `at`
+- [x] `compareMarkers` orders `at` first, then `CHART_MARKER_KINDS` index, then `label` ascending: markers with equal `at`
       and kinds `other`, `age-up`, `economy` sort as `age-up`, `economy`, `other`; equal `at` and kind sort by label.
       `CHART_MARKER_KINDS` is `['age-up','economy','unit-tier','blacksmith','other']`.
-- [ ] A simulation of the shipped English build with a horizon that reaches Feudal returns an `age-up` marker labeled `Feudal`
+- [x] A simulation of the shipped English build with a horizon that reaches Feudal returns an `age-up` marker labeled `Feudal`
       whose `at` equals the matching `ages` entry's `reachedAt`, and no marker for the start age. The first marker's label
       is `Feudal` and, for a horizon that reaches Imperial through test-edited game data, the last age marker is `Imperial`.
-- [ ] A build that researches a tech yields one marker `{ kind, label: <baseId>, at }` with `at` equal to that step's
+- [x] A build that researches a tech yields one marker `{ kind, label: <baseId>, at }` with `at` equal to that step's
       `steps[i].completedAt`; a research step still in progress, waiting or not reached at the horizon yields no marker; a
       landmark still under construction at the horizon yields no marker; a run with neither returns `markers: []`.
-- [ ] A research completing at the same instant as an age-up produces both markers, ordered by `compareMarkers`
+- [x] A research completing at the same instant as an age-up produces both markers, ordered by `compareMarkers`
       (the `age-up` first). Two techs completing at the same instant both appear.
-- [ ] Every `markers[i].at <= durationSeconds`, `markers` is sorted per `compareMarkers`, and each age and each tech appears at most once.
-- [ ] (respec 2) Adding `markers` changes nothing else: every existing unit test (`npm test`) stays green with no edit
+- [x] Every `markers[i].at <= durationSeconds`, `markers` is sorted per `compareMarkers`, and each age and each tech appears at most once.
+- [x] (respec 2) Adding `markers` changes nothing else: every existing unit test (`npm test`) stays green with no edit
       to its assertions; the only edits to existing test files are the `markers: []` line in `result-series.test.ts`
       (Scope item 7) and (respec 3) the closed-list additions in Scope item 8: the `model.ts`-exports test in
       `data.acceptance.test.ts` lists exactly the base's names plus `ChartMarker`, `ChartMarkerKind` (types) and
       `CHART_MARKER_KINDS`, `AGE_NAMES` (runtime), and the contract spec's `simulationResult` literal has `markers`;
       (respec 4) the edges spec's pinned response key list is exactly the base's list plus `markers`, and
       `npm run acceptance -- aoe4-simulate-api-edges` passes.
-- [ ] `docs/api/openapi.json` has `ChartMarkerKind` and `ChartMarker`, `SimulationResult.required` lists `markers`, and
+- [x] `docs/api/openapi.json` has `ChartMarkerKind` and `ChartMarker`, `SimulationResult.required` lists `markers`, and
       `acceptance/aoe4-simulate-api-contract.spec.ts` (ajv) passes against a live response that contains `markers`;
       (respec 4) `jq '.components.schemas.ChartMarker.properties | map_values(.description | length > 0)'` is all `true`,
       `SimulationResult.properties.markers.description` is non-empty, and the `typeKeys` map has a `ChartMarker` entry.
-- [ ] `docs/aoe4-build-order.md` has a `markers` bullet beside `ages`; `git grep -n "markers" -- docs/aoe4-build-order.md` is no longer empty (it is empty today).
-- [ ] `git grep -n "ages.push" -- lib ':!*.test.ts'` still finds exactly one site and `markers.push(ageMarker` appears next to it; (respec 2) `git grep -n "researchMarker(" -- lib/aoe4-build-order/research.ts` finds exactly one call site (the import line has no `(` and is not counted; today the grep finds none, and `git grep -n "researched.add" -- lib ':!*.test.ts'` finds exactly one, in `research.ts`).
-- [ ] Mutation: swapping the first two checks in `researchMarkerKind` fails the priority test; dropping the `ageMarker` push fails the age-marker test; dropping the `.sort(compareMarkers)` fails the same-time ordering test.
-- [ ] (respec 2) `npx tsc --noEmit` (including `components/apps/aoe4-build-order/result-series.test.ts`) and `npm test` pass; no INVARIANTS.md regressions.
+- [x] `docs/aoe4-build-order.md` has a `markers` bullet beside `ages`; `git grep -n "markers" -- docs/aoe4-build-order.md` is no longer empty (it is empty today).
+- [x] `git grep -n "ages.push" -- lib ':!*.test.ts'` still finds exactly one site and `markers.push(ageMarker` appears next to it; (respec 2) `git grep -n "researchMarker(" -- lib/aoe4-build-order/research.ts` finds exactly one call site (the import line has no `(` and is not counted; today the grep finds none, and `git grep -n "researched.add" -- lib ':!*.test.ts'` finds exactly one, in `research.ts`).
+- [x] Mutation: swapping the first two checks in `researchMarkerKind` fails the priority test; dropping the `ageMarker` push fails the age-marker test; dropping the `.sort(compareMarkers)` fails the same-time ordering test.
+- [x] (respec 2) `npx tsc --noEmit` (including `components/apps/aoe4-build-order/result-series.test.ts`) and `npm test` pass; no INVARIANTS.md regressions.
 
 ## Open questions
 

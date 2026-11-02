@@ -61,17 +61,28 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `resultMessages` returns, per severity, the `warnings` entries then the `notes` entries, each in result order; a result with neither returns two empty lists (unit test).
-- [ ] With a result containing `warnings` of severity `warning`, `simulation-warnings` is visible and lists exactly those messages, each `simulation-message` with the right `data-severity` and `data-code`; with none, `simulation-warnings` has count 0 (Playwright, patched response).
-- [ ] With `info` messages (from `warnings` or `notes`), `simulation-notes` is visible, `simulation-notes-list` has count 0, and the toggle reads `Show N info messages` (`Show 1 info message` for one) with `aria-expanded="false"`.
-- [ ] Clicking `simulation-notes-toggle` renders `simulation-notes-list` with every info message, the toggle reads `Hide info messages` and `aria-expanded="true"`; clicking again removes the list.
-- [ ] The expanded choice persists after a second run, and a run with no `info` messages shows no `simulation-notes` element.
-- [ ] A 400 or failed run shows only `simulation-error`; neither `simulation-warnings` nor `simulation-notes` is present.
-- [ ] The existing notes test expands the toggle before asserting `fitted-leatherwork`, and "a run with no notes shows no notes element" still asserts `toHaveCount(0)`.
-- [ ] `git grep -n "result.notes" -- components pages` no longer matches `results.tsx` (today it matches line 8); `messages.ts` and `messages.tsx` import nothing from `lib/aoe4-build-order/data`.
-- [ ] `docs/aoe4-build-order.md` no longer says notes are always listed; it describes the warnings list and the collapsed info list.
-- [ ] No INVARIANTS.md regressions
+- [x] `resultMessages` returns, per severity, the `warnings` entries then the `notes` entries, each in result order; a result with neither returns two empty lists (unit test).
+- [x] With a result containing `warnings` of severity `warning`, `simulation-warnings` is visible and lists exactly those messages, each `simulation-message` with the right `data-severity` and `data-code`; with none, `simulation-warnings` has count 0 (Playwright, patched response).
+- [x] With `info` messages (from `warnings` or `notes`), `simulation-notes` is visible, `simulation-notes-list` has count 0, and the toggle reads `Show N info messages` (`Show 1 info message` for one) with `aria-expanded="false"`.
+- [x] Clicking `simulation-notes-toggle` renders `simulation-notes-list` with every info message, the toggle reads `Hide info messages` and `aria-expanded="true"`; clicking again removes the list.
+- [x] The expanded choice persists after a second run, and a run with no `info` messages shows no `simulation-notes` element.
+- [x] A 400 or failed run shows only `simulation-error`; neither `simulation-warnings` nor `simulation-notes` is present.
+- [x] The existing notes test expands the toggle before asserting `fitted-leatherwork`, and "a run with no notes shows no notes element" still asserts `toHaveCount(0)`.
+- [x] `git grep -n "result.notes" -- components pages` no longer matches `results.tsx` (today it matches line 8); `messages.ts` and `messages.tsx` import nothing from `lib/aoe4-build-order/data`.
+- [x] `docs/aoe4-build-order.md` no longer says notes are always listed; it describes the warnings list and the collapsed info list.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
 - `designer`: `resultMessages` is typed to return only `warning` and `info` lists, and M3 emits no `error`-severity result item. The design does not say what it does with an `error` item if one ever appears (omit, or fold into `warning`). This ticket does not handle `error` and has no criterion depending on it; the answer matters only when an engine-level error message is added.
+
+## Rework 1 - 2026-11-01 (review)
+
+Bounced by review (report `reports/SGS-045-review-1.md`) at branch tip 5ecb2c81bc36b124f0c64f2ad75ecb27cfedd874. No earlier gate had passed it. Review confirmed the component file name `message-lists.tsx` (instead of `messages.tsx`, which cannot sit beside `messages.ts` as `./messages`) is sound, and that all other criteria pass.
+
+### Findings
+- `acceptance/aoe4-build-order.spec.ts:210-258` (test): acceptance criterion 2 (a run with no `warning`-severity messages shows `simulation-warnings` with count 0, via a patched response) has no test on a successful run. The only count-0 check is on a 400, where `Results` does not render. Deleting the empty-list guard in `WarningMessages` (`message-lists.tsx:16`) leaves all 17 tests in the page spec passing.
+
+### Required fixes
+- [x] (rework 1) Add a Playwright test in `acceptance/aoe4-build-order.spec.ts`: a successful run through `page.route` + `route.fetch()` whose patched body has no warning-severity entries (info entries or none) asserts `simulation-warnings` has count 0 while the results render. Do not use an unpatched RALLY_PASTE run (SGS-038 makes it emit a `node-depleted` warning). Mutation-check it: removing the empty-list guard in `WarningMessages` must fail it.
+- [x] (rework 1, optional, same commit) Give `InfoMessages` a named `interface ...Props` like its siblings; make the persistence test's second patched response differ from the first so its final assertion cannot match the old page.

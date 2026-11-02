@@ -97,47 +97,47 @@ existing sampling loop and one counter increment at the existing spawn point; no
 
 ## Acceptance criteria
 
-- [ ] For a build that pays for villagers, a non-villager unit, a house and a tech, `result.spent.villagers`,
+- [x] For a build that pays for villagers, a non-villager unit, a house and a tech, `result.spent.villagers`,
   `.military`, `.buildings` and `.research` each end at the sum of food+wood+gold+stone of exactly those
   payments, taken from the snapshot costs (not hard-coded in the test).
-- [ ] Each `spent` series has `times.length` entries, never decreases, and starts at 0 when nothing is paid at t=0.
-- [ ] A payment made at an instant equal to a sample time is included in that sample (same convention as `floating`).
-- [ ] An auto-house (`step: null` construction) is counted under `buildings`.
-- [ ] `spawnedPopulation[0]` equals the start villagers plus the start units' popcap (read the
+- [x] Each `spent` series has `times.length` entries, never decreases, and starts at 0 when nothing is paid at t=0.
+- [x] A payment made at an instant equal to a sample time is included in that sample (same convention as `floating`).
+- [x] An auto-house (`step: null` construction) is counted under `buildings`.
+- [x] `spawnedPopulation[0]` equals the start villagers plus the start units' popcap (read the
   start state from data, not a literal) and the series has `times.length` entries and never decreases.
-- [ ] (respec 2) With `editGameData` adding a start-unit baseId that has no `byBaseId` entry, `simulateBuildOrder`
+- [x] (respec 2) With `editGameData` adding a start-unit baseId that has no `byBaseId` entry, `simulateBuildOrder`
   throws an `Error` whose message names that baseId.
-- [ ] A unit that is paid but still in its production queue at a sample time is not in `spawnedPopulation` at that
+- [x] A unit that is paid but still in its production queue at a sample time is not in `spawnedPopulation` at that
   sample, and is in it at the first sample at or after its spawn. This holds for a villager and for a non-villager
   unit.
-- [ ] A multi-popcap unit (a snapshot entry with `costs.popcap > 1`) raises `spawnedPopulation` by its popcap, not by 1.
-- [ ] With `maxPopCap` lowered by `editGameData` to a value reached by a known spawn, `populationCapReachedAt`
+- [x] A multi-popcap unit (a snapshot entry with `costs.popcap > 1`) raises `spawnedPopulation` by its popcap, not by 1.
+- [x] With `maxPopCap` lowered by `editGameData` to a value reached by a known spawn, `populationCapReachedAt`
   equals that spawn's instant (not rounded to a sample time) and stays set after later spawns; when the cap is never
   reached it is `null`.
-- [ ] With `maxPopCap` at or below the start population, `populationCapReachedAt` is `0`.
-- [ ] (respec 2) `docs/api/openapi.json` `SimulationResult.required` gains exactly `spent`, `spawnedPopulation` and
+- [x] With `maxPopCap` at or below the start population, `populationCapReachedAt` is `0`.
+- [x] (respec 2) `docs/api/openapi.json` `SimulationResult.required` gains exactly `spent`, `spawnedPopulation` and
   `populationCapReachedAt` against the base branch and loses nothing. With
   `R='.components.schemas.SimulationResult.required'`,
   `jq -c -n --slurpfile a <(git show origin/main:docs/api/openapi.json) --slurpfile b docs/api/openapi.json "[(\$b[0]|$R) - (\$a[0]|$R), (\$a[0]|$R) - (\$b[0]|$R)]"`
   prints `[["spent","spawnedPopulation","populationCapReachedAt"],[]]` (in the order they are appended); it prints
   `[[],[]]` before the change.
-- [ ] (respec 2) The 200 example's `spent`, `spawnedPopulation` and `populationCapReachedAt` are the engine's output:
+- [x] (respec 2) The 200 example's `spent`, `spawnedPopulation` and `populationCapReachedAt` are the engine's output:
   `npm run acceptance -- aoe4-simulate-api-contract` passes, including "the buildOrder request example returns the
   documented 200 body" and the `text` variant (live response `toEqual` the example) and the ajv validation of the
   example.
-- [ ] (respec 1) `SimulationResult.properties.spent` has `propertyNames` `$ref` `#/components/schemas/SpendCategory`
+- [x] (respec 1) `SimulationResult.properties.spent` has `propertyNames` `$ref` `#/components/schemas/SpendCategory`
   and `required` of the four categories; (respec 2) in the contract spec, a real 200 body with a `spent` category
   removed, or with an extra `spent` key, fails `expectInvalid('SimulationResult', ...)`, and `SpendCategory`'s enum
   equals the TS `SpendCategory` keys.
-- [ ] `docs/aoe4-build-order.md` Outputs section describes all three fields; `git grep -n spawnedPopulation -- docs`
+- [x] `docs/aoe4-build-order.md` Outputs section describes all three fields; `git grep -n spawnedPopulation -- docs`
   finds it (0 matches today).
-- [ ] (respec 2) No expected value in any existing test changes: the `floating`, `gatherRates`, `steps`,
+- [x] (respec 2) No expected value in any existing test changes: the `floating`, `gatherRates`, `steps`,
   `unitsProduced`, `depletions` and `warnings` outputs are unchanged for the shipped English build. The only edits to
   existing test files are the added fields in the `result-series.test.ts` literal, the contract spec additions in
   Scope 4 and (respec 3) the three keys added to the `aoe4-simulate-api-edges.spec.ts` pinned key list (Scope 5), which
   is exactly the base's list plus those three. `npm test`, `npx tsc --noEmit`, `npm run lint:dup` and
   `npm run acceptance -- aoe4-simulate-api-edges` pass.
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -160,3 +160,14 @@ None.
 - Underspecified: `acceptance/aoe4-simulate-api-edges.spec.ts` pins the exact response key list; the three new top-level fields break it and it was not an allowed edit.
 - Changed: Scope 5 adds the key-list edit (relative to the base); the "only edits to existing test files" criterion allows it and runs that spec.
 - Branch work: none yet; everything else stands.
+
+## Rework 1 - 2026-11-01 (review)
+
+Bounced by review (report `reports/SGS-043-review-1.md`) at branch tip be39f66cd5bfc506330a4260d0829385a1a82e86. No earlier gate had passed it. The code is correct; gates pass.
+
+### Findings
+- `lib/aoe4-build-order/simulate-series.test.ts:140-163` (test): no test covers the criterion that `populationCapReachedAt` "stays set after later spawns". The implementer's claim that it cannot be tested is wrong. The cap is reached by `spawnedPopulation` (seeded from the start unit's entry popcap) while the supply check `population` counts each start unit as 1, so spawns can still follow.
+
+### Required fixes
+- [x] (rework 1) Add a unit test in `simulate-series.test.ts` that pins "`populationCapReachedAt` stays set after later spawns": use `editGameData` to set the scout's popcap to 4 and `maxPopCap` to 11. That gives 10 spawned against 7 supply-population, so 3 villagers can still be paid; the cap is reached at 22 s and two more villagers spawn after it. Assert `populationCapReachedAt` is still 22 s at the end. Mutation-check it: removing the `populationCapReachedAt === null` guard at `simulate.ts:~204` must fail the new test.
+- [x] (rework 1, optional, same commit) In the same test file, import `RESOURCE_KINDS` instead of the local `KINDS`, and rename the local `costOf` so it does not share a name with `costOf` in `engine-common.ts`.

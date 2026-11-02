@@ -51,16 +51,16 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `researchEntry(baseId, state)` returns the highest-age entry with `age <= state.age` for a tech with entries at ages 1 and 3 (age 2 gives the age-1 entry, age 3 gives the age-3 entry) and `undefined` when every entry is above `state.age`.
-- [ ] A research step of a multi-tier tech whose only entry is above the current age does not start, pays nothing and reserves nothing; after the age is reached the step starts and pays the costs of the higher-age entry.
-- [ ] On completion `researchedIds` contains the picked entry's `id` and `researched` its `baseId`; `modifiedValue` applies the picked entry's effects and not those of a sibling entry of the same `baseId`.
-- [ ] `resolveUnitEntry` returns the unit entry at the age of the researched upgrade entry; with two upgrade entries of one `baseId`, researching the lower-age one yields the lower tier (the M2 rule returned the higher one).
-- [ ] With the shipped snapshot every existing simulation test and the ENG 1TC result are unchanged (`npm test` passes with no changed expectation other than note messages and `severity`).
-- [ ] Every `BuildOrderNote` has `severity: 'info'`; a test fails if any note has `severity: 'error'`; messages start with the tech `baseId` (`admiralty: `), and `git grep -n "entry.name" lib/aoe4-build-order/research.ts` finds no match (2 today).
-- [ ] `git grep -n "byBaseId.get(step.tech)\[0\]" lib/aoe4-build-order/research.ts` finds exactly one match, in `researchNotes` (2 today: handler and notes).
-- [ ] `acceptance/aoe4-simulate-api-contract.spec.ts` (ajv against `docs/api/openapi.json`) passes with `severity` required on `BuildOrderNote`; `npx tsc --noEmit` passes.
-- [ ] `docs/aoe4-build-order.md` no longer describes the lowest-age entry as the only research entry or names notes by display name, and states that notes are `info`.
-- [ ] No INVARIANTS.md regressions
+- [x] `researchEntry(baseId, state)` returns the highest-age entry with `age <= state.age` for a tech with entries at ages 1 and 3 (age 2 gives the age-1 entry, age 3 gives the age-3 entry) and `undefined` when every entry is above `state.age`.
+- [x] A research step of a multi-tier tech whose only entry is above the current age does not start, pays nothing and reserves nothing; after the age is reached the step starts and pays the costs of the higher-age entry.
+- [x] On completion `researchedIds` contains the picked entry's `id` and `researched` its `baseId`; `modifiedValue` applies the picked entry's effects and not those of a sibling entry of the same `baseId`.
+- [x] `resolveUnitEntry` returns the unit entry at the age of the researched upgrade entry; with two upgrade entries of one `baseId`, researching the lower-age one yields the lower tier (the M2 rule returned the higher one).
+- [x] With the shipped snapshot every existing simulation test and the ENG 1TC result are unchanged (`npm test` passes with no changed expectation other than note messages and `severity`).
+- [x] Every `BuildOrderNote` has `severity: 'info'`; a test fails if any note has `severity: 'error'`; messages start with the tech `baseId` (`admiralty: `), and `git grep -n "entry.name" lib/aoe4-build-order/research.ts` finds no match (2 today).
+- [x] `git grep -n "byBaseId.get(step.tech)\[0\]" lib/aoe4-build-order/research.ts` finds exactly one match, in `researchNotes` (2 today: handler and notes).
+- [x] `acceptance/aoe4-simulate-api-contract.spec.ts` (ajv against `docs/api/openapi.json`) passes with `severity` required on `BuildOrderNote`; `npx tsc --noEmit` passes.
+- [x] `docs/aoe4-build-order.md` no longer describes the lowest-age entry as the only research entry or names notes by display name, and states that notes are `info`.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

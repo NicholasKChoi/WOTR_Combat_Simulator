@@ -107,6 +107,18 @@ All paths under `lib/aoe4-build-order/` unless noted. Contract names come from d
     pays no more' (main ~438). Add new tests next to the existing wait tests (`simulate.test.ts` describes
     'produce waits' and 'handler seam'; `build-move.acceptance.test.ts` describe 'an age 2 building waits for the
     landmark'; `simulate-construction.test.ts` describe 'ages').
+12. **Existing tests whose expected values this ticket's contract changes** (added by SGS-038 re-spec 3, measured on the
+    SGS-038 branch): `simulate.test.ts` "source shape > exports exactly the seam names" gains `'accrueWait'` in its
+    name list and its `toHaveLength` count rises by one (relative to the count when this ticket starts; SGS-038 leaves
+    it at 13). `acceptance/aoe4-simulate-api-depletion.spec.ts` sends `start 6 sheep -> sheep`, `produce villager
+    from capital-town-center x3`, `research textiles` at 1200 s; `research textiles` (an age 2 tech, the order never
+    leaves age 1) is `waiting` at the horizon on the SGS-038 base, so that one request now returns a `step-stuck`
+    warning. That test gets the new expected value: `warnings` is exactly one `step-stuck` for step 1 with the
+    `waitingOn` and `at` the run reports (expected `prerequisite` and 0), and its title stops saying "no warnings" for
+    that order; the other three requests in that spec still expect `warnings: []` (no step waits in them). The
+    `simulate.test.ts` "depletions and warnings" test (ENG 1TC at 3600 s and a one-villager order) has no waiting
+    step and keeps `warnings: []`. Any other existing test that asserts `warnings` and moves is listed in the PR body
+    with the reason.
 
 **Out of scope:** reactions and `earlier-step` for reactions (SGS-039, reusing the helper in item 5); `bank` and
 `depleted` triggers; producing `node-depleted` and `idle-arrival` warnings (SGS-038; this ticket only merges into
@@ -153,7 +165,7 @@ flowchart TD
 - [ ] At the horizon, a `waiting` step has `waitingOn` equal to its current reason; a `not-reached` cursor step has `trigger`; a `not-reached` step behind an unstarted one has `earlier-step`; `in-progress` and `completed` steps have `null`. Example: `[produce on instance 2 (missing), rally]` gives `['prerequisite', 'earlier-step']` (extends `simulate.test.ts` 'waits for a targeted instance that does not exist and blocks later steps').
 - [ ] A run with one `waiting` step and one `not-reached` step has exactly one `step-stuck` warning: `step` is the waiting step's 0-based index, `waitingOn` its reason, `at` its `armedAt`, `severity` is `warning`, and `message` equals `step <index + 1> (<action>) was still waiting on <reason> at <m:ss of horizon>, from <m:ss of at>.` (respec 1), e.g. `step 12 (build) was still waiting on resources at 60:00, from 11:40.` for index 11. A step with no registered handler is `waiting` on `prerequisite` and gets the warning (respec 1). A run where every step started has no `step-stuck`.
 - [ ] (respec 2) A run with a finite node that runs out (`nodeAmounts`) and a step stuck at the horizon has both the node warnings and the `step-stuck` warning in `warnings`, in `sortWarnings` order (`step-stuck` last among equal `at`); `git grep -n "sortWarnings(" -- lib/aoe4-build-order/simulate.ts` finds exactly one call (0 on main; SGS-037 adds it).
-- [ ] A run where nothing waits is unchanged except the two new fields: every existing `simulate*.test.ts` and acceptance test passes after the `toEqual` fixtures in 'completes a rally step the instant it arms' and 'pauses at once, lets the paid villager spawn and pays no more' gain `waitingOn: null, waitBreakdown: {}`.
+- [ ] A run where nothing waits is unchanged except the two new fields: every existing `simulate*.test.ts` and acceptance test passes after the `toEqual` fixtures in 'completes a rally step the instant it arms' and 'pauses at once, lets the paid villager spawn and pays no more' gain `waitingOn: null, waitBreakdown: {}`, and the edits in Scope item 12 (seam-name list plus `accrueWait`, the depletion spec's research request expecting one `step-stuck`) are made (added by the SGS-038 re-spec 3 audit). The PR body lists every existing test it edits.
 - [ ] `accrueWait(engine, stepIndexes, seconds)` is exported from `simulate.ts`, skips `trigger`, `earlier-step` and `null` indexes, and has its own unit test charging two steps over one interval (respec 1); `git grep -n "waitBreakdown\[" -- 'lib/aoe4-build-order' ':!*.test.ts'` finds writes only inside `accrueWait`; the main loop's only call site charges the cursor step.
 - [ ] `docs/api/openapi.json`: `jq '.components.schemas.StepTiming.required'` includes `waitingOn` and `waitBreakdown` (it includes neither today); both examples validate; `acceptance/aoe4-simulate-api-contract.spec.ts` passes.
 - [ ] (respec 2) No stale "empty" claim about the result lists: `git grep -n -i -E "empty today|always empty" -- docs/aoe4-build-order.md docs/api/openapi.json` finds 0 matches (0 on main; SGS-037 introduces at least one, this ticket removes the rest), and the `warnings` description in both files names `step-stuck`.
