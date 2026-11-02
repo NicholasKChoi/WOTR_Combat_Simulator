@@ -15,6 +15,8 @@ components:                       # bounded list of components tickets may name
 stackMarker: cf-stack
 reworkCap: 3
 respecThreshold: 2
+questionBoard: true               # unattended modes file owner questions on QUESTIONS.md (Discord bot)
+driveOnAnswer: true               # an owner answer starts scripts/drive-loop.sh
 
 strongModelTriggers:                # docs, data snapshots, dependency/config upgrades, dead-code deletion, UI styling, test-only: not triggers alone
   - changes combat or simulation rules, dice, casualties, RNG, or battle/series loop behavior (what a run computes)
