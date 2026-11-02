@@ -102,6 +102,6 @@ Findings:
 - `parse-text.test.ts` "formatBuildStep > prints %j as one line": `expect(text).not.toContain('\n')` checks the expected string, not the output, so it can never fail.
 
 Required fixes:
-- [ ] (rework 1) Write the `move` row without a bare `|` (`move N\|all ...` or `move <N or all> ...`), and check that the table renders with the same column count on every row.
-- [ ] (rework 1) Delete the dead assertion or point it at the printed output.
-- [ ] (rework 1) Add a unit test for the start-villagers print order with deposits given in another key order: `{ stone: 1, 'gold#3': 1, gold: 2, 'gold#2': 1 }` prints `start 2 gold 1 gold#2 1 gold#3 1 stone`.
+- [x] (rework 1) Write the `move` row without a bare `|` (`move N\|all ...` or `move <N or all> ...`), and check that the table renders with the same column count on every row.
+- [x] (rework 1) Delete the dead assertion or point it at the printed output.
+- [x] (rework 1) Add a unit test for the start-villagers print order with deposits given in another key order: `{ stone: 1, 'gold#3': 1, gold: 2, 'gold#2': 1 }` prints `start 2 gold 1 gold#2 1 gold#3 1 stone`.
