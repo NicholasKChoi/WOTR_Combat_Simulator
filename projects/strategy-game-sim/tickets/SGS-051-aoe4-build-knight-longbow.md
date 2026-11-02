@@ -78,3 +78,16 @@ Required fixes:
 - [x] (rework 1) Make the 14:00 farm block start when the README says (move it before `produce knight`, or reword the README to the measured start).
 - [x] (rework 1) Correct the README and the implementer report to the measured causes above, and put the measured Castle time, 1200 s counts, upgrade gold (about 750 against about 1,750 in the reference) and the `hand-authored` source note in the report so the PR body can carry them.
 - [x] (rework 1) Write the `builds.ts` array one entry per line so the sibling build's entry does not conflict on one long line. Re-run the mutation checks against the retuned file.
+
+## Rework 2 - 2026-11-02 (review)
+
+Gate that bounced: review at tip 3d461843291658350e4d11db380cbb7d8edaa721 (report `reports/SGS-051-review-2.md`). Every rework 1 fix was verified; the one blocker is a doc claim. No other gate has passed yet.
+
+Findings:
+- `data/aoe4-build-order/README.md` (new entry) says "From 5:30 new villagers go to gold", but `@5:30 rally capital-town-center -> gold` (steps[16]) waits behind the 5:15 farm block (steps[15]) and fires at 347.1 s (5:47). "Each block starts at its time" holds for the 14:00, 16:00 and 18:00 farms (840, 960, 1080 s) but the 10:00 block starts at 601.5 s. The implementer report repeats "since 5:30" in the Castle cause.
+- `origin/main` now has the spear build; `lib/aoe4-build-order/builds.ts` conflicts and the README entries need ordering.
+
+Required fixes:
+- [ ] (rework 2) Either move the `@5:30` rally above the 5:15 farm block (re-measure and keep every other README number true) or reword the README (and the implementer report) to the measured times: rally fires at 5:47, the 10:00 farm block starts at 10:01.
+- [ ] (rework 2) Rebase onto origin/main; resolve `builds.ts` as `[english1tc, englishSpearLongbowMaaCrossbow, englishKnightLongbow]` one entry per line; in the README put the spear entry first, then the knight entry, each set off by a blank line like main's entries.
+- [ ] (rework 2) Re-run tsc, `lint:dup`, `npm test`, `npm run acceptance`, `next build` after the rebase and report counts. Report the README's run-out times as the page shows them (rounded `m:ss`: 15:32, 33:43, 51:54 for the 1st, 3rd and 5th) or state they are truncated.
