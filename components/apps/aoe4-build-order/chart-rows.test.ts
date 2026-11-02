@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MARKER_COLORS, MARKER_KIND_LABELS, PALETTE, markerLabel, pinnedKey, seriesColor, toChartRows, toggleHidden } from './chart-rows'
+import { MARKER_COLORS, MARKER_KIND_LABELS, PALETTE, legendItems, markerLabel, pinnedKey, seriesColor, toChartRows, toggleHidden } from './chart-rows'
 
 describe('toChartRows', () => {
     it('makes one row per time with a value per series', () => {
@@ -117,5 +117,25 @@ describe('marker styling', () => {
     it('labels a marker with its name and m:ss time', () => {
         expect(markerLabel({ kind: 'age-up', label: 'Castle', at: 804 })).toBe('Castle 13:24')
         expect(markerLabel({ kind: 'unit-tier', label: 'veteran-longbowmen', at: 870 })).toBe('veteran-longbowmen 14:30')
+    })
+})
+
+describe('legendItems', () => {
+    const s = (key: string) => ({ key, name: key.toUpperCase(), values: [] })
+    const pinned = { times: [], series: [s('c'), s('b'), s('z')] }
+
+    it('follows each current series with its pinned item, then lists pinned-only keys in pinned order', () => {
+        expect(legendItems([s('a'), s('b'), s('c')], pinned).map((i) => i.key)).toEqual(['a', 'b', 'pinned:b', 'c', 'pinned:c', 'pinned:z'])
+    })
+
+    it('colours a pinned item by its current series, else after the current series by pinned index', () => {
+        const items = legendItems([s('a'), s('b'), s('c')], pinned)
+        expect(items.find((i) => i.key === 'pinned:c')?.color).toBe(seriesColor(2))
+        expect(items.find((i) => i.key === 'pinned:z')?.color).toBe(seriesColor(3 + 2))
+    })
+
+    it('names pinned items and marks only them pinned', () => {
+        const items = legendItems([s('b')], pinned)
+        expect(items.map((i) => [i.name, i.pinned])).toEqual([['B', false], ['B (pinned)', true], ['C (pinned)', true], ['Z (pinned)', true]])
     })
 })
