@@ -804,9 +804,14 @@ Those of severity `warning` appear in a warnings list. Those of severity `info` 
 message shows its `message` text only. With no message of a severity there is no list for it.
 
 A step timeline sits above the charts and below the message lists: one row per `steps` entry in step order, with
-the step's text, `startedAt` and `completedAt` as `m:ss` (an en dash when null), `waitSeconds` as `m:ss`, and the
-non-zero `waitBreakdown` reasons as `<reason> <m:ss>` in the order resources, villagers, population, prerequisite.
-A `waiting` or `not-reached` row is flagged and also shows its `waitingOn`. A reaction step's row is marked. The
+the step's text, `startedAt` as `m:ss` (an en dash when null), `completedAt` as `m:ss` (`ongoing` for an
+`in-progress` step, an en dash for a `waiting` or `not-reached` step) and `waitSeconds` as `m:ss`. The columns are
+Step, Started, Finished, Waited and Blocked by. Blocked by lists the non-zero `waitBreakdown` reasons as
+`<reason> <m:ss>` in the order resources, villagers, population, prerequisite, joined with `, `. A `waiting` step
+adds `still waiting on <waitingOn>` (alone when the breakdown is empty) and a `not-reached` step reads
+`not reached (<waitingOn>)`. A `waiting` or `not-reached` row is flagged. A row whose `waitSeconds` is 60 or more is
+highlighted as a long wait (exactly 60 counts, 59.9 does not). A reaction step's row is marked. The table scrolls
+horizontally inside its wrapper when it is wider than the page. The
 step text is the pasted text as it was when Run was clicked, so editing the textarea afterwards does not change
 the labels until the next run. A result with empty `steps` (a `start`-only paste) shows no timeline, and a 400
 shows none.
@@ -819,13 +824,18 @@ current series with that key, with the name `<name> (pinned)` and the key `pinne
 the union of both runs' sample times; a series has a gap at times outside its own run. Each pinned line
 toggles from the legend like any series.
 
-With both a shown result and a pinned run, a compare table lists seven rows (`data-key`): military spent at
+With both a shown result and a pinned run, a compare table lists up to seven rows (`data-key`): military spent at
 10, 15 and 20 minutes (`military-600`, `military-900`, `military-1200`; the cumulative `spent.military` at the
-sample at that time, or a dash when the run is shorter), the Feudal, Castle and Imperial times (`age-2`,
-`age-3`, `age-4`; the `reachedAt` of that age, or a dash when not reached) and the time the population cap was
-reached (`pop-cap`, a dash when never). Each row shows the pinned value, the current value and the delta
-(current minus pinned, signed, `0` when equal, a dash when either value is missing). The table is hidden
-unless both exist.
+sample at that time), the Feudal, Castle and Imperial times (`age-2`, `age-3`, `age-4`; the `reachedAt` of that
+age) and the time the population cap was reached (`pop-cap`). A row is omitted when both runs have no value for
+it. A missing value reads `run ends at <m:ss>` (that run's duration) for a military time past the end of the run and
+`not reached` for an age or the population cap that never happened. Each row shows the pinned value, the current
+value and the delta (current minus pinned). Military deltas read `+120 resources` or `−120 resources`, time deltas
+`0:35 earlier` or `0:35 later`, an equal pair `same`, and a delta with a missing value a dash. Each row carries
+`data-direction` (`better`, `worse` or `same`; absent when a value is missing): more military is better and an
+earlier time is better. A `better` delta is green and a `worse` delta red. When every row is omitted the table
+is replaced by `compare-empty` reading "Nothing to compare yet". The table sits in a horizontally scrolling wrapper
+(`compare-scroll`) and is hidden unless both runs exist.
 
 A 400 shows every returned issue's `message` (each names its line or step) and removes any earlier charts and message lists, so only the error list shows.
 When the body has `omittedIssues`, the list ends with one more item, "N more issues not shown." Any
