@@ -824,13 +824,13 @@ producer>`. The `start` line is shown above the rows and is not editable there. 
 and sets `text` to `formatBuildOrderText(order)`, so a table edit drops comments and blank lines and keeps
 `start`; typing in the textarea never rewrites the text. While the text does not parse, the table is replaced
 by a notice (`step-table-unavailable`) holding the first parse issue's message, and the textarea stays
-editable. Id selects list the English data's choices (a unit select lists what the row's producer can make,
-a research `at` select lists the buildings that research the tech); a pasted id the choices do not list shows
-as an extra selected `<id> (unknown)` choice that the table leaves alone, and Run reports it as an issue under the textarea. Number fields
-take unsigned integers (`move` count also takes `all`, and the trigger time is whole seconds); clearing an
-optional number field omits it, while an empty or invalid entry in a required field leaves the step as it was.
-Bounds are checked on Run, not in the table. Editing while a run is in flight does not change the result
-shown.
+editable. Id selects list the English data's choices (a unit select lists what the row's producer can make, a
+research `at` select lists the buildings that research the tech); a pasted id the choices do not list shows as
+an extra selected `<id> (unknown)` choice that the table leaves alone, and Run reports it as an issue under
+the textarea. Number fields take unsigned integers (`move` count also takes `all`, and the trigger time is
+whole seconds); clearing an optional number field omits it, while an empty or invalid entry in a required
+field leaves the step as it was. Bounds are checked on Run, not in the table. Editing while a run is in flight
+does not change the result shown.
 
 A 200 draws three line charts, each with a series legend titled "Series" (one toggle button per series):
 
