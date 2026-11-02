@@ -63,3 +63,18 @@ export function postSimulateRaw(request: APIRequestContext, raw: string, timeout
     timeout,
   })
 }
+
+export const AOE4_PAGE = '/apps/aoe4-build-order'
+
+export async function openPage(page: Page) {
+  await page.goto(AOE4_PAGE)
+  await page.waitForLoadState('networkidle')
+}
+
+export async function runSimulation(page: Page) {
+  const response = page.waitForResponse(
+    (r) => r.url().endsWith(SIMULATE_PATH) && r.request().method() === 'POST'
+  )
+  await page.getByTestId('run-simulation').click()
+  return response
+}

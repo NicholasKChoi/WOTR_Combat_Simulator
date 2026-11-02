@@ -2,9 +2,8 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH } from './helpers'
+import { SIMULATE_PATH, openPage } from './helpers'
 
-const PAGE = '/apps/aoe4-build-order'
 const DASH = '—'
 const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
 const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
@@ -12,11 +11,6 @@ const ROW_KEYS = ['military-600', 'military-900', 'military-1200', 'age-2', 'age
 const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
 const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
-
-async function openPage(page: Page) {
-  await page.goto(PAGE)
-  await page.waitForLoadState('networkidle')
-}
 
 async function run(page: Page, opts: { duration?: number; text?: string } = {}) {
   if (opts.text !== undefined) await page.getByTestId('build-order-text').fill(opts.text)

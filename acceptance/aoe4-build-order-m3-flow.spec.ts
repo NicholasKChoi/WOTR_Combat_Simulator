@@ -1,0 +1,100 @@
+import { test, expect } from '@playwright/test'
+import type { SimulationResult, SimWarning } from '../lib/aoe4-build-order/model'
+import { openPage, runSimulation } from './helpers'
+
+const FLOW_PASTE = [
+  'start 6 sheep -> sheep',
+  'produce villager from capital-town-center x3 -> sheep',
+  '@25:00 produce villager from capital-town-center x1 -> sheep',
+].join('\n')
+const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
+const COMPARE_KEYS = ['military-600', 'military-900', 'military-1200', 'age-2', 'age-3', 'age-4', 'pop-cap']
+const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
+
+test.describe('AoE4 build order M3 flow', () => {
+  test('edit a step in the table, run, see the depletion warning and timeline, pin and compare', async ({ page }) => {
+    await openPage(page)
+    const text = page.getByTestId('build-order-text')
+    await text.fill(FLOW_PASTE)
+
+    await expect(page.getByTestId('step-table')).toBeVisible()
+    await expect(page.getByTestId('step-row')).toHaveCount(2)
+    const count = page.getByTestId('step-row').nth(0).getByTestId('step-field-count')
+    await expect(count).toHaveValue('3')
+
+    await runSimulation(page)
+    await page.getByTestId('pin-run').click()
+
+    await count.fill('5')
+    await expect(text).toHaveValue(/produce villager from capital-town-center x5 -> sheep/)
+    await expect(page.getByTestId('step-row')).toHaveCount(2)
+
+    const response = await runSimulation(page)
+    expect(response.status()).toBe(200)
+    const result = (await response.json()) as SimulationResult
+    const depleted = result.warnings.find(
+      (w): w is Extract<SimWarning, { code: 'node-depleted' }> => w.code === 'node-depleted' && w.node === 'sheep'
+    )
+    expect(depleted).toMatchObject({ severity: 'warning' })
+    expect(depleted?.idleVillagers).toBeGreaterThan(0)
+
+    const warnings = page.getByTestId('simulation-warnings')
+    await expect(warnings).toBeVisible()
+    const message = warnings.locator('[data-testid="simulation-message"][data-code="node-depleted"][data-severity="warning"]')
+    await expect(message).toHaveText(depleted?.message ?? '')
+
+    await expect(page.getByTestId('step-timeline')).toBeVisible()
+    const rows = page.getByTestId('step-timeline-row')
+    await expect(rows).toHaveCount(2)
+    const first = rows.and(page.locator('[data-step="0"]'))
+    await expect(first).toHaveAttribute('data-status', 'completed')
+    await expect(first).not.toHaveAttribute('data-flagged', 'true')
+    await expect(first).toContainText('x5')
+    const late = rows.and(page.locator('[data-step="1"]'))
+    await expect(late).toHaveAttribute('data-status', 'not-reached')
+    await expect(late).toHaveAttribute('data-flagged', 'true')
+
+    await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
+    await expect(page.getByTestId('compare-row')).toHaveCount(COMPARE_KEYS.length)
+    expect(await page.getByTestId('compare-row').evaluateAll((els) => els.map((el) => el.getAttribute('data-key')))).toEqual(COMPARE_KEYS)
+    for (const chart of RESOURCE_CHARTS) {
+      await expect(page.getByTestId(chart).locator('path[data-series="food"]')).toHaveCount(1)
+      await expect(page.getByTestId(chart).locator('path[data-series="pinned:food"]')).toHaveCount(1)
+    }
+
+    await page.getByTestId('unpin-run').click()
+    await expect(page.getByTestId('compare-key-numbers')).toHaveCount(0)
+    for (const chart of RESOURCE_CHARTS) {
+      await expect(page.getByTestId(chart).locator('path[data-series="pinned:food"]')).toHaveCount(0)
+    }
+  })
+
+  test('the ENG 1TC gold reaction shows in the timeline and table, and its depletion is not a warning', async ({ page }) => {
+    await openPage(page)
+    await page.getByTestId('build-order-select').selectOption({ label: 'ENG 1TC' })
+    await page.getByTestId('duration-seconds').fill('3600')
+
+    const response = await runSimulation(page)
+    expect(response.status()).toBe(200)
+    const result = (await response.json()) as SimulationResult
+    expect(result.depletions.find((d) => d.node === 'gold')).toMatchObject({ depletedAt: expect.any(Number) })
+
+    const lastTimeline = page.getByTestId('step-timeline-row').last()
+    await expect(lastTimeline).toHaveAttribute('data-reaction', 'true')
+    await expect(lastTimeline).toHaveAttribute('data-status', 'completed')
+    await expect(page.getByTestId('step-row').last().getByTestId('step-field-reaction')).toBeChecked()
+    await expect(page.getByTestId('simulation-warnings').getByTestId('simulation-message').filter({ hasText: /^gold ran out/ })).toHaveCount(0)
+  })
+
+  test('an unparseable paste hides the step table until a valid paste returns', async ({ page }) => {
+    await openPage(page)
+    const text = page.getByTestId('build-order-text')
+    await text.fill(INVALID_PASTE)
+    await expect(page.getByTestId('step-table-unavailable')).toBeVisible()
+    await expect(page.getByTestId('step-table')).toHaveCount(0)
+
+    await text.fill(FLOW_PASTE)
+    await expect(page.getByTestId('step-table')).toBeVisible()
+    await expect(page.getByTestId('step-table-unavailable')).toHaveCount(0)
+  })
+})
