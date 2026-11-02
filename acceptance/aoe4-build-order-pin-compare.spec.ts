@@ -184,7 +184,7 @@ test.describe('AoE4 build order pin and compare', () => {
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
   })
 
-  test('a 400 run removes charts and table but keeps the pin; the next valid run restores both', async ({ page }) => {
+  test('a rejected paste removes charts and table but keeps the pin; the next valid run restores both', async ({ page }) => {
     await openPage(page)
     await runOk(page, { duration: 300 })
     await pin(page)

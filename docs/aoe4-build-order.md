@@ -813,8 +813,8 @@ replaces the text with that build's paste text; editing the text leaves the sele
 text with `textToBuildOrder` and the English catalog and posts the checked `buildOrder` and
 `inputs.durationSeconds` to the route. When the text does not convert, Run lists its issues under the
 textarea, sends nothing and clears the shown result. Server 400 issues and network or HTTP failures show in
-the error list as before. The duration is not checked in the browser: an empty or
-non-numeric entry is sent as 0, and the route rejects any value outside its bounds.
+the error list. The duration is not checked in the browser: an empty or non-numeric entry is sent as 0, and
+the route rejects any value outside its bounds.
 
 The page keeps one `text` state, and the step table is a view of it. The table renders
 `parseBuildOrderText(text)`: one row per step with a trigger kind select and its fields, an action select and

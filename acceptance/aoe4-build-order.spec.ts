@@ -322,6 +322,7 @@ test.describe('AoE4 build order page', () => {
 
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
     await runRejected(page)
+    await expectFlySyntaxIssue(page)
     await expect(page.getByTestId('simulation-notes')).toHaveCount(0)
     await page.getByTestId('build-order-text').fill('start -> sheep')
     expect((await runSimulation(page)).status()).toBe(200)
@@ -673,7 +674,7 @@ test.describe('AoE4 build order page', () => {
       await expect(rows(page).first()).toContainText('kings-palace')
     })
 
-    test('a 400 run and a start-only run show no timeline', async ({ page }) => {
+    test('a rejected paste and a start-only run show no timeline', async ({ page }) => {
       await openPage(page)
       await runSimulation(page)
       await expect(page.getByTestId('step-timeline')).toBeVisible()
