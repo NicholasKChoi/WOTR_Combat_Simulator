@@ -80,7 +80,10 @@ with its reason.
   Three stables and two archery ranges; the second `produce longbowman` step comes after the second range
   is built, because a `produce` step only orders the producers that exist when it starts. Three houses
   are built before the King's Palace: auto-houses count the palace's supply as soon as it is under
-  construction, so without them population stalls at the cap until the palace completes. Farms are added
+  construction, so without them population stalls at the cap until the palace completes. Auto-houses stay
+  off until the third of these (step 24) starts, so at default inputs, and at 1800 s and 3600 s, the run
+  returns one `auto-houses-held` warning: production is held at the supply limit for 0:21 (21.2 s) from
+  7:42 (461.8 s). Farms are added
   in blocks of four at 10:00, 14:00, 16:00 and 18:00; the 14:00, 16:00 and 18:00 blocks start at their
   times and the 10:00 block starts about 1.5 s after 10:00 (10:02 as the page shows it). The four blacksmith techs
   (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after `build kings-palace` in

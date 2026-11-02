@@ -149,10 +149,14 @@ export function depletionResults(stock: NodeStock): { depletions: NodeDepletion[
   return { depletions, warnings: sortWarnings(warnings) };
 }
 
-// At one instant: node warnings by FINITE_NODE_REFS order, node-depleted before idle-arrival, then step-stuck by step.
+// At one instant: node warnings by FINITE_NODE_REFS order, node-depleted before idle-arrival, then step-stuck by step,
+// then the auto-house warnings by step, auto-houses-never-start before auto-houses-held.
 function tieRank(warning: SimWarning): number[] {
   if (warning.code === 'step-stuck') {
     return [1, warning.step, 0];
+  }
+  if (warning.code === 'auto-houses-never-start' || warning.code === 'auto-houses-held') {
+    return [2, warning.step, warning.code === 'auto-houses-never-start' ? 0 : 1];
   }
   return [0, FINITE_NODE_REFS.indexOf(warning.node), warning.code === 'node-depleted' ? 0 : 1];
 }
