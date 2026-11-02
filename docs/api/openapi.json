@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Strategy Game Simulator API",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "HTTP API of the strategy game simulator site."
   },
   "paths": {
@@ -188,7 +188,7 @@
       "post": {
         "operationId": "simulateBuildOrder",
         "summary": "Simulate an AoE4 build order and report its timings.",
-        "description": "Simulates one AoE4 build order for one horizon and returns the timings. The simulation is deterministic: the same request and game data always give the same body. Validation runs in two stages; at most 100 issues are listed and the rest are counted in omittedIssues. A body that is not a JSON object (an array, string, number or null) gives one syntax issue and nothing else is checked. Otherwise the order stage runs (exactly one of text and buildOrder; text is parsed then validated, buildOrder is validated) and then the inputs stage always runs too, even when the order stage failed; issues list order-stage issues first, then inputs issues, and error is the first issue message. Issue location: an issue on a pasted step carries line and step, an issue on the pasted start line carries line; an issue on a JSON step carries step and never line; an issue on JSON start, on inputs, or on the request shape carries neither. Absent inputs fields at any depth take their defaults. Two framework responses have no schema and happen before the handler runs: a body that is not valid JSON is a 400 with the plain-text body Invalid JSON, and a body over the 1 MB default body limit is a 413 with a plain-text body.",
+        "description": "Simulates one AoE4 build order for one horizon and returns the timings. The simulation is deterministic: the same request and game data always give the same body. Validation runs in two stages; at most 100 issues are listed and the rest are counted in omittedIssues. A body that is not a JSON object (an array, string, number or null) gives one syntax issue and nothing else is checked. Otherwise the order stage runs (a body with a text key is rejected with one syntax issue and buildOrder is not checked; else buildOrder is required and validated) and then the inputs stage always runs too, even when the order stage failed; issues list order-stage issues first, then inputs issues, and error is the first issue message. Issue location: no issue carries line; an issue on a step carries step; an issue on start, on inputs, or on the request shape carries neither. Absent inputs fields at any depth take their defaults. Two framework responses have no schema and happen before the handler runs: a body that is not valid JSON is a 400 with the plain-text body Invalid JSON, and a body over the 1 MB default body limit is a 413 with a plain-text body.",
         "requestBody": {
           "required": true,
           "content": {
@@ -231,15 +231,6 @@
                       "durationSeconds": 60
                     }
                   }
-                },
-                "text": {
-                  "summary": "The same build order as paste text",
-                  "value": {
-                    "text": "start 6 sheep -> sheep\nproduce villager from capital-town-center x2\n@0:30 rally capital-town-center -> wood",
-                    "inputs": {
-                      "durationSeconds": 60
-                    }
-                  }
                 }
               }
             }
@@ -247,7 +238,7 @@
         },
         "responses": {
           "200": {
-            "description": "The simulation result. Both request examples return this body.",
+            "description": "The simulation result. The request example returns this body.",
             "content": {
               "application/json": {
                 "schema": {
@@ -589,41 +580,26 @@
                       ]
                     }
                   },
-                  "pastedStep": {
-                    "summary": "a pasted step whose producer cannot produce the unit: line and step",
+                  "missingBuildOrder": {
+                    "summary": "no buildOrder",
                     "value": {
-                      "error": "line 3: house cannot produce villager",
+                      "error": "request: missing buildOrder",
                       "issues": [
                         {
-                          "code": "invalid",
-                          "message": "line 3: house cannot produce villager",
-                          "step": 0,
-                          "line": 3
+                          "code": "syntax",
+                          "message": "request: missing buildOrder"
                         }
                       ]
                     }
                   },
-                  "pasteSyntax": {
-                    "summary": "a paste line that does not parse: line only",
+                  "removedText": {
+                    "summary": "a text key, removed in 2.0.0: one issue, buildOrder not checked",
                     "value": {
-                      "error": "line 2: seconds over 59 in '@1:61'",
+                      "error": "request: text is no longer accepted; convert the paste to buildOrder and send that",
                       "issues": [
                         {
                           "code": "syntax",
-                          "message": "line 2: seconds over 59 in '@1:61'",
-                          "line": 2
-                        }
-                      ]
-                    }
-                  },
-                  "exactlyOne": {
-                    "summary": "neither text nor buildOrder",
-                    "value": {
-                      "error": "request: send exactly one of text and buildOrder",
-                      "issues": [
-                        {
-                          "code": "syntax",
-                          "message": "request: send exactly one of text and buildOrder"
+                          "message": "request: text is no longer accepted; convert the paste to buildOrder and send that"
                         }
                       ]
                     }
@@ -1028,27 +1004,16 @@
       },
       "SimulateRequest": {
         "type": "object",
-        "description": "One simulation request: exactly one of text (paste format) or buildOrder (JSON), plus optional inputs. A key whose value is null counts as present, so text: null beside buildOrder is the both-present syntax issue. Unknown extra keys are ignored.",
-        "oneOf": [
-          {
-            "description": "The paste-format variant: text is sent and buildOrder is not.",
-            "required": [
-              "text"
-            ]
-          },
-          {
-            "description": "The JSON variant: buildOrder is sent and text is not.",
-            "required": [
-              "buildOrder"
-            ]
-          }
+        "description": "One simulation request: buildOrder (JSON, required) plus optional inputs. The paste-format text field was removed in 2.0.0: a body with a text key (any value, null included) is rejected with the syntax issue \"request: text is no longer accepted; convert the paste to buildOrder and send that\", even when buildOrder is also sent. Convert the paste format with the page or with textToBuildOrder and send the result as buildOrder. Unknown extra keys other than text are ignored.",
+        "required": [
+          "buildOrder"
         ],
+        "not": {
+          "required": [
+            "text"
+          ]
+        },
         "properties": {
-          "text": {
-            "type": "string",
-            "maxLength": 20000,
-            "description": "The build order in the paste format, at most 20000 characters (JavaScript string length). Longer text is one out-of-range issue and is not parsed. Issues on a pasted step carry step and line; an issue on the start line carries line only."
-          },
           "buildOrder": {
             "$ref": "#/components/schemas/BuildOrder",
             "description": "The build order as JSON, at most 200 steps. Issues on a step carry step and never line; issues on start carry neither."
@@ -2058,7 +2023,7 @@
           "message": {
             "type": "string",
             "minLength": 1,
-            "description": "Human-readable reason, naming the step or line and the offending id, kind or property."
+            "description": "Human-readable reason, naming the step and the offending id, kind or property."
           },
           "step": {
             "type": "integer",
@@ -2068,7 +2033,7 @@
           "line": {
             "type": "integer",
             "minimum": 1,
-            "description": "1-based line of the pasted text; present only for issues on text."
+            "description": "1-based line of a paste; this API never sets it. It is set only on issues from the page-side conversion of the paste format to buildOrder."
           },
           "suggestion": {
             "type": "string",
@@ -2408,7 +2373,7 @@
             "items": {
               "$ref": "#/components/schemas/BuildOrderIssue"
             },
-            "description": "The first 100 issues found: order-stage issues first (text or buildOrder), then inputs issues.",
+            "description": "The first 100 issues found: order-stage issues first (buildOrder), then inputs issues.",
             "maxItems": 100
           },
           "omittedIssues": {

@@ -21,6 +21,8 @@ const JSON_ORDER = {
 
 type Issue = { code: string; message: string; step?: number; line?: number }
 
+const REMOVED_TEXT = { code: 'syntax', message: 'request: text is no longer accepted; convert the paste to buildOrder and send that' }
+
 function order(steps: unknown[], start: unknown = START) {
   return { civ: 'english', name: 'Test', start, steps }
 }
@@ -99,10 +101,7 @@ test.describe('inputs', () => {
 
 test.describe('each issue code over HTTP', () => {
   const syntaxCases: [string, unknown, RegExp][] = [
-    ['neither text nor buildOrder', { inputs: {} }, /text.*buildOrder/],
-    ['both text and buildOrder', { text: PASTE, buildOrder: JSON_ORDER }, /text.*buildOrder/],
-    ['text null beside buildOrder counts as both', { text: null, buildOrder: JSON_ORDER }, /text.*buildOrder/],
-    ['text that is not a string', { text: 42 }, /^text/],
+    ['no buildOrder', { inputs: {} }, /^request: missing buildOrder$/],
     ['a body that is an array', [{ buildOrder: JSON_ORDER }], /body/],
     ['a step that is not an object', { buildOrder: order(['produce']) }, /steps\[0\]/],
   ]
@@ -112,6 +111,28 @@ test.describe('each issue code over HTTP', () => {
       expect(issue.message).toMatch(message)
     })
   }
+
+  const removedTextCases: [string, unknown][] = [
+    ['a paste string', { text: PASTE }],
+    ['text null beside a valid buildOrder', { text: null, buildOrder: JSON_ORDER }],
+    ['a numeric text', { text: 42 }],
+    ['an empty text', { text: '' }],
+    ['a valid buildOrder beside a text string is still rejected', { buildOrder: JSON_ORDER, text: PASTE }],
+    ['a text of 20,001 characters is the removed-text issue, not out-of-range', { text: 'x'.repeat(20_001) }],
+  ]
+  for (const [label, body] of removedTextCases) {
+    test(`syntax: the removed-text issue for ${label}`, async ({ request }) => {
+      expect(await expectIssues(request, body)).toEqual([REMOVED_TEXT])
+    })
+  }
+
+  test('a text key beside a valid buildOrder and an out-of-range input gives the removed-text issue, then the inputs issue', async ({ request }) => {
+    const issues = await expectIssues(request, { buildOrder: JSON_ORDER, text: PASTE, inputs: { durationSeconds: 59 } })
+    expect(issues).toHaveLength(2)
+    expect(issues[0]).toEqual(REMOVED_TEXT)
+    expect(issues[1].code).toBe('out-of-range')
+    expect(issues[1].message).toContain('inputs.durationSeconds')
+  })
 
   test('unknown-trigger-kind: a trigger of kind resource', async ({ request }) => {
     const step = { trigger: { kind: 'resource' }, action: 'produce', producer: 'capital-town-center', unit: 'villager' }
@@ -142,22 +163,6 @@ test.describe('each issue code over HTTP', () => {
     const step = { action: 'pause', producer: 'capital-town-center' }
     const issue = await expectFirstCode(request, { buildOrder: order(Array(201).fill(step)) }, 'out-of-range')
     expect(issue.message).toContain('201')
-  })
-
-  test('out-of-range: text of 20,001 characters is rejected without parsing', async ({ request }) => {
-    const text = 'x'.repeat(20_001)
-    const issues = await expectIssues(request, { text })
-    expect(issues).toHaveLength(1)
-    expect(issues[0].code).toBe('out-of-range')
-    expect(issues[0].message).toContain('text')
-    expect(issues[0].message).toContain('20000')
-  })
-
-  test('text of exactly 20,000 characters is not rejected for length', async ({ request }) => {
-    const prefix = `${PASTE}\n#`
-    const text = prefix + 'x'.repeat(20_000 - prefix.length)
-    expect(text).toHaveLength(20_000)
-    await expectOk(request, { text })
   })
 
   test('invalid: a producer that cannot produce the unit', async ({ request }) => {

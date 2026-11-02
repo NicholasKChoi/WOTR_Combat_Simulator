@@ -6,7 +6,6 @@ const WARM_UP_TIMEOUT_MS = 60_000
 test.describe.configure({ timeout: 60_000 })
 
 const START = { villagers: { sheep: 6 }, rally: 'sheep' }
-const START_LINE = 'start 6 sheep -> sheep'
 const VILLAGER = { action: 'produce', producer: 'capital-town-center', unit: 'villager' }
 
 type Issue = { code: string; message: string; step?: number; line?: number; suggestion?: string }
@@ -25,11 +24,10 @@ async function rejected(request: Parameters<typeof postSimulate>[0], body: unkno
 }
 
 test.describe('unknown unit suggestion', () => {
-  test('a pasted unknown unit carries the nearest unit as a suggestion on its line', async ({ request }) => {
-    const { issues } = await rejected(request, { text: [START_LINE, 'produce knigt from stable'].join('\n') })
-    expect(issues).toEqual([
-      { code: 'unknown-id', message: 'line 2: unknown unit "knigt" in unit', line: 2, step: 0, suggestion: 'knight' },
-    ])
+  test('a lone JSON unknown unit is exactly one issue with the nearest unit as a suggestion on its step', async ({ request }) => {
+    const { issues } = await rejected(request, { buildOrder: order([{ action: 'produce', producer: 'stable', unit: 'knigt' }]) })
+    expect(issues).toEqual([{ code: 'unknown-id', message: expect.stringContaining('knigt'), step: 0, suggestion: 'knight' }])
+    expect(issues[0].line).toBeUndefined()
   })
 
   test('a JSON unknown unit carries the nearest unit as a suggestion on its step', async ({ request }) => {
@@ -136,19 +134,7 @@ test.describe('oversized input bounds', () => {
     expect('suggestion' in issues[0]).toBe(false)
   })
 
-  test('a text of exactly 20001 characters is the only issue and 20000 is not rejected for length', async ({ request }) => {
-    const over = await rejected(request, { text: START_LINE + '\n#' + 'x'.repeat(20_001 - START_LINE.length - 2) })
-    expect(over.issues).toEqual([{ code: 'out-of-range', message: 'text: 20001 characters, more than 20000' }])
-    const exact = await postSimulate(request, { text: START_LINE + '\n#' + 'x'.repeat(20_000 - START_LINE.length - 2) })
-    expect(exact.status()).toBe(200)
-  })
-
-  test('a 20001-character text still reports its inputs issues after the text issue', async ({ request }) => {
-    const { issues } = await rejected(request, { text: 'x'.repeat(20_001), inputs: { durationSeconds: 59 } })
-    expect(issues.map((i) => i.code)).toEqual(['out-of-range', 'out-of-range'])
-    expect(issues[0].message).toContain('text')
-    expect(issues[1].message).toContain('inputs.durationSeconds')
-  })
+  // The 20,000-character paste cap is the page-side conversion's; lib/aoe4-build-order/text-to-build.test.ts covers it.
 })
 
 test.describe('issue cap for a JSON build order', () => {

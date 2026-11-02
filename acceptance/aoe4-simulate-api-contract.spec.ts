@@ -154,8 +154,8 @@ test.describe('spec structure', () => {
     const prose = operation.description
     expect(prose).toMatch(/order-stage issues first, then inputs issues/)
     expect(prose).toMatch(/not a JSON object.*one syntax issue/)
-    expect(prose).toMatch(/pasted step carries line and step/)
-    expect(prose).toMatch(/JSON step carries step and never line/)
+    expect(prose).toMatch(/no issue carries line/)
+    expect(prose).toMatch(/an issue on a step carries step;/)
     expect(prose).toMatch(/at any depth take their defaults/)
     expect(prose).toContain('Invalid JSON')
     expect(prose).toContain('413')
@@ -234,9 +234,11 @@ test.describe('bounds match SIM_INPUT_BOUNDS', () => {
     nodeAmount: () => [overrides.nodeAmounts.additionalProperties.oneOf[0]],
   }
 
-  test('text and steps caps', () => {
-    expect(schemas.SimulateRequest.properties.text.maxLength).toBe(SIM_INPUT_BOUNDS.textChars.max)
+  test('steps cap, and SimulateRequest requires buildOrder and forbids text', () => {
     expect(schemas.BuildOrder.properties.steps.maxItems).toBe(SIM_INPUT_BOUNDS.steps.max)
+    expect(schemas.SimulateRequest.properties).not.toHaveProperty('text')
+    expect(schemas.SimulateRequest.required).toEqual(['buildOrder'])
+    expect(schemas.SimulateRequest.not.required).toEqual(['text'])
   })
 
   for (const [name, bound] of Object.entries(SIM_INPUT_BOUNDS)) {
@@ -263,7 +265,7 @@ test.describe('examples', () => {
     expectValid('FightError', operation.responses['405'].content['application/json'].example)
   })
 
-  for (const name of ['buildOrder', 'text']) {
+  for (const name of ['buildOrder']) {
     test(`the ${name} request example returns the documented 200 body`, async ({ request }) => {
       expect(await expect200(request, requestExamples[name].value)).toEqual(okExample)
     })
@@ -274,9 +276,8 @@ test.describe('examples', () => {
       buildOrder: { civ: 'english', name: 'Bad producer', start: { rally: 'sheep' }, steps: [{ action: 'produce', producer: 'house', unit: 'villager' }] },
       inputs: { durationSeconds: 59 },
     }),
-    pastedStep: JSON.stringify({ text: 'start 6 sheep -> sheep\n# opener\nproduce villager from house' }),
-    pasteSyntax: JSON.stringify({ text: 'start 6 sheep -> sheep\n@1:61 produce villager from capital-town-center' }),
-    exactlyOne: JSON.stringify({ inputs: { durationSeconds: 300 } }),
+    missingBuildOrder: JSON.stringify({ inputs: { durationSeconds: 300 } }),
+    removedText: JSON.stringify({ text: 'start 6 sheep -> sheep' }),
     notAnObject: '[]',
   }
 
@@ -396,11 +397,11 @@ test.describe('schema and server agree on requests', () => {
     expect(json.issues.map((i: BuildOrderIssue) => i.code)).toEqual(['invalid'])
   })
 
-  test('text over maxLength is schema-invalid and the server rejects it', async ({ request }) => {
-    const body = { text: 'x'.repeat(schemas.SimulateRequest.properties.text.maxLength + 1) }
+  test('a request with text is schema-invalid and the server rejects it with the removed-text issue', async ({ request }) => {
+    const body = { text: 'start 6 sheep -> sheep' }
     expectInvalid('SimulateRequest', body)
     const json = await expect400(request, body)
-    expect(json.issues[0].code).toBe('out-of-range')
+    expect(json.issues).toEqual([{ code: 'syntax', message: 'request: text is no longer accepted; convert the paste to buildOrder and send that' }])
   })
 
   test('a request with a numbered deposit, move all and nodeAmounts is schema-valid and its 200 validates as a SimulationResult', async ({ request }) => {
@@ -439,11 +440,12 @@ test.describe('schema and server agree on requests', () => {
     expectInvalid('SimulateRequest', body)
     const json = await expect400(request, body)
     expect(json.issues[0].code).toBe('syntax')
+    expect(json.issues).toEqual([{ code: 'syntax', message: 'request: text is no longer accepted; convert the paste to buildOrder and send that' }])
   })
 })
 
 test.describe('exported types match the spec', () => {
-  const simulateRequest: Record<keyof SimulateRequest, true> = { text: true, buildOrder: true, inputs: true }
+  const simulateRequest: Record<keyof SimulateRequest, true> = { buildOrder: true, inputs: true }
   const simulateError: Record<keyof SimulateError, true> = { error: true, issues: true, omittedIssues: true }
   const tripInputOverrides: Record<keyof TripInputOverrides, true> = { walkSecondsCamp: true, walkSecondsTownCenter: true, dropOffSeconds: true }
   const simInputOverrides: Record<keyof SimInputOverrides, true> = {

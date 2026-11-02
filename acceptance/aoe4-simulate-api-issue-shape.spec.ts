@@ -10,10 +10,10 @@ const WARM_UP_TIMEOUT_MS = 60_000
 test.describe.configure({ timeout: 60_000 })
 
 test.describe('BuildOrderIssue in the OpenAPI document', () => {
-  test('suggestion is an optional string property and the document version is unchanged', () => {
+  test('suggestion is an optional string property and the document version is 2.0.0', () => {
     expect(issueSchema.properties.suggestion.type).toBe('string')
     expect(issueSchema.required).not.toContain('suggestion')
-    expect(spec.info.version).toBe('1.0.0')
+    expect(spec.info.version).toBe('2.0.0')
   })
 
   test('the issue schema is closed so an undocumented key would be rejected', () => {
@@ -23,16 +23,17 @@ test.describe('BuildOrderIssue in the OpenAPI document', () => {
 })
 
 test.describe('simulate route issue responses', () => {
-  const paste = ['start 6 sheep -> sheep', 'produce knigt from stable'].join('\n')
+  const buildOrder = { civ: 'english', name: 'Test', start: { villagers: { sheep: 6 }, rally: 'sheep' }, steps: [{ action: 'produce', producer: 'stable', unit: 'knigt' }] }
 
-  test('an unknown unit is still one 400 unknown-id issue on its paste line with only documented keys', async ({ request }) => {
-    const response = await postSimulate(request, { text: paste }, WARM_UP_TIMEOUT_MS)
+  test('an unknown unit is still one 400 unknown-id issue on its step with only documented keys', async ({ request }) => {
+    const response = await postSimulate(request, { buildOrder }, WARM_UP_TIMEOUT_MS)
     expect(response.status()).toBe(400)
     const body = await response.json()
     expect(body.issues).toHaveLength(1)
     const [issue] = body.issues
     expect(issue.code).toBe('unknown-id')
-    expect(issue.line).toBe(2)
+    expect(issue.step).toBe(0)
+    expect(issue.line).toBeUndefined()
     expect(issue.message).toContain('knigt')
     expect(body.error).toBe(issue.message)
     for (const key of Object.keys(issue)) {
@@ -40,10 +41,5 @@ test.describe('simulate route issue responses', () => {
     }
   })
 
-  test('a text of 20001 characters is one out-of-range issue with the text message', async ({ request }) => {
-    const response = await postSimulate(request, { text: 'x'.repeat(20_001) })
-    expect(response.status()).toBe(400)
-    const body = await response.json()
-    expect(body.issues).toEqual([{ code: 'out-of-range', message: 'text: 20001 characters, more than 20000' }])
-  })
+  // The 20,000-character paste cap is the page-side conversion's; lib/aoe4-build-order/text-to-build.test.ts covers it.
 })
