@@ -65,9 +65,12 @@ export interface LegendItem {
 
 export function legendItems(series: readonly ChartSeries[], pinned?: PinnedSeries): LegendItem[] {
     const pinnedSeries = pinned?.series ?? []
-    const pinnedItem = (s: ChartSeries, i: number): LegendItem => {
-        return { key: pinnedKey(s.key), name: `${s.name} (pinned)`, color: pinnedColor(series, s.key, i), pinned: true }
-    }
+    const pinnedItem = (s: ChartSeries, i: number): LegendItem => ({
+        key: pinnedKey(s.key),
+        name: `${s.name} (pinned)`,
+        color: pinnedColor(series, s.key, i),
+        pinned: true,
+    })
     const items = series.flatMap((s, i): LegendItem[] => {
         const pinnedIndex = pinnedSeries.findIndex((p) => p.key === s.key)
         const current = { key: s.key, name: s.name, color: seriesColor(i), pinned: false }

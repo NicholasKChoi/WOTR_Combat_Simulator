@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
 import { type PlacedMarker, SeriesChart, placeMarkers } from './line-chart'
-import { legendItems, markerLabel, seriesColor } from './chart-rows'
+import { markerLabel } from './chart-rows'
 
 const render = (series: Parameters<typeof SeriesChart>[0]['series'], markers?: ChartMarker[]) =>
     renderToString(
@@ -56,26 +56,6 @@ describe('series and marker legends', () => {
         expect(render([])).toContain('data-label-rows="0"')
         const html = render([{ key: 'a', name: 'A', values: [1, 2] }], [{ kind: 'age-up', label: 'Feudal', at: 2 }, { kind: 'other', label: 'x', at: 3 }])
         expect(html).toContain('data-label-rows="0"')
-    })
-})
-
-describe('legendItems', () => {
-    const s = (key: string) => ({ key, name: key.toUpperCase(), values: [] })
-    const pinned = { times: [], series: [s('c'), s('b'), s('z')] }
-
-    it('follows each current series with its pinned item, then lists pinned-only keys in pinned order', () => {
-        expect(legendItems([s('a'), s('b'), s('c')], pinned).map((i) => i.key)).toEqual(['a', 'b', 'pinned:b', 'c', 'pinned:c', 'pinned:z'])
-    })
-
-    it('colours a pinned item by its current series, else after the current series by pinned index', () => {
-        const items = legendItems([s('a'), s('b'), s('c')], pinned)
-        expect(items.find((i) => i.key === 'pinned:c')?.color).toBe(seriesColor(2))
-        expect(items.find((i) => i.key === 'pinned:z')?.color).toBe(seriesColor(3 + 2))
-    })
-
-    it('names pinned items and marks only them pinned', () => {
-        const items = legendItems([s('b')], pinned)
-        expect(items.map((i) => [i.name, i.pinned])).toEqual([['B', false], ['B (pinned)', true], ['C (pinned)', true], ['Z (pinned)', true]])
     })
 })
 

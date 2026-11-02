@@ -20,7 +20,6 @@ const RALLY_PASTE = [
 const RESEARCH_PASTE = ['start -> sheep', 'research fitted-leatherwork at blacksmith'].join('\n')
 const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
 
-
 async function expectChartsDrawn(page: Page) {
   for (const chart of CHARTS) {
     await expect(page.getByTestId(chart)).toBeVisible()
