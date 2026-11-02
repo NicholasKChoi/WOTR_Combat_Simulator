@@ -5,9 +5,8 @@ import { MARKER_COLORS, MARKER_KIND_LABELS } from '../components/apps/aoe4-build
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { CHART_MARKER_KINDS, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH } from './helpers'
+import { openPage, runSimulation, SIMULATE_PATH } from './helpers'
 
-const PAGE = '/apps/aoe4-build-order'
 const TITLE = 'AoE4 Build Order Simulator'
 const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
 const RESOURCES = ['food', 'wood', 'gold', 'stone'] as const
@@ -21,19 +20,6 @@ const RESEARCH_PASTE = ['start -> sheep', 'research fitted-leatherwork at blacks
 const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
 
 const hexToRgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
-
-async function openPage(page: Page) {
-  await page.goto(PAGE)
-  await page.waitForLoadState('networkidle')
-}
-
-async function runSimulation(page: Page) {
-  const response = page.waitForResponse(
-    (r) => r.url().endsWith(SIMULATE_PATH) && r.request().method() === 'POST'
-  )
-  await page.getByTestId('run-simulation').click()
-  return response
-}
 
 async function expectChartsDrawn(page: Page) {
   for (const chart of CHARTS) {
