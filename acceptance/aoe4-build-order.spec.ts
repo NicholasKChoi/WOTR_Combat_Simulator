@@ -202,7 +202,59 @@ test.describe('AoE4 build order page', () => {
     await openPage(page)
     await page.getByTestId('build-order-text').fill(RESEARCH_PASTE)
     expect((await runSimulation(page)).status()).toBe(200)
+    await expect(page.getByTestId('simulation-notes-list')).toHaveCount(0)
+    await page.getByTestId('simulation-notes-toggle').click()
     await expect(page.getByTestId('simulation-notes')).toContainText('fitted-leatherwork')
+  })
+
+  test('warnings are listed and info messages sit behind a toggle that persists across runs', async ({ page }) => {
+    await page.route(`**${SIMULATE_PATH}`, async (route) => {
+      const response = await route.fetch()
+      const body = await response.json()
+      body.warnings = [
+        { code: 'node-depleted', severity: 'warning', message: 'A node ran out.' },
+        { code: 'idle-arrival', severity: 'info', message: 'Villagers arrived idle.' },
+      ]
+      body.notes = [
+        { code: 'tech-effect-ignored', severity: 'info', message: 'An effect is ignored.', step: 0, tech: 'x', properties: [] },
+      ]
+      await route.fulfill({ response, json: body })
+    })
+    await openPage(page)
+    expect((await runSimulation(page)).status()).toBe(200)
+
+    const warnings = page.getByTestId('simulation-warnings')
+    await expect(warnings.getByTestId('simulation-message')).toHaveCount(1)
+    await expect(warnings.getByTestId('simulation-message')).toHaveAttribute('data-severity', 'warning')
+    await expect(warnings.getByTestId('simulation-message')).toHaveAttribute('data-code', 'node-depleted')
+
+    const toggle = page.getByTestId('simulation-notes-toggle')
+    const list = page.getByTestId('simulation-notes-list')
+    await expect(toggle).toHaveText('Show 2 info messages')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(list).toHaveCount(0)
+
+    await toggle.click()
+    await expect(toggle).toHaveText('Hide info messages')
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(list.getByTestId('simulation-message')).toHaveCount(2)
+    await expect(list.getByTestId('simulation-message').first()).toHaveAttribute('data-severity', 'info')
+
+    await toggle.click()
+    await expect(list).toHaveCount(0)
+    await toggle.click()
+
+    expect((await runSimulation(page)).status()).toBe(200)
+    await expect(list.getByTestId('simulation-message')).toHaveCount(2)
+  })
+
+  test('a failed run shows neither the warnings nor the info messages', async ({ page }) => {
+    await openPage(page)
+    await page.getByTestId('build-order-text').fill(INVALID_PASTE)
+    expect((await runSimulation(page)).status()).toBe(400)
+    await expect(page.getByTestId('simulation-error')).toBeVisible()
+    await expect(page.getByTestId('simulation-warnings')).toHaveCount(0)
+    await expect(page.getByTestId('simulation-notes')).toHaveCount(0)
   })
 
   test('a run with no notes shows no notes element', async ({ page }) => {

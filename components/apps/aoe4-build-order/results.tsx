@@ -1,21 +1,21 @@
 import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
+import { resultMessages } from './messages'
+import { InfoMessages, WarningMessages } from './message-lists'
 import { SeriesChart } from './line-chart'
 import { resourceSeries, unitSeries } from './result-series'
 
-export function Results({ result }: { result: SimulationResult }) {
+interface ResultsProps {
+    result: SimulationResult
+    infoExpanded: boolean
+    onInfoToggle: () => void
+}
+
+export function Results({ result, infoExpanded, onInfoToggle }: ResultsProps) {
+    const messages = resultMessages(result)
     return (
         <div>
-            {result.notes.length > 0 ? (
-                <div data-testid="simulation-notes" className="alert alert-info">
-                    <ul className="mb-0">
-                        {result.notes.map((n) => (
-                            <li key={`${n.step}-${n.code}`}>
-                                <code>{n.tech}</code>: {n.message}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            ) : null}
+            <WarningMessages messages={messages.warning} />
+            <InfoMessages messages={messages.info} expanded={infoExpanded} onToggle={onInfoToggle} />
             <SeriesChart
                 testId="chart-units-produced"
                 title="Units produced"
