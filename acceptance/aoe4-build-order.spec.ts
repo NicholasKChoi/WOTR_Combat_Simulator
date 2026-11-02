@@ -182,4 +182,31 @@ test.describe('AoE4 build order page', () => {
     await expectChartsDrawn(page)
     await expect(page.getByTestId('simulation-notes')).toHaveCount(0)
   })
+
+  test('the Y-axis label does not overlap 4-digit tick labels at 1280 px wide', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await openPage(page)
+    await page.getByTestId('build-order-text').fill('start -> sheep')
+    await page.getByTestId('duration-seconds').fill('3600')
+    expect((await runSimulation(page)).status()).toBe(200)
+    await expectChartsDrawn(page)
+
+    const yLabels = { 'chart-units-produced': 'Units', 'chart-gather-rates': 'Per minute', 'chart-floating-resources': 'Resources' }
+    for (const chart of CHARTS) {
+      const root = page.getByTestId(chart)
+      await expect(root.locator('.recharts-label')).toHaveText(yLabels[chart])
+      const label = (await root.locator('.recharts-label').boundingBox())!
+      const ticks = await root.locator('.recharts-cartesian-axis-tick-value', { hasText: /^\d+$/ }).all()
+      if (chart === 'chart-floating-resources') {
+        const texts = await Promise.all(ticks.map((t) => t.textContent()))
+        expect(texts.some((t) => (t ?? '').length >= 4)).toBe(true)
+      }
+      expect(ticks.length).toBeGreaterThan(1)
+      for (const tick of ticks) {
+        const box = (await tick.boundingBox())!
+        const disjoint = label.x + label.width <= box.x || box.x + box.width <= label.x
+        expect(disjoint || label.y + label.height <= box.y || box.y + box.height <= label.y).toBe(true)
+      }
+    }
+  })
 })
