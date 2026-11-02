@@ -482,9 +482,37 @@ test.describe('AoE4 build order page', () => {
       const response = await runSimulation(page)
       const { markers } = (await response.json()) as SimulationResult
       expect(markers.length).toBeGreaterThan(1)
+      const ageUps = markers.filter((m) => m.kind === 'age-up')
+      expect(ageUps.length).toBeGreaterThan(0)
+      await expectChartsDrawn(page)
+      for (const chart of CHARTS) {
+        const root = page.getByTestId(chart)
+        await expect(root.getByTestId('chart-pinned-marker')).toHaveCount(0)
+        await expect(root.locator('[data-kind="pinned-age-up"]')).toHaveCount(0)
+      }
       await page.getByTestId('pin-run').click()
       await runSimulation(page)
       await expectChartsDrawn(page)
+      for (const chart of CHARTS) {
+        const root = page.getByTestId(chart)
+        const pinnedLines = root.locator('svg [data-testid="chart-pinned-marker"]')
+        await expect(pinnedLines).toHaveCount(ageUps.length)
+        for (const [i, marker] of ageUps.entries()) {
+          const line = pinnedLines.nth(i)
+          await expect(line).toHaveAttribute('data-label', marker.label)
+          await expect(line).toHaveAttribute('data-at', String(marker.at))
+          await expect(line).toHaveAttribute('stroke-dasharray', '6 4')
+          await expect(line).toHaveAttribute('stroke', MARKER_COLORS['age-up'])
+          const group = line.locator('xpath=..')
+          await expect(group.locator('text')).toHaveCount(0)
+          expect(await group.locator('title').textContent()).toBe(`${marker.label} (pinned) ${formatMinSec(marker.at)}`)
+        }
+        const items = root.getByTestId('chart-marker-legend').getByTestId('chart-marker-legend-item')
+        await expect(items.last()).toHaveAttribute('data-kind', 'pinned-age-up')
+        await expect(items.last()).toHaveText('Age-up (pinned)')
+        await root.locator('[data-testid="chart-series-legend-item"][data-series^="pinned:"]').first().click()
+        await expect(pinnedLines).toHaveCount(ageUps.length)
+      }
       for (const chart of CHARTS) {
         const root = page.getByTestId(chart)
         const lines = root.locator('svg [data-testid="chart-marker"]')

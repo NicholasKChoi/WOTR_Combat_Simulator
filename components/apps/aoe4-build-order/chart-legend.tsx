@@ -36,9 +36,9 @@ export function SeriesLegend({ series, pinned, hidden, onToggle }: SeriesLegendP
     )
 }
 
-export function MarkerLegend({ markers }: { markers: readonly ChartMarker[] }) {
+export function MarkerLegend({ markers, pinnedAgeUps = false }: { markers: readonly ChartMarker[]; pinnedAgeUps?: boolean }) {
     const kinds = CHART_MARKER_KINDS.filter((kind) => markers.some((m) => m.kind === kind))
-    if (kinds.length === 0) return null
+    if (kinds.length === 0 && !pinnedAgeUps) return null
     return (
         <div className="small mb-3 pt-2 border-top" data-testid="chart-marker-legend">
             <h4 className="h6 mb-1">Markers</h4>
@@ -52,6 +52,15 @@ export function MarkerLegend({ markers }: { markers: readonly ChartMarker[] }) {
                         {MARKER_KIND_LABELS[kind]}
                     </li>
                 ))}
+                {pinnedAgeUps && (
+                    <li className="list-inline-item" data-testid="chart-marker-legend-item" data-kind="pinned-age-up">
+                        <span
+                            className="d-inline-block me-1 align-middle"
+                            style={{ height: 14, borderLeft: `2px dashed ${MARKER_COLORS['age-up']}` }}
+                        />
+                        Age-up (pinned)
+                    </li>
+                )}
             </ul>
         </div>
     )
