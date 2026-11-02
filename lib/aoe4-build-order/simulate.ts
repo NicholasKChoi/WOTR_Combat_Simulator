@@ -80,6 +80,8 @@ export interface EngineState extends EffectState {
   readonly steps: StepTiming[];
   // Resources paid so far, summed over the four kinds.
   readonly spent: Record<SpendCategory, number>;
+  // Popcap of spawned, living villagers and units; paid units still in production are in population only.
+  spawnedPopulation: number;
   // Events run in (time, insertion) order.
   schedule(time: number, apply: (state: EngineState) => void): void;
 }
@@ -99,6 +101,8 @@ interface ScheduledEvent {
 }
 
 interface Engine extends EngineState {
+  // Instant spawnedPopulation first reached data.base.maxPopCap.
+  populationCapReachedAt: number | null;
   // Sorted by time; ties keep schedule order.
   readonly events: ScheduledEvent[];
   readonly spawns: Map<string, { entry: SnapshotEntry; times: number[] }>;
@@ -197,11 +201,19 @@ function completeIfUncarried(state: EngineState, step: number | null): void {
   markCompleted(state, step);
 }
 
+function noteCapReached(engine: Engine): void {
+  if (engine.populationCapReachedAt === null && engine.spawnedPopulation >= engine.data.base.maxPopCap.value) {
+    engine.populationCapReachedAt = engine.time;
+  }
+}
+
 function spawnUnit(state: EngineState, entry: SnapshotEntry, at: BuildingInstance): void {
   const { spawns } = state as Engine;
   const record = spawns.get(entry.id) ?? { entry, times: [] };
   spawns.set(entry.id, record);
   record.times.push(state.time);
+  state.spawnedPopulation += entry.costs.popcap;
+  noteCapReached(state as Engine);
   if (entry.baseId !== VILLAGER_ID) {
     return;
   }
@@ -555,6 +567,18 @@ function sampleTimes(durationSeconds: number): number[] {
   return times;
 }
 
+function startUnitPopulation(data: GameData, units: Readonly<Record<string, number>>): number {
+  let total = 0;
+  for (const [baseId, count] of Object.entries(units)) {
+    const entry = data.byBaseId.get(baseId)?.[0];
+    if (!entry) {
+      throw new Error(`startingState.units: "${baseId}" is not a unit baseId in the snapshot`);
+    }
+    total += count * entry.costs.popcap;
+  }
+  return total;
+}
+
 function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rules: CivRules): Engine {
   const civStart = data.civData.startingState;
   const start = rules.startingState?.(civStart, { data, inputs, time: 0 }) ?? civStart;
@@ -585,6 +609,8 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     supply: 0,
     steps: order.steps.map((_, step) => ({ step, status: 'not-reached', armedAt: null, startedAt: null, completedAt: null, waitSeconds: 0 })),
     spent: { villagers: 0, military: 0, buildings: 0, research: 0 },
+    spawnedPopulation: 0,
+    populationCapReachedAt: null,
     schedule(time, apply) {
       let i = engine.events.length;
       while (i > 0 && engine.events[i - 1].time > time) {
@@ -601,6 +627,8 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     ages: [{ age: start.age.value, reachedAt: 0 }],
   };
   engine.population = aliveVillagers(engine) + units;
+  engine.spawnedPopulation = aliveVillagers(engine) + startUnitPopulation(data, start.units.value);
+  noteCapReached(engine);
   start.buildings.value.forEach((baseId) => addBuildingInstance(engine, baseId));
   return engine;
 }
@@ -633,6 +661,8 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
   const times = sampleTimes(inputs.durationSeconds);
   const gatherRates = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
   const floating = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
+  const spent: Record<SpendCategory, number[]> = { villagers: [], military: [], buildings: [], research: [] };
+  const spawnedPopulation: number[] = [];
   let sample = 0;
   while (sample < times.length) {
     runInstant(engine);
@@ -645,6 +675,10 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
         gatherRates[kind].push(income[kind] * SECONDS_PER_MINUTE);
         floating[kind].push(engine.resources[kind]);
       }
+      for (const category of Object.keys(spent) as SpendCategory[]) {
+        spent[category].push(engine.spent[category]);
+      }
+      spawnedPopulation.push(engine.spawnedPopulation);
     }
     if (sample === times.length) {
       break;
@@ -666,6 +700,9 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     unitsProduced: unitSeries(engine, times),
     gatherRates,
     floating,
+    spent,
+    spawnedPopulation,
+    populationCapReachedAt: engine.populationCapReachedAt,
     steps: engine.steps,
     ages: engine.ages,
     notes: researchNotes(order, data),
