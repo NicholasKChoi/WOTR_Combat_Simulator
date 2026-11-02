@@ -354,7 +354,7 @@ The English farm bonus near a mill is four rows, one per age, with the wiki valu
 - unit veterancy upgrades, researched at their building from data, after which produced units are the
   upgraded tier and the units-produced graph shows tiers apart;
 - houses, starting state and the population cap;
-- resource depletion (Depletion), on by default: the six finite nodes start at the `rules/base.json`
+- depletion of finite nodes (Depletion), on by default: the six finite nodes start at the `rules/base.json`
   amounts, a `null` override keeps a node infinite, and `farm` and `wood` never run out.
 
 Later: Council Hall longbow production speed, Network of Castles, Abbey of Kings. Out: sacred sites,
@@ -485,7 +485,7 @@ form (`town-center#2`). A node ref is accepted in every node field of every step
 | `farm`, `wood` in a `depleted` trigger or as a `nodeAmounts` key | `invalid`: that node cannot run out |
 | a value that is not a string | `syntax` |
 
-The reason quotes the value. For a step field, `start` and the `depleted` trigger the message reads
+The reason quotes a string value; a value that is not a string gets the reason `node must be a string`. For a step field, `start` and the `depleted` trigger the message reads
 `<reason> in <path>`, as in `unknown node "iron" in start.rally`; for a `nodeAmounts` key it reads
 `inputs.nodeAmounts.<ref>: <reason>`, as in `inputs.nodeAmounts.iron: unknown node "iron"`. In paste, any token shaped `<id>` or `<id>#<chars>` in a node position reaches validation
 unchanged; the paste parser reports no node issue of its own.
