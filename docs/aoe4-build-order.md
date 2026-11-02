@@ -656,10 +656,13 @@ A 200 draws three line charts, each with a toggleable legend:
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 
 Each series' line carries its key as `data-series`. Clicking a legend item hides that series and clicking
-it again restores it. When `notes` is non-empty, a notes list shows each note's technology id and
-message; with no notes there is no list.
+it again restores it. Messages come from `warnings` and `notes`, `warnings` entries first.
+Those of severity `warning` appear in a warnings list. Those of severity `info` sit behind a toggle reading
+"Show N info messages" ("Show 1 info message" for one); clicking it lists them and the toggle reads
+"Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
+message shows its `message` text only. With no message of a severity there is no list for it.
 
-A 400 shows every returned issue's `message` (each names its line or step) and removes any earlier charts.
+A 400 shows every returned issue's `message` (each names its line or step) and removes any earlier charts and message lists, so only the error list shows.
 When the body has `omittedIssues`, the list ends with one more item, "N more issues not shown." Any
 other HTTP failure shows "The simulation could not be run (HTTP <status>)."; a request or response-body
 error shows "The simulation could not be run. Please try again."

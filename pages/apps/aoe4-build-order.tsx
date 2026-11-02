@@ -45,6 +45,7 @@ export default function AoE4BuildOrder({ builds }: PageProps) {
     const [result, setResult] = useState<SimulateResponse | null>(null)
     const [issues, setIssues] = useState<string[]>([])
     const [running, setRunning] = useState(false)
+    const [infoExpanded, setInfoExpanded] = useState(false)
 
     async function runSimulation() {
         setRunning(true)
@@ -96,7 +97,9 @@ export default function AoE4BuildOrder({ builds }: PageProps) {
                     </div>
                 ) : null}
                 <h2 className="border-bottom">Results</h2>
-                {result !== null ? <Results result={result} /> : null}
+                {result !== null ? (
+                    <Results result={result} infoExpanded={infoExpanded} onInfoToggle={() => setInfoExpanded((v) => !v)} />
+                ) : null}
             </section>
         </Layout>
     )
