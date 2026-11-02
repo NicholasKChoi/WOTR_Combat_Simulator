@@ -95,22 +95,22 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] A `completed` row with `waitBreakdown` `{ prerequisite: 4, resources: 2, villagers: 3 }` has `blockedBy` `resources 0:02, villagers 0:03, prerequisite 0:04`; with `{}` it is empty.
-- [ ] A `waiting` row has `blockedBy` ending `still waiting on <waitingOn>`, and equal to that phrase alone with an empty breakdown; a `not-reached` row has `not reached (trigger)` or `not reached (earlier-step)`.
-- [ ] A row with `waitSeconds` 60 has `longWait` true, `data-long-wait="true"` and class `table-warning`; one with 59.9 has `longWait` false and no `data-long-wait`.
-- [ ] An `in-progress` row's Finished cell reads `ongoing`; `waiting` and `not-reached` rows show an en dash.
-- [ ] The timeline header cells are exactly Step, Started, Finished, Waited, Blocked by, and `step-timeline-scroll` wraps the table. `git grep -n "Waited on\|Stuck on" -- components acceptance docs` finds nothing after the change (it finds two lines in `step-timeline.tsx` today).
-- [ ] `git grep -n "LONG_WAIT_SECONDS = 60" -- components` finds exactly one line.
-- [ ] `keyNumbers` on a 700 s run gives military 900 and 1200 as `{ value: null, reason: 'run-ended' }`, an age not reached as `{ value: null, reason: 'not-reached' }`, and `populationCapReachedAt` 0 as `{ value: 0 }`.
-- [ ] `compareRows` omits a row whose current and pinned are both null and keeps the key order of the rest; `delta` is `current - pinned` only when both have values.
-- [ ] `direction` is `better` for a higher military value and for an earlier age or `pop-cap`, `worse` for the reverse, `same` for a zero delta, and `null` when either value is missing.
-- [ ] In the browser, a pinned 1200 s run against a current 300 s run shows `run ends at 5:00` in the current cell of `military-900` and `military-1200`, `not reached` for an age missing on one side, and a dash delta for those rows.
-- [ ] Delta text reads `+120 resources` / `−120 resources` for military, `0:35 earlier` / `0:35 later` for times, `same` for zero; a `better` row has class `text-success` and a `worse` row `text-danger`.
-- [ ] Pinning the shown result gives `same` on every row with a value; when both runs are blank on all seven rows, `compare-empty` reads "Nothing to compare yet" and no `compare-row` renders.
-- [ ] `compare-scroll` wraps the compare table; `ComparePanel` accepts exactly the props `{ current, pinned, onPin, onUnpin }` (`git grep -n "pinnedName\|alreadyPinned" -- components pages` finds nothing) and the page compiles unchanged with `npx tsc --noEmit`.
+- [x] A `completed` row with `waitBreakdown` `{ prerequisite: 4, resources: 2, villagers: 3 }` has `blockedBy` `resources 0:02, villagers 0:03, prerequisite 0:04`; with `{}` it is empty.
+- [x] A `waiting` row has `blockedBy` ending `still waiting on <waitingOn>`, and equal to that phrase alone with an empty breakdown; a `not-reached` row has `not reached (trigger)` or `not reached (earlier-step)`.
+- [x] A row with `waitSeconds` 60 has `longWait` true, `data-long-wait="true"` and class `table-warning`; one with 59.9 has `longWait` false and no `data-long-wait`.
+- [x] An `in-progress` row's Finished cell reads `ongoing`; `waiting` and `not-reached` rows show an en dash.
+- [x] The timeline header cells are exactly Step, Started, Finished, Waited, Blocked by, and `step-timeline-scroll` wraps the table. `git grep -n "Waited on\|Stuck on" -- components acceptance docs` finds nothing after the change (it finds two lines in `step-timeline.tsx` today).
+- [x] `git grep -n "LONG_WAIT_SECONDS = 60" -- components` finds exactly one line.
+- [x] `keyNumbers` on a 700 s run gives military 900 and 1200 as `{ value: null, reason: 'run-ended' }`, an age not reached as `{ value: null, reason: 'not-reached' }`, and `populationCapReachedAt` 0 as `{ value: 0 }`.
+- [x] `compareRows` omits a row whose current and pinned are both null and keeps the key order of the rest; `delta` is `current - pinned` only when both have values.
+- [x] `direction` is `better` for a higher military value and for an earlier age or `pop-cap`, `worse` for the reverse, `same` for a zero delta, and `null` when either value is missing.
+- [x] In the browser, a pinned 1200 s run against a current 300 s run shows `run ends at 5:00` in the current cell of `military-900` and `military-1200`, `not reached` for an age missing on one side, and a dash delta for those rows.
+- [x] Delta text reads `+120 resources` / `−120 resources` for military, `0:35 earlier` / `0:35 later` for times, `same` for zero; a `better` row has class `text-success` and a `worse` row `text-danger`.
+- [x] Pinning the shown result gives `same` on every row with a value; when both runs are blank on all seven rows, `compare-empty` reads "Nothing to compare yet" and no `compare-row` renders.
+- [x] `compare-scroll` wraps the compare table; `ComparePanel` accepts exactly the props `{ current, pinned, onPin, onUnpin }` (`git grep -n "pinnedName\|alreadyPinned" -- components pages` finds nothing) and the page compiles unchanged with `npx tsc --noEmit`.
 - [ ] `npm test` and `npm run acceptance` pass; every edited existing test is listed in the PR description.
-- [ ] `docs/aoe4-build-order.md` describes the new timeline and compare behavior and no sentence still describes the removed columns or seven always-present rows.
-- [ ] No INVARIANTS.md regressions
+- [x] `docs/aoe4-build-order.md` describes the new timeline and compare behavior and no sentence still describes the removed columns or seven always-present rows.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -121,3 +121,16 @@ None.
 - Underspecified: `pinnedName` and `alreadyPinned` were declared unused here; designer pass 4 (C11) assigns them to M4.12.
 - Changed: props stay the four existing ones; page call edit, Scope lines, criterion and both Open questions removed.
 - Stands: all timeline, `compare.ts`, panel rendering and docs scope.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review (reports/SGS-069-review-1.md). Tip reviewed: 201238a47e9dea501853530c1d4a7b1434c08d38. No earlier gate had passed it.
+
+Findings:
+- `acceptance/aoe4-build-order-pin-compare.spec.ts:100-142`: the test named "omits rows blank on both sides" asserts only that there are at least 4 keys and that they are in `ROW_KEYS` order. Removing the omit `.filter` from `compareRows` leaves it green, so the name claims a check the assertions do not make. Omission is covered only by the other two compare tests.
+- `acceptance/aoe4-build-order-m3-flow.spec.ts`: the compare assertion was weakened to "an in-order subset" of the keys and cannot catch a wrongly omitted row.
+
+Required fixes:
+- [x] (rework 1) In the test at pin-compare spec lines ~100-142, build the expected key list from `pinnedRun` and `current` (rows with a number on at least one side) and assert it equals the rendered keys exactly. Mutation check: removing the omit filter must fail this test. Keep the test name only if it is now true.
+- [x] (rework 1) In the m3-flow spec, replace the "in-order subset" assertion with an exact expected key list derived the same way, so a wrongly omitted or wrongly kept row fails.
+- [x] Production code is unchanged; no other test changes.

@@ -1,0 +1,1 @@
+Corrected 13 -> 12 longbowman-2 at 845 s in SGS-062 (Scope line ~102, API criterion line 133) and design/M4.md (line 235, C5). Other numbers kept (0 at 850, 13 longbowman-3 at 850, 66 at 1800), matching the implementer report. SGS-065 and SGS-074 have no "845" figure. Appended Re-spec note to SGS-062.

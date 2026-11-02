@@ -1,0 +1,1 @@
+SGS-070 ticket-4: wording-only. Rework 1 item 3 now says data-label-rows is present and 0 on server render with markers (non-zero covered by acceptance). Scope Measurement now says the server places no labels; label.length*8 is the fallback after chartWidth is set and before first measure (verified in line-chart.tsx: placed = [] while chartWidth null). Nothing else changed.

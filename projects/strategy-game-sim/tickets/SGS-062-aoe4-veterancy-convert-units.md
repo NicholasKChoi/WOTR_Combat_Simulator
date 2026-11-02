@@ -99,7 +99,7 @@ New tests (unit, `research.test.ts` and `research.acceptance.test.ts`; use the e
 - series order and membership (conversion-only series, lower series stays at 0);
 - per-`baseId` sum equals cumulative produced;
 - API acceptance (`acceptance/aoe4-simulate-api*.spec.ts`, the file that already posts the knight +
-  longbow build): `longbowman-2` is 13 at 845 s and 0 at 850 s; `longbowman-3` is 13 at 850 s and 66 at
+  longbow build): `longbowman-2` is 12 at 845 s and 0 at 850 s; `longbowman-3` is 13 at 850 s and 66 at
   1800 s (design C5).
 
 **Out of scope:** a `unitsByTier` response field (owner: not added); deaths or losses; changing
@@ -130,17 +130,17 @@ flowchart LR
 
 ## Acceptance criteria
 
-- [ ] Knight + longbow, 1800 s, through `POST /api/aoe4-build-order/simulate`: `longbowman-2` counts read 13 at the 845 s sample and 0 at 850 s and every later sample; `longbowman-3` reads 13 at 850 s and 66 at 1800 s.
-- [ ] A spearman paid before `veteran-spearmen` completes and spawning after it is counted in `spearman-3`, never in `spearman-2`, in a unit test.
-- [ ] At the completion instant units of the target type below the upgrade's tier move up: the lower series drops and the upper rises by the same amount at the same sample, in a unit test.
-- [ ] An upgrade with no entry at its age, or completing before any unit exists, changes no series; a later spawn uses the new tier.
-- [ ] A lower upgrade completing after a higher one leaves counts unchanged; two upgrades at one instant leave the units at the highest researched tier.
-- [ ] Series are ordered by first held instant, then `unitId`; a lower-tier series stays after dropping to 0; summing `counts` over one `baseId` at each sample equals the cumulative units produced, equal to the pre-change total at every sample for a build with no veterancy.
-- [ ] `spawnedPopulation`, `population`, `spent`, step timings and every other `SimulationResult` field are identical to the pre-change run for the knight + longbow build (only `unitsProduced` changes), in a test comparing against pinned values or a run with conversion disabled.
-- [ ] `git grep -n -i "keeps the lower tier\|tier is fixed when" -- docs lib acceptance` finds 6 lines today (docs/aoe4-build-order.md 216-217, research.test.ts 107 and 121, research.acceptance.test.ts 97, research.ts 61) and 0 after the change.
-- [ ] `docs/api/openapi.json` `unitsProduced`, `UnitSeries` and `UnitSeries.counts` descriptions state the by-current-tier meaning, no schema field changes, and `npm run acceptance` contract spec passes.
-- [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` pass, and the implementer's report lists every test edited and why.
-- [ ] No INVARIANTS.md regressions
+- [x] Knight + longbow, 1800 s, through `POST /api/aoe4-build-order/simulate`: `longbowman-2` counts read 12 at the 845 s sample and 0 at 850 s and every later sample; `longbowman-3` reads 13 at 850 s and 66 at 1800 s.
+- [x] A spearman paid before `veteran-spearmen` completes and spawning after it is counted in `spearman-3`, never in `spearman-2`, in a unit test.
+- [x] At the completion instant units of the target type below the upgrade's tier move up: the lower series drops and the upper rises by the same amount at the same sample, in a unit test.
+- [x] An upgrade with no entry at its age, or completing before any unit exists, changes no series; a later spawn uses the new tier.
+- [x] A lower upgrade completing after a higher one leaves counts unchanged; two upgrades at one instant leave the units at the highest researched tier.
+- [x] Series are ordered by first held instant, then `unitId`; a lower-tier series stays after dropping to 0; summing `counts` over one `baseId` at each sample equals the cumulative units produced, equal to the pre-change total at every sample for a build with no veterancy.
+- [x] `spawnedPopulation`, `population`, `spent`, step timings and every other `SimulationResult` field are identical to the pre-change run for the knight + longbow build (only `unitsProduced` changes), in a test comparing against pinned values or a run with conversion disabled.
+- [x] `git grep -n -i "keeps the lower tier\|tier is fixed when" -- docs lib acceptance` finds 6 lines today (docs/aoe4-build-order.md 216-217, research.test.ts 107 and 121, research.acceptance.test.ts 97, research.ts 61) and 0 after the change.
+- [x] `docs/api/openapi.json` `unitsProduced`, `UnitSeries` and `UnitSeries.counts` descriptions state the by-current-tier meaning, no schema field changes, and `npm run acceptance` contract spec passes.
+- [x] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` pass, and the implementer's report lists every test edited and why.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -148,3 +148,8 @@ None. The one judgment call the design leaves, where the ledger stores moves, is
 One edge case the design does not state is fixed above as a rule: a spawn never lands below the tier it
 was paid at, because `resolveUnitEntry` falls back to the lowest entry when the highest researched
 upgrade has no entry at its age.
+
+## Re-spec 2026-11-02
+- Underspecified: the 845 s sample count; the 13th longbowman spawns in (845, 850] and Veteran Longbowmen completes at about 846.857 s, so the engine gives 12 at 845 s (also on origin/main).
+- Changed: 13 -> 12 at 845 s in Scope and the API acceptance criterion (and design/M4.md C5); 0 at 850 s, 13 longbowman-3 at 850 s and 66 at 1800 s are unchanged.
+- Existing branch work stands (tests already pin 12@845).

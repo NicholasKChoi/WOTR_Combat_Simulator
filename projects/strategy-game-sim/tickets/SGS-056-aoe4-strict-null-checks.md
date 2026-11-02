@@ -56,14 +56,14 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `tsconfig.json` contains `"strictNullChecks": true`, still contains `"strict": false`, and sets no other strict-family flag (`git diff origin/main -- tsconfig.json` shows exactly that one added line).
-- [ ] `npx tsc --noEmit` exits 0 with zero errors, and `npm run lint:dup` passes.
-- [ ] `npm test` passes with the same test count as on `origin/main`; no test is added, removed, skipped, or given a changed expected value.
-- [ ] `npm run acceptance` (Node 24) passes with the same test count as on `origin/main`.
-- [ ] `git diff origin/main -- lib pages components` (non-test files) adds no `??`, `||` default, or `?.` token and no `as any`, `@ts-ignore`, or `@ts-expect-error`. Every added expression is a `!`, a guard that throws, or a type annotation change. (`git diff origin/main -U0 -- ':!*.test.ts' ':!acceptance' | grep '^+' | grep -E '\?\?|\?\.|as any|@ts-'` prints nothing.) Today the pre-change search already finds none of the added tokens because the diff is empty; the check reads the diff, not the tree.
-- [ ] `lib/combat-simulator/simulate.ts` and `lib/aoe4-build-order/simulate.ts` changes are only the lines listed in Scope rule 4: `git diff --stat` for those two files touches no function outside the named seams.
-- [ ] For a sample of the same inputs (`npm test` covers them), `simulateBuildOrder` and `simulateBattles` return identical output as on `origin/main`; no snapshot or fixture file changes.
-- [ ] No INVARIANTS.md regressions
+- [x] `tsconfig.json` contains `"strictNullChecks": true`, still contains `"strict": false`, and sets no other strict-family flag (`git diff origin/main -- tsconfig.json` shows exactly that one added line).
+- [x] `npx tsc --noEmit` exits 0 with zero errors, and `npm run lint:dup` passes.
+- [x] `npm test` passes with the same test count as on `origin/main`; no test is added, removed, skipped, or given a changed expected value.
+- [x] `npm run acceptance` (Node 24) passes with the same test count as on `origin/main`.
+- [x] `git diff origin/main -- lib pages components` (non-test files) adds no `??`, `||` default, or `?.` token and no `as any`, `@ts-ignore`, or `@ts-expect-error`. Every added expression is a `!`, a guard that throws, or a type annotation change. (`git diff origin/main -U0 -- ':!*.test.ts' ':!acceptance' | grep '^+' | grep -E '\?\?|\?\.|as any|@ts-'` prints nothing.) Today the pre-change search already finds none of the added tokens because the diff is empty; the check reads the diff, not the tree.
+- [x] `lib/combat-simulator/simulate.ts` and `lib/aoe4-build-order/simulate.ts` changes are only the lines listed in Scope rule 4: `git diff --stat` for those two files touches no function outside the named seams.
+- [x] For a sample of the same inputs (`npm test` covers them), `simulateBuildOrder` and `simulateBattles` return identical output as on `origin/main`; no snapshot or fixture file changes.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

@@ -1,0 +1,2 @@
+# SGS-062 acceptance-test 1
+PASS. New spec acceptance/aoe4-simulate-api-veterancy-conversion.spec.ts (3 tests: longbowman-2 12 at 845s then 0 from 850s; longbowman-3 0/13/66; series set and per-baseId sums). Commit 18625e3. Mutations: convertUnits early return fails tests 1,2; removing the lower-series decrement fails 1,3; spawnUnit using the paid entry passes all (path unreachable in this build; covered by unit tests). tsc and lint:dup clean.
