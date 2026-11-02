@@ -18,6 +18,37 @@ export const GATHER_NODES: readonly GatherNodeId[] = Object.keys({
 } satisfies Record<GatherNodeId, 0>) as GatherNodeId[];
 export const RESOURCE_KINDS: readonly ResourceKind[] = ['food', 'wood', 'gold', 'stone'];
 
+// farm and wood never run out.
+export type FiniteGatherNodeId = Exclude<GatherNodeId, 'farm' | 'wood'>;
+export const FINITE_GATHER_NODES: readonly FiniteGatherNodeId[] = GATHER_NODES.filter(
+  (node): node is FiniteGatherNodeId => node !== 'farm' && node !== 'wood',
+);
+
+// Deposit 1 is written plain `gold`; deposits 2..MAX_DEPOSITS are `gold#k`.
+export const MAX_DEPOSITS = 8;
+export type DepositRef = `gold#${2 | 3 | 4 | 5 | 6 | 7 | 8}`;
+export type NodeRef = GatherNodeId | DepositRef;
+export type FiniteNodeRef = FiniteGatherNodeId | DepositRef;
+
+const DEPOSIT_REFS = Array.from({ length: MAX_DEPOSITS - 1 }, (_, i) => `gold#${i + 2}` as DepositRef);
+
+function withDeposits<T extends GatherNodeId>(nodes: readonly T[]): (T | DepositRef)[] {
+  return nodes.flatMap((node) => (node === 'gold' ? [node, ...DEPOSIT_REFS] : [node]));
+}
+
+export const NODE_REFS: readonly NodeRef[] = withDeposits(GATHER_NODES);
+export const FINITE_NODE_REFS: readonly FiniteNodeRef[] = withDeposits(FINITE_GATHER_NODES);
+
+export function nodeKindOf(ref: NodeRef): GatherNodeId {
+  return ref.split('#', 1)[0] as GatherNodeId;
+}
+
+export type Severity = 'error' | 'warning' | 'info';
+// Most severe first.
+export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
+
+export type StepWait = 'resources' | 'villagers' | 'population' | 'prerequisite' | 'trigger' | 'earlier-step';
+
 // An omitted trigger means the step has no condition.
 export type Trigger = { kind: 'time'; seconds: number } | { kind: 'villagers'; count: number };
 
@@ -102,7 +133,22 @@ export interface SimulationResult {
   steps: StepTiming[];
   ages: { age: number; reachedAt: number }[];
   notes: BuildOrderNote[];
+  // One per run ref, in FINITE_NODE_REFS order.
+  depletions: NodeDepletion[];
+  warnings: SimWarning[];
 }
+
+// amount is the starting stock, null when infinite; depletedAt is null while the ref is still stocked.
+export interface NodeDepletion {
+  node: FiniteNodeRef;
+  amount: number | null;
+  depletedAt: number | null;
+}
+
+export type SimWarning =
+  | { code: 'node-depleted'; severity: Severity; message: string; node: FiniteNodeRef; at: number; idleVillagers: number }
+  | { code: 'idle-arrival'; severity: Severity; message: string; node: FiniteNodeRef; at: number; idleVillagers: number }
+  | { code: 'step-stuck'; severity: Severity; message: string; step: number; waitingOn: StepWait; at: number };
 
 export interface BuildOrderIssue {
   code: 'syntax' | 'unknown-trigger-kind' | 'unknown-id' | 'unsupported-tech' | 'unknown-tech-effect' | 'out-of-range' | 'invalid';

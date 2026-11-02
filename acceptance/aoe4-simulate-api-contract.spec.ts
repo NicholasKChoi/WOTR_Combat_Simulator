@@ -4,14 +4,18 @@ import { test, expect, type APIRequestContext } from '@playwright/test'
 import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020'
 import { SIMULATE_PATH, postSimulate, postSimulateRaw } from './helpers'
 import { SIM_INPUT_BOUNDS } from '../lib/aoe4-build-order/validate'
+import { FINITE_GATHER_NODES, FINITE_NODE_REFS, NODE_REFS, SEVERITIES } from '../lib/aoe4-build-order/model'
 import type { SimInputOverrides, SimulateError, SimulateRequest, TripInputOverrides } from '../lib/aoe4-build-order/api'
 import type {
   BuildOrder,
   BuildOrderIssue,
   BuildOrderNote,
   BuildStart,
+  NodeDepletion,
+  SimWarning,
   SimulationResult,
   StepTiming,
+  StepWait,
   UnitSeries,
 } from '../lib/aoe4-build-order/model'
 
@@ -58,8 +62,8 @@ function objectVariants(schema: Schema): Schema[] {
 }
 
 const REQUEST_SCHEMAS = ['SimulateRequest', 'BuildOrder', 'BuildStart', 'BuildStep', 'Trigger', 'SimInputOverrides', 'TripInputOverrides']
-const RESPONSE_SCHEMAS = ['SimulateError', 'SimulationResult', 'UnitSeries', 'StepTiming', 'BuildOrderIssue', 'BuildOrderNote']
-const SHARED_SCHEMAS = ['GatherNodeId', 'ResourceKind', 'CivId']
+const RESPONSE_SCHEMAS = ['SimulateError', 'SimulationResult', 'UnitSeries', 'StepTiming', 'BuildOrderIssue', 'BuildOrderNote', 'NodeDepletion']
+const SHARED_SCHEMAS = ['GatherNodeId', 'ResourceKind', 'CivId', 'FiniteGatherNodeId', 'DepositRef', 'NodeRef', 'FiniteNodeRef', 'Severity', 'StepWait', 'SimWarning']
 
 const PRODUCE = { action: 'produce', producer: 'capital-town-center', unit: 'villager' }
 const START = { villagers: { sheep: 6 }, rally: 'sheep' }
@@ -122,8 +126,17 @@ test.describe('spec structure', () => {
     }
   })
 
+  test('every SimWarning variant is closed, requires every property and is tagged by a code const', () => {
+    const variants: Schema[] = schemas.SimWarning.oneOf
+    expect(variants.map((v) => (v.properties.code as { const?: string }).const)).toEqual(['node-depleted', 'idle-arrival', 'step-stuck'])
+    for (const variant of variants) {
+      expect(variant.additionalProperties).toBe(false)
+      expect([...variant.required].sort()).toEqual(keys(variant.properties))
+    }
+  })
+
   test('every AoE4 schema property and every oneOf variant has a description', () => {
-    for (const name of [...REQUEST_SCHEMAS, ...RESPONSE_SCHEMAS]) {
+    for (const name of [...REQUEST_SCHEMAS, ...RESPONSE_SCHEMAS, 'SimWarning']) {
       for (const variant of objectVariants(schemas[name])) {
         for (const [property, value] of Object.entries(variant.properties ?? {})) {
           expect(value.description, `${name}.${property}`).toBeTruthy()
@@ -144,6 +157,46 @@ test.describe('spec structure', () => {
     expect(prose).toMatch(/at any depth take their defaults/)
     expect(prose).toContain('Invalid JSON')
     expect(prose).toContain('413')
+  })
+})
+
+test.describe('enums and node-ref unions match the TypeScript constants', () => {
+  const stepWaits: Record<StepWait, true> = {
+    resources: true,
+    villagers: true,
+    population: true,
+    prerequisite: true,
+    trigger: true,
+    'earlier-step': true,
+  }
+
+  function acceptedValues(name: string): string[] {
+    const schema = schemas[name]
+    return schema.enum ?? schema.oneOf.flatMap((variant: { $ref: string }) => acceptedValues(variant.$ref.split('/').pop()))
+  }
+
+  test('FiniteGatherNodeId, DepositRef, Severity and StepWait enumerate the TypeScript values', () => {
+    expect(schemas.FiniteGatherNodeId.enum).toEqual(FINITE_GATHER_NODES)
+    expect(schemas.DepositRef.enum).toEqual(['gold#2', 'gold#3', 'gold#4', 'gold#5', 'gold#6', 'gold#7', 'gold#8'])
+    expect(schemas.Severity.enum).toEqual(SEVERITIES)
+    expect(schemas.StepWait.enum).toEqual(Object.keys(stepWaits))
+  })
+
+  test('NodeRef accepts exactly NODE_REFS and FiniteNodeRef exactly FINITE_NODE_REFS', () => {
+    expect([...acceptedValues('NodeRef')].sort()).toEqual([...NODE_REFS].sort())
+    expect([...acceptedValues('FiniteNodeRef')].sort()).toEqual([...FINITE_NODE_REFS].sort())
+    for (const ref of NODE_REFS) {
+      expectValid('NodeRef', ref)
+    }
+    for (const ref of FINITE_NODE_REFS) {
+      expectValid('FiniteNodeRef', ref)
+    }
+    for (const bad of ['gold#1', 'gold#9', 'wood#2']) {
+      expectInvalid('NodeRef', bad)
+    }
+    for (const infinite of ['farm', 'wood']) {
+      expectInvalid('FiniteNodeRef', infinite)
+    }
   })
 })
 
@@ -344,7 +397,17 @@ test.describe('exported types match the spec', () => {
     steps: true,
     ages: true,
     notes: true,
+    depletions: true,
+    warnings: true,
   }
+  const nodeDepletion: Record<keyof NodeDepletion, true> = { node: true, amount: true, depletedAt: true }
+  type WarningKeys<C extends SimWarning['code']> = Record<keyof Extract<SimWarning, { code: C }>, true>
+  const nodeWarning = { code: true, severity: true, message: true, node: true, at: true, idleVillagers: true } as const
+  const simWarningVariants: [WarningKeys<'node-depleted'>, WarningKeys<'idle-arrival'>, WarningKeys<'step-stuck'>] = [
+    nodeWarning,
+    nodeWarning,
+    { code: true, severity: true, message: true, step: true, waitingOn: true, at: true },
+  ]
   const unitSeries: Record<keyof UnitSeries, true> = { unitId: true, baseId: true, name: true, tier: true, counts: true }
   const stepTiming: Record<keyof StepTiming, true> = { step: true, status: true, armedAt: true, startedAt: true, completedAt: true, waitSeconds: true }
   const buildOrderIssue: Record<keyof BuildOrderIssue, true> = { code: true, message: true, step: true, line: true }
@@ -362,6 +425,7 @@ test.describe('exported types match the spec', () => {
     StepTiming: stepTiming,
     BuildOrderIssue: buildOrderIssue,
     BuildOrderNote: buildOrderNote,
+    NodeDepletion: nodeDepletion,
   }
 
   for (const [name, literal] of Object.entries(typeKeys)) {
@@ -369,4 +433,10 @@ test.describe('exported types match the spec', () => {
       expect(keys(literal)).toEqual(keys(schemas[name].properties))
     })
   }
+
+  test('SimWarning variant keys match the schema variants', () => {
+    simWarningVariants.forEach((literal, i) => {
+      expect(keys(literal)).toEqual(keys(schemas.SimWarning.oneOf[i].properties))
+    })
+  })
 })

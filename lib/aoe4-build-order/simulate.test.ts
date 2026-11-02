@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { listBuilds } from './builds'
 import { NO_CIV_RULES, civRules } from './civ-rules'
 import type { CivData, GameData } from './data'
 import { effectiveGatherRate } from './gather'
@@ -709,5 +710,16 @@ describe('source shape', () => {
             expect(literals.filter((n) => n === '5'), file).toHaveLength(file === 'simulate.ts' ? 1 : 0)
         }
         expect(literalsOf('engine-common.ts').filter((n) => n !== '0' && n !== '1')).toEqual(['1e-9'])
+    })
+})
+
+describe('depletions and warnings', () => {
+    it('are empty while every node is infinite', () => {
+        const prebuilt = simulateBuildOrder(listBuilds()[0], data, inputsFor(data, { durationSeconds: 3600 }))
+        const oneStep = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1 }])
+        for (const result of [prebuilt, oneStep]) {
+            expect(result.depletions).toEqual([])
+            expect(result.warnings).toEqual([])
+        }
     })
 })
