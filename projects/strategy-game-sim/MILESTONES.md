@@ -92,7 +92,7 @@ small code-cleanup backlog bullets stay in the backlog).
 
 | id | criterion | kind | covered by | status |
 |----|-----------|------|------------|--------|
-| M4.1 | One shared zod schema defines the build; the front end converts the pasted text into a schema-checked build before POSTing and the API validates requests with the same schema; the hand-rolled validator is removed and its tests shrink to the text-to-build conversion; the rules and aoe4world data files are checked by a schema instead of per-field assertions | code | SGS-056, 057, 058, 059, 060, 061 | |
+| M4.1 | One shared zod schema defines the build; the front end converts the pasted text into a schema-checked build before POSTing and the API validates requests with the same schema; the hand-rolled validator is removed and its tests shrink to the text-to-build conversion; the rules and aoe4world data files are checked by a schema instead of per-field assertions | code | SGS-056, 057, 075, 058, 059, 060, 061 | |
 | M4.2 | Completing a unit-tier upgrade (e.g. Veteran Longbowmen) converts the lower-tier units already on the field to the upper tier; the design states how `unitsProduced` and the Units chart show it; docs, OpenAPI, acceptance specs and the build READMEs match | code | SGS-062 | |
 | M4.3 | When the only reaction `build house` step can never fire (so auto-houses stay off), the simulate response carries a warning that no house will ever be built; the gate semantics stay | code | SGS-063 | |
 | M4.4 | Auto-house planning counts supply from a building under construction only if it finishes within the house lead time, so the knight + longbow build no longer sits at 40 population with the King's Palace under construction | code | SGS-064 | |

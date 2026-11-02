@@ -11,7 +11,7 @@
        itself is small (about 25 lines of business logic). -->
 - **Invariants**: S3 (every request stays bounded: a `text` body of any size is rejected before any parse or simulation, Next's 1 MB limit and the `steps` cap are unchanged, and the 20000-character cap still bounds the paste in `textToBuildOrder`), A3 (the same `buildOrder` and `inputs` still give the same response; only the rejection of `text` is new)
 - **LOC estimate**: about 25 business-logic lines (`pages/api/aoe4-build-order/simulate.ts` about 20 changed, `api.ts` 2). OpenAPI JSON, docs and spec edits excluded.
-- **Depends on**: SGS-059 (the page posts `buildOrder`, so nothing in the repo sends `text`), SGS-060 (the API specs send `buildOrder`, leaving only the 16 old-`text`-rule lines this ticket replaces); transitively SGS-057 (`checkBuildOrder`, `checkSimInputs`, the catalog, `textToBuildOrder`)
+- **Depends on**: SGS-059 (the page posts `buildOrder`, so nothing in the repo sends `text`), SGS-060 (the API specs send `buildOrder`, leaving only the 16 old-`text`-rule lines this ticket replaces), SGS-075 (swapped the route to `checkBuildOrder`/`checkSimInputs` and left a temporary `text` branch calling `textToBuildOrder`, which this ticket removes); transitively SGS-057
 - **On merge**: none
 - **Source**: M4 design C4 (the request-field table, `SimulateRequest`, OpenAPI `2.0.0` paragraph), Behavior rules "Validation (M4.1)" rows `route` (ordering, order part, the three `text` examples, `{}`), "API test rewrite" row `when` (ticket 5), "Docs and OpenAPI" row "M4.1 remove `text`" (`design/M4.md`); plan outline E2 as split by designer pass 3 (`reports/M4-designer-3.md`: "Outline changes" 1)
 
@@ -24,7 +24,7 @@ it (SGS-060).
 
 ## Scope
 
-All paths are relative to the repo root. Names are those of SGS-057 and `design/M4.md` C2 and C4: `checkBuildOrder`,
+All paths are relative to the repo root. Names are those of SGS-057, SGS-075 and `design/M4.md` C2 and C4: `checkBuildOrder`,
 `checkSimInputs`, `buildOrderCatalog`, `MAX_REPORTED_ISSUES`, `SimulateRequest`. Line numbers are from origin/main
 `d5c2549` and move with SGS-056 to SGS-060; find things by name or test title.
 
@@ -42,6 +42,7 @@ All paths are relative to the repo root. Names are those of SGS-057 and `design/
   inputs issues; cap `MAX_REPORTED_ISSUES`, `omittedIssues`, `error` = first message, 400 body shape: all
   unchanged. So `{ buildOrder: <valid>, text: 'x', inputs: { durationSeconds: 59 } }` gives
   `[removed-text, inputs.durationSeconds out-of-range]`.
+- SGS-075's temporary `text` branch (the call to `textToBuildOrder` that keeps the old specs passing) is removed here, replaced by the removed-`text` issue above.
 - The `text` branch, the `text: must be a string` issue, the `request: send exactly one of text and buildOrder`
   issue, and the imports that served them leave the route (`textToBuildOrder`, `SIM_INPUT_BOUNDS` if only the
   text cap used it). The route does not import `parse-text.ts` or `text-to-build.ts`.
@@ -163,7 +164,7 @@ flowchart LR
 - [ ] `{ buildOrder: <valid>, text: 'x' }` gives 400 with the same single issue (not 200, and not checked as `buildOrder`); `{ buildOrder: <valid>, text: 'x', inputs: { durationSeconds: 59 } }` gives exactly `[removed-text, inputs.durationSeconds out-of-range]` in that order.
 - [ ] `{}` and `{ inputs: {} }` give 400 with one `syntax` issue `request: missing buildOrder`; `{ buildOrder: null }` gives one `syntax` issue from the check (a non-object root), not `missing buildOrder`.
 - [ ] A valid `{ buildOrder, inputs }` request gives 200 with the same body as before this ticket (the existing 200 specs pass unchanged); no 400 issue the route produces carries `line` (after this ticket no `aoe4-simulate-api*.spec.ts` assertion expects a `line` value on a route issue; `toBeUndefined()` checks are allowed).
-- [ ] `pages/api/aoe4-build-order/simulate.ts` no longer reads `text`: `git grep -nE "parse-text|parseBuildOrderText|textToBuildOrder|textChars" -- pages/api/aoe4-build-order/simulate.ts` prints nothing after the change (3 hits on origin/main; the `textToBuildOrder` import and call after SGS-057); the only `text` literal left is the removed-`text` check and its message. `SimulateRequest` in `api.ts` has no `text` and a required `buildOrder` (`git grep -nE "\btext\b" -- lib/aoe4-build-order/api.ts` prints nothing; 1 hit today).
+- [ ] `pages/api/aoe4-build-order/simulate.ts` no longer reads `text`: `git grep -nE "parse-text|parseBuildOrderText|textToBuildOrder|textChars" -- pages/api/aoe4-build-order/simulate.ts` prints nothing after the change (on origin/main, before SGS-075, 3 hits; after SGS-075 the hits are the `textToBuildOrder` import and call of its temporary branch, which this ticket removes); the only `text` literal left is the removed-`text` check and its message. `SimulateRequest` in `api.ts` has no `text` and a required `buildOrder` (`git grep -nE "\btext\b" -- lib/aoe4-build-order/api.ts` prints nothing; 1 hit today).
 - [ ] `jq -r .info.version docs/api/openapi.json` prints `2.0.0` (`1.0.0` today); `jq -c '.components.schemas.SimulateRequest | [.required, .not, has("oneOf"), (.properties | keys)]'` prints `[["buildOrder"],{"required":["text"]},false,["buildOrder","inputs"]]` (today `[null,null,true,["buildOrder","inputs","text"]]`); the request examples have only `buildOrder`; the 400 examples are exactly `missingBuildOrder`, `notAnObject`, `removedText`, `stepAndInputs`; `jq '[.. | strings] | map(select(test("exactly one of text|pasted step|pasted text|line [0-9]")))' docs/api/openapi.json` prints `[]` (11 strings today).
 - [ ] `docs/aoe4-build-order.md` Route section no longer says "exactly one of `text`" or `text: null`, states the removed-`text` 400 and `request: missing buildOrder`, and points paste users to the page or `textToBuildOrder`: `git grep -nE "exactly one of|text: null|send exactly" -- docs README.md data/aoe4-build-order/README.md` prints nothing (6 hits on origin/main, in `docs/aoe4-build-order.md` and `docs/api/openapi.json`; the `docs` pathspec covers both).
 - [ ] `aoe4-simulate-api-contract.spec.ts` passes: request and 400 examples validate against their schemas, every 400 example equals the real response, `SimulateRequest` rejects a body with `text` (`not` required), `Record<keyof SimulateRequest, true>` is `{ buildOrder, inputs }`.
@@ -175,3 +176,9 @@ flowchart LR
 ## Open questions
 
 None. (Same-ticket choices, not owner questions: the removed-`text` check uses an own-key test so a `text: null` body is rejected, as the design requires. No `Deprecation` header is added; the design specifies none.)
+
+## Re-spec 2026-11-02
+
+- Underspecified: SGS-075 leaves a temporary `text` branch in the route calling `textToBuildOrder`, and this ticket must remove it.
+- Changed: Depends on SGS-075 added; Scope 1 and the grep criterion state the branch removal.
+- Stands: all other Scope and criteria.

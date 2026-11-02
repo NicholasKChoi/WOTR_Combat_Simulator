@@ -1,0 +1,1 @@
+SGS-074 re-spec 2026-11-02: dropped the 390 px test, its criterion, the min-width mutation and the open question; desktop flow, docs and OpenAPI audit kept. Tickets/SGS-074-aoe4-m4-docs-audit-playwright.md

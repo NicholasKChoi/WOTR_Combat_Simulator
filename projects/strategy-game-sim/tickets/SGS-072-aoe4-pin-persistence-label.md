@@ -9,10 +9,10 @@
        names (C13), and display. No route, schema or engine change. About 115 lines of business logic, under 250;
        it adds page state and a restore request on load, so not low. -->
 - **Invariants**: S1 (new code imports only from `lib/aoe4-build-order/` and `components/apps/aoe4-build-order/`); S3 (a restored pin goes through `textToBuildOrder`, which enforces the 20000-character cap, and the route, which enforces `SIM_INPUT_BOUNDS`, so a tampered storage value cannot reach the engine unbounded); A3 (a pin stores inputs, and the same inputs give the same result, so "already pinned" is decided on inputs)
-- **LOC estimate**: about 115 (`pages/apps/aoe4-build-order.tsx` about 55: pin state, run snapshot, restore effect, stale flag; new `pin-storage.ts` about 35; new `pin-name.ts` about 8; `compare-panel.tsx` about 10; `build-input.tsx` about -6 net; `results.tsx` about 5). Business logic only; specs, unit tests and docs excluded.
-- **Depends on**: SGS-067, SGS-069 (SGS-067 is last of the page chain SGS-059 -> SGS-066 -> SGS-067; SGS-069 declares the `ComparePanel` props `pinnedName` and `alreadyPinned` that this ticket uses). Also edits `results.tsx` after SGS-070 and SGS-071 (it is the last edit of that file in the milestone; SGS-071 depends on SGS-070 and the merge order on the page is enforced by SGS-067, so only a rebase is needed).
+- **LOC estimate**: about 115 (`pages/apps/aoe4-build-order.tsx` about 55: pin state, run snapshot, restore effect, stale flag; new `pin-storage.ts` about 35; new `pin-name.ts` about 8; `compare-panel.tsx` about 14; `build-input.tsx` about -6 net; `results.tsx` about 5). Business logic only; specs, unit tests and docs excluded.
+- **Depends on**: SGS-067, SGS-069 (SGS-067 is last of the page chain SGS-059 -> SGS-066 -> SGS-067; SGS-069 reworks `compare-panel.tsx` and no longer declares `pinnedName` or `alreadyPinned`; this ticket adds them). Also edits `results.tsx` after SGS-070 and SGS-071 (it is the last edit of that file in the milestone; SGS-071 depends on SGS-070 and the merge order on the page is enforced by SGS-067, so only a rebase is needed).
 - **On merge**: none
-- **Source**: M4 design C13, C8 (rows `results-stale`, `pinned-label`; `BuildInput` `selected`, `onSelectedChange`), C11 (`ComparePanel` props), Behavior rules "Compare and pin" rows pin name (source, label, restore), Pin (already pinned, repeat or replace), Unpin, stale, pin restore (on load, bad storage, race), pin cross-tab, and Run ordering step 5 (`design/M4.md`); plan outline P (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md`: DQ4 and "Outline changes" 5)
+- **Source**: M4 design C13, C8 (rows `results-stale`, `pinned-label`; `BuildInput` `selected`, `onSelectedChange`), C11 (`ComparePanel` props), C13 (pin storage), designer pass 4 (`reports/M4-designer-4.md` item 7), Behavior rules "Compare and pin" rows pin name (source, label, restore), Pin (already pinned, repeat or replace), Unpin, stale, pin restore (on load, bad storage, race), pin cross-tab, and Run ordering step 5 (`design/M4.md`); plan outline P (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md`: DQ4 and "Outline changes" 5)
 
 ## Context
 
@@ -61,8 +61,8 @@ lines today). No other change (SGS-066's run bar, view toggle and props stay).
   clears the shown result (client rejection, 400, network or HTTP failure) sets `run` to `null` too. `Results` keeps receiving the
   run's text for the step-timeline labels (`text={run.text}`).
 - Pin state: `pinned: SimulateResponse | null` becomes `pin: { result: SimulateResponse; name: string; text: string;
-  durationSeconds: number } | null`. `ComparePanel` gets `pinned={pin?.result ?? null}`, `pinnedName={pin?.name ?? null}` (replacing
-  SGS-069's `pinnedName={null}`), `alreadyPinned` (replacing `alreadyPinned={false}`), `onPin` and `onUnpin`. `Results` gets
+  durationSeconds: number } | null`. `ComparePanel` gets `pinned={pin?.result ?? null}`, `pinnedName={pin?.name ?? null}`, `alreadyPinned`, `onPin` and `onUnpin`
+  (the two new props are added by section 5; SGS-069's call has neither). `Results` gets
   `pinned={pin?.result ?? null}`. The Results tab rule (`resultsEnabled = result !== null || pin !== null`, SGS-066) is unchanged
   in effect.
 - `alreadyPinned = result !== null && run !== null && pin !== null && pin.text === run.text && pin.durationSeconds ===
@@ -85,12 +85,12 @@ lines today). No other change (SGS-066's run bar, view toggle and props stay).
      list.
   5. A user Run that finishes before the restore POST does not change the restore (restore touches only `pin`, never `result`,
      `run`, `issues`, `tab` or `simulation-error`). If the user pinned or unpinned before the restore lands, drop the restore
-     result and leave the stored value alone (a ref set by `onPin` and `onUnpin`); see Open questions.
+     result and leave the stored value alone (a ref set by `onPin` and `onUnpin`). Designer rule: the user's Pin or Unpin wins.
   The restore selects no tab: the page opens on Build with `tab-results` enabled once the pin is restored (SGS-066's derived
   rule). A restored pin with no shown result shows the compare panel's pin controls and label only; no charts.
 - Cross-tab: last write wins; no `storage` event listener.
 
-**5. `components/apps/aoe4-build-order/compare-panel.tsx`.** Use the props SGS-069 declared and left unused:
+**5. `components/apps/aoe4-build-order/compare-panel.tsx`.** Add two props to SGS-069's `{ current, pinned, onPin, onUnpin }` (C11): `pinnedName: string | null` and `alreadyPinned: boolean`, and use them:
 - When `pinned !== null` and `pinnedName !== null`, render `<span data-testid="pinned-label">` with the text `Pinned: <name>,
   <m:ss>` where `<m:ss>` is `formatMinSec(pinned.durationSeconds)` (the pinned result's own duration, equal to the stored
   `durationSeconds`), for example `Pinned: ENG 1TC, 20:00` and `Pinned: ENG 1TC (edited), 20:00`. It sits with the Pin and
@@ -145,8 +145,7 @@ build edits, and failed runs"). `docs/api/openapi.json` is not changed.
      the label, no error appears, and after a reload there is no pin.
   8. Race: delay the restore POST with `page.route` (for example 1.5 s), run the default build in the meantime: the Run's
      result is shown, and when the restore lands the pin appears and the shown result is unchanged. If the user pins a result
-     before the restore lands, the user's pin stays and the stored value is the user's (this one pins the Open question's
-     assumed rule).
+     before the restore lands, the user's pin stays and the stored value is the user's (the designer's rule: the user's action wins).
 - Rule for existing tests: a test of the changed behavior gets the new expected value; any other test keeps its expected value.
   Expected to change: any test that clicks `pin-run` while the shown run already equals the pin (it now finds the button
   disabled: grep `pin-run` in `acceptance/aoe4-build-order-pin-compare.spec.ts`, `aoe4-build-order-m3-flow.spec.ts` and
@@ -195,6 +194,7 @@ flowchart LR
 - [ ] `results-stale` shows with the text "These results are from an earlier build or duration. Run again to update." when the text or duration differs from the shown run's, the charts stay, reverting the edit hides it, a Run hides it, and it is absent after a Run with unchanged inputs (spec 4).
 - [ ] A stored value that is invalid JSON, has `version !== 1`, a wrong field type or a missing field, a text that does not convert, or whose restore POST returns 400, leaves no pin, `tab-results` disabled, no `simulation-error`, and the key removed; a mocked 500 or a failed request keeps the key and shows no pin and no error (spec 6 and unit rows).
 - [ ] With the `localStorage` getter throwing, Run and Pin still work and show the label, no error appears, and a reload has no pin (spec 7); `pin-storage` functions never throw on a throwing `Storage` (unit rows).
+- [ ] (respec 1) `ComparePanel` accepts exactly `{ current, pinned, pinnedName, alreadyPinned, onPin, onUnpin }`, with `pinnedName: string | null` and `alreadyPinned: boolean` added by this ticket; `npx tsc --noEmit` passes. If the user clicks Pin or Unpin before the delayed restore lands, the restore response is dropped and the stored value is the user's (spec 8).
 - [ ] A Run that finishes while the restore POST is delayed keeps its result; when the restore lands only the pin appears (spec 8).
 - [ ] No pin or storage code runs during the static render: `npx next build` succeeds and the page's first client render equals the server HTML (no hydration warning in the Playwright console during spec 1).
 - [ ] `results.tsx` keeps the `pinnedMarkers` prop lines of SGS-071 and the legend changes of SGS-070 (rebase check: `git grep -n "pinnedMarkers" -- components/apps/aoe4-build-order/results.tsx` still finds the three `SeriesChart` lines).
@@ -204,7 +204,10 @@ flowchart LR
 
 ## Open questions
 
-- `designer`: the design says a user Run that finishes before the restore POST "does not change the restore; both land independently", but does not say what happens when the user pins or unpins before the restore lands. This ticket assumes the user's action wins (the restore result is dropped and storage is left as the user wrote it), because applying the restore would overwrite the user's pin in state while storage holds the user's pin. Confirm or give the rule.
-- `designer`: the design says `StoredPin.name` is stored as is and shown as stored, with no length or content limit. This ticket renders it as React text (escaped) and applies no limit. Confirm that no cap on the name's length is wanted.
-- `designer`: the design's modules table puts `pin-storage.ts` under `components/apps/aoe4-build-order/`, while plan outline P and the C13 heading do not name a folder (outline said `lib/aoe4-build-order/`). This ticket follows the modules table. Confirm.
-- `designer`: the design does not say whether `readStoredPin` removes an invalid value itself or the page calls `clearStoredPin` after a `null`. This ticket has `readStoredPin` remove it (so a bad value never survives a load, whichever caller reads it). Confirm or move it to the page.
+None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: SGS-069 no longer declares `pinnedName` and `alreadyPinned`, so this ticket had to add them; four designer questions were open.
+- Changed: SGS-072 adds the two `ComparePanel` props (`string | null`, `boolean`) and uses them; the restore race (user Pin/Unpin wins), `readStoredPin` removing invalid values, no name cap and the `components/apps/aoe4-build-order/` location are now settled and the open questions removed.
+- Stands: all other scope, criteria and the diagram are unchanged; no branch work exists.

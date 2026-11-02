@@ -32,9 +32,11 @@ of `design/M4.md` and the seven tickets above; this ticket adds no test id, prop
   `results-stale` and `pinned-label` lines.
 - `results.module.css`: the timeline and compare scroll boxes (item 3), the chart legends (`chart-series-legend`,
   `chart-marker-legend`: items wrap to further lines), the chart wrapper (`min-width: 0`), the simulation message lists.
-- Move into these modules the width and layout rules that SGS-066, SGS-067, SGS-069, SGS-070, SGS-071 and SGS-072
-  put in Bootstrap layout classes or inline `style=` on these components, where the rule is part of the narrow
-  layout. Plain Bootstrap look-and-feel classes (`btn`, `alert`, `form-select`, `table`, `text-muted`) stay as they are.
+- (respec 1) Only the narrow-layout width and layout rules move into these modules, plus this ticket's own new rules:
+  of the rules SGS-066, SGS-067, SGS-069, SGS-070, SGS-071 and SGS-072 put in Bootstrap layout classes or inline
+  `style=`, move the ones the narrow layout needs. Plain Bootstrap look-and-feel classes (`btn`, `alert`,
+  `form-select`, `table`, `text-muted`) and layout classes that already work at 390 px stay where they are. The 768 px
+  card breakpoint (C9) stays. Do not move the rest of the workbench styling.
   Combine class names with `classnames` (`cn`), as the rest of the repo does.
 - Do not rename or remove any `data-testid`, `id`, `aria-*` or `data-*` attribute.
 
@@ -56,7 +58,7 @@ box per table.
 labelled fields and every control stays inside the page width. Fix any overflow that breaks the rule in item 2 in
 `step-table.module.css`.
 
-**5. Playwright check.** New `acceptance/aoe4-narrow-layout.spec.ts`, using `openPage`, `runSimulation` from
+**5. Playwright check (respec 1: this spec is the only whole-page 390 px `scrollWidth` test; SGS-074 does not repeat it).** New `acceptance/aoe4-narrow-layout.spec.ts`, using `openPage`, `runSimulation` from
 `acceptance/helpers.ts` and `test.use({ viewport: { width: 390, height: 844 } })`:
 - Build tab, text view (the default build): scrollWidth <= 390.
 - Choose the knight + longbow prebuilt (the longest text) by label with `build-order-select`, then Build tab, table
@@ -75,7 +77,7 @@ the page does not scroll sideways at 390 px). Grep `docs/` and both READMEs for 
 **Test rule:** this ticket changes only styling, so no existing test's expected value changes. If an existing
 Playwright spec depends on a Bootstrap class this ticket removes, the implementer repoints it to the test id and lists the edit.
 
-**Out of scope:** any change to a test id, prop, component API, simulation or text; the step table's card design
+**Out of scope:** a second whole-page 390 px test elsewhere (SGS-074 has none); any change to a test id, prop, component API, simulation or text; the step table's card design
 itself (SGS-068); the scroll wrappers' creation (SGS-069); other pages (`/`, combat simulator, StarCraft helper); a
 mobile navigation or tab redesign; widths other than 390 px and the 768 px breakpoint; the broader Playwright
 coverage audit (M4.14).
@@ -94,9 +96,16 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] No `data-testid`, `id`, `aria-*` or `data-*` attribute is added, removed or renamed (`git diff origin/main -- components pages | grep -E "^[-+].*(data-testid|data-[a-z-]+=|aria-[a-z]+=|id=)"` shows only lines that moved with their element).
 - [ ] The full existing acceptance and unit suites pass; every existing test edited is listed in the PR.
 - [ ] `docs/aoe4-build-order.md` describes the narrow layout.
+- [ ] (respec 1) Mutation, run in a throwaway worktree after the dependencies are merged (`git worktree add --detach "$FACTORY_DIR/worktrees/ticket-SGS-073"`): add `min-width: 600px` to a workbench box (the run bar or the step-card container) and the new spec's 390 px test fails; remove the worktree.
+- [ ] (respec 1) Only narrow-layout rules moved to the modules; the PR lists what moved and what stayed in Bootstrap classes.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
 
-- `designer`: the 30rem table `min-width` (item 3) and the 768 px breakpoint (from C9) are the ticket's choices; the design fixes only the 390 px rule. Confirm 30rem or give another value.
-- `designer`: SGS-066 and SGS-068 to SGS-072 left the styling mechanism to each ticket, so which rules sit in Bootstrap classes or inline styles when this ticket starts is not known from the specs. Item 1 says to move the narrow-layout ones; the implementer lists what moved. Say if the design wants all workbench classes moved.
+None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: how much CSS moves, the 30rem and 768 px values, and who owns 390 px tests (designer pass 4, Q8 and Q10).
+- Changed: 30rem and 768 px confirmed; only narrow-layout rules move to modules; this spec owns every whole-page 390 px test and the overflow mutation; both open questions removed.
+- Stands: all other scope, the module split and the spec content.

@@ -12,7 +12,7 @@
 - **LOC estimate**: about 190 (`pages/apps/aoe4-build-order.tsx` about 60 changed; new `workbench-tabs.tsx` about 40; new `build-text-editor.tsx` about 45; new `text-lines.ts` about 8; `build-input.tsx` about 35 changed; CSS module not counted). Spec rewrites, helpers, unit test and docs excluded.
 - **Depends on**: SGS-059
 - **On merge**: none
-- **Source**: M4 design contract C8 (test ids, `lineCount`, `BuildTextEditor`, `WorkbenchTab`, `BuildInput` props) and Behavior rules "Page run, editor and tabs" rows Run tabs, Run stays on screen, line numbers, auto-size, view toggle (both rows), tabs (both rows) (`design/M4.md`); plan outline J (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md`: the "Run tabs (from M4.7)" rule, the `text-lines.ts` and component paths under `components/apps/aoe4-build-order/`)
+- **Source**: M4 design contract C8 (test ids, `lineCount`, `BuildTextEditor`, `WorkbenchTab`, `BuildInput` props) and Behavior rules "Page run, editor and tabs" rows Run tabs, Run stays on screen, line numbers, auto-size, view toggle (both rows), tabs (both rows) (`design/M4.md`); plan outline J (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md` and `reports/M4-designer-4.md`: the "Run tabs (from M4.7)" rule, the `text-lines.ts` and component paths under `components/apps/aoe4-build-order/`)
 
 ## Context
 
@@ -34,19 +34,17 @@ added here (the inline issues ticket defines it). New `text-lines.test.ts` besid
 rows and a text with a blank line in the middle (`'a\n\nb'` gives 3).
 
 **2. `components/apps/aoe4-build-order/build-text-editor.tsx` (new).** `export function BuildTextEditor(props:
-{ text: string; onChange(text: string): void; errorLines: readonly number[] }): JSX.Element`.
+{ text: string; onChange(text: string): void }): JSX.Element` (exactly these two props in M4.7; SGS-067 adds `errorLines`).
 - A `<textarea>` with `data-testid="build-order-text"` and `id="build-order-text"` (the label `Build order`
   keeps `htmlFor`), the classes and `spellCheck={false}` it has today, `value={text}`, `onChange` calls
   `props.onChange`, and `rows={Math.max(8, lineCount(text))}` replacing today's `rows={16}`. The textarea never
   shows a vertical scrollbar (`overflow-y: hidden`, no manual resize): the page scrolls instead.
 - A gutter beside it, `data-testid="build-order-gutter"`, `aria-hidden="true"`, with one
   `data-testid="build-order-line-number"` item for each of 1 to `lineCount(text)`, text the number,
-  `data-line` the number, and `data-error="true"` on an item whose number is in `errorLines` (attribute absent
-  otherwise). Gutter and textarea use the same font, font size and line height and the same top padding, so
+  and `data-line` the number. No `data-error` attribute and no `errorLines` prop here (SGS-067 adds both). Gutter and textarea use the same font, font size and line height and the same top padding, so
   line N's number sits level with line N's text. Lines do not wrap (`wrap="off"`): alignment needs one visual
   row per line, and a line longer than the box scrolls sideways inside the textarea only.
-- This ticket's page passes `errorLines={[]}` (SGS-059's issues are not live and carry no highlight; the
-  inline issues ticket passes the real lines). No `issueLines` here.
+- No `issueLines` and no error highlight here (the inline issues ticket, SGS-067).
 - Styling: a CSS module next to the components (for example `workbench.module.css`) or Bootstrap classes;
   the design leaves this to the ticket.
 
@@ -75,16 +73,18 @@ two buttons `editor-view-text` and `editor-view-table` with `aria-pressed` (true
 - New state: `tab: WorkbenchTab` (initial `'build'`) and `view: EditorView` (initial `'text'`). Both live in
   the page, so the view and the tab survive runs and tab switches and reset on reload (no storage).
 - Layout: the `h1`, then `BuildInput` (the run bar), then `WorkbenchTabs`.
-  - `build` panel: when `view === 'text'`, `BuildTextEditor` (with `errorLines={[]}`); when `view === 'table'`,
+  - `build` panel: when `view === 'text'`, `BuildTextEditor` (props `text`, `onChange`); when `view === 'table'`,
     `StepTable`, or the `step-table-unavailable` notice with the first parse issue while the text does not parse
     (the toggle stays usable). The two views are never mounted together. Switching view never rewrites the text.
-    Directly under that view, in both views, `IssueList` with the client issues from SGS-059 (a client
-    rejection must be visible whichever view is open), then the `simulation-error` list (it moves here from
+    Directly under that view, in both views, `IssueList` with the client issues from SGS-059 (`build-order-issues`
+    shows under whichever view is open, so a client rejection is visible in text and in table view; the view is
+    never switched), then the `simulation-error` list (it moves here from
     its place under the table; same markup and test id).
   - `results` panel: today's `ComparePanel`, `Results` and the "Results" heading, unchanged inside.
 - Tab rules (design Run tabs and tabs rows):
-  - On load: Build. `resultsEnabled = result !== null || pinned !== null`. The tab shown is Build whenever
-    Results is disabled (derive it from `tab` and `resultsEnabled`; do not leave a selected-but-disabled tab).
+  - On load: Build. `resultsEnabled = result !== null || pinned !== null`. The shown tab is derived, not
+    stored alone: `shown = resultsEnabled ? tab : 'build'`, passed to `WorkbenchTabs` as `active`. So unpinning
+    while on Results with no current result shows Build with `tab-results` disabled, with no extra handler.
   - Run, after SGS-059's step 3 (a client rejection), step 6 (400) and step 7 (network or HTTP failure): set
     `tab` to `'build'`. After step 5 (200): set `tab` to `'results'` and scroll the top of `panel-results`
     into view (`scrollIntoView` on a ref, run after the panel is shown; the sticky bar must not cover it, so
@@ -160,8 +160,8 @@ line 814 ("Under the "Results" heading...") are about the Results tab and stay t
 SGS-059 text for any statement that the textarea and table are on the page at once, and fix each hit. Grep
 the two READMEs and `docs/` for "textarea" and "step table" and fix any that say the table always shows.
 
-**Out of scope:** `issueLines`, live issues, suggestions, gutter highlight and scroll-to-issue (the inline
-issues ticket); lifting `selected` out of `BuildInput`, pin naming, pin storage, `results-stale`, `pinned-label`
+**Out of scope:** `issueLines`, the `errorLines` prop, gutter `data-error`, live issues, suggestions, gutter
+highlight and scroll-to-issue (the inline issues ticket, SGS-067); lifting `selected` out of `BuildInput`, pin naming, pin storage, `results-stale`, `pinned-label`
 and restoring a pin (the pin ticket; `resultsEnabled` already reads `pinned`, so a restored pin needs no change
 here); the step table internals, labels and cards (`step-table.tsx`, `step-table-model.ts`); 390 px checks
 beyond what the sticky bar and the editor need; `lib/`, the route, `api.ts`, OpenAPI; the Results panel contents
@@ -208,7 +208,7 @@ flowchart LR
 - [ ] A client rejection, a mocked 400 and a mocked 500 each select Build; the client rejection shows `build-order-issues` (visible) with `simulation-error` count 0, the other two show `simulation-error`; each clears the shown result and keeps the pin; `tab-results` stays enabled with a pin and is disabled without one (new spec 3).
 - [ ] Unpinning while on Results with no current result selects Build and disables `tab-results` (new spec 4).
 - [ ] `run-bar` stays at the viewport top (`top` 0 within 1 px) after scrolling the page to the bottom, in both tabs, and holds `build-order-select`, `duration-seconds`, `run-simulation`, `editor-view-text` and `editor-view-table` (new spec 5).
-- [ ] The gutter has one `build-order-line-number` per line: first `data-line="1"`, last `lineCount(text)`; `''` shows 1; `a\nb\n` shows 3; line numbers sit level with their lines (new spec 6 and 7). `rows` is `max(8, lineCount)` and the textarea has no inner vertical scroll at 30 lines (new spec 7).
+- [ ] The gutter has one `build-order-line-number` per line: first `data-line="1"`, last `lineCount(text)`; `''` shows 1; `a\nb\n` shows 3; line numbers sit level with their lines; the gutter items carry no `data-error` attribute and `BuildTextEditor` takes only `text` and `onChange` (new spec 6 and 7). `rows` is `max(8, lineCount)` and the textarea has no inner vertical scroll at 30 lines (new spec 7).
 - [ ] The toggle shows exactly one of `build-order-text` and `step-table`; `step-table-unavailable` with the first parse issue shows in table view for unparseable text and the toggle still works; switching views leaves the text unchanged; the view survives a run and a tab switch (new spec 8).
 - [ ] `lineCount('')` is 1, `lineCount('a\nb')` 2, `lineCount('a\n')` 2, `lineCount('a\n\nb')` 3 (`text-lines.test.ts`).
 - [ ] Mutation: change `lineCount` to ignore the final empty line (`'a\n'` gives 1); `text-lines.test.ts` fails and the line-number spec fails. Confirm by applying it before handing over (the files are new, so this check runs after they exist).
@@ -221,6 +221,10 @@ flowchart LR
 
 ## Open questions
 
-- `designer`: when the table view is open, where does `build-order-issues` show? The design says "directly under the editor in `panel-build`" and shows a client rejection in the Build tab, but it does not say what a rejection shows in table view. This ticket renders `IssueList` under whichever view is open so the issue is always visible and `runRejected` works in both views. Confirm, or specify a switch to text view on rejection.
-- `designer`: if the user unpins from the Results tab while no current result exists, the design's "no target" rule implies Results must disable; this ticket falls back to Build in that case. Confirm.
-- `designer`: this ticket ships the `errorLines` prop and the gutter's `data-error` attribute with the page passing `[]` until the inline issues ticket, so J is not exercised by a test for `data-error`. Confirm that the prop belongs here, or move it to the inline issues ticket.
+None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: whether `errorLines` and gutter `data-error` belong here, where issues show per view, and how the tab behaves on unpin with no result (designer pass 4, `reports/M4-designer-4.md`).
+- Changed: `BuildTextEditor` is `{text, onChange}` only, `errorLines` and `data-error` moved to SGS-067; shown tab is derived (`resultsEnabled ? tab : 'build'`); `build-order-issues` shows under whichever view is open; all three open questions answered and removed. Depends on stays SGS-059 (which now depends on SGS-075).
+- Branch work still stands: tabs, run bar, `lineCount`, auto-size, toggle and spec rules are unchanged.

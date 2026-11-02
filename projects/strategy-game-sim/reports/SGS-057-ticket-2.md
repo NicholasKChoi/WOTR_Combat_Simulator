@@ -1,0 +1,3 @@
+# SGS-057 re-spec (ticket author, run 2)
+Narrowed to design row 2a: zod dep, schema.ts, text-to-build.ts, fresh tests, StepOptions.names, BuildOrderIssue.suggestion + OpenAPI + contract-spec rows; validate.ts kept and re-exports moved names; route and docs unchanged. Size ~500 added / ~150 deleted. Open question 1 (size) removed. Criteria that named a command were checked against origin/main d5c2549 (grep counts: 5 lines in validate.ts today). Mutation criterion not run (schema.ts does not exist yet).
+Moved to SGS-075: importer re-pointing, validate deletion, route swap, model.ts re-exports, buildOrderFrom + spec, docs text, issue-order test rule.

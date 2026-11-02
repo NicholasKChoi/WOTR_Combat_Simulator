@@ -1,0 +1,1 @@
+SGS-073 re-spec 2026-11-02: only narrow-layout rules move to CSS modules; 30rem and 768 px confirmed; spec owns every 390 px whole-page test; added mutation and moved-rules criteria; open questions removed. Tickets/SGS-073-aoe4-mobile-390.md

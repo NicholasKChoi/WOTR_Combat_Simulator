@@ -9,9 +9,9 @@
        adjacent invariant; about 90 lines of business logic. -->
 - **Invariants**: none (A1 is adjacent only in that the data files stay the single source of game numbers; the schemas check shape, hold no game value, and run in tests only)
 - **LOC estimate**: about 90 (business logic only: `data-schema.ts` three schemas plus the shared `HandValue` and source shapes). Tests excluded.
-- **Depends on**: SGS-057 (the zod dependency, `strictNullChecks` through SGS-056, and the `z.ZodType<T>` annotation convention used by `schema.ts`)
+- **Depends on**: SGS-057 only, not SGS-075 (the zod dependency, `strictNullChecks` through SGS-056, and the `z.ZodType<T>` annotation convention used by `schema.ts`)
 - **On merge**: none
-- **Source**: M4 design contract C2 "Data files" and module table row `data-schema.ts`, "M4.1 ticket order" row 2b (`design/M4.md`); plan outline C (`plans/M4-20261102.md`) and its question 7, accepted by designer pass 3 (`reports/M4-designer-3.md`) as its own ticket after the schema ticket
+- **Source**: M4 design contract C2 "Data files" and module table row `data-schema.ts`, "M4.1 ticket order" row 2c (`design/M4.md`); plan outline C (`plans/M4-20261102.md`) and its question 7, accepted by designer pass 3 (`reports/M4-designer-3.md`) as its own ticket after the schema ticket
 
 ## Context
 
@@ -99,3 +99,9 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: the ticket split of SGS-057 (designer pass 4); this ticket is row 2c of the M4.1 order.
+- Changed: Source row 2b to 2c; Depends on stays SGS-057 only (independent of SGS-075).
+- Stands: all Scope and criteria.

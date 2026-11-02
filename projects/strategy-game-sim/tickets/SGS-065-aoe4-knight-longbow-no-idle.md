@@ -37,14 +37,14 @@ All paths are in the repo; the design leaves two choices to this ticket and they
 
 - The per-build bar tests (1200 s and 3600 s) stay and must pass with the new step. Add, for the knight + longbow build only (`it.runIf(build.name.includes('King'))`, like the blacksmith test), the same 1800 s check as above through `simulateBuildOrder`, and one that the paste round trip keeps the sheep reaction (the existing paste round-trip test covers it if it iterates every build; check, do not duplicate).
 
-**README (`data/aoe4-build-order/README.md`, the `english-knight-longbow` entry, lines 75-96 on origin/main)**
+**README (`data/aoe4-build-order/README.md`, the `english-knight-longbow` entry, lines 75-92 on origin/main)**
 
-- Rewrite the sentence at lines 81-83 ("Three houses are built before the King's Palace: auto-houses count the palace's supply as soon as it is under construction, so without them population stalls at the cap until the palace completes."). After SGS-064 that reason is false. State only what is true: three explicit houses are built before the King's Palace, and the build keeps them. Do not claim they prevent a stall.
+- Rewrite the sentence at lines 81-83 ("Three houses are built before the King's Palace: auto-houses count the palace's supply as soon as it is under construction, so without them population stalls at the cap until the palace completes."). After SGS-064 (no new wake; houses planned only from supply landing within the lead) that reason is false. State only what is true: three explicit houses are built before the King's Palace, and the build keeps them. Do not claim they prevent a stall.
 - Add the sheep reaction: the sheep run out at the time measured on the final code, a reaction at the end of the list moves all sheep gatherers to farms, and no villager is idle through 1800 s. Fix "each has a `whenever <ref> runs out ...` reaction at the end of the list" to say the gold reactions are followed by the sheep one.
 - Restate every number in the entry against the final code at default inputs: gold run-out times at 3600 s (15:32, 24:37, 33:43, 42:48, 51:54 on origin/main; SGS-064 may move them), the 10:02 farm-block start, and any other timing. Add the 1800 s tier counts from the final code (the design expects `longbowman-3` 66 at 1800 s after SGS-062) only if the entry quotes counts after this edit; do not invent a count it did not have. The implementer lists every number changed and the measurement run.
 - `docs/aoe4-build-order.md` line 843 names builds only; no edit expected. Grep `docs/`, `README.md` and `data/aoe4-build-order/README.md` for "knight", "sheep" and "pre-palace" and fix any sentence the change contradicts.
 
-**Out of scope:** dropping the three pre-palace houses; any engine, schema, OpenAPI or UI change; adding or changing reactions for other builds; the SGS-062 and SGS-064 work itself.
+**Out of scope:** dropping the three pre-palace houses (kept); any engine, schema, OpenAPI or UI change; adding or changing reactions for other builds; the SGS-062 and SGS-064 work itself.
 
 ## Diagrams
 
@@ -65,4 +65,10 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-None. The design's two choices are fixed above: sheep target `farm`, pre-palace houses kept (README reason reworded). Both are build-data judgments the design assigned to this ticket; flag to the owner only if they prefer `wood` or dropping the houses.
+None. Designer pass 4 fixed both choices: sheep target `farm`, pre-palace houses kept (README reason reworded). SGS-064 adds no wake candidate and keeps the houses, so this ticket's build data and 1800 s checks do not depend on any other change to house timing.
+
+## Re-spec 2026-11-02
+
+- Underspecified: the two build-data choices were left as ticket choices and consistency with SGS-064 (no new wake, houses kept) was not stated.
+- Changed: both choices recorded as design-fixed; SGS-064 consistency stated. Counts re-run on origin/main d5c2549 (`"reaction"` 5, `REACTION_COUNT` 2, `stalls at the cap` 1 at README 83, README entry lines 75-92) and unchanged.
+- Stands: all Scope and acceptance criteria.

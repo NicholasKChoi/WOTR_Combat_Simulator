@@ -1,0 +1,2 @@
+# SGS-075 (ticket author, run 1)
+New ticket for design row 2b, risk high, depends on SGS-057, base main. All route, importer, deletion, model.ts, buildOrderFrom and docs Scope/criteria/test rules moved from old SGS-057. Mermaid flowchart included (crosses route and lib). Grep criteria verified on origin/main d5c2549: 13 validate import lines in 12 files; 37 validateBuildOrder lines in 10 files; 4 lines in the route; 4 model.ts type declarations.

@@ -40,13 +40,13 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-050 | Add the spear + longbow into men-at-arms + crossbow prebuilt build | M3 | M3.7,M3.11 | | standard | SGS-035,SGS-039,SGS-040 | | sgs-050-aoe4-build-spear-longbow-maa-crossbow | 26e02d44a9ad010dd9f27e15c3f64d133d4fd20e | integrated | 1 | 58 | tickets/SGS-050-aoe4-build-spear-longbow-maa-crossbow.md |
 | SGS-054 | Audit M3 docs and OpenAPI and pin the schema names | M3 | M3.9 | | standard | SGS-036,SGS-038,SGS-039,SGS-040,SGS-041,SGS-042,SGS-043,SGS-044,SGS-045,SGS-046,SGS-047,SGS-048,SGS-049,SGS-050,SGS-051,SGS-053 | | sgs-054-aoe4-m3-docs-openapi-audit | 5198cb785b513fa19afaea99f562914d7695342f | integrated | 2 | 62 | tickets/SGS-054-aoe4-m3-docs-openapi-audit.md |
 | SGS-056 | Turn on strictNullChecks and fix the 177 type errors | M4 | M4.1 | | high | | | | | draft | | | tickets/SGS-056-aoe4-strict-null-checks.md |
-| SGS-057 | Replace the hand-rolled build validator with a shared zod schema and text-to-build conversion | M4 | M4.1 | | high | SGS-056 | | | | draft | | | tickets/SGS-057-aoe4-zod-schema-text-to-build.md |
+| SGS-057 | Add the shared zod build schema and text-to-build conversion | M4 | M4.1 | | high | SGS-056 | | | | draft | | | tickets/SGS-057-aoe4-zod-schema-text-to-build.md |
 | SGS-062 | Veterancy converts units already on the field | M4 | M4.2 | | high | SGS-056 | | | | draft | | | tickets/SGS-062-aoe4-veterancy-convert-units.md |
 | SGS-069 | Timeline blocked-by column, ongoing steps and compare deltas | M4 | M4.10,M4.12 | | standard | SGS-056 | | | | draft | | | tickets/SGS-069-aoe4-timeline-blocked-by-compare.md |
 | SGS-070 | Separate and label the chart legends and stop marker labels overlapping | M4 | M4.11 | | standard | SGS-056 | | | | draft | | | tickets/SGS-070-aoe4-chart-legends-markers.md |
 | SGS-058 | Check the shipped rules and snapshot data files with zod schemas | M4 | M4.1 | | low | SGS-057 | | | | draft | | | tickets/SGS-058-aoe4-data-schema.md |
-| SGS-059 | Page converts the paste and posts buildOrder | M4 | M4.1 | | standard | SGS-057 | | | | draft | | | tickets/SGS-059-aoe4-page-posts-build-order.md |
-| SGS-060 | Acceptance specs send buildOrder instead of text | M4 | M4.1 | | standard | SGS-057 | | | | draft | | | tickets/SGS-060-aoe4-api-specs-send-build-order.md |
+| SGS-059 | Page converts the paste and posts buildOrder | M4 | M4.1 | | standard | SGS-075 | | | | draft | | | tickets/SGS-059-aoe4-page-posts-build-order.md |
+| SGS-060 | Acceptance specs send buildOrder instead of text | M4 | M4.1 | | standard | SGS-075 | | | | draft | | | tickets/SGS-060-aoe4-api-specs-send-build-order.md |
 | SGS-063 | Warn when auto-houses never start or are held | M4 | M4.3,M4.5 | | high | SGS-062 | | | | draft | | | tickets/SGS-063-aoe4-auto-house-warnings.md |
 | SGS-071 | Draw the pinned run's age-up markers dashed with a legend item | M4 | M4.12 | | low | SGS-070 | | | | draft | | | tickets/SGS-071-aoe4-pinned-age-up-markers.md |
 | SGS-061 | The simulate API rejects text and bumps OpenAPI to 2.0.0 | M4 | M4.1 | | high | SGS-059,SGS-060 | | | | draft | | | tickets/SGS-061-aoe4-api-rejects-text.md |
@@ -58,3 +58,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-072 | Keep the pin across reloads, name it, mark stale results and disable Pin when already pinned | M4 | M4.12 | | standard | SGS-067,SGS-069 | | | | draft | | | tickets/SGS-072-aoe4-pin-persistence-label.md |
 | SGS-073 | Make the AoE4 page fit a 390 px screen | M4 | M4.13 | | low | SGS-066,SGS-067,SGS-068,SGS-069,SGS-070,SGS-071,SGS-072 | | | | draft | | | tickets/SGS-073-aoe4-mobile-390.md |
 | SGS-074 | Audit the M4 docs and OpenAPI and add the M4 Playwright flow | M4 | M4.14 | | standard | SGS-056,SGS-057,SGS-058,SGS-059,SGS-060,SGS-061,SGS-062,SGS-063,SGS-064,SGS-065,SGS-066,SGS-067,SGS-068,SGS-069,SGS-070,SGS-071,SGS-072,SGS-073 | | | | draft | | | tickets/SGS-074-aoe4-m4-docs-audit-playwright.md |
+| SGS-075 | Re-point importers, delete the hand-rolled validator and swap the route to the zod checks | M4 | M4.1 | | high | SGS-057 | | | | draft | | | tickets/SGS-075-aoe4-delete-validate-route-check.md |

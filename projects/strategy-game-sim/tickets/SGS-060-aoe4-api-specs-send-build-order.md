@@ -10,13 +10,13 @@
        size specs). -->
 - **Invariants**: S3 (the issue-cap, 20000-character and 1 MB specs keep proving every request is bounded; the ones that depend on the `text` rule are left for the remove-`text` ticket, so no bound loses its test here), A3 (the paste-versus-JSON equality specs keep proving the same order gives the same result)
 - **LOC estimate**: about 150 changed lines of test code across 11 spec files (no business logic)
-- **Depends on**: SGS-057 (adds `buildOrderFrom` to `acceptance/helpers.ts` and the check that gives a bad JSON step one issue)
+- **Depends on**: SGS-075 (adds `buildOrderFrom` to `acceptance/helpers.ts` and swaps the route to `checkBuildOrder`, which gives a bad JSON step one issue); transitively SGS-057
 - **On merge**: none
 - **Source**: M4 design Behavior rules "API test rewrite" rows `which`, `how`, `when` (`design/M4.md`) and "M4.1 ticket order" row 4; plan outline E1 as split by designer pass 3 (`reports/M4-designer-3.md`: Spec gaps 1, "Outline changes" 1)
 
 ## Context
 
-The route still accepts `text` after SGS-057, but a later ticket removes it and the page stops sending it in
+The route still accepts `text` after SGS-075 (a temporary branch), but a later ticket removes it and the page stops sending it in
 SGS-059. Every API spec that builds its order from a paste must therefore send the converted `buildOrder`
 first, so the removal diff is small and the suite passes before and after this ticket with the route unchanged.
 
@@ -24,7 +24,7 @@ first, so the removal diff is small and the suite passes before and after this t
 
 All paths are relative to the repo root. Facts below are from origin/main `d5c2549`; the specs listed are the
 11 that have a `text` request body (`git grep -nE "\btext *[:,}]" -- 'acceptance/aoe4-simulate-api*.spec.ts'`
-prints 75 lines today). Helper contract (SGS-057): `acceptance/helpers.ts`
+prints 75 lines today). Helper contract (SGS-075): `acceptance/helpers.ts`
 `export function buildOrderFrom(text: string): BuildOrder`, which throws with the joined issue messages when the
 text does not convert. Specs import `buildOrderFrom` from `./helpers`; they never call `textToBuildOrder`.
 `acceptance/helpers.ts`, the route, `api.ts`, `docs/` and OpenAPI are not edited.
@@ -98,11 +98,11 @@ The raw-string bodies (`'{"text":'`, `'{"text": "start 6 sheep'`, the `text/plai
 **6. Tests the implementer lists.** The PR body lists every spec title that is rewritten (sections 2 and 4),
 deleted or trimmed (section 3), with the old and new expected message where it changed.
 
-**Out of scope:** `acceptance/helpers.ts` (SGS-057 adds `buildOrderFrom`; SGS-059 adds `runRejected`); every page
+**Out of scope:** `acceptance/helpers.ts` (SGS-075 adds `buildOrderFrom`; SGS-059 adds `runRejected`); every page
 spec (`aoe4-build-order*.spec.ts`, `aoe4-step-table.spec.ts`, SGS-059); the route, `api.ts`, OpenAPI, docs and
 `lib/`; the specs and OpenAPI examples that test the old `text` rules (section 5, replaced in the remove-`text`
 ticket); `aoe4-simulate-api-knight-longbow-build.spec.ts` and `-spear-longbow-build.spec.ts` (no `text` body);
-`SIM_INPUT_BOUNDS` import in the contract spec (SGS-057).
+`SIM_INPUT_BOUNDS` import in the contract spec (SGS-057, SGS-075).
 
 ## Diagrams
 
@@ -121,4 +121,10 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-None. (If SGS-057's `buildOrderFrom` or its one-issue-per-bad-step check differs from its ticket, this ticket follows the merged names; the manager re-specs only if the difference changes Scope 4.)
+None. (If SGS-075's `buildOrderFrom` or its one-issue-per-bad-step check differs from its ticket, this ticket follows the merged names; the manager re-specs only if the difference changes Scope 4.)
+
+## Re-spec 2026-11-02
+
+- Underspecified: SGS-057 was split; `buildOrderFrom`, the `checkBuildOrder` route swap and the temporary `text` branch are SGS-075.
+- Changed: Depends on SGS-075 (transitively SGS-057); helper and route-swap references point to SGS-075.
+- Stands: all Scope and criteria.

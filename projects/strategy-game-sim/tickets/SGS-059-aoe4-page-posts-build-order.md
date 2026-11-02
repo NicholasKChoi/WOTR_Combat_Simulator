@@ -11,7 +11,7 @@
        is adjacent to S3, so not low. -->
 - **Invariants**: S3 (the duration still goes to the route unchecked in the browser and the route enforces `SIM_INPUT_BOUNDS`; the browser conversion enforces the 20000-character text cap through `textToBuildOrder`, so no path reaches the engine unbounded)
 - **LOC estimate**: about 75 (`pages/apps/aoe4-build-order.tsx` about 30 changed; new `issue-list.tsx` about 25; `build-input.tsx` about 6; `step-table.tsx` prop rename about 12 lines touched; `acceptance/helpers.ts` `runRejected` about 12). Spec rewrites and docs excluded.
-- **Depends on**: SGS-057
+- **Depends on**: SGS-075 (re-exports the model types from `schema.ts`, swaps the route, and adds `buildOrderFrom`); transitively SGS-057 (`textToBuildOrder`, the catalog)
 - **On merge**: none
 - **Source**: M4 design contracts C8 (`PageProps`, `IssueList`, `runRejected`, `StepTable` prop rename, `simulation-error` row), Behavior rules "Page run" (Run ordering steps 1 to 7, inline issues M4.1 ticket 3, page specs) and "M4.1 ticket order" row 3 (`design/M4.md`); plan outline D (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md`: DQ3, DQ6, "Outline changes" 3)
 
@@ -70,7 +70,7 @@ behavior change.
 **4. `acceptance/helpers.ts`.** Add `export async function runRejected(page: Page): Promise<void>`: start
 recording requests whose URL ends with `SIMULATE_PATH` and method is POST, click `run-simulation`, wait for
 `build-order-issues` to be visible, then fail (throw or `expect`) if any such request was recorded. It does
-not touch `buildOrderFrom` (SGS-057 adds it).
+not touch `buildOrderFrom` (SGS-075 adds it).
 
 **5. Page specs.** Rewrite to the design's "page specs" rows. Line numbers are on `origin/main` `d5c2549`; the
 parallel `strictNullChecks` ticket may shift them, so find each by test title.
@@ -110,7 +110,7 @@ other statements that the page posts `text` and fix each hit. `docs/api/openapi.
 spec body (API-specs ticket); live issues, suggestions, gutter highlight, scroll-to-issue and the tabs, view
 toggle, `BuildTextEditor`, `lineCount`, `issueLines` (later page tickets); lifting `selected` out of
 `BuildInput`, pin naming and storage; the `StepTable` internals and `FIELD_LABELS`; `schema.ts`,
-`text-to-build.ts`, `buildOrderFrom` (SGS-057); `golang/`.
+`text-to-build.ts`, `buildOrderFrom` (SGS-075); `golang/`.
 
 ## Diagrams
 
@@ -158,3 +158,9 @@ flowchart LR
 None. (The `issues` prop on `BuildInput` is this ticket's way to render the list under the textarea while the
 textarea still lives in `BuildInput`; the design fixes only the placement and the later editor ticket moves
 the textarea. No owner or designer decision is needed.)
+
+## Re-spec 2026-11-02
+
+- Underspecified: SGS-057 was split; `buildOrderFrom` and the model re-exports now come from SGS-075.
+- Changed: Depends on SGS-075 (transitively SGS-057); `buildOrderFrom` references point to SGS-075.
+- Stands: all Scope and criteria.

@@ -43,8 +43,9 @@ Paths are relative to the repo root. The design says `components/aoe4-build-orde
   `[node, count]` in the order of `Object.entries(start.villagers)`. A count draft goes through the existing
   `parseUnsigned` rule (rejected draft leaves the order unchanged; no empty-draft delete for a count). Choosing a
   node another pair already uses is not offered (`start.villagers` is a record keyed by node).
-  Add inserts a pair for the first `catalog.nodes` entry not yet used, count 1, and is disabled when every node is used
-  (see Open questions 1). Deleting the last pair leaves `villagers` empty (written as no villagers clause).
+  Add inserts, at the end, a pair for the first `catalog.nodes` entry not yet used, count 1, and is disabled when every
+  node is used (design pass 4). The table shows no villager-sum hint; the sum rule is checked on Run only and its
+  issue shows in `build-order-issues` once `checked`. Deleting the last pair leaves `villagers` empty (written as no villagers clause).
 
 **2. `step-table.tsx`.**
 - Every `Labeled` label comes from `FIELD_LABELS` (the six literal labels in `TriggerFields` and `label={field.name}`
@@ -106,7 +107,8 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] `step-move-up`, `step-move-down`, `step-delete` have accessible names "Move up", "Move down", "Delete step" and keep their behavior and disabled states (the existing move/delete/disabled tests pass unchanged): `git grep -nE '^\s+(Up|Down|Delete)$' -- components/apps/aoe4-build-order/step-table.tsx` prints nothing (3 hits today).
 - [ ] The first body row is `step-start-row`. For `start 3 sheep 1 wood -> sheep`: `start-field-rally` has value `sheep`, two pairs with `start-villagers-count` 3 and 1 and node values `sheep` and `wood` (`data-index` 0 and 1); changing the first count to 5 rewrites the textarea to `start 5 sheep 1 wood -> sheep` (formatter order) and reparses; changing the rally to `(none)` removes the `->` clause; deleting both pairs and clearing the rally removes the `start` line.
 - [ ] For text with no `start` line, `start-customize` is visible and no `start-field-*` exists; clicking it writes the catalog's default start into the textarea (equal to `formatBuildOrderText({ ...order, start: catalog.defaultStart })`), hides the button, and shows the fields.
-- [ ] A pair's node select does not offer a node used by another pair; `start-villagers-add` adds a pair with the first unused node; it is disabled when every node is used.
+- [ ] A pair's node select does not offer a node used by another pair; `start-villagers-add` adds a pair at the end with the first unused `catalog.nodes` entry and count 1; it is disabled when every node is used. (respec 1)
+- [ ] With start pairs that do not sum to `catalog.startVillagerTotal`, the table shows no sum hint or warning text (respec 1).
 - [ ] The `step-row` count still equals the step count with and without a `start` line (`step-start-row` is not a `step-row`).
 - [ ] At a 390 px viewport the `step-trigger-kind` and `step-action` of a row have the same x and the action's y is greater (stacked), and the start row's controls stack the same way; at a 1280 px viewport they are on the same y (side by side). A step edit made at 390 px rewrites the text as at desktop width. `step-row` is the same element at both widths (its `data-step` read at each width).
 - [ ] Table edits still never post to the simulate route, and the existing edit tests (rewrite text, number fields, reaction toggle, unknown values, other prebuilt) pass; tests edited only to click `step-more` are listed in the PR.
@@ -116,5 +118,10 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-1. `designer`: what does Add start villager do? The design gives the controls (`start-villagers-add`) but not the new pair's node or count, or what happens when all nodes are used. This ticket states a default (first unused node in `catalog.nodes`, count 1, disabled when none) so it can be built; confirm or replace it. It is not an invented constant in the engine, only a table default, and the Run check still applies to the villager total.
-2. `designer`: should the table show a hint when the start pairs do not sum to `catalog.startVillagerTotal`? The design says the sum rule is checked on Run only, so this ticket shows none; the issue then appears under the editor via the issue-list ticket.
+None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: Add start villager default and whether the table hints at a villager-sum mismatch (two open questions).
+- Changed: Scope and criteria state the designer answers (first unused node, count 1, at the end, disabled when all used; no sum hint); both questions removed.
+- Nothing on a branch is affected; the rest of the spec stands.

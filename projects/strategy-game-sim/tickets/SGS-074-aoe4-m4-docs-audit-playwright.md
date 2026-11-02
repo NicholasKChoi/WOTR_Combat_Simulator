@@ -8,7 +8,7 @@
   <!-- Plan said standard. Audit edits can touch the public contract file docs/api/openapi.json, so not low. Test-only otherwise, no engine change. -->
 - **Invariants**: none changed. Adjacent only in prose: A3 (the docs' determinism statement must stay true after the M4 rule changes).
 - **LOC estimate**: 0 business logic. About 120 lines of test code (new `acceptance/aoe4-build-order-m4-flow.spec.ts`) plus whatever one-line doc or OpenAPI description fixes the audit finds.
-- **Depends on**: SGS-056, SGS-057, SGS-058, SGS-059, SGS-060, SGS-061, SGS-062, SGS-063, SGS-064, SGS-065, SGS-066, SGS-067, SGS-068, SGS-069, SGS-070, SGS-071, SGS-072, SGS-073. (SGS-073 is the narrow-layout ticket, plan outline Q; its file did not exist when this ticket was written, so its Scope is unread. The implementer re-reads it and adjusts the 390 px rows below if it already covers them.)
+- **Depends on**: SGS-056, SGS-057, SGS-058, SGS-059, SGS-060, SGS-061, SGS-062, SGS-063, SGS-064, SGS-065, SGS-066, SGS-067, SGS-068, SGS-069, SGS-070, SGS-071, SGS-072, SGS-073. (SGS-073 is the narrow-layout ticket, plan outline Q. The implementer re-reads it for the narrow-layout doc paragraph. SGS-073 owns every whole-page 390 px test; this ticket has none.)
 - **On merge**: none. (`design/M2.md` lines 76, 210 and 222 were already edited on the state branch when this ticket was written; the manager commits them with the state files. The M4 design needs no CONTEXT.md line.)
 - **Source**: `design/M4.md` "Docs and OpenAPI (M4.14)"; plan `plans/M4-20261102.md` outline R as amended by `reports/M4-designer-3.md` (R is an audit and Playwright gaps only; every other ticket updates its own docs, OpenAPI and contract spec).
 
@@ -16,7 +16,7 @@
 
 Each M4 ticket edits the docs and OpenAPI for what it changes and tests its own UI. M4.14 asks for a last check that
 `docs/aoe4-build-order.md` and `docs/api/openapi.json` describe the code after all of them, and for Playwright coverage of
-the new layout, the inline error with a suggestion, the info list, a pin that survives a reload, and 390 px width. This
+the new layout, the inline error with a suggestion, the info list, and a pin that survives a reload (the 390 px width check belongs to SGS-073). This
 ticket does that audit once and adds one cross-feature spec, as SGS-054 and SGS-055 did for M3. It carries no deferred doc
 edits.
 
@@ -53,8 +53,8 @@ end state (today in brackets): `info.version` `2.0.0` (`1.0.0`); `SimulateReques
 
 **3. Playwright flow (new `acceptance/aoe4-build-order-m4-flow.spec.ts`).** Use the design's test ids and the helpers in
 `acceptance/helpers.ts` (`openPage`, `runSimulation`, `runRejected`, `AOE4_PAGE`); no CSS selectors. First, for each of
-the five M4.14 areas, run `git grep -ln "<test id>" -- acceptance` for the ids below. The spec asserts each area once
-across the two tests below, even where another spec already covers it, because the point is the cross-feature journey.
+the four M4.14 areas it covers (tabs layout, inline error, info list, pin reload), run `git grep -ln "<test id>" -- acceptance` for the ids below. The spec asserts each area once
+in the flow test below, even where another spec already covers it, because the point is the cross-feature journey.
 Any area an earlier ticket does not cover at all is a hole; the spec closes it and the PR names it.
 - **Flow test (desktop, default viewport).**
   1. On load `workbench-tabs` is visible, `tab-build` is selected, `panel-results` has the `hidden` attribute and
@@ -71,19 +71,15 @@ Any area an earlier ticket does not cover at all is a hole; the spec closes it a
      `page.reload()` with no Run. `tab-results` is enabled, `unpin-run` is enabled and `pinned-label` contains
      `ENG Knight/Longbow (King's Palace)` and `30:00` (pin survives reload). Then `unpin-run`, reload: `tab-results` is
      disabled.
-- **390 px test.** `page.setViewportSize({ width: 390, height: 844 })`, open the page. On the Build tab in text view, and
-  again after clicking `editor-view-table`, `document.documentElement.scrollWidth` is at most 390. Run the default build
-  at 1200 s, `pin-run`, change `duration-seconds` to 600, run again: on the Results tab with `compare-key-numbers` and the
-  charts shown, `scrollWidth` is at most 390 (390 px width).
 
-**Out of scope:** any engine, page, CSS or data change (a failing check files a bug or a re-spec, it is not fixed here);
+**Out of scope:** a 390 px test (SGS-073 owns every whole-page 390 px `scrollWidth` test); any engine, page, CSS or data change (a failing check files a bug or a re-spec, it is not fixed here);
 per-feature coverage the owning tickets already added; the `design/M4.md` text; the build READMEs (their owners edit them);
 docs for the other apps.
 
 ## Diagrams
 
 Single-component change outside the core control loop; no diagram required. (Test and prose only: the flow is run,
-expand the info list, edit to an invalid paste, restore and pin, reload; then a 390 px pass.)
+expand the info list, edit to an invalid paste, restore and pin, reload.)
 
 ## Acceptance criteria
 
@@ -92,7 +88,6 @@ expand the info list, edit to an invalid paste, restore and pin, reload; then a 
 - [ ] Flow test, info list: the Knight/Longbow 1800 s run's collapsed `simulation-notes-list` is absent from the DOM, and once expanded its `node-depleted` items equal the response's gold run-out messages (read from the response, not hard-coded times); none sits in `simulation-warnings`.
 - [ ] Flow test, inline error: typing `produce knigt from stable` after a Run shows one `build-order-issue` for `knigt` with suggestion text `did you mean knight?` and `data-error="true"` on gutter line 2, with the earlier charts still drawn, and no POST (the spec counts requests).
 - [ ] Flow test, pin: after pinning and `page.reload()` with no Run, `tab-results` and `unpin-run` are enabled and `pinned-label` contains the build name and `30:00`; after `unpin-run` and a reload, `tab-results` is disabled.
-- [ ] 390 px test: `document.documentElement.scrollWidth <= 390` on the Build tab in text view, in table view, and on the Results tab with a pin and a comparison shown.
 - [ ] All new tests are deterministic (no `waitForTimeout`; waits are on responses and test-id assertions) and use the Playwright `webServer`, so no process is left running.
 - [ ] Docs stale phrases: `git grep -nE "survives later runs|pinned run draws none|keeps the lower tier|a build order textarea, a$|validateBuildOrder" -- docs` prints nothing after the change (it finds 5 lines on `origin/main` today, one each, checked).
 - [ ] Docs paths: every backticked `*.ts`, `*.tsx`, `*.json`, `*.md` path in `docs/aoe4-build-order.md` is a tracked file (0 missing on `origin/main` today; the implementer runs the check and lists any it fixes).
@@ -100,9 +95,15 @@ expand the info list, edit to an invalid paste, restore and pin, reload; then a 
 - [ ] OpenAPI end state: `jq -r '.info.version' docs/api/openapi.json` is `2.0.0`; `jq '.components.schemas.SimulateRequest.properties | has("text")'` is `false`; `jq '.components.schemas.BuildOrderIssue.properties | has("suggestion")'` is `true`; `jq '.components.schemas.SimWarning.oneOf | length'` is `5` (today: `1.0.0`, `true`, `false`, `3`, checked on `d5c2549`).
 - [ ] The contract spec `acceptance/aoe4-simulate-api-contract.spec.ts` passes unedited, or edited only where it asserts a name this audit corrects (the PR lists each edit).
 - [ ] Every doc or OpenAPI edit is listed in the PR with the code line that makes the old text untrue; an audit that finds nothing says so.
-- [ ] Mutation, run in a throwaway worktree after the dependencies are merged (`git worktree add --detach "$FACTORY_DIR/worktrees/ticket-SGS-074"`): make the pin restore skip the stored value (so a reload shows no pin) and the pin-reload step fails; make `issue-list.tsx` omit the suggestion element and the `did you mean knight?` step fails; add `min-width: 600px` to the step-table card container (or any workbench box) and the 390 px test fails. Confirm each before handing over and remove the worktree.
+- [ ] Mutation, run in a throwaway worktree after the dependencies are merged (`git worktree add --detach "$FACTORY_DIR/worktrees/ticket-SGS-074"`): make the pin restore skip the stored value (so a reload shows no pin) and the pin-reload step fails; make `issue-list.tsx` omit the suggestion element and the `did you mean knight?` step fails (the narrow-layout mutation belongs to SGS-073). Confirm each before handing over and remove the worktree.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
 
-- `designer`: SGS-073 (narrow layout) was not on disk when this ticket was written, so the 390 px rows assume it asserts only per-component stacking and not whole-page `scrollWidth` with a pin and comparison shown. If it already does, the implementer drops the 390 px test and says so; no decision needed.
+None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: the 390 px test duplicated SGS-073's (designer pass 4, Q10).
+- Changed: dropped the 390 px test, its criterion, the min-width mutation and the open question; the flow test is now one desktop test.
+- Stands: desktop flow, docs audit and OpenAPI audit unchanged.

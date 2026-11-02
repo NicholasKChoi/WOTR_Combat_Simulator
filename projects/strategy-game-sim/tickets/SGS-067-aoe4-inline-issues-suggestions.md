@@ -9,15 +9,15 @@
        the design specifies. About 60 lines of business logic, but it changes the page's Run path and shared
        page state, so not low. -->
 - **Invariants**: S1 (new code imports only from `lib/aoe4-build-order/` and `components/apps/aoe4-build-order/`); S3 (the text cap stays enforced by `textToBuildOrder`; live conversion runs on at most 20000 characters per edit and sends nothing)
-- **LOC estimate**: about 60 (`pages/apps/aoe4-build-order.tsx` about 30 changed: derived issues, `checked` flag, scroll effect; `issue-list.tsx` about 12; `text-lines.ts` `issueLines` about 4; CSS `scroll-margin-top` on gutter items). Specs, unit test and docs excluded.
+- **LOC estimate**: about 70 (`pages/apps/aoe4-build-order.tsx` about 30 changed: derived issues, `checked` flag, scroll effect; `build-text-editor.tsx` about 8: `errorLines` prop and `data-error`; `issue-list.tsx` about 12; `text-lines.ts` `issueLines` about 4; CSS `scroll-margin-top` on gutter items). Specs, unit test and docs excluded.
 - **Depends on**: SGS-066
 - **On merge**: none
-- **Source**: M4 design contract C8 (`IssueList`, `issueLines(issues)`, test ids `build-order-issues`, `build-order-issue`, `build-order-issue-suggestion`, gutter `data-error`) and Behavior rules rows Run first issue (from M4.8), inline issues when shown, inline issues many, info list content and place (`design/M4.md`); plan outline K (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md`: DQ3, DQ8, "Outline changes" 4: no server 400 mapping, `IssueList` already exists, `issueLines(issues)` takes only issues, info list changes no code unless the coverage finds a gap)
+- **Source**: M4 design contract C8 (`IssueList`, `issueLines(issues)`, test ids `build-order-issues`, `build-order-issue`, `build-order-issue-suggestion`, gutter `data-error`) and Behavior rules rows Run first issue (from M4.8), inline issues when shown, inline issues many, info list content and place (`design/M4.md`); plan outline K (`plans/M4-20261102.md`) as amended by designer pass 3 (`reports/M4-designer-3.md`: DQ3, DQ8, "Outline changes" 4: no server 400 mapping, `IssueList` already exists, `issueLines(issues)` takes only issues, info list changes no code unless the coverage finds a gap) and designer pass 4 (`reports/M4-designer-4.md`: Q6 `errorLines` and gutter `data-error` move from SGS-066 to this ticket; Q9 `checked`, scroll and table-view rules)
 
 ## Context
 
-SGS-059 shows the issues of the last client rejection only, as plain messages, and SGS-066 ships the gutter with
-`errorLines` and `data-error` while the page passes `[]`. M4.8 makes the issues useful while typing: they follow the
+SGS-059 shows the issues of the last client rejection only, as plain messages, and SGS-066 ships `BuildTextEditor`
+with only `{ text, onChange }` and a gutter whose items carry `data-line` but no `data-error`. M4.8 makes the issues useful while typing: they follow the
 text, the offending lines are marked in the gutter, a near match is suggested ("did you mean knight?"), and a
 rejected Run scrolls to the first bad line. M4.8 also asks that info notes such as gold run-outs sit in a collapsed
 list; main already does that in `Results`, so this ticket only adds Playwright coverage for it.
@@ -26,13 +26,20 @@ list; main already does that in `Results`, so this ticket only adds Playwright c
 
 All paths are relative to the repo root. Names are exactly those of `design/M4.md` C8, SGS-057 (`textToBuildOrder`,
 `TextToBuildResult`, `BuildOrderIssue.suggestion`), SGS-059 (`IssueList`, `runRejected`) and SGS-066 (`BuildTextEditor`
-`errorLines`, `build-order-gutter`, `lineCount`, `WorkbenchTab`, `panel-build`).
+`{text, onChange}`, `build-order-gutter`, `build-order-line-number`, `lineCount`, `WorkbenchTab`, `panel-build`).
 
 **1. `components/apps/aoe4-build-order/text-lines.ts`.** Add `export function issueLines(issues: readonly
 BuildOrderIssue[]): number[]`: the `line` values of the issues that have one, sorted ascending, unique, 1-based; `[]`
 when none has a line. It takes only issues (no `lines` argument; server 400 issues are not mapped to lines, they stay
 in `simulation-error`). `text-lines.test.ts` (SGS-066) gains rows: no issues gives `[]`; issues with lines `[5, 2, 5]`
 give `[2, 5]`; an issue without `line` is skipped; only line-less issues give `[]`.
+
+**1b. `components/apps/aoe4-build-order/build-text-editor.tsx` (and its CSS).** Add the prop `errorLines: readonly
+number[]` (required, as in C8: `BuildTextEditor(props: { text: string; onChange(text: string): void; errorLines:
+readonly number[] })`). A gutter item (`build-order-line-number`) whose `data-line` is in `errorLines` carries
+`data-error="true"`; the attribute is absent on every other item. Give the gutter items `scroll-margin-top` at least
+the run bar's height. Every other editor behavior is SGS-066's and unchanged. SGS-066's editor spec rows are not edited
+(they do not pass or assert `errorLines`); the page is the only caller.
 
 **2. `components/apps/aoe4-build-order/issue-list.tsx`.** Per issue, keep SGS-059's `data-testid="build-order-issue"`,
 `data-code`, `data-line` (absent when the issue has no `line`), and show `issue.message` in its own element. When
@@ -44,23 +51,26 @@ message plus the suggestion, so specs assert the message with `toContainText`, n
 **3. `pages/apps/aoe4-build-order.tsx`.**
 - Replace SGS-059's "issues of the last client rejection" state with issues derived from the current text:
   `const converted = useMemo(() => textToBuildOrder(text, catalog), [text, catalog])`, plus a `checked` state (initial
-  `false`, set to `true` at the first Run, never reset except by reload). The issues shown in `IssueList` are:
+  `false`, set to `true` at the first Run click of any outcome (client rejection, 200, 400 or failed request), never
+  reset except by reload). The issues shown in `IssueList` are:
   `[]` when `converted.ok`; otherwise `converted.issues` when `converted.lines === undefined` (text did not parse, or
   exceeds the length cap: shown at once) or `checked` is true (check issues: shown after the first Run, then tracking
   every edit); otherwise `[]`. Every edit, prebuilt choice and table edit changes `text` and so updates the list
   and the gutter at once.
-- `BuildTextEditor` gets `errorLines={issueLines(issues)}` in place of `errorLines={[]}`. Items in the gutter whose
-  `data-line` is in the list carry `data-error="true"` (SGS-066 behavior; no editor change).
-- Run steps: step 1 no longer clears issues (they are derived; a Run on valid text shows none). Step 3 (client
-  rejection) sets `checked` true, clears the shown result and sends no POST, as SGS-059 does, and then, after the
-  Build tab is visible, scrolls to the first issue (rule below). Steps 4 to 7 are unchanged.
+- `BuildTextEditor` gets `errorLines={issueLines(issues)}` (a new prop, item 1b; SGS-066's page passes none). Items
+  in the gutter whose `data-line` is in the list carry `data-error="true"`.
+- Run steps: step 1 no longer clears issues (they are derived; a Run on valid text shows none). Set `checked` true at the
+  start of the Run click handler, so every Run (any outcome) sets it; step 3 (client rejection) then clears the shown
+  result and sends no POST, as SGS-059 does, and, after the Build tab is visible, scrolls to the first issue (rule
+  below). Steps 4 to 7 are unchanged.
 - An edit never clears the shown result (it only becomes stale, which a later ticket labels): do not add a
   `setResult(null)` on text change.
 - Scroll rule for step 3: the target is the first entry of the issues the Run produced (`result.issues[0]`). If it has a
   `line`, scroll the gutter item whose `data-line` equals it into view (`scrollIntoView({ block: 'center' })`); if it has
   none, scroll `build-order-issues` into view. Run it in an effect after the render that makes `panel-build` visible
-  (a hidden panel has no layout), not inside the click handler. The gutter item needs `scroll-margin-top` at least the
-  run bar's height so the sticky bar never covers the line (the same idea SGS-066 uses for `panel-results`). When
+  (a hidden panel has no layout), not inside the click handler. The gutter item's `scroll-margin-top` (item 1b) is at least the
+  run bar's height so the sticky bar never covers the line (the same idea SGS-066 uses for `panel-results`).
+  `build-order-issues` also gets that `scroll-margin-top`. The view is never switched by a rejection. When
   `view === 'table'` there is no gutter: scroll `build-order-issues` into view instead.
 - The `simulation-error` list, tab rules and everything else on the page are unchanged.
 
@@ -73,7 +83,8 @@ message plus the suggestion, so specs assert the message with `toContainText`, n
    any Run `build-order-issues` has count 0. `runRejected` shows one `unknown-id` issue at `data-line="2"` containing
    `knigt`, with `build-order-issue-suggestion` text `did you mean knight?`, and gutter line 2 has `data-error`. Fill
    `start -> sheep\nproduce knight from stable` (no Run): `build-order-issues` count 0 and no `data-error`. Fill
-   `knigt` again: the issue returns at once without a Run.
+   `knigt` again: the issue returns at once without a Run. A valid Run also sets the flag: fill valid text, run
+   (200), fill `produce knigt from stable`: the issue shows at once without a further Run.
 3. An issue with no suggestion renders none: the live parse issue of test 1 has `build-order-issue-suggestion` count 0.
 4. Many issues: a text that parses
    with two bad ids (`produce knigt from stable` and `produce spearmn from barracks`) after one Run lists two
@@ -82,7 +93,9 @@ message plus the suggestion, so specs assert the message with `toContainText`, n
    capital-town-center x3 -> sheep`, then `at 8 vils fly capital-town-center` (error at line 62); call `runRejected`;
    the gutter item with `data-line="62"` is inside the viewport (top at or below `run-bar`'s bottom edge, bottom at or
    above the viewport height). An issue with no line scrolls to the list: a 20001-character text (SGS-059's) leaves
-   `build-order-issues` inside the viewport after `runRejected`.
+   `build-order-issues` inside the viewport after `runRejected`. In table view (fill a check-invalid text, switch
+   with `editor-view-table`, which shows the table when the text parses) a rejection scrolls `build-order-issues`
+   into view and `editor-view-table` stays selected.
 6. A live issue never clears the result: run the default build (Results shows charts), `tab-build`, fill an invalid
    paste, `tab-results`: the charts are still drawn.
 7. Info list, gold run-outs (coverage only): choose `ENG Knight/Longbow (King's Palace)` in `build-order-select`, fill
@@ -113,7 +126,8 @@ without lines. Add one sentence that gold run-outs and other info notes are in t
 is not changed.
 
 **Out of scope:** mapping server 400 issues to lines or into `build-order-issues` (dropped by the design: they stay in
-`simulation-error`); `BuildTextEditor` and `WorkbenchTabs` internals beyond `scroll-margin-top`; `textToBuildOrder`,
+`simulation-error`); `BuildTextEditor` and `WorkbenchTabs` internals beyond `errorLines`, `data-error` and
+`scroll-margin-top`; `textToBuildOrder`,
 `checkBuildOrder`, `nearestId` and `suggestion` (SGS-057); the stale-result label and pin work (the pin ticket);
 step table, timeline and chart changes; any `Results` code change unless item 4 test 7 finds a gap.
 
@@ -125,7 +139,7 @@ The change makes the page's issue state derived from the text instead of set by 
 flowchart LR
   subgraph read
     T[text state] --> C[textToBuildOrder with catalog]
-    K[checked flag]
+    K[checked flag, true at first Run of any outcome]
   end
   subgraph act
     C -->|not ok, no lines: parse or length issue| S[issues shown]
@@ -138,8 +152,8 @@ flowchart LR
   subgraph record
     S --> L[IssueList with suggestions]
     S --> E[issueLines to editor gutter data-error]
-    R[Run client rejection] -->|sets| K
-    R -->|after Build tab shows| SC[scroll first issue line or list into view]
+    R[Run click, any outcome] -->|sets| K
+    R2[client rejection] -->|after Build tab shows| SC[scroll first issue line, or list if no line or table view]
   end
 ```
 
@@ -150,18 +164,25 @@ flowchart LR
 - [ ] An issue with no `suggestion` renders no `build-order-issue-suggestion` element.
 - [ ] After a Run is rejected with an issue on line 62 of a 62-line text, at 1280x720 the gutter item with `data-line="62"` is in the viewport and not under `run-bar`; a rejection whose first issue has no line (20001 characters) leaves `build-order-issues` in the viewport.
 - [ ] A text edit never removes the shown charts, timeline or messages (spec: run the default build, edit to an invalid paste, return to Results, charts still drawn).
+- [ ] The first Run of any outcome sets `checked`: after a valid 200 Run, typing `produce knigt from stable` shows its `unknown-id` issue and gutter `data-error` at once, with no further Run (respec 1).
+- [ ] In table view a rejection scrolls `build-order-issues` into view (not the gutter) and leaves the table view open (respec 1).
+- [ ] `BuildTextEditor` takes `errorLines` and sets `data-error="true"` on exactly the gutter items whose `data-line` is listed (respec 1).
 - [ ] A server 400 (mocked) still shows its issues in `simulation-error`, never in `build-order-issues`, and sets no `data-error`.
 - [ ] `issueLines` unit rows pass: `[]` for none, `[2, 5]` for lines `[5, 2, 5]`, line-less issues skipped. `git grep -nE "issueLines\([^)]*,"  -- components pages` prints nothing (the function takes one argument).
-- [ ] `git grep -n "errorLines={\[\]}" -- pages` prints nothing (one hit on SGS-066's tip, the page's placeholder).
+- [ ] `git grep -n "errorLines={\[\]}" -- components pages` prints nothing (SGS-066 ships no `errorLines`, so none today and none in the end state); `git grep -n "errorLines" -- pages` prints one line containing `issueLines(issues)`; `git grep -n "errorLines" -- components/apps/aoe4-build-order/build-text-editor.tsx` finds the prop and its use (respec 1).
 - [ ] `git grep -c "build-order-issue-suggestion" -- components/apps/aoe4-build-order/issue-list.tsx` prints 1 (0 today); `git grep -n "build-order-issue-suggestion" -- acceptance` finds the new specs.
 - [ ] Info list coverage: with the knight + longbow build at 1800 s, the collapsed `simulation-notes-list` shows exactly the response's gold run-out info messages (at least `gold` and `gold#2`) once expanded, none are in `simulation-warnings`, and the list is absent from the DOM while collapsed. Run the new test against the current `Results` code first; it passes there unless a gap exists.
-- [ ] Mutation: change the page back to `errorLines={[]}`; the gutter `data-error` specs fail. Remove the suggestion element from `issue-list.tsx`; the `did you mean knight?` spec fails. Make the check issues show before the first Run; the "no issue before the first Run" spec fails. Confirm each by applying it before handing over.
+- [ ] Mutation: pass `errorLines={[]}` from the page; the gutter `data-error` specs fail. Make the editor ignore `errorLines`; the same specs fail. Set `checked` only on rejection; the "valid Run sets checked" spec fails. Remove the suggestion element from `issue-list.tsx`; the `did you mean knight?` spec fails. Make the check issues show before the first Run; the "no issue before the first Run" spec fails. Confirm each by applying it before handing over.
 - [ ] `docs/aoe4-build-order.md` describes live issues, suggestions, gutter marks and scroll: `git grep -nE "last client rejection|issues of the last" -- docs` prints nothing.
 - [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
 
-None. Judgment calls the design leaves open and the ticket fixes without a constant: "check issues appear after the first
-Run" is read as "after the first Run of any outcome" (`checked` stays true after a valid Run too); scroll block is
-`center`. If the owner wants the check issues live from page load, drop the `checked` flag (a one-line change).
+None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: `errorLines` and `data-error` were assumed shipped by SGS-066 (page passing `[]`); `checked` was set only on a rejection; table-view scroll was a one-line note.
+- Changed: item 1b adds the editor prop and attribute here; `checked` set at every Run click; table-view spec and criteria added; placeholder grep criterion rewritten; judgment-call open question removed (design fixed it).
+- Still stands: `issueLines`, `IssueList` suggestion, derived issues, `block: 'center'` scroll, info-list coverage and docs scope.

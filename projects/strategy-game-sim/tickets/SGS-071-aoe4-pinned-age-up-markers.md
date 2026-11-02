@@ -27,12 +27,12 @@ refer to SGS-070's end state, so re-find them.
    - Keep only entries with `kind === 'age-up'` (the design draws no other pinned kind), in the order given.
    - For each, render a recharts `ReferenceLine` at `x={marker.at}` with `data-testid="chart-pinned-marker"`, `data-label={marker.label}`,
      `data-at={marker.at}`, `stroke={MARKER_COLORS['age-up']}`, `strokeDasharray="6 4"` (same dash as pinned series lines), and no
-     `label` prop (no text label, so the pinned markers take no part in `placeMarkers` and add no label rows or top margin).
+     `label` prop (no text label, so `placeMarkers` never receives pinned markers (C12) and add no label rows or top margin).
    - Each line carries a `<title>` child reading `<label> (pinned) <m:ss>` (`formatMinSec(marker.at)`, e.g. `Castle (pinned) 13:24`);
      recharts 3.10.1's `ReferenceLine` renders `props.children`, so pass it as a child; the implementer confirms the title lands in the DOM.
    - They are not gated by the series `hidden` state (markers never hide) and are drawn independent of `chartWidth` (no placement needed).
    - `end` already includes `pinned.times`, so a pinned marker later than the current run's last sample still falls on the x-axis.
-2. `chart-legend.tsx` (from SGS-070): `MarkerLegend` gains `pinnedAgeUps?: boolean` (see Open questions). When true it appends, after
+2. `chart-legend.tsx` (from SGS-070): `MarkerLegend` gains `pinnedAgeUps?: boolean` (C12: props become `{ markers: readonly ChartMarker[]; pinnedAgeUps?: boolean }`, returns `JSX.Element | null`) (respec 1). When true it appends, after
    the per-kind items, one `data-testid="chart-marker-legend-item"` with `data-kind="pinned-age-up"`, text `Age-up (pinned)`, whose
    swatch `span` is a short vertical dashed line (`border-left: 2px dashed` in `MARKER_COLORS['age-up']`, same dash feel as the line).
    `SeriesChart` passes `pinnedAgeUps` true when at least one `age-up` pinned marker is drawn. `MarkerLegend` renders nothing only when
@@ -77,6 +77,10 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-- `designer`: C12 does not name `MarkerLegend`'s props (SGS-070 asks the same). This ticket adds `pinnedAgeUps?: boolean` next to SGS-070's `markers`; confirm, or name the prop. If SGS-070's answer changes the shape, adjust scope 2 to match.
-- `designer`: the pinned legend item's text is not given by C12, only its `data-kind="pinned-age-up"`. This ticket uses `Age-up (pinned)`, matching the `(pinned)` suffix of pinned series names and the marker `<title>`; confirm.
-- `designer`: the outline says this ticket "uses C12 `placeMarkers`", but pinned markers have no text label, so none is placed and `placeMarkers` is not called for them. Confirm no label-row interaction is intended.
+None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: `MarkerLegend` props, legend item text and `placeMarkers` interaction were open `designer` questions.
+- Changed: confirmed by C12 (`pinnedAgeUps?: boolean`, text `Age-up (pinned)` last, pinned markers never placed by `placeMarkers`); open questions removed.
+- Stands: all earlier scope and criteria are unchanged.

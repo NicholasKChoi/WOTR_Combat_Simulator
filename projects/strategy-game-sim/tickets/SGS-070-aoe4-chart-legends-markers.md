@@ -24,7 +24,7 @@ This ticket splits them into two labelled legends and makes label placement use 
 
 Contract names are design C12's; do not rename. Files are under `components/apps/aoe4-build-order/`.
 
-1. New `chart-legend.tsx` exporting `SeriesLegend` and `MarkerLegend` (React components, HTML, not SVG).
+1. New `chart-legend.tsx` exporting `SeriesLegend` and `MarkerLegend` (React components, HTML, not SVG), with props `SeriesLegend { series: readonly ChartSeries[]; pinned?: PinnedSeries; hidden: ReadonlySet<string>; onToggle(key: string): void }` (`hidden` holds hidden keys, `pinned:<key>` for pinned ones) (respec 1).
    - `SeriesLegend`: `data-testid="chart-series-legend"`, heading text "Series". One `button` per series with
      `data-testid="chart-series-legend-item"`, `data-series` = series key (`pinned:<key>` for a pinned series), `aria-pressed`
      = true when that key is hidden, a swatch (a solid horizontal line in the series colour; dashed `6 4` for a pinned
@@ -37,8 +37,7 @@ Contract names are design C12's; do not rename. Files are under `components/apps
      `data-kind`) per marker kind present in `CHART_MARKER_KINDS` order; swatch is a short vertical line in
      `MARKER_COLORS[kind]` (a `span` inside the item, as today, so its `background-color` is still the kind colour);
      text `MARKER_KIND_LABELS[kind]`. When nothing is passed to draw it renders nothing, so a run with no markers has no
-     `chart-marker-legend` in the DOM. Props are not named in the design (see Open questions); this ticket uses
-     `markers: readonly ChartMarker[]` and no pinned-age-up item, leaving the `pinned-age-up` item to the pinned-marker ticket.
+     `chart-marker-legend` in the DOM. Props (C12): `{ markers: readonly ChartMarker[]; pinnedAgeUps?: boolean }`, returns `JSX.Element | null`. This ticket declares only `markers` (`pinnedAgeUps` is added by SGS-071 with its use) (respec 1).
 2. `line-chart.tsx`:
    - Remove the recharts `Legend` import and element; render `SeriesLegend` then `MarkerLegend` below the
      `ResponsiveContainer`, inside the `testId` wrapper. The series legend drives the existing `hidden` state through
@@ -49,8 +48,7 @@ Contract names are design C12's; do not rename. Files are under `components/apps
      Each label goes in the first row where its box does not overlap any already placed label; rows are unbounded. Label
      width comes from the text's measured width (`getComputedTextLength` of an SVG text element in the chart's label
      font, measured after mount and re-measured on resize), or `8` px per character before the first measure (was 7).
-     Keep the existing left-edge pinning of a label that fits on neither side of its line. Widths reach the pure function
-     through an optional fourth parameter (see Open questions); the three-argument call keeps working with the estimate.
+     Keep the existing left-edge pinning of a label that fits on neither side of its line. Signature (C12): `placeMarkers(markers: readonly ChartMarker[], end: number, plotWidth: number, labelWidth?: (label: string) => number): PlacedMarker[]`; `labelWidth` defaults to `label.length * 8`, and `SeriesChart` passes the measured width once measured. Pinned markers have no text label and are never passed to `placeMarkers` (respec 1).
    - The chart's top margin grows by `rows × 14` px (`LABEL_LINE_HEIGHT`) above recharts' default 5, where `rows` is the
      number of label rows used, so no two label boxes intersect at any width and labels do not cover the plot's lines
      any more than today.
@@ -90,6 +88,10 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-- `designer`: C12 gives `placeMarkers(markers, end, plotWidth)` as pure and says label widths are "measured", but the three-argument signature has no way to receive a measurement. This ticket adds an optional fourth parameter for widths (a function from label text to px, falling back to 8 px per char). Confirm, or name the signature.
-- `designer`: C12 names `SeriesLegend` and `MarkerLegend` but not their props. This ticket uses `SeriesLegend {series, pinned?, hidden, onToggle}` and `MarkerLegend {markers}`; the pinned-marker ticket needs to add the `pinned-age-up` item, so confirm the prop shape (for example a `pinnedAgeUps: boolean`).
-- `designer`: C12 makes current markers solid, which alters behaviour M3 shipped (dashed `8 2`) and is not listed in M4.11's text. This ticket applies it; confirm it belongs here and not in the pinned-marker ticket.
+None.
+
+## Re-spec 2026-11-02
+
+- Underspecified: `placeMarkers` width parameter, legend prop shapes and the solid-marker placement were open `designer` questions.
+- Changed: aligned to design C12 (`labelWidth?`, exported `PlacedMarker`, `SeriesLegend`/`MarkerLegend` props, `pinnedAgeUps?` left to SGS-071); solid current markers confirmed in this ticket; open questions removed.
+- Stands: all earlier scope and criteria are unchanged.
