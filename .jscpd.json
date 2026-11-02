@@ -1,0 +1,8 @@
+{
+  "path": ["lib/aoe4-build-order", "components/apps/aoe4-build-order", "pages/api/aoe4-build-order"],
+  "format": ["typescript", "tsx"],
+  "minTokens": 70,
+  "minLines": 8,
+  "threshold": 0,
+  "gitignore": true
+}

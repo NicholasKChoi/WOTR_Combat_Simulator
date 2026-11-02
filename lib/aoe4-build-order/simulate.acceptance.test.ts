@@ -1,66 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import englishSnapshot from '../../data/aoe4-build-order/aoe4world/english.json'
-import baseRules from '../../data/aoe4-build-order/rules/base.json'
-import englishRules from '../../data/aoe4-build-order/rules/english.json'
-import { BaseRules, CivData, GameData, Snapshot, buildGameData, loadGameData } from './data'
+import type { CivData, GameData } from './data'
 import { effectiveGatherRate } from './gather'
-import type { BuildOrder, BuildStart, BuildStep, SimInputs, SimulationResult } from './model'
-import { addBuildingInstance, simulateBuildOrder, stepHandlers, triggerHolds } from './simulate'
-import type { EngineState, StepHandler } from './simulate'
-import { resolveSimInputs } from './validate'
+import type { BuildStep, SimulationResult } from './model'
+import { addBuildingInstance, simulateBuildOrder, triggerHolds } from './simulate'
+import type { EngineState } from './simulate'
+import { ENGLISH, at, buildOrder, countAt, editGameData, inputsFor, run, series, withHandler } from './test-helpers'
 
-const data = loadGameData('english')
-
-function gameData(edit: (start: CivData['startingState']) => void): GameData {
-    const civData = structuredClone(englishRules) as unknown as CivData
-    edit(civData.startingState)
-    return buildGameData(
-        'english',
-        structuredClone(englishSnapshot) as unknown as Snapshot,
-        structuredClone(baseRules) as unknown as BaseRules,
-        civData,
-    )
-}
-
-function inputsFor(game: GameData, partial: unknown = {}): SimInputs {
-    const result = resolveSimInputs(partial, game)
-    if (result.ok === false) {
-        throw new Error(JSON.stringify(result.issues))
-    }
-    return result.inputs
-}
-
+const data = ENGLISH
 const inputs = inputsFor(data)
 
-function run(steps: BuildStep[], options: { game?: GameData; inputs?: SimInputs; start?: BuildStart } = {}): SimulationResult {
-    const order: BuildOrder = { civ: 'english', name: 'acceptance', start: options.start ?? { rally: 'sheep' }, steps }
-    const game = options.game ?? data
-    return simulateBuildOrder(order, game, options.inputs ?? inputsFor(game))
-}
-
-function withHandler<A extends BuildStep['action']>(action: A, handler: StepHandler<A>, fn: () => void) {
-    const handlers = stepHandlers as Record<string, unknown>
-    const saved = handlers[action]
-    handlers[action] = handler
-    try {
-        fn()
-    } finally {
-        if (saved === undefined) {
-            delete handlers[action]
-        } else {
-            handlers[action] = saved
-        }
-    }
-}
-
-function series(result: SimulationResult, baseId: string): number[] {
-    return result.unitsProduced.find((u) => u.baseId === baseId)?.counts ?? result.times.map(() => 0)
-}
-
-function countAt(result: SimulationResult, baseId: string, t: number): number {
-    const i = result.times.indexOf(t)
-    expect(i).toBeGreaterThanOrEqual(0)
-    return series(result, baseId)[i]
+function startingWith(edit: (start: CivData['startingState']) => void): GameData {
+    return editGameData((parts) => edit(parts.civData.startingState))
 }
 
 function rate(node: 'sheep' | 'wood', buildings = ['capital-town-center']): number {
@@ -70,14 +20,13 @@ function rate(node: 'sheep' | 'wood', buildings = ['capital-town-center']): numb
 
 const sheepRate = rate('sheep')
 const woodRate = rate('wood')
-const at = (seconds: number) => ({ kind: 'time' as const, seconds })
 const NO_RESERVE = { food: 0, wood: 0, gold: 0, stone: 0 }
 
 describe('hand-computed timeline with a wood-only start', () => {
-    const woodStart = gameData((start) => {
+    const woodStart = startingWith((start) => {
         start.villagers.value = { sheep: 0, berry: 0, deer: 0, boar: 0, farm: 0, wood: 6, gold: 0, stone: 0 }
     })
-    const result = run([], { game: woodStart, inputs: inputsFor(woodStart, { autoHouses: false }), start: { rally: 'wood' } })
+    const result = run([], { game: woodStart, inputs: { autoHouses: false }, start: { rally: 'wood' } })
     const t = (s: number) => result.times.indexOf(s)
 
     it('banks wood from six gatherers and spends food only at payments', () => {
@@ -112,7 +61,7 @@ describe('counted produce', () => {
     })
 
     it('pays every existing targeted instance together', () => {
-        const twin = gameData((start) => {
+        const twin = startingWith((start) => {
             start.buildings.value = ['capital-town-center', 'capital-town-center']
         })
         const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1 }], { game: twin })
@@ -205,9 +154,12 @@ describe('seam functions on a live state', () => {
     })
 })
 
+// Durations under the validated minimum, so these call the engine with resolved inputs directly.
 describe('sampling and horizon', () => {
+    const until = (steps: BuildStep[], durationSeconds: number) => simulateBuildOrder(buildOrder(steps), data, { ...inputs, durationSeconds })
+
     it('ends times at the horizon for short and non-multiple durations', () => {
-        const times = (durationSeconds: number) => run([], { inputs: { ...inputs, durationSeconds } }).times
+        const times = (durationSeconds: number) => until([], durationSeconds).times
         expect(times(3)).toEqual([0, 3])
         expect(times(5)).toEqual([0, 5])
         expect(times(62).slice(-3)).toEqual([55, 60, 62])
@@ -215,8 +167,8 @@ describe('sampling and horizon', () => {
 
     it('reports in-progress at a horizon inside the production and completed after it', () => {
         const step: BuildStep = { action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1 }
-        expect(run([step], { inputs: { ...inputs, durationSeconds: 10 } }).steps[0].status).toBe('in-progress')
-        const done = run([step], { inputs: { ...inputs, durationSeconds: 30 } })
+        expect(until([step], 10).steps[0].status).toBe('in-progress')
+        const done = until([step], 30)
         expect(done.steps[0]).toMatchObject({ status: 'completed', completedAt: 23 })
     })
 })
@@ -229,7 +181,7 @@ describe('invariants over generated build orders', () => {
             return s % n
         }
     }
-    const barracksGame = gameData((start) => {
+    const barracksGame = startingWith((start) => {
         start.buildings.value = ['capital-town-center', 'barracks']
     })
     const nodes = ['sheep', 'wood', 'gold'] as const
@@ -257,8 +209,8 @@ describe('invariants over generated build orders', () => {
     it('never goes negative, orders step times, keeps counts cumulative and supply bounded', () => {
         for (let seed = 1; seed <= 60; seed++) {
             const steps = randomSteps(lcg(seed))
-            const result = run(steps, { game: barracksGame, inputs: inputsFor(barracksGame, { autoHouses: false }) })
-            const again = run(steps, { game: barracksGame, inputs: inputsFor(barracksGame, { autoHouses: false }) })
+            const result = run(steps, { game: barracksGame, inputs: { autoHouses: false } })
+            const again = run(steps, { game: barracksGame, inputs: { autoHouses: false } })
             expect(again).toEqual(result)
             for (const values of Object.values(result.floating)) {
                 expect(values).toHaveLength(result.times.length)

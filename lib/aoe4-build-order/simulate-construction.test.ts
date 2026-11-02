@@ -1,63 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import englishSnapshot from '../../data/aoe4-build-order/aoe4world/english.json'
-import baseRules from '../../data/aoe4-build-order/rules/base.json'
-import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import type { CivRules } from './civ-rules'
-import { BaseRules, CivData, GameData, Snapshot, buildGameData, loadGameData } from './data'
+import type { CivData } from './data'
 import { effectiveGatherRate } from './gather'
-import type { BuildOrder, BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult } from './model'
-import { simulateBuildOrder, stepHandlers } from './simulate'
-import { resolveSimInputs } from './validate'
+import type { BuildStart, BuildStep, GatherNodeId, SimulationResult } from './model'
+import { ENGLISH, at, countAt, editGameData, inputsFor, run, sampleIndex, series, withHandler } from './test-helpers'
+import type { Parts } from './test-helpers'
 
-const data = loadGameData('english')
-
-interface Parts {
-    snapshot: Snapshot
-    base: BaseRules
-    civData: CivData
-}
-
-function gameData(edit: (parts: Parts) => void): GameData {
-    const parts: Parts = {
-        snapshot: structuredClone(englishSnapshot) as unknown as Snapshot,
-        base: structuredClone(baseRules) as unknown as BaseRules,
-        civData: structuredClone(englishRules) as unknown as CivData,
-    }
-    edit(parts)
-    return buildGameData('english', parts.snapshot, parts.base, parts.civData)
-}
-
-function inputsFor(game: GameData, partial: unknown = {}): SimInputs {
-    const result = resolveSimInputs(partial, game)
-    if (result.ok === false) {
-        throw new Error(JSON.stringify(result.issues))
-    }
-    return result.inputs
-}
-
+const data = ENGLISH
 const noHouses = { autoHouses: false }
-
-function run(steps: BuildStep[], options: { game?: GameData; inputs?: unknown; rules?: CivRules; start?: BuildStart } = {}): SimulationResult {
-    const game = options.game ?? data
-    const order: BuildOrder = { civ: 'english', name: 'test', start: options.start ?? { rally: 'sheep' }, steps }
-    return simulateBuildOrder(order, game, inputsFor(game, options.inputs ?? {}), options.rules)
-}
-
-function sampleAt(result: SimulationResult, t: number): number {
-    const i = result.times.indexOf(t)
-    if (i < 0) {
-        throw new Error(`no sample at ${t}`)
-    }
-    return i
-}
-
-function series(result: SimulationResult, baseId: string): number[] {
-    return result.unitsProduced.find((u) => u.baseId === baseId)?.counts ?? result.times.map(() => 0)
-}
-
-function countAt(result: SimulationResult, baseId: string, t: number): number {
-    return series(result, baseId)[sampleAt(result, t)]
-}
 
 function rateOf(node: GatherNodeId, game = data, partial: unknown = {}, buildings = ['capital-town-center']): number {
     const simInputs = inputsFor(game, partial)
@@ -76,27 +26,10 @@ function editEntry(parts: Parts, id: string, edit: (entry: Entry) => void) {
     edit(all.find((e) => e.id === id))
 }
 
-function withResearchHandler(handler: (typeof stepHandlers)['research'], fn: () => void) {
-    const handlers = stepHandlers as Record<string, unknown>
-    const had = 'research' in handlers
-    const previous = handlers.research
-    handlers.research = handler
-    try {
-        fn()
-    } finally {
-        if (had) {
-            handlers.research = previous
-        } else {
-            delete handlers.research
-        }
-    }
-}
-
 const rw = rateOf('wood')
 const rs = rateOf('sheep')
 const rb = rateOf('berry')
 const rg = rateOf('gold')
-const at = (seconds: number) => ({ kind: 'time' as const, seconds })
 const vils = (count: number) => ({ kind: 'villagers' as const, count })
 const house = (builders: number, from: GatherNodeId, extra: Partial<Extract<BuildStep, { action: 'build' }>> = {}): BuildStep => ({
     action: 'build',
@@ -127,7 +60,7 @@ describe('build step', () => {
     })
 
     it('divides the walk by the villager moveSpeed multiplier', () => {
-        const fast = gameData((parts) => {
+        const fast = editGameData((parts) => {
             parts.civData.effects.push({ property: 'moveSpeed', select: { id: ['villager'] }, effect: 'multiply', value: 2, type: 'passive', grantedBy: 'civ', source: 'test', unverified: true })
         })
         const result = run([house(2, 'wood')], { game: fast, start, inputs: noHouses })
@@ -135,14 +68,14 @@ describe('build step', () => {
     })
 
     it('takes the builders off their node until they walk back', () => {
-        expect(timed.gatherRates.wood[sampleAt(timed, 15)]).toBe(0)
-        expect(timed.gatherRates.wood[sampleAt(timed, 20)]).toBe(0)
-        expect(timed.gatherRates.wood[sampleAt(timed, 25)]).toBeCloseTo(2 * rw * 60, 9)
+        expect(timed.gatherRates.wood[sampleIndex(timed, 15)]).toBe(0)
+        expect(timed.gatherRates.wood[sampleIndex(timed, 20)]).toBe(0)
+        expect(timed.gatherRates.wood[sampleIndex(timed, 25)]).toBeCloseTo(2 * rw * 60, 9)
         const fromSheep = run([house(2, 'sheep', { then: 'wood' })], { start, inputs: noHouses })
-        expect(fromSheep.gatherRates.food[sampleAt(fromSheep, 5)]).toBeCloseTo(2 * rs * 60, 9)
-        expect(fromSheep.gatherRates.wood[sampleAt(fromSheep, 20)]).toBeCloseTo(2 * rw * 60, 9)
-        expect(fromSheep.gatherRates.wood[sampleAt(fromSheep, 25)]).toBeCloseTo(4 * rw * 60, 9)
-        expect(fromSheep.gatherRates.food[sampleAt(fromSheep, 25)]).toBeCloseTo(3 * rs * 60, 9)
+        expect(fromSheep.gatherRates.food[sampleIndex(fromSheep, 5)]).toBeCloseTo(2 * rs * 60, 9)
+        expect(fromSheep.gatherRates.wood[sampleIndex(fromSheep, 20)]).toBeCloseTo(2 * rw * 60, 9)
+        expect(fromSheep.gatherRates.wood[sampleIndex(fromSheep, 25)]).toBeCloseTo(4 * rw * 60, 9)
+        expect(fromSheep.gatherRates.food[sampleIndex(fromSheep, 25)]).toBeCloseTo(3 * rs * 60, 9)
     })
 
     it('counts the builders as alive villagers', () => {
@@ -156,7 +89,7 @@ describe('build step', () => {
     it('raises supply only at completion and never past maxPopCap', () => {
         expect(countAt(timed, 'villager', 120)).toBe(6)
         expect(countAt(run([], { start, inputs: noHouses }), 'villager', 120)).toBe(3)
-        const capped = gameData((parts) => {
+        const capped = editGameData((parts) => {
             parts.base.maxPopCap.value = 30
         })
         const result = run([house(1, 'sheep'), house(1, 'sheep'), house(1, 'sheep')], { game: capped, start, inputs: { ...noHouses, durationSeconds: 900 } })
@@ -168,12 +101,12 @@ describe('build step', () => {
         const result = run([house(3, 'wood')], { start: { villagers: { sheep: 4, wood: 2 }, rally: 'wood' }, inputs: noHouses })
         expect(result.steps[0].startedAt).toBe(25)
         expect(countAt(result, 'villager', 20)).toBe(1)
-        expect(result.floating.food[sampleAt(result, 20)]).toBeLessThan(150 + 20 * 4 * rs)
+        expect(result.floating.food[sampleIndex(result, 20)]).toBeLessThan(150 + 20 * 4 * rs)
         expect(countAt(result, 'villager', 40)).toBe(2)
     })
 
     it('reserves the cost when blocked on resources alone, not on age or builders', () => {
-        const woodVillagers = gameData((parts) => {
+        const woodVillagers = editGameData((parts) => {
             editEntry(parts, 'villager-1', (v) => {
                 v.costs.food = 0
                 v.costs.wood = 50
@@ -185,7 +118,7 @@ describe('build step', () => {
         const started = blocked.steps[0].startedAt
         expect(started).toBeCloseTo(50 / (6 * rw), 6)
         const payments = series(blocked, 'villager')
-        expect(payments[sampleAt(blocked, 20)]).toBe(0)
+        expect(payments[sampleIndex(blocked, 20)]).toBe(0)
         expect(payments[blocked.times.findIndex((t) => t >= started + 20)]).toBe(0)
         const aged = run([{ action: 'build', building: 'kings-palace', from: 'wood' }], options)
         expect(aged.steps[0].status).toBe('waiting')
@@ -197,7 +130,7 @@ describe('build step', () => {
     })
 
     it('adds a villager producer that runs the default order with the held rally', () => {
-        const rich = gameData(
+        const rich = editGameData(
             withStart((start) => {
                 start.resources.value = { food: 2000, wood: 1000, gold: 0, stone: 1000 }
                 start.buildings.value = ['capital-town-center', 'house', 'house']
@@ -211,16 +144,16 @@ describe('build step', () => {
         expect(countAt(plain, 'villager', 125)).toBe(countAt(run([], options), 'villager', 125) + 1)
         const held = run([{ action: 'rally', producer: 'town-center', to: 'stone' }, { action: 'rally', producer: 'town-center', instance: 1, to: 'gold' }, tc], options)
         const byDefault = run([{ action: 'rally', producer: 'town-center', to: 'stone' }, tc], options)
-        expect(byDefault.gatherRates.stone[sampleAt(byDefault, 130)]).toBeCloseTo(rateOf('stone') * 60, 9)
-        expect(plain.gatherRates.food[sampleAt(plain, 130)] - plain.gatherRates.food[sampleAt(plain, 125)]).toBeCloseTo(rs * 60, 9)
-        expect(plain.gatherRates.gold[sampleAt(plain, 130)]).toBe(0)
-        expect(plain.gatherRates.stone[sampleAt(plain, 130)]).toBe(0)
-        expect(held.gatherRates.stone[sampleAt(held, 130)]).toBe(0)
-        expect(held.gatherRates.gold[sampleAt(held, 130)]).toBeCloseTo(rg * 60, 9)
+        expect(byDefault.gatherRates.stone[sampleIndex(byDefault, 130)]).toBeCloseTo(rateOf('stone') * 60, 9)
+        expect(plain.gatherRates.food[sampleIndex(plain, 130)] - plain.gatherRates.food[sampleIndex(plain, 125)]).toBeCloseTo(rs * 60, 9)
+        expect(plain.gatherRates.gold[sampleIndex(plain, 130)]).toBe(0)
+        expect(plain.gatherRates.stone[sampleIndex(plain, 130)]).toBe(0)
+        expect(held.gatherRates.stone[sampleIndex(held, 130)]).toBe(0)
+        expect(held.gatherRates.gold[sampleIndex(held, 130)]).toBeCloseTo(rg * 60, 9)
     })
 
     it('leaves a new instance out of a produce step written before it was built', () => {
-        const two = gameData(
+        const two = editGameData(
             withStart((start) => {
                 start.resources.value = { food: 2000, wood: 1000, gold: 0, stone: 1000 }
                 start.buildings.value = ['capital-town-center', 'town-center', 'house', 'house']
@@ -239,13 +172,13 @@ describe('build step', () => {
         const result = run([{ action: 'build', building: 'lumber-camp', from: 'sheep' }], { start, inputs: { ...walks, ...noHouses } })
         const completed = result.steps[0].completedAt
         expect(completed).toBeCloseTo(5 + (20 * 3) / 3, 9)
-        expect(result.gatherRates.wood[sampleAt(result, 20)]).toBeCloseTo(4 * rateOf('wood', data, walks) * 60, 9)
-        expect(result.gatherRates.wood[sampleAt(result, 25)]).toBeCloseTo(4 * rateOf('wood', data, walks, ['capital-town-center', 'lumber-camp']) * 60, 9)
+        expect(result.gatherRates.wood[sampleIndex(result, 20)]).toBeCloseTo(4 * rateOf('wood', data, walks) * 60, 9)
+        expect(result.gatherRates.wood[sampleIndex(result, 25)]).toBeCloseTo(4 * rateOf('wood', data, walks, ['capital-town-center', 'lumber-camp']) * 60, 9)
         expect(rateOf('wood', data, walks)).not.toBeCloseTo(rateOf('wood', data, walks, ['capital-town-center', 'lumber-camp']), 3)
     })
 })
 
-const agesData = gameData(
+const agesData = editGameData(
     withStart((start) => {
         start.buildings.value = ['capital-town-center', 'barracks', 'house', 'house']
         start.resources.value = { food: 2000, wood: 200, gold: 1000, stone: 0 }
@@ -307,13 +240,13 @@ describe('ages', () => {
         expect(result.steps[1].completedAt).toBe(100)
         const unit = (id: string) => result.unitsProduced.find((u) => u.unitId === id)
         expect(unit('man-at-arms-1')).toMatchObject({ tier: 1 })
-        expect(unit('man-at-arms-1').counts[sampleAt(result, 100)]).toBe(6)
+        expect(unit('man-at-arms-1').counts[sampleIndex(result, 100)]).toBe(6)
         expect(unit('man-at-arms-1').counts.at(-1)).toBe(7)
         expect(unit('man-at-arms-2')).toBeUndefined()
         expect(unit('spearman-2')).toMatchObject({ tier: 2 })
-        expect(unit('spearman-2').counts[sampleAt(result, 115)]).toBe(0)
-        expect(unit('man-at-arms-1').counts[sampleAt(result, 105)]).toBe(7)
-        expect(unit('spearman-2').counts[sampleAt(result, 120)]).toBe(1)
+        expect(unit('spearman-2').counts[sampleIndex(result, 115)]).toBe(0)
+        expect(unit('man-at-arms-1').counts[sampleIndex(result, 105)]).toBe(7)
+        expect(unit('spearman-2').counts[sampleIndex(result, 120)]).toBe(1)
     })
 })
 
@@ -322,10 +255,10 @@ describe('move step', () => {
 
     it('walks the villagers to the new node', () => {
         expect(result.steps[0]).toMatchObject({ startedAt: 10, completedAt: 15, status: 'completed' })
-        expect(result.gatherRates.food[sampleAt(result, 10)]).toBeCloseTo(4 * rs * 60, 9)
-        expect(result.gatherRates.wood[sampleAt(result, 10)]).toBe(0)
-        expect(result.gatherRates.wood[sampleAt(result, 15)]).toBeCloseTo(2 * rw * 60, 9)
-        expect(result.gatherRates.food[sampleAt(result, 25)]).toBeCloseTo(5 * rs * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 10)]).toBeCloseTo(4 * rs * 60, 9)
+        expect(result.gatherRates.wood[sampleIndex(result, 10)]).toBe(0)
+        expect(result.gatherRates.wood[sampleIndex(result, 15)]).toBeCloseTo(2 * rw * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 25)]).toBeCloseTo(5 * rs * 60, 9)
         const quick = run([{ action: 'move', count: 2, from: 'sheep', to: 'wood', walkSeconds: 3, trigger: at(10) }], { inputs: noHouses })
         expect(quick.steps[0].completedAt).toBe(13)
     })
@@ -338,7 +271,7 @@ describe('move step', () => {
 })
 
 const twoTowns = (edit: (parts: Parts) => void = () => {}) =>
-    gameData((parts) => {
+    editGameData((parts) => {
         parts.civData.startingState.buildings.value = ['capital-town-center', 'town-center']
         parts.civData.startingState.resources.value = { food: 5000, wood: 200, gold: 0, stone: 0 }
         edit(parts)
@@ -361,9 +294,9 @@ describe('auto-houses', () => {
         expect(done).toEqual([120])
         const off = run([], { game: towns, start: woodStart, inputs: noHouses })
         expect(villagersAt(off, 200)).toBe(13)
-        expect(auto.gatherRates.wood[sampleAt(auto, 105)]).toBeCloseTo(15 * rw * 60, 9)
-        expect(off.gatherRates.wood[sampleAt(off, 105)]).toBeCloseTo(16 * rw * 60, 9)
-        expect(auto.gatherRates.wood[sampleAt(auto, 125)]).toBeCloseTo(off.gatherRates.wood[sampleAt(off, 125)], 9)
+        expect(auto.gatherRates.wood[sampleIndex(auto, 105)]).toBeCloseTo(15 * rw * 60, 9)
+        expect(off.gatherRates.wood[sampleIndex(off, 105)]).toBeCloseTo(16 * rw * 60, 9)
+        expect(auto.gatherRates.wood[sampleIndex(auto, 125)]).toBeCloseTo(off.gatherRates.wood[sampleIndex(off, 125)], 9)
     })
 
     it('stay off until the last build-house step has started', () => {
@@ -390,21 +323,21 @@ describe('auto-houses', () => {
         const result = run([], { start: { villagers: { sheep: 6, gold: 2 }, rally: 'sheep' }, inputs: { houseBuilders: 2, houseBuilderSource: 'gold' }, rules })
         expect(done[0]).toBeCloseTo(5 + (15 * 3) / 4, 9)
         expect(result.gatherRates.gold[0]).toBe(0)
-        expect(result.gatherRates.gold[sampleAt(result, 20)]).toBe(0)
-        expect(result.gatherRates.gold[sampleAt(result, 25)]).toBeCloseTo(2 * rg * 60, 9)
+        expect(result.gatherRates.gold[sampleIndex(result, 20)]).toBe(0)
+        expect(result.gatherRates.gold[sampleIndex(result, 25)]).toBeCloseTo(2 * rg * 60, 9)
     })
 
     it('start none when a house gives no supply', () => {
         const zero = run([], { rules: { supplyProvider: (supply, ctx) => (ctx.baseId === 'house' ? 0 : supply) } })
         expect(villagersAt(zero, 120)).toBe(3)
-        const unlisted = gameData((parts) => {
+        const unlisted = editGameData((parts) => {
             delete parts.civData.supply.house
         })
         expect(villagersAt(run([], { game: unlisted }), 120)).toBe(3)
     })
 
     it('stop at maxPopCap', () => {
-        const capped = gameData((parts) => {
+        const capped = editGameData((parts) => {
             parts.base.maxPopCap.value = 30
         })
         const houses: number[] = []
@@ -418,13 +351,13 @@ describe('auto-houses', () => {
         const { done, rules } = housesDone()
         const result = run([], { rules })
         expect(done[0]).toBe(60)
-        expect(result.gatherRates.wood.slice(0, sampleAt(result, 120) + 1).every((v) => v === 0)).toBe(true)
-        expect(result.gatherRates.food[sampleAt(result, 40)]).toBeCloseTo(6 * rs * 60, 9)
-        expect(result.gatherRates.food[sampleAt(result, 45)]).toBeCloseTo(7 * rs * 60, 9)
-        expect(result.gatherRates.food[sampleAt(result, 60)]).toBeCloseTo(7 * rs * 60, 9)
-        expect(result.gatherRates.food[sampleAt(result, 65)]).toBeCloseTo(9 * rs * 60, 9)
-        expect(result.floating.wood[sampleAt(result, 40)]).toBe(150)
-        expect(result.floating.wood[sampleAt(result, 35)]).toBe(200)
+        expect(result.gatherRates.wood.slice(0, sampleIndex(result, 120) + 1).every((v) => v === 0)).toBe(true)
+        expect(result.gatherRates.food[sampleIndex(result, 40)]).toBeCloseTo(6 * rs * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 45)]).toBeCloseTo(7 * rs * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 60)]).toBeCloseTo(7 * rs * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 65)]).toBeCloseTo(9 * rs * 60, 9)
+        expect(result.floating.wood[sampleIndex(result, 40)]).toBe(150)
+        expect(result.floating.wood[sampleIndex(result, 35)]).toBe(200)
         expect(villagersAt(result, 120)).toBe(6)
         expect(villagersAt(run([], { inputs: noHouses }), 120)).toBe(3)
         expect(run([], { inputs: { houseBuilderSource: 'gold' } })).toEqual(result)
@@ -432,14 +365,14 @@ describe('auto-houses', () => {
 
     it('break a fullest-node tie by node order', () => {
         const result = run([], { start: { villagers: { berry: 3, gold: 3 }, rally: 'stone' } })
-        expect(result.gatherRates.food[sampleAt(result, 45)]).toBeCloseTo(2 * rb * 60, 9)
-        expect(result.gatherRates.gold[sampleAt(result, 45)]).toBeCloseTo(3 * rg * 60, 9)
-        expect(result.gatherRates.food[sampleAt(result, 65)]).toBeCloseTo(3 * rb * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 45)]).toBeCloseTo(2 * rb * 60, 9)
+        expect(result.gatherRates.gold[sampleIndex(result, 45)]).toBeCloseTo(3 * rg * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 65)]).toBeCloseTo(3 * rb * 60, 9)
     })
 
     it('pay every resource of the house cost', () => {
         const stoneHouse = (stone: number) =>
-            gameData((parts) => {
+            editGameData((parts) => {
                 editEntry(parts, 'house-1', (h) => {
                     h.costs.stone = 10
                 })
@@ -449,9 +382,9 @@ describe('auto-houses', () => {
         expect(villagersAt(none, 120)).toBe(3)
         expect(none.floating.wood.every((v) => v === 200)).toBe(true)
         const paid = run([], { game: stoneHouse(10) })
-        expect(paid.floating.stone[sampleAt(paid, 45)]).toBe(0)
-        expect(paid.floating.wood[sampleAt(paid, 45)]).toBe(150)
-        expect(paid.floating.wood[sampleAt(paid, 35)]).toBe(200)
+        expect(paid.floating.stone[sampleIndex(paid, 45)]).toBe(0)
+        expect(paid.floating.wood[sampleIndex(paid, 45)]).toBe(150)
+        expect(paid.floating.wood[sampleIndex(paid, 35)]).toBe(200)
     })
 
     it('wait without error when no node has houseBuilders gatherers', () => {
@@ -461,7 +394,7 @@ describe('auto-houses', () => {
     })
 
     it('wake when the house becomes affordable', () => {
-        const poor = gameData((parts) => {
+        const poor = editGameData((parts) => {
             parts.civData.startingState.resources.value.wood = 0
         })
         const { done, rules } = housesDone()
@@ -473,13 +406,14 @@ describe('auto-houses', () => {
     })
 
     it('ignore a waiting step reserve', () => {
-        const woodVillagers = gameData((parts) => {
+        const woodVillagers = editGameData((parts) => {
             editEntry(parts, 'villager-1', (v) => {
                 v.costs.food = 0
                 v.costs.wood = 50
             })
         })
-        withResearchHandler(
+        withHandler(
+            'research',
             () => ({ started: false, reserve: { food: 0, wood: 1e9, gold: 0, stone: 0 } }),
             () => {
                 const result = run([{ action: 'research', tech: 'wheelbarrow' }], { game: woodVillagers, start: { villagers: { sheep: 9 }, rally: 'sheep' } })
@@ -491,7 +425,7 @@ describe('auto-houses', () => {
     })
 
     it('project the demand at the modified production speed', () => {
-        const fast = gameData((parts) => {
+        const fast = editGameData((parts) => {
             parts.civData.startingState.resources.value = { food: 5000, wood: 200, gold: 0, stone: 0 }
             parts.civData.effects.push({ property: 'productionSpeed', select: { id: ['villager'] }, effect: 'multiply', value: 2, type: 'passive', grantedBy: 'civ', source: 'test', unverified: true })
         })
@@ -509,7 +443,7 @@ describe('auto-houses', () => {
         const { done, rules } = housesDone()
         const result = run([{ action: 'produce', producer: 'barracks', unit: 'man-at-arms' }], { game: army, start: woodStart, rules })
         expect(done[0]).toBeCloseTo(3 * 14.65 + 20, 9)
-        expect(result.gatherRates.wood[sampleAt(result, 45)]).toBeCloseTo(9 * rw * 60, 9)
+        expect(result.gatherRates.wood[sampleIndex(result, 45)]).toBeCloseTo(9 * rw * 60, 9)
     })
 })
 
@@ -542,7 +476,7 @@ describe('determinism and data', () => {
             },
         ]
         for (const edit of edits) {
-            expect(run([], { game: gameData(edit) })).not.toEqual(base)
+            expect(run([], { game: editGameData(edit) })).not.toEqual(base)
         }
     })
 

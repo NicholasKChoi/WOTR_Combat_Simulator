@@ -1,70 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import englishSnapshot from '../../data/aoe4-build-order/aoe4world/english.json'
-import baseRules from '../../data/aoe4-build-order/rules/base.json'
-import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import { NO_CIV_RULES, civRules } from './civ-rules'
-import type { CivRules } from './civ-rules'
-import { BaseRules, CivData, GameData, Snapshot, buildGameData, loadGameData } from './data'
+import type { CivData, GameData } from './data'
 import { effectiveGatherRate } from './gather'
-import type { BuildOrder, BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult } from './model'
+import type { BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult } from './model'
 import { SAMPLE_SECONDS, addBuildingInstance, simulateBuildOrder, stepHandlers } from './simulate'
-import type { BuildingInstance, EngineState, RallySource, StepHandler } from './simulate'
-import { resolveSimInputs } from './validate'
+import type { BuildingInstance, EngineState, RallySource } from './simulate'
+import { ENGLISH, at, buildOrder, countAt, editGameData, inputsFor, run, sampleIndex, series, withHandler } from './test-helpers'
+import type { Parts } from './test-helpers'
 
-const data = loadGameData('english')
-
-interface Parts {
-    snapshot: Snapshot
-    base: BaseRules
-    civData: CivData
-}
-
-function gameData(edit: (parts: Parts) => void): GameData {
-    const parts: Parts = {
-        snapshot: structuredClone(englishSnapshot) as unknown as Snapshot,
-        base: structuredClone(baseRules) as unknown as BaseRules,
-        civData: structuredClone(englishRules) as unknown as CivData,
-    }
-    edit(parts)
-    return buildGameData('english', parts.snapshot, parts.base, parts.civData)
-}
-
-function inputsFor(game: GameData, partial: unknown = {}): SimInputs {
-    const result = resolveSimInputs(partial, game)
-    if (result.ok === false) {
-        throw new Error(JSON.stringify(result.issues))
-    }
-    return result.inputs
-}
-
+const data = ENGLISH
 const inputs = inputsFor(data)
-
-function buildOrder(steps: BuildStep[], start: BuildStart = { rally: 'sheep' }): BuildOrder {
-    return { civ: 'english', name: 'test', start, steps }
-}
-
-function run(steps: BuildStep[], options: { game?: GameData; inputs?: SimInputs; rules?: CivRules; start?: BuildStart } = {}) {
-    const game = options.game ?? data
-    return simulateBuildOrder(buildOrder(steps, options.start), game, options.inputs ?? inputsFor(game), options.rules)
-}
-
-function sampleAt(result: SimulationResult, t: number): number {
-    const i = result.times.indexOf(t)
-    if (i < 0) {
-        throw new Error(`no sample at ${t}`)
-    }
-    return i
-}
-
-function series(result: SimulationResult, baseId: string): number[] {
-    return result.unitsProduced.find((u) => u.baseId === baseId)?.counts ?? result.times.map(() => 0)
-}
-
-function countAt(result: SimulationResult, baseId: string, t: number): number {
-    return series(result, baseId)[sampleAt(result, t)]
-}
 
 function rateOf(node: GatherNodeId, game: GameData, simInputs: SimInputs, buildings = ['capital-town-center']): number {
     const state = { data: game, age: 1, buildings: new Map(buildings.map((b) => [b, 1])), researched: new Set<string>(), coverage: simInputs.influenceCoverage }
@@ -75,29 +22,12 @@ function withStart(parts: Parts, edit: (start: CivData['startingState']) => void
     edit(parts.civData.startingState)
 }
 
-// Installs a handler for action for the duration of fn, then puts back whatever was registered before.
-function withHandler<A extends BuildStep['action']>(action: A, handler: StepHandler<A>, fn: () => void) {
-    const handlers = stepHandlers as Record<string, unknown>
-    const saved = handlers[action]
-    handlers[action] = handler
-    try {
-        fn()
-    } finally {
-        if (saved === undefined) {
-            delete handlers[action]
-        } else {
-            handlers[action] = saved
-        }
-    }
-}
-
 const r = rateOf('sheep', data, inputs)
 const woodRate = rateOf('wood', data, inputs)
 const vils = (count: number) => ({ kind: 'villagers' as const, count })
-const at = (seconds: number) => ({ kind: 'time' as const, seconds })
 
 describe('resources never go negative and waits are reported', () => {
-    const barracks = gameData((parts) =>
+    const barracks = editGameData((parts) =>
         withStart(parts, (start) => {
             start.buildings.value = ['capital-town-center', 'barracks']
             start.resources.value = { food: 0, wood: 200, gold: 100, stone: 0 }
@@ -132,7 +62,7 @@ describe('resources never go negative and waits are reported', () => {
     })
 
     it('lets the villager order keep paying while food stays above the step reserve', () => {
-        const goldless = gameData((parts) =>
+        const goldless = editGameData((parts) =>
             withStart(parts, (start) => {
                 start.buildings.value = ['capital-town-center', 'barracks']
                 start.resources.value = { food: 200, wood: 200, gold: 0, stone: 0 }
@@ -146,7 +76,7 @@ describe('resources never go negative and waits are reported', () => {
     })
 
     it('skips an order payment that would drop food below the reserve', () => {
-        const lean = gameData((parts) =>
+        const lean = editGameData((parts) =>
             withStart(parts, (start) => {
                 start.buildings.value = ['capital-town-center', 'barracks']
                 start.resources.value = { food: 120, wood: 200, gold: 0, stone: 0 }
@@ -160,7 +90,7 @@ describe('resources never go negative and waits are reported', () => {
 
 describe('payment', () => {
     const starved = (food: number) =>
-        gameData((parts) =>
+        editGameData((parts) =>
             withStart(parts, (start) => {
                 start.resources.value = { food, wood: 0, gold: 0, stone: 0 }
             }),
@@ -176,6 +106,51 @@ describe('payment', () => {
         const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1 }], { game: starved(65), start: { rally: 'sheep', villagers: {} } })
         expect(result.unitsProduced.map((u) => u.baseId)).toEqual(['scout'])
         expect(result.floating.food[0]).toBe(0)
+    })
+
+    it('adds every payment to the spend total of its category', () => {
+        const rich = editGameData((parts) =>
+            withStart(parts, (start) => {
+                start.buildings.value = ['capital-town-center', 'barracks', 'mill']
+                start.resources.value = { food: 5000, wood: 5000, gold: 5000, stone: 5000 }
+            }),
+        )
+        const total = (baseId: string) => {
+            const { food, wood, gold, stone } = rich.byBaseId.get(baseId)[0].costs
+            return food + wood + gold + stone
+        }
+        let spent: EngineState['spent']
+        let houses: number
+        let result: SimulationResult
+        withHandler(
+            'rally',
+            (_step, _index, state) => {
+                spent = { ...state.spent }
+                houses = state.buildings.get('house')
+                return { started: true }
+            },
+            () => {
+                result = run(
+                    [
+                        { action: 'produce', producer: 'barracks', unit: 'man-at-arms', count: 1 },
+                        { action: 'build', building: 'house', builders: 1, from: 'sheep' },
+                        { action: 'research', tech: 'wheelbarrow' },
+                        { action: 'pause', producer: 'capital-town-center', trigger: at(300) },
+                        { action: 'rally', producer: 'capital-town-center', to: 'sheep', trigger: at(450) },
+                    ],
+                    { game: rich },
+                )
+            },
+        )
+        const villagers = countAt(result, 'villager', 450)
+        expect(villagers).toBeGreaterThan(0)
+        expect(houses).toBeGreaterThan(1)
+        expect(spent).toEqual({
+            villagers: total('villager') * villagers,
+            military: total('man-at-arms'),
+            buildings: total('house') * houses,
+            research: total('wheelbarrow'),
+        })
     })
 })
 
@@ -205,14 +180,14 @@ describe('determinism', () => {
     })
 
     it('reads no clock or random source', () => {
-        for (const file of ['simulate.ts', 'civ-rules.ts']) {
+        for (const file of ['simulate.ts', 'civ-rules.ts', 'engine-common.ts']) {
             expect(readFileSync(join(__dirname, file), 'utf8')).not.toMatch(/Math\.random|Date\.now|new Date|performance\.now/)
         }
     })
 })
 
 describe('default English start', () => {
-    const result = run([], { inputs: inputsFor(data, { autoHouses: false }) })
+    const result = run([], { inputs: { autoHouses: false } })
     const villagers = series(result, 'villager')
 
     it('pays villagers at 0, 20 and 40 until supply 10 blocks the fourth', () => {
@@ -225,8 +200,8 @@ describe('default English start', () => {
     })
 
     it('excludes walking villagers from the gather rate', () => {
-        expect(result.gatherRates.food[sampleAt(result, 20)]).toBeCloseTo(6 * r * 60, 9)
-        expect(result.gatherRates.food[sampleAt(result, 25)]).toBeCloseTo(7 * r * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 20)]).toBeCloseTo(6 * r * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 25)]).toBeCloseTo(7 * r * 60, 9)
     })
 
     it('reads t=0 after the villager payment at 0', () => {
@@ -236,7 +211,7 @@ describe('default English start', () => {
 
     it('counts the starting scout in population but not in unitsProduced', () => {
         expect(result.unitsProduced.map((u) => u.baseId)).toEqual(['villager'])
-        const scoutless = gameData((parts) =>
+        const scoutless = editGameData((parts) =>
             withStart(parts, (start) => {
                 start.units.value = {}
             }),
@@ -257,7 +232,7 @@ describe('triggers', () => {
     })
 
     it('leaves a step behind an unstarted step not reached and the blocker waiting', () => {
-        const starved = gameData((parts) =>
+        const starved = editGameData((parts) =>
             withStart(parts, (start) => {
                 start.resources.value = { food: 0, wood: 0, gold: 0, stone: 0 }
             }),
@@ -277,22 +252,22 @@ describe('triggers', () => {
 describe('same instant', () => {
     it('routes the villager spawning at the rally time', () => {
         const result = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', trigger: at(20) }])
-        expect(result.gatherRates.wood[sampleAt(result, 20)]).toBe(0)
-        expect(result.gatherRates.wood[sampleAt(result, 25)]).toBeCloseTo(woodRate * 60, 9)
-        expect(result.gatherRates.food[sampleAt(result, 25)]).toBeCloseTo(6 * r * 60, 9)
+        expect(result.gatherRates.wood[sampleIndex(result, 20)]).toBe(0)
+        expect(result.gatherRates.wood[sampleIndex(result, 25)]).toBeCloseTo(woodRate * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 25)]).toBeCloseTo(6 * r * 60, 9)
     })
 
     it('routes the villager after the one that met a villagers trigger', () => {
-        const result = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', trigger: vils(7) }], { inputs: inputsFor(data, { autoHouses: false }) })
-        expect(result.gatherRates.food[sampleAt(result, 25)]).toBeCloseTo(7 * r * 60, 9)
-        expect(result.gatherRates.wood[sampleAt(result, 25)]).toBe(0)
-        expect(result.gatherRates.wood[sampleAt(result, 45)]).toBeCloseTo(woodRate * 60, 9)
-        expect(result.gatherRates.food[sampleAt(result, 45)]).toBeCloseTo(7 * r * 60, 9)
+        const result = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', trigger: vils(7) }], { inputs: { autoHouses: false } })
+        expect(result.gatherRates.food[sampleIndex(result, 25)]).toBeCloseTo(7 * r * 60, 9)
+        expect(result.gatherRates.wood[sampleIndex(result, 25)]).toBe(0)
+        expect(result.gatherRates.wood[sampleIndex(result, 45)]).toBeCloseTo(woodRate * 60, 9)
+        expect(result.gatherRates.food[sampleIndex(result, 45)]).toBeCloseTo(7 * r * 60, 9)
     })
 })
 
 describe('rally scope', () => {
-    const towns = gameData((parts) =>
+    const towns = editGameData((parts) =>
         withStart(parts, (start) => {
             start.buildings.value = ['capital-town-center', 'town-center', 'town-center']
         }),
@@ -333,7 +308,7 @@ describe('rally scope', () => {
         expect(rallies(state, 'town-center')).toEqual(['wood', 'sheep'])
         expect(rallies(state, 'capital-town-center')).toEqual(['sheep'])
         expect(state.rallyDefaults.size).toBe(0)
-        expect(result.gatherRates.wood[sampleAt(result, 25)]).toBeCloseTo(woodRate * 60, 9)
+        expect(result.gatherRates.wood[sampleIndex(result, 25)]).toBeCloseTo(woodRate * 60, 9)
     })
 
     it('changes every instance and the default when no instance is named', () => {
@@ -396,7 +371,7 @@ describe('rally scope', () => {
         const { state, result } = probe([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', rally: 'wood', trigger: at(10) }, look], data)
         expect(rallies(state, 'capital-town-center')).toEqual(['wood'])
         expect(state.rallyDefaults.get('capital-town-center')?.node).toBe('wood')
-        expect(result.gatherRates.wood[sampleAt(result, 25)]).toBeCloseTo(woodRate * 60, 9)
+        expect(result.gatherRates.wood[sampleIndex(result, 25)]).toBeCloseTo(woodRate * 60, 9)
     })
 
     it('completes a rally step the instant it arms', () => {
@@ -405,26 +380,26 @@ describe('rally scope', () => {
     })
 
     it('walks (walkSeconds ?? inputs.walkSeconds) / moveSpeedMultiplier', () => {
-        const fast = gameData((parts) => {
+        const fast = editGameData((parts) => {
             parts.civData.effects.push({ property: 'moveSpeed', select: { id: ['villager'] }, effect: 'multiply', value: 2, type: 'passive', grantedBy: 'civ', source: 'test', unverified: true })
         })
         const fastWood = rateOf('wood', fast, inputsFor(fast))
-        const routed = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', walkSeconds: 20 }], { game: fast, inputs: inputsFor(fast, { autoHouses: false }) })
-        expect(routed.gatherRates.wood[sampleAt(routed, 25)]).toBe(0)
-        expect(routed.gatherRates.wood[sampleAt(routed, 30)]).toBeCloseTo(fastWood * 60, 9)
-        const slow = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', walkSeconds: 20 }], { inputs: inputsFor(data, { autoHouses: false }) })
-        expect(slow.gatherRates.wood[sampleAt(slow, 35)]).toBe(0)
-        expect(slow.gatherRates.wood[sampleAt(slow, 40)]).toBeCloseTo(woodRate * 60, 9)
-        const base = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood' }], { game: fast, inputs: inputsFor(fast, { walkSeconds: 10, autoHouses: false }) })
-        expect(base.gatherRates.wood[sampleAt(base, 20)]).toBe(0)
-        expect(base.gatherRates.wood[sampleAt(base, 25)]).toBeCloseTo(fastWood * 60, 9)
+        const routed = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', walkSeconds: 20 }], { game: fast, inputs: { autoHouses: false } })
+        expect(routed.gatherRates.wood[sampleIndex(routed, 25)]).toBe(0)
+        expect(routed.gatherRates.wood[sampleIndex(routed, 30)]).toBeCloseTo(fastWood * 60, 9)
+        const slow = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', walkSeconds: 20 }], { inputs: { autoHouses: false } })
+        expect(slow.gatherRates.wood[sampleIndex(slow, 35)]).toBe(0)
+        expect(slow.gatherRates.wood[sampleIndex(slow, 40)]).toBeCloseTo(woodRate * 60, 9)
+        const base = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood' }], { game: fast, inputs: { walkSeconds: 10, autoHouses: false } })
+        expect(base.gatherRates.wood[sampleIndex(base, 20)]).toBe(0)
+        expect(base.gatherRates.wood[sampleIndex(base, 25)]).toBeCloseTo(fastWood * 60, 9)
     })
 })
 
 describe('switch and pause', () => {
     it('lets the villager in production finish and keeps the scout cost when switching', () => {
         const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(10) }])
-        expect(result.floating.food[sampleAt(result, 10)]).toBeCloseTo(150 + 6 * r * 10 - 65, 9)
+        expect(result.floating.food[sampleIndex(result, 10)]).toBeCloseTo(150 + 6 * r * 10 - 65, 9)
         expect(countAt(result, 'villager', 20)).toBe(1)
         expect(countAt(result, 'scout', 40)).toBe(0)
         expect(countAt(result, 'scout', 45)).toBe(1)
@@ -501,7 +476,7 @@ describe('produce waits', () => {
     })
 
     it('waits for an entry above the current age without holding back the villager order', () => {
-        const barracks = gameData((parts) =>
+        const barracks = editGameData((parts) =>
             withStart(parts, (start) => {
                 start.buildings.value = ['capital-town-center', 'barracks']
             }),
@@ -512,15 +487,15 @@ describe('produce waits', () => {
     })
 
     it('waits while the population would pass supply, without a reserve', () => {
-        const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(45) }], { inputs: inputsFor(data, { autoHouses: false }) })
+        const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(45) }], { inputs: { autoHouses: false } })
         expect(result.steps[0].status).toBe('waiting')
-        expect(result.floating.food[sampleAt(result, 50)]).toBeGreaterThan(65)
+        expect(result.floating.food[sampleIndex(result, 50)]).toBeGreaterThan(65)
     })
 })
 
 describe('handler seam', () => {
     it('leaves an action with no registered handler waiting and blocking', () => {
-        const withMill = gameData((parts) =>
+        const withMill = editGameData((parts) =>
             withStart(parts, (start) => {
                 start.buildings.value = ['capital-town-center', 'mill']
                 start.resources.value = { food: 200, wood: 200, gold: 200, stone: 0 }
@@ -580,7 +555,7 @@ describe('handler seam', () => {
 
 describe('sampling', () => {
     it('samples every SAMPLE_SECONDS and at the horizon', () => {
-        const result = run([], { inputs: inputsFor(data, { durationSeconds: 62 }) })
+        const result = run([], { inputs: { durationSeconds: 62 } })
         expect(result.sampleSeconds).toBe(SAMPLE_SECONDS)
         expect(SAMPLE_SECONDS).toBe(5)
         expect(result.times.slice(0, 3)).toEqual([0, 5, 10])
@@ -588,13 +563,13 @@ describe('sampling', () => {
         expect(result.times).toHaveLength(14)
         const arrays = [...Object.values(result.gatherRates), ...Object.values(result.floating), ...result.unitsProduced.map((u) => u.counts)]
         arrays.forEach((values) => expect(values).toHaveLength(result.times.length))
-        expect(run([], { inputs: inputsFor(data, { durationSeconds: 60 }) }).times.slice(-2)).toEqual([55, 60])
+        expect(run([], { inputs: { durationSeconds: 60 } }).times.slice(-2)).toEqual([55, 60])
     })
 
     it('applies a rally at 0 before the first sample', () => {
         const result = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', trigger: at(0) }])
         expect(result.steps[0].startedAt).toBe(0)
-        expect(result.gatherRates.wood[sampleAt(result, 25)]).toBeCloseTo(woodRate * 60, 9)
+        expect(result.gatherRates.wood[sampleIndex(result, 25)]).toBeCloseTo(woodRate * 60, 9)
     })
 
     it('reports the run shape', () => {
@@ -627,9 +602,9 @@ describe('civ rules', () => {
     })
 
     it('supplyProvider changes the supply a building gives', () => {
-        const result = run([], { inputs: inputsFor(data, { autoHouses: false }), rules: { supplyProvider: (supply) => supply + 10 } })
+        const result = run([], { inputs: { autoHouses: false }, rules: { supplyProvider: (supply) => supply + 10 } })
         expect(countAt(result, 'villager', 80)).toBe(4)
-        expect(countAt(run([], { inputs: inputsFor(data, { autoHouses: false }) }), 'villager', 80)).toBe(3)
+        expect(countAt(run([], { inputs: { autoHouses: false } }), 'villager', 80)).toBe(3)
         let supply: number
         withHandler(
             'move',
@@ -651,7 +626,7 @@ describe('civ rules', () => {
     })
 
     it('dropOffRule picks the walk the gather rate uses', () => {
-        const farWalk = inputsFor(data, { trips: { sheep: { walkSecondsTownCenter: 20 } } })
+        const farWalk = { trips: { sheep: { walkSecondsTownCenter: 20 } } }
         const result = run([], { inputs: farWalk, rules: { dropOffRule: (has, ctx) => has || ctx.node === 'sheep' } })
         expect(result.gatherRates.food[0]).toBeCloseTo(6 * (10 / (10 / 0.75 + 2.86)) * 60, 9)
         expect(run([], { inputs: farWalk }).gatherRates.food[0]).toBeCloseTo(6 * (10 / (10 / 0.75 + 20)) * 60, 9)
@@ -666,7 +641,7 @@ describe('civ rules', () => {
 
 describe('game data drives the run', () => {
     it('follows the villager production time', () => {
-        const quick = gameData((parts) => {
+        const quick = editGameData((parts) => {
             const villager = (parts.snapshot.units as unknown as { id: string; costs: { time: number } }[]).find((u) => u.id === 'villager-1')
             villager.costs.time = 10
         })
@@ -674,14 +649,14 @@ describe('game data drives the run', () => {
     })
 
     it('follows a productionSpeed effect', () => {
-        const quick = gameData((parts) => {
+        const quick = editGameData((parts) => {
             parts.civData.effects.push({ property: 'productionSpeed', select: { id: ['villager'] }, effect: 'multiply', value: 2, type: 'passive', grantedBy: 'civ', source: 'test', unverified: true })
         })
         expect(countAt(run([], { game: quick }), 'villager', 10)).toBe(1)
     })
 
     it('follows the sheep gather rate', () => {
-        const slow = gameData((parts) => {
+        const slow = editGameData((parts) => {
             parts.base.gatherNodes.sheep.rate.value = 0.5
         })
         expect(run([], { game: slow }).gatherRates.food[0]).toBeCloseTo(6 * (10 / (10 / 0.5 + 2.86)) * 60, 9)
@@ -700,7 +675,7 @@ describe('performance', () => {
             )
         }
         const started = performance.now()
-        const result = run(steps, { inputs: inputsFor(data, { durationSeconds: 3600 }), rules: { supplyProvider: () => 200 } })
+        const result = run(steps, { inputs: { durationSeconds: 3600 }, rules: { supplyProvider: () => 200 } })
         expect(performance.now() - started).toBeLessThan(1000)
         expect(result.steps.every((s) => s.status !== 'waiting')).toBe(true)
         expect(countAt(result, 'villager', 3600)).toBe(3600 / 20)
@@ -720,15 +695,19 @@ describe('source shape', () => {
         expect(source('civ-rules.ts').match(/^export /gm)).toHaveLength(4)
     })
 
-    it('has no numeric literal beyond 0, 1, 60, the sample step and one tolerance', () => {
-        for (const file of ['simulate.ts', 'civ-rules.ts']) {
+    it('has no numeric literal beyond 0, 1, 60, the sample step and the one shared tolerance', () => {
+        const literalsOf = (file: string) => {
             const code = source(file)
                 .replace(/\/\/.*$/gm, '')
                 .replace(/'[^']*'|`[^`]*`/g, "''")
-            const literals = [...code.matchAll(/(?<![\w.])\d[\d.]*(?:e-?\d+)?/g)].map((m) => m[0])
-            const odd = literals.filter((n) => !['0', '1', '60', '5'].includes(n))
-            expect(odd.length, `${file}: ${odd.join(', ')}`).toBeLessThanOrEqual(file === 'simulate.ts' ? 1 : 0)
+                .replace(/\/\^.*?\$\//g, "''")
+            return [...code.matchAll(/(?<![\w.])\d[\d.]*(?:e-?\d+)?/g)].map((m) => m[0])
+        }
+        for (const file of ['simulate.ts', 'civ-rules.ts']) {
+            const literals = literalsOf(file)
+            expect(literals.filter((n) => !['0', '1', '60', '5'].includes(n)), file).toEqual([])
             expect(literals.filter((n) => n === '5'), file).toHaveLength(file === 'simulate.ts' ? 1 : 0)
         }
+        expect(literalsOf('engine-common.ts').filter((n) => n !== '0' && n !== '1')).toEqual(['1e-9'])
     })
 })

@@ -1,35 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import englishSnapshot from '../../data/aoe4-build-order/aoe4world/english.json'
-import baseRules from '../../data/aoe4-build-order/rules/base.json'
-import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import type { CivRules } from './civ-rules'
-import { BaseRules, CivData, GameData, Snapshot, buildGameData, loadGameData } from './data'
 import { planAutoHouse } from './houses'
-import type { SimInputs } from './model'
 import type { EngineState } from './simulate'
-import { resolveSimInputs } from './validate'
+import { ENGLISH, editGameData, inputsFor } from './test-helpers'
 
-const data = loadGameData('english')
-
-function inputsFor(game: GameData, partial: unknown = {}): SimInputs {
-    const result = resolveSimInputs(partial, game)
-    if (result.ok === false) {
-        throw new Error(JSON.stringify(result.issues))
-    }
-    return result.inputs
-}
-
-function editedData(edit: (parts: { snapshot: Snapshot; base: BaseRules; civData: CivData }) => void): GameData {
-    const parts = {
-        snapshot: structuredClone(englishSnapshot) as unknown as Snapshot,
-        base: structuredClone(baseRules) as unknown as BaseRules,
-        civData: structuredClone(englishRules) as unknown as CivData,
-    }
-    edit(parts)
-    return buildGameData('english', parts.snapshot, parts.base, parts.civData)
-}
+const data = ENGLISH
 
 function stateOf(population: number, supply: number, game = data, rules: CivRules = {}): EngineState {
     return { data: game, rules, population, supply, time: 0, age: 1, buildings: new Map(), researched: new Set(), coverage: {} } as unknown as EngineState
@@ -56,10 +33,15 @@ describe('planAutoHouse', () => {
         const demand = { pendingSupply: 0, populationPerSecond: 2 / lead }
         expect(planAutoHouse(stateOf(9, 10), inputs, data, demand)).toBe(1)
         expect(planAutoHouse(stateOf(9, 10), inputsFor(data, { houseBuilders: 4, walkSeconds: 1 }), data, demand)).toBe(0)
-        const slow = editedData((parts) => {
+        const slow = editGameData((parts) => {
             parts.base.builderScaling.numerator.value = 6
         })
         expect(planAutoHouse(stateOf(9, 10), inputs, slow, { pendingSupply: 0, populationPerSecond: 1 / lead })).toBe(1)
+    })
+
+    it('treats a projected shortfall within the resource tolerance as none', () => {
+        expect(planAutoHouse(stateOf(10, 10), inputs, data, { pendingSupply: 0, populationPerSecond: 1e-10 / lead })).toBe(0)
+        expect(planAutoHouse(stateOf(10, 10), inputs, data, { pendingSupply: 0, populationPerSecond: 1e-8 / lead })).toBe(1)
     })
 
     it('stops at maxPopCap and never returns a negative count', () => {
@@ -73,7 +55,7 @@ describe('planAutoHouse', () => {
         const busy = { pendingSupply: 0, populationPerSecond: 100 }
         const none: CivRules = { supplyProvider: (supply, ctx) => (ctx.baseId === 'house' ? 0 : supply) }
         expect(planAutoHouse(stateOf(10, 10, data, none), inputs, data, busy)).toBe(0)
-        const unlisted = editedData((parts) => {
+        const unlisted = editGameData((parts) => {
             delete parts.civData.supply.house
         })
         expect(planAutoHouse(stateOf(10, 10, unlisted), inputsFor(unlisted), unlisted, busy)).toBe(0)

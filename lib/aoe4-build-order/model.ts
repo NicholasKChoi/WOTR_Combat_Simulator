@@ -4,6 +4,19 @@ import type { SnapshotEffect } from './data';
 export type CivId = 'english';
 export type ResourceKind = 'food' | 'wood' | 'gold' | 'stone';
 export type GatherNodeId = 'sheep' | 'berry' | 'deer' | 'boar' | 'farm' | 'wood' | 'gold' | 'stone';
+export type SpendCategory = 'villagers' | 'military' | 'buildings' | 'research';
+
+export const GATHER_NODES: readonly GatherNodeId[] = Object.keys({
+  sheep: 0,
+  berry: 0,
+  deer: 0,
+  boar: 0,
+  farm: 0,
+  wood: 0,
+  gold: 0,
+  stone: 0,
+} satisfies Record<GatherNodeId, 0>) as GatherNodeId[];
+export const RESOURCE_KINDS: readonly ResourceKind[] = ['food', 'wood', 'gold', 'stone'];
 
 // An omitted trigger means the step has no condition.
 export type Trigger = { kind: 'time'; seconds: number } | { kind: 'villagers'; count: number };

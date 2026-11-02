@@ -307,7 +307,7 @@ describe('repository constraints', () => {
         expect(grep(["(from|import\\()\\s*['\"].*(components|pages)/apps/", '--', 'lib/aoe4-build-order'])).toBe('')
     })
 
-    it('model.ts exports exactly the 18 documented types and no runtime code', () => {
+    it('model.ts exports exactly the 19 documented types and the two shared lists', () => {
         const src = readFileSync(new URL('./model.ts', import.meta.url), 'utf8')
         const names = [...src.matchAll(/^export (?:type|interface) ([A-Za-z]+)/gm)].map((m) => m[1]).sort()
         expect(names).toEqual([
@@ -324,13 +324,14 @@ describe('repository constraints', () => {
             'ResourceKind',
             'SimInputs',
             'SimulationResult',
+            'SpendCategory',
             'StepTiming',
             'TechSupport',
             'Trigger',
             'TripInputs',
             'UnitSeries',
         ])
-        expect(src).not.toMatch(/^export (const|function|class|enum)/m)
+        expect([...src.matchAll(/^export (?:const|function|class|enum) (\w+)/gm)].map((m) => m[1])).toEqual(['GATHER_NODES', 'RESOURCE_KINDS'])
         expect(src).toMatch(/effects-unmodeled/)
         expect(src).toMatch(/walkSeconds/)
     })

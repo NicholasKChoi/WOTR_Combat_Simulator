@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PALETTE, formatMinSec, seriesColor, toChartRows, toggleHidden } from './chart-rows'
+import { PALETTE, seriesColor, toChartRows, toggleHidden } from './chart-rows'
 
 describe('toChartRows', () => {
     it('makes one row per time with a value per series', () => {
@@ -16,12 +16,6 @@ describe('toChartRows', () => {
 
     it('returns no rows for empty times', () => {
         expect(toChartRows([], [{ key: 'a', name: 'A', values: [] }])).toEqual([])
-    })
-})
-
-describe('formatMinSec', () => {
-    it.each([[0, '0:00'], [5, '0:05'], [65, '1:05'], [3600, '60:00']])('formats %d as %s', (s, expected) => {
-        expect(formatMinSec(s)).toBe(expected)
     })
 })
 
