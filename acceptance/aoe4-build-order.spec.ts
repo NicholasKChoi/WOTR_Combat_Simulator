@@ -449,6 +449,49 @@ test.describe('AoE4 build order page', () => {
       await expect(chart.getByTestId('chart-marker-legend')).toBeVisible()
     })
 
+    test('with a pinned run the pinned lines are dashed 6 4, the current run markers 8 2, and the markers still draw', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(formatBuildOrderText(english1tc as BuildOrder))
+      const response = await runSimulation(page)
+      const { markers } = (await response.json()) as SimulationResult
+      expect(markers.length).toBeGreaterThan(1)
+      await page.getByTestId('pin-run').click()
+      await runSimulation(page)
+      await expectChartsDrawn(page)
+      for (const chart of CHARTS) {
+        const root = page.getByTestId(chart)
+        const lines = root.locator('svg [data-testid="chart-marker"]')
+        await expect(lines).toHaveCount(markers.length)
+        for (const [i, marker] of markers.entries()) {
+          await expect(lines.nth(i)).toHaveAttribute('data-label', marker.label)
+          await expect(lines.nth(i)).toHaveAttribute('stroke-dasharray', '8 2')
+        }
+        const pinnedPaths = root.locator('path.recharts-line-curve[data-series][stroke-dasharray]')
+        expect(await pinnedPaths.count()).toBeGreaterThan(0)
+        for (const dash of await pinnedPaths.evaluateAll((els) => els.map((e) => e.getAttribute('stroke-dasharray')))) {
+          expect(dash).toBe('6 4')
+        }
+      }
+    })
+
+    test('a shortened horizon keeps only the markers within it, on every chart', async ({ page }) => {
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(formatBuildOrderText(english1tc as BuildOrder))
+      const full = (await (await runSimulation(page)).json()) as SimulationResult
+      const cut = Math.ceil(full.markers[0].at)
+      await page.getByTestId('duration-seconds').fill(String(cut))
+      const { markers } = (await (await runSimulation(page)).json()) as SimulationResult
+      expect(markers.length).toBeLessThan(full.markers.length)
+      expect(markers.every((m) => m.at <= cut)).toBe(true)
+      await expectChartsDrawn(page)
+      for (const chart of CHARTS) {
+        const lines = page.getByTestId(chart).locator('svg [data-testid="chart-marker"]')
+        await expect(lines).toHaveCount(markers.length)
+        for (const [i, marker] of markers.entries()) await expect(lines.nth(i)).toHaveAttribute('data-label', marker.label)
+      }
+    })
+
     test('a run with no markers draws no marker and no marker legend', async ({ page }) => {
       await openPage(page)
       await page.getByTestId('build-order-text').fill('start -> sheep')
