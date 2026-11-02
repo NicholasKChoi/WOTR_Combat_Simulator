@@ -129,6 +129,6 @@ Findings:
 - `docs/aoe4-build-order.md:488`: "The issue message is `<reason> in <path>`" is stated for every node position including `nodeAmounts` keys, but those go through `inputIssue` (`validate.ts:417-418`, `:474`) and read `inputs.nodeAmounts.iron: unknown node "iron"`.
 
 Required fixes:
-- [ ] (rework 1) Restore wording that says `spawnedPopulation` is the summed popcap.
-- [ ] (rework 1) Limit the `<reason> in <path>` form to step fields, `start` and the trigger, and state the `inputs.nodeAmounts.<ref>: <reason>` form for `nodeAmounts` keys. Re-run the node-ref spot check after the edit.
-- [ ] (rework 1) Fix the non-blocking wording notes in the review report that are cheap (intro "graphs ... population" vs "no graph", "with the markers and warnings", "never read" in Technologies).
+- [x] (rework 1) Restore wording that says `spawnedPopulation` is the summed popcap.
+- [x] (rework 1) Limit the `<reason> in <path>` form to step fields, `start` and the trigger, and state the `inputs.nodeAmounts.<ref>: <reason>` form for `nodeAmounts` keys. Re-run the node-ref spot check after the edit.
+- [x] (rework 1) Fix the non-blocking wording notes in the review report that are cheap (intro "graphs ... population" vs "no graph", "with the markers and warnings", "never read" in Technologies).
