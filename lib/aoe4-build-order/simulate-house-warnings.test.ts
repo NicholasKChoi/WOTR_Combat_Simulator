@@ -152,7 +152,7 @@ describe('auto-house warnings together', () => {
 })
 
 describe('timing with the auto-house warnings', () => {
-    // Digests of the same runs taken before the auto-house warnings existed.
+    // Digests of every field but warnings; the warnings must leave them unchanged.
     it('leaves the late-house run as it was before the warnings', () => {
         const { spawnedPopulation, spent, steps, populationCapReachedAt, depletions, markers } = lateHouse()
         expect(digest({ spawnedPopulation, spent, steps, populationCapReachedAt, depletions, markers })).toBe('67af1a20a5434d6f')
@@ -160,7 +160,7 @@ describe('timing with the auto-house warnings', () => {
 
     it.each([
         ['ENG 1TC', 'e7f2436b024f722f', null],
-        ['ENG Spear/Longbow into MAA/Crossbow', 'e7b3cb8bc1ad4299', null],
+        ['ENG Spear/Longbow into MAA/Crossbow', 'a0105e4a512765a0', null],
         ["ENG Knight/Longbow (King's Palace)", '69e8496d68bb2946', { step: 23, at: 461.81904761904764, seconds: 21.236012345678944 }],
     ])('leaves every field of %s at 1800 s but warnings as it was', (name, pinned, held) => {
         const build = listBuilds().find((b) => b.name === name)!

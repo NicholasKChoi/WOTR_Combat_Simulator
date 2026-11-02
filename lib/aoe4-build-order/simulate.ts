@@ -136,8 +136,8 @@ interface Engine extends EngineState {
   reactionNeeds: Readonly<Resources>[];
   // Order payments and auto-houses short of resources at the latest instant.
   needs: Resources[];
-  // baseIds under construction, explicit or auto.
-  readonly constructing: string[];
+  // Buildings under construction, explicit or auto.
+  readonly constructing: { baseId: string; completesAt: number }[];
   readonly ages: SimulationResult['ages'];
   // Run refs that ran out this instant, recorded once the instant ends.
   readonly runOuts: FiniteNodeRef[];
@@ -379,15 +379,15 @@ interface Construction {
 function startConstruction(state: EngineState, job: Construction): void {
   payCost(state, costOf(job.entry, 1), 'buildings');
   sendWalking(state, job.from, job.builders);
-  (state as Engine).constructing.push(job.entry.baseId);
   const done = state.time + villagerWalkSeconds(state, job.walkSeconds ?? state.inputs.walkSeconds) + constructionSeconds(job.entry.costs.time, job.builders, state.data);
-  state.schedule(done, (s) => completeConstruction(s, job));
+  (state as Engine).constructing.push({ baseId: job.entry.baseId, completesAt: done });
+  state.schedule(done, (s) => completeConstruction(s, job, done));
 }
 
-function completeConstruction(state: EngineState, job: Construction): void {
+function completeConstruction(state: EngineState, job: Construction, completesAt: number): void {
   const { constructing, ages } = state as Engine;
   const { entry } = job;
-  constructing.splice(constructing.indexOf(entry.baseId), 1);
+  constructing.splice(constructing.findIndex((item) => item.baseId === entry.baseId && item.completesAt === completesAt), 1);
   const built = addBuildingInstance(state, entry.baseId);
   state.rules.onBuildingComplete?.(state, { ...ruleContext(state), baseId: entry.baseId, instance: built.instance });
   if (entry.age === state.age && entry.classes.some((name) => LANDMARK_CLASS.test(name))) {
@@ -573,7 +573,7 @@ function startProduction(engine: Engine): void {
 }
 
 function houseDemand(engine: Engine): HouseDemand {
-  const pendingSupply = engine.constructing.reduce((sum, baseId) => sum + supplyOf(engine, baseId), 0);
+  const pending = engine.constructing.map(({ baseId, completesAt }) => ({ supply: supplyOf(engine, baseId), completesAt }));
   let populationPerSecond = 0;
   for (const list of engine.instances.values()) {
     for (const instance of list) {
@@ -584,7 +584,7 @@ function houseDemand(engine: Engine): HouseDemand {
       }
     }
   }
-  return { pendingSupply, populationPerSecond };
+  return { pending, populationPerSecond };
 }
 
 function lastHouseStep(order: BuildOrder): number | null {

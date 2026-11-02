@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { CivRules } from './civ-rules'
 import type { CivData } from './data'
+import { listBuilds } from './builds'
 import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, SimulationResult } from './model'
+import { simulateBuildOrder } from './simulate'
 import { ENGLISH, at, countAt, editGameData, inputsFor, run, sampleIndex, series, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
@@ -444,6 +446,51 @@ describe('auto-houses', () => {
         const result = run([{ action: 'produce', producer: 'barracks', unit: 'man-at-arms' }], { game: army, start: woodStart, rules })
         expect(done[0]).toBeCloseTo(3 * 14.65 + 20, 9)
         expect(result.gatherRates.wood[sampleIndex(result, 45)]).toBeCloseTo(9 * rw * 60, 9)
+    })
+})
+
+describe('auto-houses with a long build in flight', () => {
+    const palaceTowns = twoTowns((parts) => {
+        parts.civData.startingState.resources.value.wood = 2000
+        parts.civData.effects.push({ property: 'productionSpeed', select: { id: ['villager'] }, effect: 'multiply', value: 3, type: 'passive', grantedBy: 'civ', source: 'test', unverified: true })
+        editEntry(parts, 'kings-palace-2', (p) => {
+            p.age = 1
+            p.costs.food = 0
+            p.costs.gold = 0
+        })
+    })
+    const palace = (builders: number): BuildStep => ({ action: 'build', building: 'kings-palace', builders, from: 'wood', trigger: at(0) })
+    const houseStarts = (steps: BuildStep[], durationSeconds: number) => {
+        const { done, rules } = housesDone()
+        const result = run(steps, { game: palaceTowns, start: woodStart, rules, inputs: { durationSeconds } })
+        return { result, starts: done.map((t) => t - 20) }
+    }
+
+    it('start a house while a 220 s landmark builds, as soon as the projected population passes supply', () => {
+        const { result, starts } = houseStarts([palace(1)], 240)
+        expect(result.steps[0].completedAt).toBe(225)
+        expect(starts[0]).toBe(20)
+        expect(houseStarts([], 240).starts[0]).toBe(20)
+    })
+
+    it.each([
+        ['the slow one', [1, 3]],
+        ['the fast one', [3, 1]],
+    ])('remove each finished landmark from the pending supply when %s starts first', (_, builders) => {
+        const { result, starts } = houseStarts(builders.map(palace), 240)
+        expect(result.steps.map((s) => s.completedAt).sort((a, b) => a! - b!)).toEqual([137, 225])
+        expect(starts.filter((t) => t < 225)).toHaveLength(7)
+    })
+
+    it("keep population rising while the knight + longbow King's Palace builds without its explicit pre-palace houses", () => {
+        const build = listBuilds().find((b) => b.name === "ENG Knight/Longbow (King's Palace)")!
+        const firstHouse = build.steps.findIndex((step, i) => i > 20 && step.action === 'build' && step.building === 'house')
+        const steps = build.steps.filter((_, i) => i < firstHouse || i >= firstHouse + 3)
+        expect(build.steps.slice(firstHouse, firstHouse + 3).every((step) => step.action === 'build' && step.building === 'house')).toBe(true)
+        const result = simulateBuildOrder({ ...build, steps }, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 800 }))
+        const population = (t: number) => result.spawnedPopulation[sampleIndex(result, t)]
+        expect(population(660)).toBe(40)
+        expect(population(760)).toBeGreaterThan(population(660))
     })
 })
 
