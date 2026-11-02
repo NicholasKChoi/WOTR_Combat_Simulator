@@ -99,24 +99,24 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] No row shows a raw field name: with a build containing every action and trigger kind (the `FORMS` paste in
+- [x] No row shows a raw field name: with a build containing every action and trigger kind (the `FORMS` paste in
   `aoe4-step-table.spec.ts`, with each optional field opened), the text of `step-table` contains none of
   `walkSeconds`, `atLeast`, `trigger-count`; a unit test asserts every
   `FIELD_LABELS` value equals the C9 table. `git grep -nE 'label="(seconds|villagers|node|reaction|resource|atLeast)"' -- components/apps/aoe4-build-order/step-table.tsx` prints nothing (6 hits today) and `git grep -n 'label={field.name}' -- components/apps/aoe4-build-order/step-table.tsx` prints nothing (1 hit today).
-- [ ] The `unit` select's selected option for `villager` reads the data name (the `catalog.names` entry, not `villager`) and its `value` is `villager`; an unlisted pasted id still reads `<id> (unknown)` with `data-unknown="true"` (existing test unchanged).
-- [ ] A produce row for `produce villager from capital-town-center` shows `step-field-producer` and `step-field-unit` and none of `step-field-instance`, `-count`, `-rally`, `-walkSeconds` until `step-more` is clicked (`aria-expanded` false then true); a second click hides them again. The same for each action: only fields outside `OPTIONAL_STEP_FIELDS[action]` show while collapsed.
-- [ ] A row whose text sets an optional field (`... x3 -> sheep`) loads expanded; clearing that optional field does not collapse it; adding a row resets expansion to the rows' data; changing a row's action leaves its optional fields hidden.
-- [ ] `step-move-up`, `step-move-down`, `step-delete` have accessible names "Move up", "Move down", "Delete step" and keep their behavior and disabled states (the existing move/delete/disabled tests pass unchanged): `git grep -nE '^\s+(Up|Down|Delete)$' -- components/apps/aoe4-build-order/step-table.tsx` prints nothing (3 hits today).
-- [ ] The first body row is `step-start-row`. For `start 3 sheep 1 wood -> sheep`: `start-field-rally` has value `sheep`, two pairs with `start-villagers-count` 3 and 1 and node values `sheep` and `wood` (`data-index` 0 and 1); changing the first count to 5 rewrites the textarea to `start 5 sheep 1 wood -> sheep` (formatter order) and reparses; changing the rally to `(none)` removes the `->` clause; deleting both pairs and clearing the rally removes the `start` line.
-- [ ] For text with no `start` line, `start-customize` is visible and no `start-field-*` exists; clicking it writes the catalog's default start into the textarea (equal to `formatBuildOrderText({ ...order, start: catalog.defaultStart })`), hides the button, and shows the fields.
-- [ ] A pair's node select does not offer a node used by another pair; `start-villagers-add` adds a pair at the end with the first unused `catalog.nodes` entry and count 1; it is disabled when every node is used. (respec 1)
-- [ ] With start pairs that do not sum to `catalog.startVillagerTotal`, the table shows no sum hint or warning text (respec 1).
-- [ ] The `step-row` count still equals the step count with and without a `start` line (`step-start-row` is not a `step-row`).
-- [ ] At a 390 px viewport the `step-trigger-kind` and `step-action` of a row have the same x and the action's y is greater (stacked), and the start row's controls stack the same way; at a 1280 px viewport they are on the same y (side by side). A step edit made at 390 px rewrites the text as at desktop width. `step-row` is the same element at both widths (its `data-step` read at each width).
-- [ ] Table edits still never post to the simulate route, and the existing edit tests (rewrite text, number fields, reaction toggle, unknown values, other prebuilt) pass; tests edited only to click `step-more` are listed in the PR.
-- [ ] `docs/aoe4-build-order.md` no longer says the start line is not editable: `git grep -nE "not editable there|\(set or not\)" -- docs` prints nothing (2 hits today).
-- [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
-- [ ] No INVARIANTS.md regressions
+- [x] The `unit` select's selected option for `villager` reads the data name (the `catalog.names` entry, not `villager`) and its `value` is `villager`; an unlisted pasted id still reads `<id> (unknown)` with `data-unknown="true"` (existing test unchanged).
+- [x] A produce row for `produce villager from capital-town-center` shows `step-field-producer` and `step-field-unit` and none of `step-field-instance`, `-count`, `-rally`, `-walkSeconds` until `step-more` is clicked (`aria-expanded` false then true); a second click hides them again. The same for each action: only fields outside `OPTIONAL_STEP_FIELDS[action]` show while collapsed.
+- [x] A row whose text sets an optional field (`... x3 -> sheep`) loads expanded; clearing that optional field does not collapse it; adding a row resets expansion to the rows' data; changing a row's action leaves its optional fields hidden.
+- [x] `step-move-up`, `step-move-down`, `step-delete` have accessible names "Move up", "Move down", "Delete step" and keep their behavior and disabled states (the existing move/delete/disabled tests pass unchanged): `git grep -nE '^\s+(Up|Down|Delete)$' -- components/apps/aoe4-build-order/step-table.tsx` prints nothing (3 hits today).
+- [x] The first body row is `step-start-row`. For `start 3 sheep 1 wood -> sheep`: `start-field-rally` has value `sheep`, two pairs with `start-villagers-count` 3 and 1 and node values `sheep` and `wood` (`data-index` 0 and 1); changing the first count to 5 rewrites the textarea to `start 5 sheep 1 wood -> sheep` (formatter order) and reparses; changing the rally to `(none)` removes the `->` clause; deleting both pairs and clearing the rally removes the `start` line.
+- [x] For text with no `start` line, `start-customize` is visible and no `start-field-*` exists; clicking it writes the catalog's default start into the textarea (equal to `formatBuildOrderText({ ...order, start: catalog.defaultStart })`), hides the button, and shows the fields.
+- [x] A pair's node select does not offer a node used by another pair; `start-villagers-add` adds a pair at the end with the first unused `catalog.nodes` entry and count 1; it is disabled when every node is used. (respec 1)
+- [x] With start pairs that do not sum to `catalog.startVillagerTotal`, the table shows no sum hint or warning text (respec 1).
+- [x] The `step-row` count still equals the step count with and without a `start` line (`step-start-row` is not a `step-row`).
+- [x] At a 390 px viewport the `step-trigger-kind` and `step-action` of a row have the same x and the action's y is greater (stacked), and the start row's controls stack the same way; at a 1280 px viewport they are on the same y (side by side). A step edit made at 390 px rewrites the text as at desktop width. `step-row` is the same element at both widths (its `data-step` read at each width).
+- [x] Table edits still never post to the simulate route, and the existing edit tests (rewrite text, number fields, reaction toggle, unknown values, other prebuilt) pass; tests edited only to click `step-more` are listed in the PR.
+- [x] `docs/aoe4-build-order.md` no longer says the start line is not editable: `git grep -nE "not editable there|\(set or not\)" -- docs` prints nothing (2 hits today).
+- [x] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -127,3 +127,18 @@ None.
 - Underspecified: Add start villager default and whether the table hints at a villager-sum mismatch (two open questions).
 - Changed: Scope and criteria state the designer answers (first unused node, count 1, at the end, disabled when all used; no sum hint); both questions removed.
 - Nothing on a branch is affected; the rest of the spec stands.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review (reports/SGS-068-review-1.md). Tip reviewed: 63cdd045e6f4d99f350a6f08274000784ee1cb8c (stacked on the old sgs-059 tip 41e648d). No earlier gate had passed it. Criteria 11 (layout) and 14 (acceptance suite) fail; the other 13 pass.
+
+Findings:
+- `components/apps/aoe4-build-order/step-table.tsx:79`: `d-inline-flex` forces `display: inline-flex !important`, so `.field { display: flex }` in `step-table.module.css:26-28` never applies and under 768 px (between ~600 and 767 px) two labelled fields still share a line (e.g. Builders + From, Then + Walk time (s)); the ticket asks for one field per line and the docs sentence added says fields stack.
+- `acceptance/aoe4-step-table.spec.ts:~440-475` "the start row sits above the step rows at both widths and stacks under 768 px" is flaky (failed 3 of 4 at --repeat-each=4; Received 54 at line 458): it reads `boundingBox()` positions one after another while the page is still shifting after `fill`.
+- `step-table.tsx:79` and `:301` join class names with template literals; ARCHITECTURE.md:14 and the sibling files use `cn(...)` from `classnames`.
+
+Required fixes:
+- [x] (rework 1) Make fields stack one per line under 768 px: use `d-flex d-md-inline-flex` (md = 768 px) or set the display in the module and delete the dead rule; add a Playwright test at ~700 px width asserting no two labelled fields share a row (and that at >= 768 px the compact layout is unchanged).
+- [x] (rework 1) Make the start-row layout test stable: read the positions in one `page.evaluate` (or wrap each comparison in `expect(...).toPass()`), at both widths; confirm with `--repeat-each=10` on that spec file and report the pass count.
+- [x] (rework 1) Use `cn(...)` from `classnames` at both places.
+- [x] No other change. (Not required: the design wording notes about `start` and pair order were logged to the backlog.)

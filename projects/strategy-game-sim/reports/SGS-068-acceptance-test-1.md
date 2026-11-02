@@ -1,0 +1,2 @@
+# SGS-068 acceptance-test 1
+PASS. Already covered by existing step-table specs: FIELD_LABELS, step-more collapse/expand, icon buttons with names, start row edits, Customize, Add start villager, layouts at 1280/390/700/768. Added 3 tests in acceptance/aoe4-step-table.spec.ts: every action hides its optional fields until step-more opens them; a start pair's node can be changed and the other pair then offers it; step-row count matches with and without a start line. Commit d563a6e. 115/115 at repeat 5. Mutations all fail the matching tests.

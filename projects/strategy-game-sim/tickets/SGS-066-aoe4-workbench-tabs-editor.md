@@ -228,3 +228,20 @@ None.
 - Underspecified: whether `errorLines` and gutter `data-error` belong here, where issues show per view, and how the tab behaves on unpin with no result (designer pass 4, `reports/M4-designer-4.md`).
 - Changed: `BuildTextEditor` is `{text, onChange}` only, `errorLines` and `data-error` moved to SGS-067; shown tab is derived (`resultsEnabled ? tab : 'build'`); `build-order-issues` shows under whichever view is open; all three open questions answered and removed. Depends on stays SGS-059 (which now depends on SGS-075).
 - Branch work still stands: tabs, run bar, `lineCount`, auto-size, toggle and spec rules are unchanged.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review (reports/SGS-066-review-1.md). Tip reviewed: 0d57ba110d8b027e417381225b9b1336488858ad (stacked on the old sgs-059 tip 41e648d). No earlier gate had passed it. All checks passed (tsc, lint:dup, 1225 unit, 620 acceptance, build); the reviewer's own mutations (rejection selects Results; Results enabled with no result; lineCount) failed the specs as they should.
+
+Findings:
+- `components/apps/aoe4-build-order/workbench.module.css:9`: the fixed `scroll-margin-top: 8rem` is 144 px (root font 18 px), too short once the run bar wraps: after a 200, `panel-results` top sits at 144 px, but at 768 px the bar is 187 px tall and at 390 px 247 px, so the Results heading is under the bar. The ticket says the bar must not cover the panel.
+- `acceptance/aoe4-build-order.spec.ts:~712-786`: the 400 and 500 "selects Build" specs never pin, so the derived shown tab hides the code: removing `setTab('build')` from both the 400 and failure paths left all 85 `aoe4-build-order*` specs passing; keeping the pin on 400/500 is also unchecked.
+- `docs/aoe4-build-order.md:~812-813`: says the textarea "never scrolls inside", but with `wrap="off"` and `overflow-x: auto` it scrolls sideways.
+- `components/apps/aoe4-build-order/workbench-tabs.tsx:24,36`: class names built with template literals; ARCHITECTURE.md:14 says to combine with `cn` (as sibling build-input.tsx does).
+
+Required fixes:
+- [ ] (rework 1) Scroll to Results by the run bar's measured height (e.g. set `scrollMargin`/scroll offset from the bar's `getBoundingClientRect().height` or a CSS variable updated on resize), not a fixed 8rem; extend new spec 2 to assert the Results heading is fully below the bar at 1280, 768 and 390 px (wrapped bar).
+- [ ] (rework 1) In `runThenFail`, pin the run after the 200, then assert after the 400 and after the 500 that Build is the selected tab AND `tab-results` is still enabled (pin kept). Mutation check: removing `setTab('build')` from both paths must fail these specs; report it.
+- [ ] (rework 1) Fix the docs sentence to say the textarea never scrolls vertically (it scrolls sideways when a line is long); also make the "Results is disabled until a run succeeds" wording precise (disabled until there is a result or a pin).
+- [ ] (rework 1) Use `cn(...)` for class names in workbench-tabs.tsx.
+- [ ] No other change. (Non-blocking, optional only if trivial: use the showTab/showView helpers consistently; trailing whitespace in aoe4-step-table.spec.ts lines you touched.)
