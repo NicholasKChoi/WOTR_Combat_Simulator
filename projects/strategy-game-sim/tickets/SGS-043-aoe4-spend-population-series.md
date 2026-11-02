@@ -47,12 +47,14 @@ summed; `villagers` from `payUnit` of a villager, `military` from `payUnit` of a
      each category and `engine.spawnedPopulation` per sample time. The value at a sample is the value after
      `runInstant` for that instant, the same convention as `floating`, so a spawn at exactly a sample time is
      included. Return the three new fields from the result.
-3. `docs/api/openapi.json`: add `spent` (object with the four `SpendCategory` keys, each an array of numbers
-   `>= 0`), `spawnedPopulation` (array of integers `>= 0`) and `populationCapReachedAt` (number or null, minimum 0)
-   to `SimulationResult.properties` and `required`. Update the 200 `example` response (line ~256) with
-   plausible series of the right length so the ajv contract check in
-   `acceptance/aoe4-simulate-api-contract.spec.ts` still validates it. Reuse the `SpendCategory` schema if SGS-035
-   or an earlier ticket already added one; otherwise add it (names equal the TS names).
+3. `docs/api/openapi.json`: add a `SpendCategory` schema (enum `villagers`, `military`, `buildings`, `research`; names
+   equal the TS names) unless an earlier ticket already added it. Add `spent` to `SimulationResult.properties` as
+   `{ type: object, propertyNames: { $ref: SpendCategory }, required: [villagers, military, buildings, research],
+   additionalProperties: { type: array, items: { type: number, minimum: 0 } } }` (the M2 `propertyNames` form `trips`
+   uses, `openapi.json` line ~987), so `SpendCategory` is referenced. Add `spawnedPopulation` (array of integers
+   `>= 0`) and `populationCapReachedAt` (number or null, minimum 0) likewise, and all three to `required`. Update the
+   200 `example` response (line ~256) with plausible series of the right length so the ajv contract check in
+   `acceptance/aoe4-simulate-api-contract.spec.ts` still validates it.
 4. `docs/aoe4-build-order.md` "Outputs" list (line ~501): add the three fields with the spend category rules, the
    spawned-versus-queued distinction, and that `populationCapReachedAt` is a spawn instant (not a sample time). Fix
    any sentence that says the result has only the fields it listed before.
@@ -86,6 +88,9 @@ existing sampling loop and one counter increment at the existing spawn point; no
 - [ ] `docs/api/openapi.json` `SimulationResult.required` contains `spent`, `spawnedPopulation` and
   `populationCapReachedAt` (`jq '.components.schemas.SimulationResult.required | length'` is 10 today, 13 after), and
   `npm run acceptance -- aoe4-simulate-api-contract` passes (ajv validates the updated example and real responses).
+- [ ] (respec 1) `SimulationResult.properties.spent` has `propertyNames` `$ref` `#/components/schemas/SpendCategory`
+  and `required` of the four categories; a `spent` response missing a category, or with an extra key, fails ajv
+  validation (checked in the contract spec).
 - [ ] `docs/aoe4-build-order.md` Outputs section describes all three fields; `git grep -n spawnedPopulation -- docs`
   finds it (0 matches today).
 - [ ] Existing `floating`, `gatherRates`, `steps` and `unitsProduced` outputs are unchanged for the shipped English
@@ -95,3 +100,9 @@ existing sampling loop and one counter increment at the existing spawn point; no
 ## Open questions
 
 None.
+
+## Re-spec 2026-11-01
+
+- Underspecified: how `spent` is expressed in OpenAPI and who references `SpendCategory`.
+- Changed: Scope 3 and a new criterion fix the `propertyNames` `$ref` `SpendCategory` form (designer pass 4, row 9); SGS-054 no longer needs to add that reference.
+- Branch work: none yet; engine scope and other criteria stand.

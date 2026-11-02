@@ -47,11 +47,14 @@ All paths under `lib/aoe4-build-order/` unless noted. Contract names come from d
 3. **`simulate.ts`, `createEngine`**: each `StepTiming` starts with `waitingOn: null` and `waitBreakdown: {}`.
 4. **`simulate.ts`, `offerSteps`** (`simulate.ts:375-399`): on a failed attempt it stores the handler's `waitingOn` on
    the step's timing (and the reserve as today); on start it sets `waitingOn` to `null`. An unregistered action
-   (`handler` undefined, `simulate.ts:387`) also needs a value (see Open questions).
-5. **`simulate.ts`, interval accrual**: in `simulateBuildOrder`, immediately before `engine.time = next`, call the
-   wait-time helper with the armed, unstarted step (the cursor step when it is armed) and `next - engine.time`. The
-   helper adds that many seconds to `waitBreakdown[waitingOn]`, where `waitingOn` is the value after the instant's
-   last `offerSteps`. It is exported from `simulate.ts` and takes the step indexes to charge, so the reaction ticket
+   (`handler` undefined, `simulate.ts:387`) gets `waitingOn: 'prerequisite'` at every attempt (respec 1), stays blocking, and
+   is `waiting` at the horizon with a `step-stuck` warning.
+5. **`simulate.ts`, interval accrual**: in `simulateBuildOrder`, immediately before `engine.time = next`, call
+   `accrueWait(engine, stepIndexes, seconds)` (respec 1; name and signature fixed by design/M3.md) with the armed,
+   unstarted step (the cursor step when it is armed) and `next - engine.time`. For each index whose timing's
+   `waitingOn` is one of the four `waitBreakdown` reasons it adds `seconds` to `waitBreakdown[waitingOn]`, where
+   `waitingOn` is the value after the instant's last `offerSteps`; other indexes (`trigger`, `earlier-step`, `null`) are
+   skipped. It is exported from `simulate.ts` and is the only writer of `waitBreakdown`, so the reaction ticket
    (SGS-039) calls the same function for its reaction list instead of reimplementing it. Reasons with 0 seconds are
    never written.
 6. **`simulate.ts`, horizon pass** (the `finalStatus` loop at `simulate.ts:683-685`): after statuses are set, for a
@@ -60,9 +63,12 @@ All paths under `lib/aoe4-build-order/` unless noted. Contract names come from d
    `not-reached` steps keep `waitBreakdown: {}`.
 7. **`simulate.ts`, `step-stuck`**: for every `waiting` step at the horizon, append
    `{ code: 'step-stuck', severity: 'warning', message, step, waitingOn, at: armedAt }` to `warnings`, then put
-   `warnings` in order through the warnings sort SGS-037 defines (`step-stuck` last, by step index). `not-reached`
-   steps get none. Message shape (design example): `step 12 (build kings-palace from wood) was still waiting on
-   resources at 60:00, from 11:40.` with the horizon time and `armedAt` as `m:ss`.
+   `warnings` in order through `sortWarnings` (SGS-037; the one warnings sort) (`step-stuck` last, by step index). `not-reached`
+   steps get none. Message shape (design/M3.md): `step <index + 1> (<action>) was still waiting on <waitingOn> at <m:ss of
+   durationSeconds>, from <m:ss of at>.`, for example `step 12 (build) was still waiting on resources at 60:00, from
+   11:40.` The number is 1-based; the structured `step` field stays the 0-based index. The parenthetical is the step's
+   `action` only (`formatBuildStep` does not exist yet). Times use `formatMinSec` imported from
+   `lib/aoe4-build-order/format-time.ts` (moved there by SGS-035; no copy here) (respec 1).
 8. **`docs/api/openapi.json`**: `StepTiming` gains `waitingOn` (nullable `$ref` to the `StepWait` schema SGS-037
    adds) and `waitBreakdown` (object, `additionalProperties: false`, the four reason keys, numbers `>= 0`), both in
    `required`; update the two `steps` examples (lines ~422-440) with `"waitingOn": null, "waitBreakdown": {}`.
@@ -118,9 +124,9 @@ flowchart TD
 - [ ] A step whose reason changes while it waits splits its seconds between reasons: a test built from two consecutive waits (for example `villagers` then `resources`) has both keys, each above 0, and their sum equals `startedAt - armedAt` within 1e-9.
 - [ ] For every started step in a multi-step run, the `waitBreakdown` values sum to `waitSeconds`; for a `waiting` step at the horizon they sum to `durationSeconds - armedAt`; `not-reached` steps have `{}`; no key has value 0 (checked by a test over a run with both resource and prerequisite waits).
 - [ ] At the horizon, a `waiting` step has `waitingOn` equal to its current reason; a `not-reached` cursor step has `trigger`; a `not-reached` step behind an unstarted one has `earlier-step`; `in-progress` and `completed` steps have `null`. Example: `[produce on instance 2 (missing), rally]` gives `['prerequisite', 'earlier-step']` (extends `simulate.test.ts` 'waits for a targeted instance that does not exist').
-- [ ] A run with one `waiting` step and one `not-reached` step has exactly one `step-stuck` warning: `step` is the waiting step's index, `waitingOn` its reason, `at` its `armedAt`, `severity` is `warning`, and `message` contains the reason and the `m:ss` of `at` and of the horizon. A run where every step started has no `step-stuck`. `warnings` stays sorted per SGS-037 when `step-stuck` coexists with another warning code.
+- [ ] A run with one `waiting` step and one `not-reached` step has exactly one `step-stuck` warning: `step` is the waiting step's 0-based index, `waitingOn` its reason, `at` its `armedAt`, `severity` is `warning`, and `message` equals `step <index + 1> (<action>) was still waiting on <reason> at <m:ss of horizon>, from <m:ss of at>.` (respec 1), e.g. `step 12 (build) was still waiting on resources at 60:00, from 11:40.` for index 11. A step with no registered handler is `waiting` on `prerequisite` and gets the warning (respec 1). A run where every step started has no `step-stuck`. `warnings` stays sorted per SGS-037 when `step-stuck` coexists with another warning code.
 - [ ] A run where nothing waits is unchanged except the two new fields: every existing `simulate*.test.ts` and acceptance test passes after the `toEqual` fixtures at `simulate.test.ts:404` and `:438` gain `waitingOn: null, waitBreakdown: {}`.
-- [ ] The wait-time helper is exported from `simulate.ts`, takes the step indexes it charges, and has its own unit test charging two steps over one interval; `offerSteps`' only call site is the cursor step.
+- [ ] `accrueWait(engine, stepIndexes, seconds)` is exported from `simulate.ts`, skips `trigger`, `earlier-step` and `null` indexes, and has its own unit test charging two steps over one interval (respec 1); `git grep -n "waitBreakdown\[" -- 'lib/aoe4-build-order' ':!*.test.ts'` finds writes only inside `accrueWait`; the main loop's only call site charges the cursor step.
 - [ ] `docs/api/openapi.json`: `jq '.components.schemas.StepTiming.required'` includes `waitingOn` and `waitBreakdown` (it includes neither today); both examples validate; `acceptance/aoe4-simulate-api-contract.spec.ts` passes.
 - [ ] `docs/aoe4-build-order.md` names `waitingOn`, `waitBreakdown` and `step-stuck`, and states the check order; a grep for the old "waits while..." paragraph shows it still describes every reason the table lists.
 - [ ] Determinism: two runs of the same order and data give identical `waitBreakdown` and `warnings`.
@@ -128,14 +134,4 @@ flowchart TD
 
 ## Open questions
 
-- `designer`: the name and signature of the exported wait-time helper (item 5). Owner decision 10 fixes that H exposes it
-  and E reuses it; design/M3.md has no name. Proposed: `accrueWait(engine, stepIndexes, seconds)`.
-- `designer`: the `step-stuck` message text: the numbering in `step 12` (0-based `StepTiming.step` or 1-based, as
-  paste lines are) and the parenthetical description (`build kings-palace from wood`). The natural renderer is
-  `formatBuildStep` from SGS-040, which lands after this ticket, and the engine does not import `parse-text.ts` today.
-  Criteria above pin only the structured fields, the reason and the two `m:ss` values.
-- `designer`: where the engine's `m:ss` formatter lives. `formatMinSec` is in `components/apps/aoe4-build-order/chart-rows.ts`
-  (lib must not import components), and `parse-text.ts:299-301` has an inline copy. SGS-037/SGS-038 messages need the same
-  formatter, so one shared copy has to be placed once (`engine-common.ts` is a candidate) and imported here.
-- `designer`: the `waitingOn` for an action with no registered handler (the existing 'handler seam' test, `simulate.test.ts:522`,
-  keeps it `waiting` and blocking). The `StepWait` table has no row for it; `prerequisite` is the nearest fit.
+None.

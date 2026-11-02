@@ -16,8 +16,8 @@
 
 Each M3 UI ticket tests its own piece. M3.9 also asks for one flow through the real page and engine: edit a step in
 the table, run, see a depletion warning and the step timeline, then pin and compare. This ticket adds that flow once
-SGS-039, 045, 046, 047 and 048 are on `main`. L and M (SGS-046, 047) were not written when this ticket was; the test
-ids below are the design's table, so the implementer re-reads the merged tickets and uses their final names if any differ.
+SGS-039, 045, 046, 047 and 048 are on `main`. The test ids below are the design's table, which SGS-046 and SGS-047 follow
+without renaming. In the step table, `step-field-count` is an action's count; a `villagers` trigger's count is `step-field-trigger-count` (design pass 4), and the time trigger's `step-field-seconds` takes whole seconds. This test uses `step-field-count` only.
 
 ## Scope
 
@@ -33,7 +33,7 @@ Needs Node 24 (REPO.md `acceptanceHarness`): run `source ~/.nvm/nvm.sh && nvm us
      ```
      The depletion comes from the default sheep amount (3000 food from SGS-039) with no ENG 1TC build, so no gold reaction is involved: 6 starting plus 3 produced villagers stay on sheep with no step moving them, and sheep runs out well inside the default 1200 s (6 villagers alone gather about 3.6 food/s, so 3000 is gone near 830 s; more villagers shorten it). The `@25:00` step is past the horizon so the timeline has a flagged row. Steps:
      1. After the fill, `step-table` is visible with `step-row` count 2, and `step-field-count` of row 0 has value `3` (text edit reaches the table). Run, then pin the result (`pin-run`).
-     2. Edit row 0: set its `step-field-count` to `5` (fill, then blur or press Tab as SGS-046 requires to commit). `build-order-text` then contains `produce villager from capital-town-center x5 -> sheep` (table edit reaches the text), and `step-row` count is still 2.
+     2. Edit row 0: set its `step-field-count` to `5` (a plain `fill`: SGS-046 number fields commit as soon as the draft is a valid number, and blur only restores the display). `build-order-text` then contains `produce villager from capital-town-center x5 -> sheep` (table edit reaches the text), and `step-row` count is still 2.
      3. Run again. From the response JSON: it has a `node-depleted` warning for `sheep` with `severity: 'warning'` and `idleVillagers > 0`. On the page `simulation-warnings` is visible and contains a `simulation-message` with `data-code="node-depleted"` and `data-severity="warning"` whose text equals that warning's `message`.
      4. `step-timeline` is visible with 3 `step-timeline-row`; row `data-step="0"` has `data-status="completed"`, no `data-flagged="true"`, and contains `x5`; row `data-step="2"` has `data-status="not-reached"` and `data-flagged="true"`.
      5. Compare: `compare-key-numbers` is visible with 7 `compare-row` whose `data-key` values are `military-600, military-900, military-1200, age-2, age-3, age-4, pop-cap` in order; each chart (`chart-gather-rates`, `chart-floating-resources`) has `path[data-series="food"]` and `path[data-series="pinned:food"]`. Then `unpin-run`: the table is gone and `pinned:food` has count 0.
@@ -63,5 +63,4 @@ Single-component change outside the core control loop; no diagram required. (Tes
 
 ## Open questions
 
-- `designer`: SGS-046 and SGS-047 had no ticket files when this was written. If their final test ids, the commit behavior of `step-field-count` (on change or on blur) or the `data-status` values differ from the design table, the implementer follows the merged tickets; no decision is needed unless they drop a design id.
 - `designer`: the reaction test relies on SGS-039's measurement that ENG 1TC gold deposit 1 runs out near 3305 s. If SGS-040 or later tuning moves it past 3600 s, the test's first assertion fails and it must switch to a different way of showing a reaction under way (for example, override nothing and assert only the reaction row's `data-reaction` at 1200 s).
