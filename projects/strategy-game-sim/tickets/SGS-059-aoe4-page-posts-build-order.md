@@ -139,19 +139,19 @@ flowchart LR
 
 ## Acceptance criteria
 
-- [ ] Running a valid paste (the default build, and the rally paste) sends a POST to `/api/aoe4-build-order/simulate` whose JSON body has a `buildOrder` deep-equal to `buildOrderFrom(<that text>)`, has no `text` key, and carries `inputs.durationSeconds`; charts draw (`aoe4-build-order.spec.ts` request-body test and the `aoe4-step-table.spec.ts` post-edit test).
-- [ ] An unparseable paste (`start -> sheep` then `at 8 vils fly capital-town-center`) sends no POST (`runRejected` passes), shows exactly one `build-order-issue` with `data-line="2"`, `data-code="syntax"` and text containing `fly`, and `simulation-error` has count 0.
-- [ ] A paste that parses but fails the check (`produce knigt from stable`) shows one `unknown-id` issue at its line with `knigt` in the text and sends no POST.
-- [ ] After a successful run, a client rejection removes the charts, `simulation-notes`, `simulation-warnings`, `step-timeline` and `compare-key-numbers`, keeps the pin (`unpin-run` enabled, `pin-run` disabled), and leaves Run enabled; the next valid run hides `build-order-issues` and draws the charts again.
-- [ ] A pasted text of 20001 characters shows one `out-of-range` issue `text: 20001 characters, more than 20000` in `build-order-issues` and sends no POST (new Playwright test).
-- [ ] The duration tests (`59`, emptied) and the mocked 400 (with and without `omittedIssues`) and mocked 500 tests still assert `simulation-error` and pass unchanged; a server 400 never shows in `build-order-issues`.
-- [ ] `PageProps` is `{ builds, catalog }` and `StepTable` takes `catalog`: `git grep -n "options" -- pages/apps/aoe4-build-order.tsx` prints nothing (5 hits today), and `git grep -nE "^\s+options: " -- components/apps/aoe4-build-order/step-table.tsx` prints nothing (1 hit today, the prop line; internal helper parameters may keep their names).
-- [ ] `git grep -nE "postData(JSON)?\(\)[^;]*\.text" -- acceptance` prints nothing (2 hits today: `aoe4-build-order.spec.ts:92`, `aoe4-step-table.spec.ts:215`).
-- [ ] `git grep -c "toBe(400)" -- acceptance/aoe4-build-order.spec.ts acceptance/aoe4-build-order-pin-compare.spec.ts` shows 2 and 0 (7 and 1 today): only the duration and mocked-400 tests keep a 400.
-- [ ] Mutation: change the page's rejection branch to POST `{ buildOrder: ... }` anyway (or to put the issues in `simulation-error`); the `runRejected` specs fail. Confirm by applying it before handing over.
-- [ ] `docs/aoe4-build-order.md` no longer says Run posts the text: `git grep -nE "Run posts the$|posts the text|posts the paste" -- docs` prints nothing.
-- [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
-- [ ] No INVARIANTS.md regressions
+- [x] Running a valid paste (the default build, and the rally paste) sends a POST to `/api/aoe4-build-order/simulate` whose JSON body has a `buildOrder` deep-equal to `buildOrderFrom(<that text>)`, has no `text` key, and carries `inputs.durationSeconds`; charts draw (`aoe4-build-order.spec.ts` request-body test and the `aoe4-step-table.spec.ts` post-edit test).
+- [x] An unparseable paste (`start -> sheep` then `at 8 vils fly capital-town-center`) sends no POST (`runRejected` passes), shows exactly one `build-order-issue` with `data-line="2"`, `data-code="syntax"` and text containing `fly`, and `simulation-error` has count 0.
+- [x] A paste that parses but fails the check (`produce knigt from stable`) shows one `unknown-id` issue at its line with `knigt` in the text and sends no POST.
+- [x] After a successful run, a client rejection removes the charts, `simulation-notes`, `simulation-warnings`, `step-timeline` and `compare-key-numbers`, keeps the pin (`unpin-run` enabled, `pin-run` disabled), and leaves Run enabled; the next valid run hides `build-order-issues` and draws the charts again.
+- [x] A pasted text of 20001 characters shows one `out-of-range` issue `text: 20001 characters, more than 20000` in `build-order-issues` and sends no POST (new Playwright test).
+- [x] The duration tests (`59`, emptied) and the mocked 400 (with and without `omittedIssues`) and mocked 500 tests still assert `simulation-error` and pass unchanged; a server 400 never shows in `build-order-issues`.
+- [x] `PageProps` is `{ builds, catalog }` and `StepTable` takes `catalog`: `git grep -n "options" -- pages/apps/aoe4-build-order.tsx` prints nothing (5 hits today), and `git grep -nE "^\s+options: " -- components/apps/aoe4-build-order/step-table.tsx` prints nothing (1 hit today, the prop line; internal helper parameters may keep their names).
+- [x] `git grep -nE "postData(JSON)?\(\)[^;]*\.text" -- acceptance` prints nothing (2 hits today: `aoe4-build-order.spec.ts:92`, `aoe4-step-table.spec.ts:215`).
+- [x] `git grep -c "toBe(400)" -- acceptance/aoe4-build-order.spec.ts acceptance/aoe4-build-order-pin-compare.spec.ts` shows 2 and 0 (7 and 1 today): only the duration and mocked-400 tests keep a 400.
+- [x] Mutation: change the page's rejection branch to POST `{ buildOrder: ... }` anyway (or to put the issues in `simulation-error`); the `runRejected` specs fail. Confirm by applying it before handing over.
+- [x] `docs/aoe4-build-order.md` no longer says Run posts the text: `git grep -nE "Run posts the$|posts the text|posts the paste" -- docs` prints nothing.
+- [x] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -164,3 +164,28 @@ the textarea. No owner or designer decision is needed.)
 - Underspecified: SGS-057 was split; `buildOrderFrom` and the model re-exports now come from SGS-075.
 - Changed: Depends on SGS-075 (transitively SGS-057); `buildOrderFrom` references point to SGS-075.
 - Stands: all Scope and criteria.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review (reports/SGS-059-review-1.md). Tip reviewed: 77b501b44dac341da8d2e3c05501ad7f3225e709 (stacked on sgs-075 7037d48). No earlier gate had passed it. Page code, docs and contract were found correct; the findings are in tests.
+
+Findings:
+- `acceptance/aoe4-build-order.spec.ts:~324`: the notes test ("info expansion survives a failed run") calls `runRejected` but never checks the issue; Scope 5 and the design's page-specs row require every one of the six rewrites to assert exactly one `syntax` issue on line 2 containing `fly` and a `simulation-error` count of 0. Only 5 of 6 do.
+- `acceptance/aoe4-build-order-pin-compare.spec.ts:~187`: the title still says "a 400 run removes charts and table but keeps the pin", but the test now asserts nothing is posted.
+- `acceptance/aoe4-build-order.spec.ts:~676`: "a 400 run and a start-only run show no timeline" has no 400 any more.
+
+Required fixes:
+- [x] (rework 1) Add `await expectFlySyntaxIssue(page)` to the notes test after its `runRejected` call.
+- [x] (rework 1) Rename the pin-compare test (~187) and the spec.ts test (~676) so they say "a rejected paste" instead of "a 400 run" (keep every assertion).
+- [x] (rework 1) Docs: `docs/aoe4-build-order.md` ~line 812 says "as before" (process history in a shipped doc): reword to state the behaviour directly; keep line ~826 within the paragraph's wrap width.
+- [x] No page-code change.
+
+## Rework 2 - 2026-11-02 (review)
+
+Gate that bounced: review (reports/SGS-059-review-2.md). Tip reviewed: f4eaeae45d74ffe12f7e83f33d7242134e92a601. The earlier gate's other findings are fixed and verified (notes test assertion mutation-checked; titles accurate; page code identical to 77b501b).
+
+Findings:
+- `docs/aoe4-build-order.md:826`: the line ending "...and Run reports it as an issue under the textarea. Number fields" is still 138 characters; the rest of that paragraph wraps at 110 or less. Rework 1's item "keep line ~826 within the paragraph's wrap width" was ticked but the delta never touched line 826.
+
+Required fixes:
+- [x] (rework 2) Rewrap `docs/aoe4-build-order.md` lines ~826-829 to about 110 characters per line (docs only, no wording change beyond the rewrap). Verify with `awk 'length>110' docs/aoe4-build-order.md` for that paragraph.

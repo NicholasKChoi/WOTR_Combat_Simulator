@@ -111,13 +111,13 @@ Single-component change outside the core control loop; no diagram required.
 ## Acceptance criteria
 
 - [ ] `git grep -nE "\btext *[:,}]" -- 'acceptance/aoe4-simulate-api*.spec.ts'` prints 75 lines today and exactly the 16 lines of Scope 5 after the change (api 6, edges 3, contract 5, waits 2); no other spec file has a `text` request body.
-- [ ] Each of the 10 specs that convert a paste (`aoe4-simulate-api`, `-edges`, `-depletion`, `-depletion-engine`, `-markers`, `-research`, `-spend-population`, `-timelines`, `-triggers`, `-waits`) imports `buildOrderFrom` from `./helpers`; `git grep -n "textToBuildOrder" -- 'acceptance/*.spec.ts'` prints nothing; the waits `simulate(request, text, inputs)` signature is unchanged.
-- [ ] `git diff --name-only origin/main` lists only files under `acceptance/aoe4-simulate-api*.spec.ts` (plus, only if Scope 3 requires it, `lib/aoe4-build-order/text-to-build.test.ts`); `acceptance/helpers.ts`, `pages/`, `lib/` (other than that file), `docs/` and page specs are untouched.
-- [ ] Every rewritten check-fault spec in Scope 2 still asserts the same issue `code` and the same named id (unit, producer, tech, building) as before, and none of those specs asserts a `line N` message or a `line` property.
-- [ ] The issue-cap specs assert 99 and 100 issues with no `omittedIssues` key, 101 issues giving 100 listed and `omittedIssues` 1, 200 issues giving 100 listed and `omittedIssues` 100, the first 100 `step` values equal `0..99`, and the combined case 100 listed with `omittedIssues` 20; each bad step yields exactly one issue (verified by the 99-issue case listing 99).
+- [x] Each of the 10 specs that convert a paste (`aoe4-simulate-api`, `-edges`, `-depletion`, `-depletion-engine`, `-markers`, `-research`, `-spend-population`, `-timelines`, `-triggers`, `-waits`) imports `buildOrderFrom` from `./helpers`; `git grep -n "textToBuildOrder" -- 'acceptance/*.spec.ts'` prints nothing; the waits `simulate(request, text, inputs)` signature is unchanged.
+- [x] `git diff --name-only origin/main` lists only files under `acceptance/aoe4-simulate-api*.spec.ts` (plus, only if Scope 3 requires it, `lib/aoe4-build-order/text-to-build.test.ts`); `acceptance/helpers.ts`, `pages/`, `lib/` (other than that file), `docs/` and page specs are untouched.
+- [x] Every rewritten check-fault spec in Scope 2 still asserts the same issue `code` and the same named id (unit, producer, tech, building) as before, and none of those specs asserts a `line N` message or a `line` property.
+- [x] The issue-cap specs assert 99 and 100 issues with no `omittedIssues` key, 101 issues giving 100 listed and `omittedIssues` 1, 200 issues giving 100 listed and `omittedIssues` 100, the first 100 `step` values equal `0..99`, and the combined case 100 listed with `omittedIssues` 20; each bad step yields exactly one issue (verified by the 99-issue case listing 99).
 - [ ] The three deleted or trimmed tests of Scope 3 no longer exist, and the PR body names the lib test file that covers each.
-- [ ] With the route unchanged, `npx playwright test acceptance/aoe4-simulate-api*.spec.ts` passes; `npx tsc --noEmit` and `npm run lint:dup` pass; `npm run acceptance` passes (Node 24).
-- [ ] No INVARIANTS.md regressions
+- [x] With the route unchanged, `npx playwright test acceptance/aoe4-simulate-api*.spec.ts` passes; `npx tsc --noEmit` and `npm run lint:dup` pass; `npm run acceptance` passes (Node 24).
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

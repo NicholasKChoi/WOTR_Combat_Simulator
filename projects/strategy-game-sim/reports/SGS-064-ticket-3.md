@@ -1,0 +1,2 @@
+# SGS-064 ticket report 3
+Re-spec: shipped-build tests may be re-pinned where the lead-time rule explains it. Scope lists the acceptance spec re-pins (armedAt 681, startedAt 687.5475028949656; 1200 s gold depletes ~1114.09 s with one info node-depleted warning), digest e7b3cb8bc1ad4299 -> a0105e4a512765a0, README numbers, PR body listing re-pins, and 1TC/Knight-Longbow byte-identical criterion. Knight+longbow README sentence left to SGS-065.

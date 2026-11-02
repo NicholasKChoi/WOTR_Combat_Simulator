@@ -87,18 +87,18 @@ flowchart LR
 ## Acceptance criteria
 
 - [ ] A build whose last `build house` step is a reaction that never fires, run with `autoHouses: true`, returns exactly one `auto-houses-never-start` warning with `severity: 'warning'`, `step` the reaction's 0-based index, `at: 0` and message `auto-houses never start: they wait for step <step+1> (build house), a reaction that did not fire by <m:ss of durationSeconds>, so no auto-house is built.`, in a unit test and through `POST /api/aoe4-build-order/simulate`.
-- [ ] No `auto-houses-never-start` with `autoHouses: false`, with no `build house` step, with a last `build house` that is not a reaction, or with a reaction that fired (including one still waiting on resources), each in a unit test.
+- [x] No `auto-houses-never-start` with `autoHouses: false`, with no `build house` step, with a last `build house` that is not a reaction, or with a reaction that fired (including one still waiting on resources), each in a unit test.
 - [ ] A build with a late explicit last `build house` whose production hits the supply limit before it starts returns one `auto-houses-held` with `step` that house step's index, `at` the first blocked instant, `seconds` the sum of every interval from a blocked instant to the next wake, and the C6 message, with the exact `at` and `seconds` pinned in a unit test and the same values through the API.
-- [ ] No `auto-houses-held` with `autoHouses: false`, with the gate open at the block, with `supply` at `maxPopCap`, or when the only block is at the final instant (`seconds` 0), each in a unit test.
-- [ ] A run can emit both warnings; at equal `at` they sort after node warnings and `step-stuck`, never-start before held.
-- [ ] `spawnedPopulation`, `spent`, `steps`, `populationCapReachedAt`, `depletions` and `markers` for the late-explicit-house build are identical to the pre-change run, and for the three shipped builds at default inputs and 1800 s every field other than `warnings` is identical, in a test against pinned values.
-- [ ] The report lists the `warnings` each shipped build returns at default inputs at 1800 s and 3600 s; any shipped build that returns either new warning has its README stating it with those numbers.
-- [ ] `docs/api/openapi.json` `SimWarning.oneOf` has five variants, the two new ones closed with every property required and described; the contract spec `simWarningVariants` tuple has five entries and the contract spec passes.
-- [ ] `git grep -n "step-stuck" -- docs/aoe4-build-order.md docs/api/openapi.json` finds 7 lines on d5c2549 (openapi 3: the `warnings` description at 1891 and the variant's const and description at 2277-2278; docs 4: lines 402, 704, 706, 710); after the change every line that enumerates the warning codes or their sort order (openapi 1891, docs 402, 704, 710) also names `auto-houses-never-start` and `auto-houses-held`, reviewed line by line in the implementer's report.
-- [ ] `git grep -n "they stay off; with no" -- docs` finds 1 line today (`docs/aoe4-build-order.md` line 315) and 0 after the change (the sentence is reworded to mention the warnings).
-- [ ] Mutation check: changing `houseGateOpen` to always return true makes the held and never-start unit tests fail (they depend on a closed gate), and changing the accrual to add the interval only at the first blocked instant makes the pinned `seconds` test fail.
-- [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` pass, and the implementer's report lists every test edited and why.
-- [ ] No INVARIANTS.md regressions
+- [x] No `auto-houses-held` with `autoHouses: false`, with the gate open at the block, with `supply` at `maxPopCap`, or when the only block is at the final instant (`seconds` 0), each in a unit test.
+- [x] A run can emit both warnings; at equal `at` they sort after node warnings and `step-stuck`, never-start before held.
+- [x] `spawnedPopulation`, `spent`, `steps`, `populationCapReachedAt`, `depletions` and `markers` for the late-explicit-house build are identical to the pre-change run, and for the three shipped builds at default inputs and 1800 s every field other than `warnings` is identical, in a test against pinned values.
+- [x] The report lists the `warnings` each shipped build returns at default inputs at 1800 s and 3600 s; any shipped build that returns either new warning has its README stating it with those numbers.
+- [x] `docs/api/openapi.json` `SimWarning.oneOf` has five variants, the two new ones closed with every property required and described; the contract spec `simWarningVariants` tuple has five entries and the contract spec passes.
+- [x] `git grep -n "step-stuck" -- docs/aoe4-build-order.md docs/api/openapi.json` finds 7 lines on d5c2549 (openapi 3: the `warnings` description at 1891 and the variant's const and description at 2277-2278; docs 4: lines 402, 704, 706, 710); after the change every line that enumerates the warning codes or their sort order (openapi 1891, docs 402, 704, 710) also names `auto-houses-never-start` and `auto-houses-held`, reviewed line by line in the implementer's report.
+- [x] `git grep -n "they stay off; with no" -- docs` finds 1 line today (`docs/aoe4-build-order.md` line 315) and 0 after the change (the sentence is reworded to mention the warnings).
+- [x] Mutation check: changing `houseGateOpen` to always return true makes the held and never-start unit tests fail (they depend on a closed gate), and changing the accrual to add the interval only at the first blocked instant makes the pinned `seconds` test fail.
+- [x] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` pass, and the implementer's report lists every test edited and why.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

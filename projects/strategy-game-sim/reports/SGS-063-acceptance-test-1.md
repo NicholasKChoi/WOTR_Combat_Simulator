@@ -1,0 +1,2 @@
+# SGS-063 acceptance-test 1
+PASS. New spec acceptance/aoe4-simulate-api-house-warnings.spec.ts, 5 tests (late-house held 60/240 on stock data; never-start then held 0/340; autoHouses false for both; knight+longbow held step 23 at 461.819 for 21.236s). Commit 2f595ae. Mutations: accrual off, never-start false, first-interval-only, autoHouses ignored all fail; moving the supplyBlocked reset back is not reachable via the API (repro needs 9 starting villagers, route rejects) and is pinned by simulate-house-warnings.test.ts only.

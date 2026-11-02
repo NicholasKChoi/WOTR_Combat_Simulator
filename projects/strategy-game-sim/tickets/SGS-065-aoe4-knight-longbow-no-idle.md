@@ -52,16 +52,16 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `git grep -c '"reaction"' -- data/aoe4-build-order/builds/english-knight-longbow.json` gives 5 today and 6 after; the sixth is the last step, with `trigger.node` `sheep`, `from` `sheep`, `to` `farm`.
-- [ ] `git grep -n "REACTION_COUNT" -- acceptance lib docs` finds 2 lines today (both in `aoe4-simulate-api-knight-longbow-build.spec.ts`) and 0 after the change.
-- [ ] Through `POST /api/aoe4-build-order/simulate` at `durationSeconds: 1800`, on the final code: no `idle-arrival` warning, no `step-stuck`, no waiting step, and `idleVillagers` 0 on every `node-depleted` whose `depletedAt <= 1800`; the sheep reaction's `startedAt` equals the sheep `depletedAt`. On origin/main without the sheep reaction the sheep `node-depleted` has `idleVillagers` 4, so the test fails on the old build.
-- [ ] The five gold reactions keep their 1200 s and 3600 s assertions: at 1200 s only the first gold reaction ran and the later four are `not-reached` with `waitingOn: 'trigger'`; at 3600 s each starts at its deposit run-out instant.
-- [ ] `builds.test.ts` per-build bar tests pass for all three builds, and the knight + longbow 1800 s check is in `builds.test.ts`.
-- [ ] Mutation check: deleting the sheep reaction from the knight + longbow JSON makes the new 1800 s API test and the new `builds.test.ts` 1800 s test fail (sheep `idleVillagers` 4 on the base). The tests are new, so the implementer runs it in a throwaway worktree.
-- [ ] `git grep -n "stalls at the cap" -- data docs README.md` finds 1 line today (`data/aoe4-build-order/README.md` 83) and 0 after; the README entry states the sheep reaction and its `farm` target, and every timing in it matches a run of the final code (the report lists each).
-- [ ] The build's paste text round-trips: `formatBuildOrderText` then `parseBuildOrderText` returns the same `steps` including the sheep reaction.
-- [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` pass; the report lists every test edited and why.
-- [ ] No INVARIANTS.md regressions
+- [x] `git grep -c '"reaction"' -- data/aoe4-build-order/builds/english-knight-longbow.json` gives 5 today and 6 after; the sixth is the last step, with `trigger.node` `sheep`, `from` `sheep`, `to` `farm`.
+- [x] `git grep -n "REACTION_COUNT" -- acceptance lib docs` finds 2 lines today (both in `aoe4-simulate-api-knight-longbow-build.spec.ts`) and 0 after the change.
+- [x] Through `POST /api/aoe4-build-order/simulate` at `durationSeconds: 1800`, on the final code: no `idle-arrival` warning, no `step-stuck`, no waiting step, and `idleVillagers` 0 on every `node-depleted` whose `depletedAt <= 1800`; the sheep reaction's `startedAt` equals the sheep `depletedAt`. On origin/main without the sheep reaction the sheep `node-depleted` has `idleVillagers` 4, so the test fails on the old build.
+- [x] The five gold reactions keep their 1200 s and 3600 s assertions: at 1200 s only the first gold reaction ran and the later four are `not-reached` with `waitingOn: 'trigger'`; at 3600 s each starts at its deposit run-out instant.
+- [x] `builds.test.ts` per-build bar tests pass for all three builds, and the knight + longbow 1800 s check is in `builds.test.ts`.
+- [x] Mutation check: deleting the sheep reaction from the knight + longbow JSON makes the new 1800 s API test and the new `builds.test.ts` 1800 s test fail (sheep `idleVillagers` 4 on the base). The tests are new, so the implementer runs it in a throwaway worktree.
+- [x] `git grep -n "stalls at the cap" -- data docs README.md` finds 1 line today (`data/aoe4-build-order/README.md` 83) and 0 after; the README entry states the sheep reaction and its `farm` target, and every timing in it matches a run of the final code (the report lists each).
+- [x] The build's paste text round-trips: `formatBuildOrderText` then `parseBuildOrderText` returns the same `steps` including the sheep reaction.
+- [x] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` pass; the report lists every test edited and why.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

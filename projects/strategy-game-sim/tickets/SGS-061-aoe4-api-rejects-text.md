@@ -92,7 +92,7 @@ SimInputOverrides }`: `text` is removed and `buildOrder` is required. Fix any co
 - Grep `docs/`, `data/aoe4-build-order/README.md` and `README.md` for `exactly one of`, `text: null`, `send exactly
   one`, `posts the text`, `line` on a route issue; fix every hit that is now untrue.
 
-**5. Specs that tested the old `text` rules (the 16 lines SGS-060 Scope 5 left).** Replace them with the design's
+**5. Specs that tested the old `text` rules (the 16 lines SGS-060 Scope 5 left, plus 8 in two specs added to main after this ticket was first written).** Replace them with the design's
 rows; rewrite in place, same files. The raw-string bodies (`'{"text":'`, `'{"text": "start 6 sheep'`, the
 `text/plain` Buffer) stay as they are.
 - `aoe4-simulate-api.spec.ts`: in "each issue code over HTTP" `syntaxCases`, the three `text`-body cases and the
@@ -123,6 +123,9 @@ rows; rewrite in place, same files. The raw-string bodies (`'{"text":'`, `'{"tex
 - `aoe4-simulate-api-waits.spec.ts`: the helper `simulate(request, text, inputs)` keeps its signature (SGS-060)
   and is not edited; the two `text` lines that SGS-060 Scope 5 lists for this file are its parameter name and
   call, which are not request bodies, so nothing changes here.
+- `aoe4-simulate-api-checks.spec.ts` (5 `text` lines: the pasted `knigt` case asserting `line`, and the 20001 and 20000 text-length cases) and `aoe4-simulate-api-issue-shape.spec.ts` (3 lines: the paste `knigt` case with `line`, test "an unknown unit is still one 400 unknown-id issue on its paste line with only documented keys", and the 20001-character text test "a text of 20001 characters is one out-of-range issue with the text message"; the file's 20,001 test expects `text: 20001 characters, more than 20000`). Rewrite in place (find by title; these two files may not yet be on every branch, so check they exist when starting):
+  - The pasted `knigt` cases become JSON `buildOrder` cases: post a `buildOrder` with one step naming `knigt`, keep the `suggestion` and `unknown-id` and message-contains-`knigt` assertions, and assert `step` (the step's index) instead of `line`; `expect(issue.line).toBeUndefined()`. Rename titles from "paste line" to "step".
+  - The 20001 and 20000 text-length cases are deleted, not converted: the route no longer has the cap, the `text` of 20,001 characters giving the `removedText` issue is already asserted in `aoe4-simulate-api.spec.ts` (Scope 5 above), and the cap is covered browser-side by `text-to-build.test.ts`. Leave a one-line comment at the deletion pointing to that unit test.
 - Rule for other tests: a test of the changed behavior gets the new expected value; any other test keeps its
   expected value. The implementer lists every spec title it rewrites, adds or deletes, with the old and new
   expected issue message where it changed, in the PR body.
@@ -169,7 +172,7 @@ flowchart LR
 - [ ] `docs/aoe4-build-order.md` Route section no longer says "exactly one of `text`" or `text: null`, states the removed-`text` 400 and `request: missing buildOrder`, and points paste users to the page or `textToBuildOrder`: `git grep -nE "exactly one of|text: null|send exactly" -- docs README.md data/aoe4-build-order/README.md` prints nothing (6 hits on origin/main, in `docs/aoe4-build-order.md` and `docs/api/openapi.json`; the `docs` pathspec covers both).
 - [ ] `aoe4-simulate-api-contract.spec.ts` passes: request and 400 examples validate against their schemas, every 400 example equals the real response, `SimulateRequest` rejects a body with `text` (`not` required), `Record<keyof SimulateRequest, true>` is `{ buildOrder, inputs }`.
 - [ ] Mutation: change the route to ignore `text` (skip the removed-`text` branch); the spec cases in Scope 5 for `text` alone, `text` beside a valid `buildOrder`, and the contract `removedText` example fail. Confirm by applying it before handing over.
-- [ ] `git grep -nE "\btext *[:,}]" -- 'acceptance/aoe4-simulate-api*.spec.ts'` prints 75 lines on origin/main and, after SGS-060 and this ticket, only lines of the removed-`text` tests and the 1 MB 413 test of Scope 5 (no request body that sends `text` expecting a 200).
+- [ ] `git grep -nE "\btext *[:,}]" -- 'acceptance/aoe4-simulate-api*.spec.ts'` prints 24 lines when this ticket starts (after SGS-060: 16 old-`text`-rule lines plus 8 in `aoe4-simulate-api-checks.spec.ts` (5) and `aoe4-simulate-api-issue-shape.spec.ts` (3)) and, after this ticket, 0 `text` request bodies outside the removedText cases and the 1 MB 413 test of Scope 5 (the remaining hits are only those tests; no request body that sends `text` expecting a 200; none in `checks` or `issue-shape`).
 - [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
 - [ ] No INVARIANTS.md regressions
 
@@ -182,3 +185,9 @@ None. (Same-ticket choices, not owner questions: the removed-`text` check uses a
 - Underspecified: SGS-075 leaves a temporary `text` branch in the route calling `textToBuildOrder`, and this ticket must remove it.
 - Changed: Depends on SGS-075 added; Scope 1 and the grep criterion state the branch removal.
 - Stands: all other Scope and criteria.
+
+## Re-spec 2026-11-02 (2)
+
+- Underspecified: two specs added to main after this ticket (`aoe4-simulate-api-checks.spec.ts`, `aoe4-simulate-api-issue-shape.spec.ts`) also post `text`; SGS-060 left 24 grep lines, not 16.
+- Changed: Scope 5 covers those 8 lines (knigt cases become `buildOrder` step cases; text-length cases deleted); the grep criterion says 24 today and 0 `text` bodies after.
+- Stands: everything else.

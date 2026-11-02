@@ -1,0 +1,2 @@
+# SGS-064 acceptance-test 1
+PASS. New spec acceptance/aoe4-simulate-api-house-lead-time.spec.ts, 4 tests (filtered knight+longbow population rises 40->41 at 680s->50 at 765s with the exact series; 1TC and Knight/Longbow shipped builds identical to base at 1800s). Commit 99e181c. Mutations: old rule and widened lead fail the rising/series tests; dropping pending fails all 4. Exact house start time during the 220s landmark is not API-observable; pinned by the implementer's unit test.

@@ -1,0 +1,4 @@
+# SGS-065 implementer 1
+Branch sgs-065-aoe4-knight-longbow-no-idle (from sgs-064-aoe4-house-lead-time 011755f), worktree .claude/code-factory/worktrees/sgs-065-aoe4-knight-longbow-no-idle. Status needs_review.
+Measured on this base at 1800 s and 3600 s: sheep out 997.87 s, idleVillagers 0 on every node-depleted, no idle-arrival, no step-stuck, no waiting; gold 931.85/1477.30/2022.74/2568.19/3113.63 s (15:32, 24:37, 33:43, 42:48, 51:54 unchanged); farm block starts 601.5 s (10:02) and held warning 0:21 from 7:42 (step 24) unchanged. README numbers changed: none, only the sheep sentence (16:38, 997.9 s) added.
+Edited pre-existing tests (pins legitimately move since the build gained a step): simulate-house-warnings.test.ts knight pin 69e8...->46f5...; acceptance house-lead-time.spec steps/warnings digests for knight (population, spent, cap unchanged). Verified only steps(+new row), warnings, gatherRates, floating differ from the no-sheep-step run.

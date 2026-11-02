@@ -1,0 +1,2 @@
+# SGS-065 acceptance-test 1
+PASS. Already covered by the implementer's spec: 1800 s no idle-arrival/step-stuck/waiting step, idleVillagers 0, sheep startedAt = depletedAt, structure of last six steps. Added acceptance/aoe4-build-order-knight-longbow-page.spec.ts (page 1800 s: 6 reaction rows, no idle warning, info node-depleted messages; API 3600 s: no idle-arrival/step-stuck, idle 0). Commit 15c3fa5. Removing the sheep step fails both.
