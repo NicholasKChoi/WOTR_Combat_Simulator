@@ -1,24 +1,34 @@
 import { describe, expect, it } from 'vitest'
-import type { BuildStep, Trigger } from '../../../lib/aoe4-build-order/model'
+import type { BuildOrder, BuildStep, Trigger } from '../../../lib/aoe4-build-order/model'
 import { formatBuildOrderText, parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { buildOrderCatalog, checkBuildOrder } from '../../../lib/aoe4-build-order/schema'
+import { OPTIONAL_STEP_FIELDS, buildOrderCatalog, checkBuildOrder } from '../../../lib/aoe4-build-order/schema'
 import { stepOptions } from '../../../lib/aoe4-build-order/step-options'
 import { buildOrder, ENGLISH } from '../../../lib/aoe4-build-order/test-helpers'
 import {
+    FIELD_LABELS,
+    addStartPair,
     changeAction,
     changeProducer,
     changeTriggerKind,
     defaultStep,
     defaultTrigger,
+    deleteStartPair,
     deleteStep,
+    hasOptionalField,
     insertStep,
     moveStep,
+    nodeLabel,
     offersEmptyChoice,
+    optionLabel,
     replaceStep,
     selectChoices,
     setNumberField,
     setReaction,
+    setStartCount,
+    setStartNode,
+    setStartRally,
     setTriggerNumber,
+    startPairs,
     withoutField,
 } from './step-table-model'
 
@@ -259,5 +269,140 @@ describe('text round trip', () => {
         for (const next of edited) {
             expect(reparsed(next)).toEqual(next)
         }
+    })
+})
+
+describe('labels', () => {
+    const catalog = buildOrderCatalog(ENGLISH)
+
+    it.each([
+        ['producer', 'Building'], ['instance', 'Building #'], ['unit', 'Unit'], ['count', 'Count'], ['rally', 'Rally to'],
+        ['walkSeconds', 'Walk time (s)'], ['to', 'To'], ['building', 'Building'], ['builders', 'Builders'], ['from', 'From'],
+        ['then', 'Then'], ['tech', 'Technology'], ['at', 'At'], ['seconds', 'Time (s)'], ['trigger-count', 'Villagers'],
+        ['node', 'Node'], ['resource', 'Resource'], ['atLeast', 'At least'], ['reaction', 'Every time'],
+    ])('labels %s as %s', (field, label) => {
+        expect(FIELD_LABELS[field]).toBe(label)
+    })
+
+    it('has no label beyond those fields', () => {
+        expect(Object.keys(FIELD_LABELS)).toHaveLength(19)
+    })
+
+    it('labels every field a row can render', () => {
+        const names = ACTIONS.flatMap((action) => [...Object.keys(defaultStep(action, options)), ...OPTIONAL_STEP_FIELDS[action]]).filter((name) => name !== 'action')
+        for (const name of names) expect(FIELD_LABELS[name], name).toBeTruthy()
+    })
+
+    it.each([
+        ['sheep', 'Sheep'],
+        ['gold', 'Gold'],
+        ['gold#3', 'Gold deposit 3'],
+    ])('nodeLabel(%s) is %s', (ref, label) => {
+        expect(nodeLabel(ref)).toBe(label)
+    })
+
+    it('shows the data name for a listed id, a node label for a node, else the id', () => {
+        const [id, name] = Object.entries(catalog.names).find(([key, value]) => key !== value) ?? ['', '']
+        expect(optionLabel(id, catalog)).toBe(name)
+        expect(optionLabel('villager', catalog)).toBe(catalog.names.villager)
+        expect(optionLabel('gold#2', catalog)).toBe('Gold deposit 2')
+        expect(optionLabel('not-listed', catalog)).toBe('not-listed')
+    })
+})
+
+describe('hasOptionalField', () => {
+    it.each(ACTIONS)('is false for the default %s step and true once an optional field is set', (action) => {
+        const step = defaultStep(action, options)
+        expect(hasOptionalField(step)).toBe(false)
+        const field = OPTIONAL_STEP_FIELDS[action][0]
+        expect(hasOptionalField({ ...step, [field]: 1 } as BuildStep)).toBe(true)
+    })
+
+    it('ignores the trigger and reaction', () => {
+        expect(hasOptionalField({ ...produce, trigger: { kind: 'time', seconds: 5 }, reaction: true })).toBe(false)
+    })
+})
+
+describe('start edits', () => {
+    const catalog = buildOrderCatalog(ENGLISH)
+    const withStart = (start: BuildOrder['start']): BuildOrder => ({ ...buildOrder([produce]), start })
+    const { start: _start, ...bare } = buildOrder([produce])
+    const full = withStart({ villagers: { sheep: 3, wood: 1 }, rally: 'sheep' })
+
+    function roundTrips(order: BuildOrder) {
+        const result = parseBuildOrderText(formatBuildOrderText(order))
+        if (result.ok === false) throw new Error(JSON.stringify(result.issues))
+        expect(result.order.start).toEqual(order.start)
+    }
+
+    it('lists pairs in record order', () => {
+        expect(startPairs(full)).toEqual([['sheep', 3], ['wood', 1]])
+        expect(startPairs(bare)).toEqual([])
+    })
+
+    it('sets a count and keeps the pair order', () => {
+        const next = setStartCount(full, 1, '7')
+        expect(next.start).toEqual({ villagers: { sheep: 3, wood: 7 }, rally: 'sheep' })
+        roundTrips(next)
+    })
+
+    it.each(['', '-1', '2.5', 'abc', '1e3', '9007199254740992'])('rejects the count draft %j', (text) => {
+        expect(setStartCount(full, 0, text)).toBe(full)
+    })
+
+    it('ignores a count edit past the last pair', () => {
+        expect(setStartCount(full, 2, '1')).toBe(full)
+    })
+
+    it('changes a pair node in place and refuses a node another pair uses', () => {
+        const next = setStartNode(full, 0, 'berry')
+        expect(startPairs(next)).toEqual([['berry', 3], ['wood', 1]])
+        roundTrips(next)
+        expect(setStartNode(full, 0, 'wood')).toBe(full)
+    })
+
+    it('sets and clears the rally', () => {
+        expect(setStartRally(full, 'wood').start?.rally).toBe('wood')
+        const cleared = setStartRally(full, '')
+        expect(cleared.start).toEqual({ villagers: { sheep: 3, wood: 1 } })
+        roundTrips(cleared)
+        expect(setStartRally(bare, 'wood').start).toBeUndefined()
+    })
+
+    it('adds the first unused node with a count of 1 at the end', () => {
+        const next = addStartPair(full, catalog)
+        const added = startPairs(next)[2]
+        expect(added[1]).toBe(1)
+        expect(['sheep', 'wood']).not.toContain(added[0])
+        expect(added[0]).toBe(catalog.nodes.find((node) => node !== 'sheep' && node !== 'wood'))
+        roundTrips(next)
+    })
+
+    it('adds nothing when every node is used or the order has no start', () => {
+        const everyNode = withStart({ villagers: Object.fromEntries(catalog.nodes.map((node) => [node, 1])), rally: 'sheep' })
+        expect(addStartPair(everyNode, catalog)).toBe(everyNode)
+        expect(addStartPair(bare, catalog).start).toBeUndefined()
+    })
+
+    it('deletes a pair, and drops start once it has neither pairs nor rally', () => {
+        const one = deleteStartPair(full, 0)
+        expect(startPairs(one)).toEqual([['wood', 1]])
+        roundTrips(one)
+        const none = deleteStartPair(one, 0)
+        expect(none.start).toEqual({ rally: 'sheep' })
+        roundTrips(none)
+        expect('start' in setStartRally(none, '')).toBe(false)
+        expect('start' in deleteStartPair(withStart({ villagers: { sheep: 2 } }), 0)).toBe(false)
+        expect(deleteStartPair(full, 5)).toBe(full)
+    })
+
+    it('does not mutate the input order', () => {
+        const before = structuredClone(full)
+        setStartCount(full, 0, '9')
+        setStartNode(full, 0, 'berry')
+        deleteStartPair(full, 0)
+        addStartPair(full, catalog)
+        setStartRally(full, '')
+        expect(full).toEqual(before)
     })
 })

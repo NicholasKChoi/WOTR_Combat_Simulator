@@ -818,9 +818,15 @@ the route rejects any value outside its bounds.
 
 The page keeps one `text` state, and the step table is a view of it. The table renders
 `parseBuildOrderText(text)`: one row per step with a trigger kind select and its fields, an action select and
-every field of that action (set or not), a reaction checkbox while the trigger is `depleted`, and move up,
-move down and delete buttons, plus an add button that appends `produce villager from <first villager
-producer>`. The `start` line is shown above the rows and is not editable there. An edit builds the new order
+the fields of that action under readable labels (Building, Rally to, Walk time (s), ...), a reaction checkbox
+while the trigger is `depleted`, and icon buttons to move the row up or down or delete it, plus an add
+button that appends `produce villager from <first villager producer>`. A field the step may omit (`instance`,
+`count`, `rally`, `walkSeconds`, `builders`, `then`, `at`, depending on the action) sits behind a per-row More
+control that starts open when the step sets one. The first row edits `start`: the rally node, one villager
+count and node per pair (a node used by another pair is not offered), add and delete for pairs, and a
+Customize button that inserts the civ's default `start` while the order has none; the table does not check
+that the counts sum to the civ's total, and Run reports that. Under 768 px each row, the start row included,
+is a card with its fields stacked. An edit builds the new order
 and sets `text` to `formatBuildOrderText(order)`, so a table edit drops comments and blank lines and keeps
 `start`; typing in the textarea never rewrites the text. While the text does not parse, the table is replaced
 by a notice (`step-table-unavailable`) holding the first parse issue's message, and the textarea stays

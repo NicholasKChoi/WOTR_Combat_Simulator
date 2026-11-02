@@ -1,5 +1,6 @@
 import { HOUSE_ID, VILLAGER_ID } from '../../../lib/aoe4-build-order/engine-common'
-import type { BuildStep, Trigger } from '../../../lib/aoe4-build-order/model'
+import type { BuildOrder, BuildStart, BuildStep, NodeRef, Trigger } from '../../../lib/aoe4-build-order/model'
+import { OPTIONAL_STEP_FIELDS, type BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
 import type { StepOptions } from '../../../lib/aoe4-build-order/step-options'
 
 type Action = BuildStep['action']
@@ -130,4 +131,108 @@ export function setTriggerNumber(step: BuildStep, field: 'seconds' | 'count' | '
     const value = parseUnsigned(text)
     if (step.trigger === undefined || value === undefined || !(field in step.trigger)) return step
     return { ...step, trigger: { ...step.trigger, [field]: value } as Trigger }
+}
+
+export const FIELD_LABELS: Readonly<Record<string, string>> = {
+    producer: 'Building',
+    instance: 'Building #',
+    unit: 'Unit',
+    count: 'Count',
+    rally: 'Rally to',
+    walkSeconds: 'Walk time (s)',
+    to: 'To',
+    building: 'Building',
+    builders: 'Builders',
+    from: 'From',
+    then: 'Then',
+    tech: 'Technology',
+    at: 'At',
+    seconds: 'Time (s)',
+    'trigger-count': 'Villagers',
+    node: 'Node',
+    resource: 'Resource',
+    atLeast: 'At least',
+    reaction: 'Every time',
+}
+
+export const TRIGGER_KIND_LABELS: Readonly<Record<'none' | TriggerKind, string>> = {
+    none: 'Right away',
+    time: 'At time',
+    villagers: 'At villager count',
+    depleted: 'When node runs out',
+    bank: 'When bank reaches',
+}
+
+export const ACTION_LABELS: Readonly<Record<Action, string>> = {
+    produce: 'Produce',
+    pause: 'Pause',
+    build: 'Build',
+    research: 'Research',
+    move: 'Move villagers',
+    rally: 'Set rally',
+}
+
+export function nodeLabel(ref: string): string {
+    const [kind, deposit] = ref.split('#')
+    const name = kind.charAt(0).toUpperCase() + kind.slice(1)
+    return deposit === undefined ? name : `${name} deposit ${deposit}`
+}
+
+export function optionLabel(id: string, catalog: BuildOrderCatalog): string {
+    if (Object.hasOwn(catalog.names, id)) return catalog.names[id]
+    return (catalog.nodes as readonly string[]).includes(id) ? nodeLabel(id) : id
+}
+
+export function hasOptionalField(step: BuildStep): boolean {
+    const values = step as unknown as Record<string, unknown>
+    return OPTIONAL_STEP_FIELDS[step.action].some((field) => values[field] !== undefined)
+}
+
+type StartPair = [NodeRef, number]
+
+export function startPairs(order: BuildOrder): StartPair[] {
+    return Object.entries(order.start?.villagers ?? {}) as StartPair[]
+}
+
+function withStart(order: BuildOrder, pairs: readonly StartPair[], rally: NodeRef | undefined): BuildOrder {
+    const { start: _start, ...rest } = order
+    const start: BuildStart = {}
+    if (pairs.length > 0) start.villagers = Object.fromEntries(pairs)
+    if (rally !== undefined) start.rally = rally
+    return start.villagers === undefined && start.rally === undefined ? rest : { ...rest, start }
+}
+
+export function setStartRally(order: BuildOrder, rally: string): BuildOrder {
+    if (order.start === undefined) return order
+    return withStart(order, startPairs(order), rally === '' ? undefined : (rally as NodeRef))
+}
+
+export function setStartCount(order: BuildOrder, index: number, text: string): BuildOrder {
+    const pairs = startPairs(order)
+    const count = parseUnsigned(text)
+    if (count === undefined || index < 0 || index >= pairs.length) return order
+    return withStart(order, pairs.map((pair, i): StartPair => (i === index ? [pair[0], count] : pair)), order.start?.rally)
+}
+
+export function setStartNode(order: BuildOrder, index: number, node: string): BuildOrder {
+    const pairs = startPairs(order)
+    if (index < 0 || index >= pairs.length || pairs.some(([used], i) => used === node && i !== index)) return order
+    return withStart(order, pairs.map((pair, i): StartPair => (i === index ? [node as NodeRef, pair[1]] : pair)), order.start?.rally)
+}
+
+export function firstUnusedStartNode(order: BuildOrder, catalog: BuildOrderCatalog): NodeRef | undefined {
+    const used = new Set<string>(startPairs(order).map(([node]) => node))
+    return catalog.nodes.find((node) => !used.has(node))
+}
+
+export function addStartPair(order: BuildOrder, catalog: BuildOrderCatalog): BuildOrder {
+    const node = firstUnusedStartNode(order, catalog)
+    if (order.start === undefined || node === undefined) return order
+    return withStart(order, [...startPairs(order), [node, 1]], order.start.rally)
+}
+
+export function deleteStartPair(order: BuildOrder, index: number): BuildOrder {
+    const pairs = startPairs(order)
+    if (index < 0 || index >= pairs.length) return order
+    return withStart(order, pairs.filter((_, i) => i !== index), order.start?.rally)
 }
