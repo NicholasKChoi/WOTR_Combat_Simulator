@@ -61,3 +61,20 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 None. The Feudal landmark, the Castle-age upgrades, the number of deposits N and the tuned counts are implementer choices inside the criteria above; the reference numbers are reported, not asserted.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review at tip e25e534b7f4b55426ffb7854a7e3020550fef0d4 (report `reports/SGS-051-review-1.md`). No other gate has passed yet.
+
+Findings:
+- `english-knight-longbow.json:172-175` (`produce longbowman from archery-range`): a `produce` step only orders the ranges that exist when it starts. It starts at 492.7 s with one range; the second range (`:196`) finishes at 705 s and never produces. This is the main cause of 17 longbowmen against about 54 at 1200 s. Adding one more produce step after the second range gives 25 longbowmen but Castle slips to 964 s and knights fall to 15, so the build needs retuning.
+- The implementer's explanations of the gaps are missing or wrong. Castle (905 s against about 804 s): measured cause is gold income of 74/min until `move 12 farm to gold` at 670 s, so the palace's 600 gold is affordable only near 680 s; the stable, range and stable before it each wait 48-69 s on wood. The longbowman cause "starved of wood and food" is wrong: food floats 3,000-5,000 from about 540 s; wood and the idle range are the causes.
+- `english-knight-longbow.json:250-300`: the five `whenever` reactions sit mid-list ahead of twelve farm steps; design and ticket say reactions go last.
+- `data/aoe4-build-order/README.md:61-62` says "farms added at 14, 16 and 18 minutes" but the `@14:00` farms start at 15:05, queued behind `produce knight`, which waits for Castle.
+
+Required fixes:
+- [ ] (rework 1) Retune the build so both archery ranges produce (add a produce step after the second range, or reorder), keeping the bar (parts 1 to 5) at 1200 s and 3600 s, no gold `warning`, and the gold reactions intact. Try to bring Castle nearer the reference (for example move the gold transfer or the stable/range order); report measured Castle time and unit counts at 1200 s, and keep anything not reachable as a documented gap.
+- [ ] (rework 1) Move all `whenever` reaction steps to the end of the step list.
+- [ ] (rework 1) Make the 14:00 farm block start when the README says (move it before `produce knight`, or reword the README to the measured start).
+- [ ] (rework 1) Correct the README and the implementer report to the measured causes above, and put the measured Castle time, 1200 s counts, upgrade gold (about 750 against about 1,750 in the reference) and the `hand-authored` source note in the report so the PR body can carry them.
+- [ ] (rework 1) Write the `builds.ts` array one entry per line so the sibling build's entry does not conflict on one long line. Re-run the mutation checks against the retuned file.

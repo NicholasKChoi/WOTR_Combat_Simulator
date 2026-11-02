@@ -83,6 +83,6 @@ Findings:
 - README: "Town Center rallies to gold from 560 s to 760 s" leaves out the earlier 130-200 s gold rally. The report's claim that spearman and longbowman production continues after the switch is wrong (their counts stay at 15 and 13).
 
 Required fixes:
-- [ ] (rework 1) Move the `produce man-at-arms` and `produce crossbowman` steps to just before the `@12:40` rally step. The reviewer tried this in a scratch copy: both units start at 681 s, the bar holds at 1200 s and 3600 s, gold run-outs are unchanged (1218.40, 1943.99, 2669.58 s), and counts at 1200 s are spearman 10, longbowman 9, man-at-arms 34, crossbowman 22.
-- [ ] (rework 1) Update the README text (trigger sentence, rally span, production sentence) and the quoted counts and times to the measured results of the corrected build. Re-run the mutation checks against the corrected file.
-- [ ] (rework 1) Make the shape test pin the new order so that moving the units back after the rally fails it, and assert the man-at-arms `startedAt` is at least the Castle completion.
+- [x] (rework 1) Move the `produce man-at-arms` and `produce crossbowman` steps to just before the `@12:40` rally step. The reviewer tried this in a scratch copy: both units start at 681 s, the bar holds at 1200 s and 3600 s, gold run-outs are unchanged (1218.40, 1943.99, 2669.58 s), and counts at 1200 s are spearman 10, longbowman 9, man-at-arms 34, crossbowman 22.
+- [x] (rework 1) Update the README text (trigger sentence, rally span, production sentence) and the quoted counts and times to the measured results of the corrected build. Re-run the mutation checks against the corrected file.
+- [x] (rework 1) Make the shape test pin the new order so that moving the units back after the rally fails it, and assert the man-at-arms `startedAt` is at least the Castle completion.
