@@ -87,22 +87,46 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `chart-rows.ts` exports `MARKER_COLORS`, `MARKER_KIND_LABELS` and `markerLabel` with exactly the values in Scope item 1,
+- [x] `chart-rows.ts` exports `MARKER_COLORS`, `MARKER_KIND_LABELS` and `markerLabel` with exactly the values in Scope item 1,
       and `markerLabel` gets `formatMinSec` from `lib/aoe4-build-order/format-time` (respec 1; `git grep -n "formatMinSec" -- components/apps/aoe4-build-order/chart-rows.ts` shows an import, not a definition or re-export);
       a unit test fails if any hex, any legend name or the `<label> <m:ss>` format changes.
-- [ ] A unit test computes the WCAG contrast ratio of each `MARKER_COLORS` value against `#ffffff` and `#212529` and requires at least 3:1, and requires that none is in `PALETTE`. (I computed these today: the lowest is 3.23.)
-- [ ] In the browser, for a run whose response has N markers, each of the three charts contains exactly N `chart-marker` elements inside its SVG, in `result.markers` order, whose `data-kind`, `data-label` and `data-at` equal the marker's `kind`, `label` and `at`; each has `stroke` equal to `MARKER_COLORS[kind]` and a non-empty `stroke-dasharray` that is not the grid's `3 3`; no series `path[data-series]` has a `stroke-dasharray`.
-- [ ] A marker's visible label text is `markerLabel(marker)`. Two markers with the same `at` (or `at` within a few seconds) have non-intersecting label bounding boxes.
-- [ ] `chart-marker-legend` is present under a chart exactly when its markers are non-empty, outside the recharts `Legend`; it has one `chart-marker-legend-item` per kind present, in `CHART_MARKER_KINDS` order, each with `data-kind`, a swatch in `MARKER_COLORS[kind]` and the text `MARKER_KIND_LABELS[kind]`.
-- [ ] A run with `markers: []` (for example `start -> sheep` with no steps) draws no `chart-marker` and no `chart-marker-legend`, and the three charts still draw their lines (`expectChartsDrawn`).
-- [ ] Clicking a series legend entry hides that series (existing test unchanged) and leaves every `chart-marker` and the marker legend in place.
-- [ ] Every marker is drawn (none discarded for lying outside the x domain): with markers whose largest `at` equals `durationSeconds`, the `chart-marker` count still equals `markers.length`.
-- [ ] `git grep -n "markers={result.markers}" -- components/apps/aoe4-build-order/results.tsx` finds 3 lines (it finds none today, and `git grep -n -i "ReferenceLine\|marker" -- components pages/apps` finds nothing today).
-- [ ] Mutation: dropping `markers` from one of the three `SeriesChart` calls fails the browser count test; replacing the `MARKER_COLORS[marker.kind]` stroke with a series color fails the stroke check; sorting the legend items by encounter order instead of `CHART_MARKER_KINDS` fails the server-render legend test. (These mutate code this ticket adds; they cannot be run before it exists.)
-- [ ] `docs/aoe4-build-order.md` describes marker lines and the marker legend as in Scope item 5, and `git grep -n -i "marker" -- docs/aoe4-build-order.md` shows the chart paragraph.
-- [ ] After rebasing onto SGS-052 and SGS-048, the diff touches none of their lines: the `YAxis` element and `LineChart` margin, `toChartRows`, `pinned` handling, and the existing Y-axis Playwright test still pass.
-- [ ] `npx tsc --noEmit`, `npm test` and `npm run acceptance` pass; no INVARIANTS.md regressions.
+- [x] A unit test computes the WCAG contrast ratio of each `MARKER_COLORS` value against `#ffffff` and `#212529` and requires at least 3:1, and requires that none is in `PALETTE`. (I computed these today: the lowest is 3.23.)
+- [x] In the browser, for a run whose response has N markers, each of the three charts contains exactly N `chart-marker` elements inside its SVG, in `result.markers` order, whose `data-kind`, `data-label` and `data-at` equal the marker's `kind`, `label` and `at`; each has `stroke` equal to `MARKER_COLORS[kind]` and a non-empty `stroke-dasharray` that is not the grid's `3 3`; no series `path[data-series]` has a `stroke-dasharray`.
+- [x] A marker's visible label text is `markerLabel(marker)`. Two markers with the same `at` (or `at` within a few seconds) have non-intersecting label bounding boxes.
+- [x] `chart-marker-legend` is present under a chart exactly when its markers are non-empty, outside the recharts `Legend`; it has one `chart-marker-legend-item` per kind present, in `CHART_MARKER_KINDS` order, each with `data-kind`, a swatch in `MARKER_COLORS[kind]` and the text `MARKER_KIND_LABELS[kind]`.
+- [x] A run with `markers: []` (for example `start -> sheep` with no steps) draws no `chart-marker` and no `chart-marker-legend`, and the three charts still draw their lines (`expectChartsDrawn`).
+- [x] Clicking a series legend entry hides that series (existing test unchanged) and leaves every `chart-marker` and the marker legend in place.
+- [x] Every marker is drawn (none discarded for lying outside the x domain): with markers whose largest `at` equals `durationSeconds`, the `chart-marker` count still equals `markers.length`.
+- [x] `git grep -n "markers={result.markers}" -- components/apps/aoe4-build-order/results.tsx` finds 3 lines (it finds none today, and `git grep -n -i "ReferenceLine\|marker" -- components pages/apps` finds nothing today).
+- [x] Mutation: dropping `markers` from one of the three `SeriesChart` calls fails the browser count test; replacing the `MARKER_COLORS[marker.kind]` stroke with a series color fails the stroke check; sorting the legend items by encounter order instead of `CHART_MARKER_KINDS` fails the server-render legend test. (These mutate code this ticket adds; they cannot be run before it exists.)
+- [x] `docs/aoe4-build-order.md` describes marker lines and the marker legend as in Scope item 5, and `git grep -n -i "marker" -- docs/aoe4-build-order.md` shows the chart paragraph.
+- [x] After rebasing onto SGS-052 and SGS-048, the diff touches none of their lines: the `YAxis` element and `LineChart` margin, `toChartRows`, `pinned` handling, and the existing Y-axis Playwright test still pass.
+- [x] `npx tsc --noEmit`, `npm test` and `npm run acceptance` pass; no INVARIANTS.md regressions.
 
 ## Open questions
 
 None.
+
+## Rework 1 - 2026-11-01 (review)
+
+Bounced by review (report `reports/SGS-049-review-1.md`) at branch tip 43b8a0b58efb65777d188000e251616473e07355. No earlier gate had passed it. Gates pass at 1280 px; no acceptance criterion fails.
+
+### Findings
+- `components/apps/aoe4-build-order/line-chart.tsx:17-19,28-40` and `docs/aoe4-build-order.md:668-669` (contract): `placeMarkers` assumes the plot is always 900 px wide (`PLOT_WIDTH_PX`) at 7 px per character. Measured plot widths: 966 px at a 1280 px viewport and 786 at 1024 (no overlaps); 546 at 768 (`horticulture 6:49` and `iron-undermesh 9:41` overlap on the ENG 1TC run on all three charts); at 576 `Feudal 4:23` overlaps `double-broadax 6:49`; at 390 `iron-undermesh 9:41` runs past the right edge. This contradicts the doc sentence "markers that fall close in time stack their labels in rows so each stays readable" and the code comment "Labels near the right edge extend leftward to stay inside the plot".
+
+### Required fixes
+- [x] (rework 1) Measure the plot width instead of assuming 900 px: take the chart width from `ResponsiveContainer` `onResize(width, height)` (recharts 3.10.1 has it; hold it in state), subtract the Y-axis width (110) and the chart margins, and pass the result to `placeMarkers` in place of `PLOT_WIDTH_PX`. Remove the fixed constant; keep label stacking and right-edge flipping working off the measured width. Add a Playwright check at 768 px that no two marker label bounding boxes intersect on all three charts for the ENG 1TC run, and mutation-check it (restoring a fixed 900 must fail it). Keep the doc sentence true.
+- [x] (rework 1) `components/apps/aoe4-build-order/compare.ts:37` defines its own `AGE_NAMES`, a copy of the one exported by `lib/aoe4-build-order/model.ts` (REPO.md: a copied constant is blocking). Import it instead and delete the copy. No behavior change; compare tests must pass unchanged.
+- [x] (rework 1, optional, same commit) The marker acceptance spec imports `CHART_MARKER_KINDS` instead of hard-coding the kinds; the horizon test asserts `markers.length > 0`; `ReferenceLine` keys are stable (kind and label, not the index); add bottom margin to the marker legend so it does not touch the next chart heading.
+
+## Rework 2 - 2026-11-01 (review)
+
+Bounced by review (report `reports/SGS-049-review-2.md`) at branch tip 14a4d62edb2acea88636ac60dc0d52e0947d4e52. The rework-1 fix (measured plot width, `compare.ts` AGE_NAMES import, tidy items) holds at 1280, 1024, 768 and 576 px; the 768 px test is sound.
+
+### Findings
+- `components/apps/aoe4-build-order/line-chart.tsx:29,34-35` (contract): at 390 px (plot width 216 px) on the ENG 1TC run, `steeled-arrow 8:41` and `iron-undermesh 9:41` start 12 px past the left edge of the plot, on all three charts, drawn over the Y-axis tick values. A label flips right when `at + width > end`, with no check that `at - width >= 0`; on a narrow plot an 18-19 character label fits on neither side. This contradicts the comment "Labels near the right edge extend leftward to stay inside the plot" and the doc sentence that labels stack so each stays readable. (Choosing the side with more room is still about 1 px over on `iron-undermesh`.)
+
+### Required fixes
+- [x] (rework 2) Clamp a label that fits on neither side so it stays inside the plot (for example a `dx` offset keeping its box within `[0, plotWidth]`); labels must still not overlap each other (stack in rows). Re-wrap the ~200-character comment on line 29 and make it true.
+- [x] (rework 2) Extend the narrow-screen Playwright test to 390 px with a check that each marker label box lies inside the plot (grid) box on all three charts, in addition to the no-overlap check; mutation-check it (removing the clamp must fail it).
+- [x] (rework 2, optional, same commit) Skip drawing marker labels while the measured width is still `null` (avoids the one-frame transient); remove the now-unused `i` parameter at `line-chart.tsx:~99`; add a short comment that `CHART_MARGIN_PX = 5` mirrors recharts' default chart margin (or pass the margin explicitly so the two cannot drift).
