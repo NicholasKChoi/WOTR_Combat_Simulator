@@ -1,0 +1,236 @@
+{
+  "civ": "english",
+  "name": "ENG Spear/Longbow into MAA/Crossbow",
+  "source": "hand-authored for this simulator",
+  "start": {
+    "rally": "sheep"
+  },
+  "steps": [
+    {
+      "action": "produce",
+      "producer": "capital-town-center",
+      "unit": "villager"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 10
+      },
+      "action": "build",
+      "building": "lumber-camp",
+      "from": "sheep",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 20
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 70
+      },
+      "action": "build",
+      "building": "mining-camp",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 100
+      },
+      "action": "build",
+      "building": "mill",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 130
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "gold"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 200
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 210
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 260
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "wood"
+    },
+    {
+      "action": "build",
+      "building": "council-hall",
+      "from": "farm",
+      "builders": 3,
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "barracks",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "produce",
+      "producer": "barracks",
+      "unit": "spearman"
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "longbowman"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 380
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "farm"
+    },
+    {
+      "action": "build",
+      "building": "kings-palace",
+      "from": "farm",
+      "builders": 3,
+      "then": "farm"
+    },
+    {
+      "action": "rally",
+      "producer": "kings-palace",
+      "to": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 560
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "gold"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 681
+      },
+      "action": "produce",
+      "producer": "barracks",
+      "unit": "man-at-arms"
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "crossbowman"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 760
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold",
+      "to": "gold#2"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold#2"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold#2",
+      "to": "gold#3"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold#3"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold#3",
+      "to": "farm"
+    }
+  ]
+}
