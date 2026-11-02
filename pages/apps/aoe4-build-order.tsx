@@ -66,6 +66,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [view, setView] = useState<EditorView>('text')
     const [resultsShownCount, setResultsShownCount] = useState(0)
     const resultsTop = useRef<HTMLDivElement>(null)
+    const runBar = useRef<HTMLFormElement>(null)
     const resultsEnabled = result !== null || pinned !== null
     const shownTab = resultsEnabled ? tab : 'build'
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
@@ -73,8 +74,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     useEffect(() => {
         const panel = resultsTop.current
         if (resultsShownCount === 0 || !panel) return
-        const runBar = panel.closest('section')?.querySelector('form')
-        panel.style.scrollMarginTop = `${runBar?.getBoundingClientRect().height ?? 0}px`
+        panel.style.scrollMarginTop = `${runBar.current?.getBoundingClientRect().height ?? 0}px`
         panel.scrollIntoView()
     }, [resultsShownCount])
 
@@ -133,6 +133,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                     onRun={runSimulation}
                     view={view}
                     onViewChange={setView}
+                    formRef={runBar}
                 />
                 <WorkbenchTabs
                     active={shownTab}

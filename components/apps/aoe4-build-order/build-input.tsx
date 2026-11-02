@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { type Ref, useState } from 'react'
 import cn from 'classnames'
 
 import styles from './workbench.module.css'
@@ -19,6 +19,7 @@ interface BuildInputProps {
     onRun: () => void
     view: EditorView
     onViewChange: (view: EditorView) => void
+    formRef?: Ref<HTMLFormElement>
 }
 
 const VIEWS: { view: EditorView; label: string }[] = [
@@ -26,7 +27,7 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ builds, onTextChange, duration, onDurationChange, running, onRun, view, onViewChange }: BuildInputProps) {
+export function BuildInput({ builds, onTextChange, duration, onDurationChange, running, onRun, view, onViewChange, formRef }: BuildInputProps) {
     const [selected, setSelected] = useState(builds[0]?.name ?? '')
 
     function selectBuild(name: string) {
@@ -37,6 +38,7 @@ export function BuildInput({ builds, onTextChange, duration, onDurationChange, r
 
     return (
         <form
+            ref={formRef}
             data-testid="run-bar"
             className={cn(styles.runBar, 'd-flex flex-wrap align-items-end gap-3 py-2 mb-3 border-bottom border-info')}
             noValidate

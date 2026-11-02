@@ -73,9 +73,12 @@ test.describe('AoE4 build order page checks the paste before posting', () => {
     await openPage(page)
     await textarea(page).fill(TWO_UNKNOWN_IDS)
     await runRejected(page)
-    const text = await textarea(page).boundingBox()
-    const list = await page.getByTestId('build-order-issues').boundingBox()
-    expect(list!.y).toBeGreaterThanOrEqual(text!.y + text!.height)
+    const { textBottom, listTop } = await page.evaluate(() => {
+        const text = document.querySelector('textarea')!.getBoundingClientRect()
+        const list = document.querySelector('[data-testid="build-order-issues"]')!.getBoundingClientRect()
+        return { textBottom: text.bottom, listTop: list.top }
+    })
+    expect(listTop).toBeGreaterThanOrEqual(textBottom)
   })
 
   test('a server 400 shows its issues in simulation-error and none in build-order-issues', async ({ page }) => {
