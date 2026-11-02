@@ -82,7 +82,7 @@ const overlayEffectSchema = z.object({
   ...snapshotEffectFields,
   grantedBy: z.string(),
   condition: z.object({ age: z.number().optional(), nearBuilding: z.string().optional(), producer: z.string().optional() }).optional(),
-  source: z.string(),
+  source: text,
   unverified: z.boolean(),
 });
 

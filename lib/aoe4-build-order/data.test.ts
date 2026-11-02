@@ -66,6 +66,7 @@ describe('data file schemas', () => {
         ['a missing gather node', 'base', (f) => delete f.gatherNodes.stone],
         ['an overlay effect without grantedBy', 'civ', (f) => delete f.effects[0].grantedBy],
         ['a snapshot entry of type hero', 'snapshot', (f) => (f.units[0].type = 'hero')],
+        ['an overlay effect with an empty source', 'civ', (f) => (f.effects[0].source = '')],
     ]
 
     it.each(defects)('rejects %s', (_name, file, mutate) => {
