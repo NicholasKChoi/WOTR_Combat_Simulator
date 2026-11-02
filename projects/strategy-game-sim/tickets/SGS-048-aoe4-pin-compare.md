@@ -9,7 +9,7 @@
        of business logic and it edits three shared UI files. No strongModelTrigger; `components/**` is not a criticalPath. -->
 - **Invariants**: none adjacent (client-side only; no engine number, no resource check, no randomness)
 - **LOC estimate**: ~190 (`compare.ts` ~55, `compare-panel.tsx` ~65, `chart-rows.ts` ~25, `line-chart.tsx` ~25, `results.tsx` and page wiring ~20; tests excluded)
-- **Depends on**: SGS-043 (adds `SimulationResult.spent` and `populationCapReachedAt`), SGS-052 (Y-axis fix in `line-chart.tsx`). Transitively SGS-035 (`SpendCategory`).
+- **Depends on**: SGS-043 (adds `SimulationResult.spent` and `populationCapReachedAt`), SGS-052 (Y-axis fix in `line-chart.tsx`). SGS-035 (`SpendCategory`, and moves `formatMinSec` to `lib/aoe4-build-order/format-time.ts`).
 - **On merge**: none
 - **Source**: design/M3.md "Key numbers (compare.ts)", "Overlay (chart-rows.ts)", Behavior rules rows `pin | *`, `compare | values`, `overlay | charts`, "Page props and test ids", Data flow; plan M3-20261101 outline N; owner answers (9) N before O, N depends on I and R.
 
@@ -42,7 +42,7 @@ in `line-chart.tsx`.
    - `data-testid="unpin-run"` button, enabled only while `pinned !== null`; click calls `onUnpin`.
    - Only when both are non-null: a table `data-testid="compare-key-numbers"` with one `data-testid="compare-row"` per
      `compareRows` entry, carrying `data-key`. Each row shows label, pinned value, current value and delta; a `null` shows as
-     a dash. Seconds shown as `m:ss` with `formatMinSec`, military spent as a plain number, delta with an explicit sign;
+     a dash. Seconds shown as `m:ss` with `formatMinSec` imported from `lib/aoe4-build-order/format-time` (not from `chart-rows.ts`, which no longer has it), military spent as a plain number, delta with an explicit sign;
      exact layout and wording are the implementer's.
 3. **`components/apps/aoe4-build-order/chart-rows.ts`**:
    - `PinnedSeries = { times: number[]; series: ChartSeries[] }` (the pinned run's ordinary series, original keys and names).
@@ -111,7 +111,7 @@ Single-component change outside the core control loop; no diagram required. (Cli
   the intersection of times instead of the union fails the union test (both run in a throwaway worktree once the tests exist).
 - [ ] `docs/aoe4-build-order.md` Page section describes the pin, the overlay and the compare table:
   `git grep -n -i "pin-run\|pinned run" -- docs/aoe4-build-order.md` finds a match (0 matches today).
-- [ ] `components/apps/aoe4-build-order/compare.ts` and `compare-panel.tsx` import nothing from `lib/aoe4-build-order/data.ts` (`npx next build` succeeds).
+- [ ] `components/apps/aoe4-build-order/compare.ts` and `compare-panel.tsx` import nothing from `lib/aoe4-build-order/data.ts` (`npx next build` succeeds); `compare-panel.tsx` imports `formatMinSec` from `lib/aoe4-build-order/format-time` (`git grep -n "chart-rows" -- components/apps/aoe4-build-order/compare-panel.tsx` finds no `formatMinSec`).
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions

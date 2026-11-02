@@ -21,11 +21,11 @@ The engine picks a tech's entry with `byBaseId.get(step.tech)[0]` (the lowest ag
 All names come from design/M3.md.
 
 1. `lib/aoe4-build-order/research.ts`
-   - Add `export function researchEntry(baseId: string, state: EffectState): SnapshotEntry | undefined`: among `state.data.byBaseId.get(baseId)` entries of `type` technology or upgrade, the one with the highest `age <= state.age`; `undefined` when every entry is above `state.age`.
+   - Add `export function researchEntry(baseId: string, state: EffectState): SnapshotEntry | undefined`: among `state.data.byBaseId.get(baseId)` entries of `type` technology or upgrade, the one with the highest `age <= state.age`; `undefined` when every entry is above `state.age`. The `EffectState` parameter type is fixed by design/M3.md Modules, so `markers.ts` and tests can call it without an engine.
    - `researchHandler` (line 35 `byBaseId.get(step.tech)[0]`) uses `researchEntry(step.tech, state)`. `undefined` returns `{ started: false }` with no reserve (the step waits until the age is reached; the `prerequisite` reason value is SGS-042's, this ticket does not add the field). The pick is made on every attempt, so a step that waited for an age pays the higher tier it then reaches. The picked entry supplies `producedBy` (target), costs (through `canAfford` / `payCost` with category `research`), and the item pushed to the target's `paid`; the existing `entry.age > state.age` check is replaced by the `undefined` case.
    - `researchItem(...).complete` adds `entry.id` to `state.researchedIds` and `entry.baseId` to `state.researched`.
    - `resolveUnitEntry` reads the tier from the researched entries: for each id in `state.researchedIds` whose entry's `baseId` has `upgradeTargets.get(baseId)?.value === unit`, the tier is that entry's `age` (largest wins), instead of the largest age over all entries of the upgrade `baseId`.
-   - `researchNotes` (line 78) messages name the tech by `baseId` instead of `entry.name`: `admiralty: its effect is not simulated; it still costs resources and queue time.` and `bloomery: its effect on meleeAttack is not simulated; it still costs resources and queue time.` Every note gets `severity: 'info'`.
+   - `researchNotes` (line 78) messages name the tech by `baseId` instead of `entry.name`: `admiralty: its effect is not simulated; it still costs resources and queue time.` and `bloomery: its effect on meleeAttack is not simulated; it still costs resources and queue time.` Every note gets `severity: 'info'`. `researchNotes` keeps classifying `byBaseId.get(step.tech)[0]`, the lowest-age entry (decided in design/M3.md "Behavior rules" `research | notes`): it stays a pure function of `(order, data)` and does not call `researchEntry`; with one entry per tech the two picks are the same.
 2. `lib/aoe4-build-order/effects.ts`: `EffectState.researchedIds: ReadonlySet<string>` (required, beside `researched`). `activeEffects` collects effects only from entries whose `id` is in `researchedIds`, replacing the `researched` baseId flatMap. `isGranted` keeps reading `researched` by `baseId`.
 3. `lib/aoe4-build-order/model.ts`: `BuildOrderNote.severity: Severity` (SGS-037's type).
 4. `lib/aoe4-build-order/simulate.ts`: `EngineState.researchedIds: Set<string>`, initialised empty beside `researched` (line 613).
@@ -39,7 +39,7 @@ All names come from design/M3.md.
    - `resolveUnitEntry` follows the researched entry's age, not the largest age of the upgrade `baseId`.
    - Notes name `baseId` and have `severity: 'info'`; no note has `severity: 'error'`.
 
-**Out of scope:** `waitingOn`/`step-stuck` (SGS-042); the page notes list and collapse (SGS-045); chart markers (SGS-044, which uses `researchEntry`); the validator's repeat-research rule (unchanged); parse-text and the paste grammar; which entry `researchNotes` classifies for a multi-tier tech (see Open questions: it keeps `byBaseId.get(step.tech)[0]`).
+**Out of scope:** `waitingOn`/`step-stuck` (SGS-042); the page notes list and collapse (SGS-045); chart markers (SGS-044, which uses `researchEntry`); the validator's repeat-research rule (unchanged); parse-text and the paste grammar; a per-entry or per-age note rule for multi-tier techs (design fixes the lowest-age entry).
 
 ## Diagrams
 
@@ -60,5 +60,4 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-- `designer`: for a multi-tier tech, which entry does `researchNotes(order, data)` classify with `classifyTech`? It is a pure function of `(order, data)` (A3) and must also note unreached steps, so it cannot use the age at start. The design says only that notes name the `baseId`. This ticket keeps `byBaseId.get(step.tech)[0]` (the lowest-age entry), which is identical for every current tech; a different rule (for example one note per distinct classification across entries) needs a design decision before a multi-entry tech ships.
-- `designer`: design/M3.md Modules gives `researchEntry(baseId, state)` without the `state` type. This ticket types it `EffectState` (as `resolveUnitEntry` is) so `markers.ts` and tests can call it without an engine. Confirm.
+None.

@@ -8,7 +8,7 @@
   <!-- One component, no `lib/**` edit, no API or schema change, no adjacent invariant, about 70 lines of business logic. It edits results.tsx and the page, which SGS-045, 046, 048 and 049 also edit: rebase only. -->
 - **Invariants**: none adjacent (A2 is about the engine's waits; this ticket only displays what SGS-042 reports)
 - **LOC estimate**: ~70 (`step-timeline-rows.ts` ~35, `step-timeline.tsx` ~35, `results.tsx` and page wiring ~10; tests excluded)
-- **Depends on**: SGS-042 (`StepTiming.waitingOn`, `StepTiming.waitBreakdown`), SGS-040 (`formatBuildStep`); transitively SGS-039 (`BuildStep.reaction`)
+- **Depends on**: SGS-042 (`StepTiming.waitingOn`, `StepTiming.waitBreakdown`), SGS-040 (`formatBuildStep`), SGS-035 (moves `formatMinSec` to `lib/aoe4-build-order/format-time.ts`); transitively SGS-039 (`BuildStep.reaction`)
 - **On merge**: none
 - **Source**: design/M3.md "Page props and test ids" (`step-timeline`, `step-timeline-row`), Behavior rules row `timeline | rows`, "Step status" tables; plan M3-20261101 outline M
 
@@ -35,7 +35,7 @@ All paths under `components/apps/aoe4-build-order/` unless noted. The bundle mus
 2. **`step-timeline.tsx`** (new): `StepTimeline({ steps, text })` renders `timelineRows` (memoized on `steps` and `text`) as a table with
    `data-testid="step-timeline"` and one `data-testid="step-timeline-row"` per row with `data-step` (the 0-based `step`),
    `data-status`, `data-flagged="true"` (attribute absent otherwise) and `data-reaction="true"` (absent otherwise). Cells:
-   label; `startedAt` and `completedAt` as `m:ss` through `formatMinSec` from `./chart-rows` (an en dash for `null`); `waitSeconds` as
+   label; `startedAt` and `completedAt` as `m:ss` through `formatMinSec` imported from `lib/aoe4-build-order/format-time` (respec 1; `chart-rows.ts` no longer exports it) (an en dash for `null`); `waitSeconds` as
    `m:ss`; the non-zero `waitBreakdown` reasons as `<reason> <m:ss>`; for a flagged row its `waitingOn` id. Renders nothing for
    an empty `steps` (a `start`-only paste). Layout and styling are the implementer's (Bootstrap classes, `cn`); the fixed contract is
    the ids and attributes above.
@@ -59,7 +59,7 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `git grep -n -i "step-timeline" -- components pages acceptance` finds 0 matches today and the ids `step-timeline` and `step-timeline-row` after; `git grep -n "data/\|/data'" -- components/apps/aoe4-build-order/step-timeline.tsx components/apps/aoe4-build-order/step-timeline-rows.ts` finds nothing.
+- [ ] `git grep -n -i "step-timeline" -- components pages acceptance` finds 0 matches today and the ids `step-timeline` and `step-timeline-row` after; `git grep -n "data/\|/data'" -- components/apps/aoe4-build-order/step-timeline.tsx components/apps/aoe4-build-order/step-timeline-rows.ts` finds nothing; `git grep -n "chart-rows" -- components/apps/aoe4-build-order/step-timeline.tsx` finds nothing and `git grep -n "format-time" -- components/apps/aoe4-build-order/step-timeline.tsx` finds the `formatMinSec` import (respec 1).
 - [ ] A successful run renders `step-timeline` with exactly one `step-timeline-row` per `result.steps` entry, in order, `data-step` equal to the index and `data-status` equal to the entry's `status` (Playwright, default prebuilt build).
 - [ ] Each row's label is `formatBuildStep` of the step parsed from the text that was run (unit test on `timelineRows`; Playwright checks the first row's text contains `produce villager`).
 - [ ] `startedAt`, `completedAt` and `waitSeconds` show as `m:ss`; a `null` time shows an en dash; only reasons with a non-zero `waitBreakdown` value are listed, in the order resources, villagers, population, prerequisite (unit test).
@@ -74,4 +74,4 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-- `designer`: the timeline duplicates the `m:ss` formatting `formatMinSec` provides in `chart-rows.ts`. SGS-042 proposes a shared engine-side formatter (candidate `engine-common.ts`). This ticket imports `formatMinSec` from `./chart-rows` like SGS-048 and SGS-049 do; if the shared copy is placed so that `chart-rows.ts` re-exports it, nothing here changes, otherwise two formatters exist and one ticket should own removing the duplicate.
+None.

@@ -1,0 +1,2 @@
+# SGS-040 re-spec 1
+Folded designer-4 row 6: formatBuildStep drops `reaction` unless the trigger is `depleted`; round-trip promised for valid orders only. Scope (formatTrigger) and two criteria (tagged respec 1) updated. Open question 1 (SGS-039 bar split) removed: M3.md and SGS-039 now carry the same split (parts 4-5 at 1200 s only; this ticket extends to 3600 s), matching the ticket body. Open question 2 removed (answered by row 6). Risk stays high (criticalPaths lib/**). No remaining open questions. No criterion with a command changed.

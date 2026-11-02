@@ -8,7 +8,7 @@
   <!-- Plan said medium. One component, no API change, no `lib/**` edit, so not high; not low because it edits `line-chart.tsx`, `chart-rows.ts` and `results.tsx` that SGS-048 and SGS-052 also edit, and adds test ids a later Playwright flow relies on. -->
 - **Invariants**: S1 (components import `ChartMarker`/`CHART_MARKER_KINDS` from `lib/aoe4-build-order/model.ts` only, never `data.ts` or another app); A1 and A3 are not touched (display only)
 - **LOC estimate**: 70 (`chart-rows.ts` constants and `markerLabel` ~25; `line-chart.tsx` reference lines, label stacking and legend ~40; `results.tsx` 3 props; business logic only, tests and docs excluded)
-- **Depends on**: SGS-044 (`ChartMarker`, `ChartMarkerKind`, `CHART_MARKER_KINDS`, `result.markers`), SGS-052 (Y-axis fix in `line-chart.tsx`), SGS-048 (pin and compare; edits the same three files, so this ticket rebases onto it)
+- **Depends on**: SGS-035 (moves `formatMinSec` to `lib/aoe4-build-order/format-time.ts`, no re-export), SGS-044 (`ChartMarker`, `ChartMarkerKind`, `CHART_MARKER_KINDS`, `result.markers`), SGS-052 (Y-axis fix in `line-chart.tsx`), SGS-048 (pin and compare; edits the same three files, so this ticket rebases onto it)
 - **On merge**: none
 - **Source**: M3.10; design/M3.md "Markers" (colors and legend labels table), "Page props and test ids" (`chart-marker*`), Behavior rows `chart markers | render`, `legend and toggles`, `pinned run`, `x range`; plan M3-20261101 outline O and design question 9
 
@@ -30,8 +30,10 @@ Contract names are the design's; do not rename.
    - `MARKER_COLORS: Readonly<Record<ChartMarkerKind, string>>` = `age-up #b8860b`, `economy #008080`,
      `unit-tier #c43bb0`, `blacksmith #5f7d8c`, `other #6b6bd6`.
    - `MARKER_KIND_LABELS: Readonly<Record<ChartMarkerKind, string>>` = `Age-up`, `Economy`, `Unit tier`, `Blacksmith`, `Other`.
-   - `markerLabel(marker: ChartMarker): string` = `<label> <m:ss>` using the existing `formatMinSec`
+   - `markerLabel(marker: ChartMarker): string` = `<label> <m:ss>` using `formatMinSec`
      (`Castle 13:24`, `veteran-longbowmen 14:30`).
+   - `import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'` (respec 1: SGS-035 moved it out of
+     `chart-rows.ts` and nothing re-exports it, so import from `format-time`, never from `chart-rows`).
    - `import type { ChartMarker, ChartMarkerKind }` from `../../../lib/aoe4-build-order/model`.
 2. `components/apps/aoe4-build-order/line-chart.tsx`:
    - `SeriesChartProps` gains `markers?: readonly ChartMarker[]` (default `[]`). Add the prop beside the others; SGS-048
@@ -85,7 +87,8 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `chart-rows.ts` exports `MARKER_COLORS`, `MARKER_KIND_LABELS` and `markerLabel` with exactly the values in Scope item 1;
+- [ ] `chart-rows.ts` exports `MARKER_COLORS`, `MARKER_KIND_LABELS` and `markerLabel` with exactly the values in Scope item 1,
+      and `markerLabel` gets `formatMinSec` from `lib/aoe4-build-order/format-time` (respec 1; `git grep -n "formatMinSec" -- components/apps/aoe4-build-order/chart-rows.ts` shows an import, not a definition or re-export);
       a unit test fails if any hex, any legend name or the `<label> <m:ss>` format changes.
 - [ ] A unit test computes the WCAG contrast ratio of each `MARKER_COLORS` value against `#ffffff` and `#212529` and requires at least 3:1, and requires that none is in `PALETTE`. (I computed these today: the lowest is 3.23.)
 - [ ] In the browser, for a run whose response has N markers, each of the three charts contains exactly N `chart-marker` elements inside its SVG, in `result.markers` order, whose `data-kind`, `data-label` and `data-at` equal the marker's `kind`, `label` and `at`; each has `stroke` equal to `MARKER_COLORS[kind]` and a non-empty `stroke-dasharray` that is not the grid's `3 3`; no series `path[data-series]` has a `stroke-dasharray`.
