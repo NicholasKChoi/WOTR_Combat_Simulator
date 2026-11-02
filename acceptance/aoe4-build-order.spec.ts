@@ -854,6 +854,45 @@ test.describe('AoE4 build order page', () => {
       await expect(text).toHaveAttribute('rows', '8')
     })
 
+    test('a rejected paste in table view shows build-order-issues under the notice and keeps the table view', async ({ page }) => {
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(FLY_PASTE)
+      await showView(page, 'table')
+      await runRejected(page)
+      await expect(page.getByTestId('editor-view-table')).toHaveAttribute('aria-pressed', 'true')
+      await expect(page.getByTestId('step-table-unavailable')).toBeVisible()
+      await expect(page.getByTestId('build-order-text')).toHaveCount(0)
+      await selected(page, 'build')
+      const below = await page.evaluate(() => {
+        const notice = document.querySelector('[data-testid="step-table-unavailable"]')!.getBoundingClientRect()
+        const list = document.querySelector('[data-testid="build-order-issues"]')!.getBoundingClientRect()
+        return list.top >= notice.bottom
+      })
+      expect(below).toBe(true)
+    })
+
+    test('a 400 run in table view shows simulation-error under the step table and keeps the table view', async ({ page }) => {
+      await page.route(`**${SIMULATE_PATH}`, (route) =>
+        route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'server problem', issues: [{ code: 'out-of-range', message: 'server problem', line: 2 }] }),
+        })
+      )
+      await openPage(page)
+      await showView(page, 'table')
+      expect((await runSimulation(page)).status()).toBe(400)
+      await expect(page.getByTestId('editor-view-table')).toHaveAttribute('aria-pressed', 'true')
+      await expect(page.getByTestId('simulation-error')).toContainText('server problem')
+      await expect(page.getByTestId('build-order-issues')).toHaveCount(0)
+      const below = await page.evaluate(() => {
+        const table = document.querySelector('[data-testid="step-table"]')!.getBoundingClientRect()
+        const error = document.querySelector('[data-testid="simulation-error"]')!.getBoundingClientRect()
+        return error.top >= table.bottom
+      })
+      expect(below).toBe(true)
+    })
+
     test('the view toggle shows one editor at a time, keeps the text, and survives a run and a tab switch', async ({ page }) => {
       await openPage(page)
       const typed = 'start -> sheep\nat 8 vils fly capital-town-center'
