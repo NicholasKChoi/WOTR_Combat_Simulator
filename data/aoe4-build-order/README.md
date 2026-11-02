@@ -58,13 +58,20 @@ with its reason.
 - `english-knight-longbow` "ENG Knight/Longbow (King's Palace)", `hand-authored for this simulator` (English).
   The opening is the ENG 1TC economy, with Feudal reached through `abbey-of-kings` (the same landmark as
   ENG 1TC, so the first five minutes are the already-tuned opening) and Castle through `build kings-palace`.
-  Three stables and two archery ranges, 12 villagers moved to gold before the King's Palace, the King's
-  Palace rallied to wood, and farms added at 14, 16 and 18 minutes. The four blacksmith techs
+  From 5:30 new villagers go to gold, so the King's Palace's 600 gold is paid without moving gatherers;
+  once the palace starts they go to farms, and from 12:00 to wood. The King's Palace is rallied to wood.
+  Three stables and two archery ranges; the second `produce longbowman` step comes after the second range
+  is built, because a `produce` step only orders the producers that exist when it starts. Three houses
+  are built before the King's Palace: auto-houses count the palace's supply as soon as it is under
+  construction, so without them population stalls at the cap until the palace completes. Farms are added
+  at 10:00, 14:00, 16:00 and 18:00, four each, and each block starts at its time. The four blacksmith techs
   (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after `build kings-palace` in
-  the list, so they queue behind the landmark instead of taking its gold first; `veteran-longbowmen` follows
-  `produce knight`. Gold: 5 deposits (`gold` to `gold#5`) run out by 3600 s, at 17:31 (`gold`), 25:19
-  (`gold#2`), 33:07 (`gold#3`), 40:56 (`gold#4`) and 48:44 (`gold#5`); each has a
-  `whenever <ref> runs out move all <ref> to <next>` reaction, and `gold#5` moves to `wood`. Omitted: none.
+  the list, so they queue behind the landmark instead of taking its gold first; `veteran-longbowmen` and
+  the Castle blacksmith techs (`balanced-projectiles`, `wedge-rivets`, `decarbonization`, `insulated-helm`)
+  follow `produce knight`. Gold: 5 deposits (`gold` to `gold#5`) run out by 3600 s, at 15:31 (`gold`),
+  24:37 (`gold#2`), 33:42 (`gold#3`), 42:48 (`gold#4`) and 51:53 (`gold#5`); each has a
+  `whenever <ref> runs out move all <ref> to <next>` reaction at the end of the list, and `gold#5` moves to
+  `wood`. Omitted: none.
 
 - `english-spear-longbow-maa-crossbow` "ENG Spear/Longbow into MAA/Crossbow", hand-authored for this
   simulator (no guide). Feudal through the Council Hall, spearmen and longbowmen from the barracks and

@@ -126,13 +126,13 @@
       },
       "action": "build",
       "building": "farm",
-      "from": "wood",
+      "from": "sheep",
       "then": "farm"
     },
     {
       "action": "build",
       "building": "farm",
-      "from": "wood",
+      "from": "sheep",
       "then": "farm"
     },
     {
@@ -142,29 +142,11 @@
       },
       "action": "rally",
       "producer": "capital-town-center",
-      "to": "farm"
+      "to": "gold"
     },
     {
       "action": "build",
       "building": "stable",
-      "from": "wood",
-      "then": "wood"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "wood",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "wood",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "blacksmith",
       "from": "wood",
       "then": "wood"
     },
@@ -175,39 +157,44 @@
     },
     {
       "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "stable",
-      "from": "farm",
-      "then": "farm"
+      "building": "blacksmith",
+      "from": "wood",
+      "then": "wood"
     },
     {
       "action": "build",
       "building": "archery-range",
-      "from": "farm",
-      "then": "farm"
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "house",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "house",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "house",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "longbowman"
     },
     {
       "action": "build",
       "building": "stable",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "move",
-      "count": 12,
-      "from": "farm",
-      "to": "gold"
+      "from": "wood",
+      "then": "wood"
     },
     {
       "action": "rally",
@@ -219,6 +206,11 @@
       "building": "kings-palace",
       "from": "farm",
       "then": "farm"
+    },
+    {
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "farm"
     },
     {
       "action": "research",
@@ -237,6 +229,49 @@
       "tech": "iron-undermesh"
     },
     {
+      "action": "build",
+      "building": "stable",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 600
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 720
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "wood"
+    },
+    {
       "action": "produce",
       "producer": "stable",
       "unit": "knight"
@@ -244,6 +279,106 @@
     {
       "action": "research",
       "tech": "veteran-longbowmen"
+    },
+    {
+      "action": "research",
+      "tech": "balanced-projectiles"
+    },
+    {
+      "action": "research",
+      "tech": "wedge-rivets"
+    },
+    {
+      "action": "research",
+      "tech": "decarbonization"
+    },
+    {
+      "action": "research",
+      "tech": "insulated-helm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 840
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 960
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 1080
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
     },
     {
       "trigger": {
@@ -299,90 +434,6 @@
       "count": "all",
       "from": "gold#5",
       "to": "wood"
-    },
-    {
-      "trigger": {
-        "kind": "time",
-        "seconds": 840
-      },
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "trigger": {
-        "kind": "time",
-        "seconds": 960
-      },
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "trigger": {
-        "kind": "time",
-        "seconds": 1080
-      },
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
-    },
-    {
-      "action": "build",
-      "building": "farm",
-      "from": "farm",
-      "then": "farm"
     }
   ]
 }
