@@ -21,15 +21,13 @@ export function WarningMessages({ messages }: { messages: ResultMessage[] }) {
     )
 }
 
-export function InfoMessages({
-    messages,
-    expanded,
-    onToggle,
-}: {
+interface InfoMessagesProps {
     messages: ResultMessage[]
     expanded: boolean
     onToggle: () => void
-}) {
+}
+
+export function InfoMessages({ messages, expanded, onToggle }: InfoMessagesProps) {
     if (messages.length === 0) return null
     const collapsedLabel = `Show ${messages.length} info ${messages.length === 1 ? 'message' : 'messages'}`
     return (

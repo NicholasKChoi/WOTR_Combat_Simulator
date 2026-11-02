@@ -208,12 +208,15 @@ test.describe('AoE4 build order page', () => {
   })
 
   test('warnings are listed and info messages sit behind a toggle that persists across runs', async ({ page }) => {
+    let runs = 0
     await page.route(`**${SIMULATE_PATH}`, async (route) => {
       const response = await route.fetch()
       const body = await response.json()
+      runs += 1
       body.warnings = [
         { code: 'node-depleted', severity: 'warning', message: 'A node ran out.' },
         { code: 'idle-arrival', severity: 'info', message: 'Villagers arrived idle.' },
+        ...(runs > 1 ? [{ code: 'idle-arrival', severity: 'info', message: 'Another idle arrival.' }] : []),
       ]
       body.notes = [
         { code: 'tech-effect-ignored', severity: 'info', message: 'An effect is ignored.', step: 0, tech: 'x', properties: [] },
@@ -245,7 +248,22 @@ test.describe('AoE4 build order page', () => {
     await toggle.click()
 
     expect((await runSimulation(page)).status()).toBe(200)
-    await expect(list.getByTestId('simulation-message')).toHaveCount(2)
+    await expect(list.getByTestId('simulation-message')).toHaveCount(3)
+  })
+
+  test('a successful run with no warning-severity messages shows no warnings element', async ({ page }) => {
+    await page.route(`**${SIMULATE_PATH}`, async (route) => {
+      const response = await route.fetch()
+      const body = await response.json()
+      body.warnings = [{ code: 'idle-arrival', severity: 'info', message: 'Villagers arrived idle.' }]
+      body.notes = []
+      await route.fulfill({ response, json: body })
+    })
+    await openPage(page)
+    expect((await runSimulation(page)).status()).toBe(200)
+    await expectChartsDrawn(page)
+    await expect(page.getByTestId('simulation-warnings')).toHaveCount(0)
+    await expect(page.getByTestId('simulation-notes-toggle')).toHaveText('Show 1 info message')
   })
 
   test('a failed run shows neither the warnings nor the info messages', async ({ page }) => {
