@@ -54,23 +54,34 @@ flowchart LR
 
 ## Acceptance criteria
 
-- [ ] `npm run lint:dup` exits 0 and reports 0 clones. Check: on main with `.jscpd.json` it reports 6 clones and exits 1 (all in the six test files named in Scope item 7).
-- [ ] `lint:dup` can fail: pasting a 10-line block of `simulate.ts` into a second file under `lib/aoe4-build-order/` makes it exit non-zero; the PR states this was run and reverted.
-- [ ] `package.json` lists `jscpd` as the exact string `4.3.0` in `devDependencies`, has script `lint:dup`, and `npx tsc --noEmit` passes.
-- [ ] `git grep -nE "^const (RESOURCES|RESOURCE_TOLERANCE|VILLAGER|HOUSE|GATHER_NODE_ORDER)\b" -- lib/aoe4-build-order/simulate.ts lib/aoe4-build-order/research.ts lib/aoe4-build-order/houses.ts` finds 9 lines on main and 0 after.
-- [ ] `git grep -nE "new RegExp|currentUnitEntry|function (spend|affordable|villagerWalk)\b" -- lib/aoe4-build-order/simulate.ts` finds 6 lines on main and 0 after.
-- [ ] `git grep -n "Math.max(0, .*resources" -- lib/aoe4-build-order ':!*.test.ts'` finds 3 lines on main (payUnit, spend, research) and 1 after (`engine-common.ts`).
-- [ ] `git grep -l "test-helpers" -- lib components pages ':!*.test.ts'` lists no file, and none of the six Scope-7 test files defines a local `inputsFor`, `gameData`, `run`, `series`, `countAt`, `withHandler` or `at` that `test-helpers.ts` exports.
-- [ ] `engine-common.test.ts`: `canAfford` is true at `bank = cost - 5e-10` and false at `cost - 2e-9`; `payCost` never leaves a resource below 0 and adds the four-resource sum to `spent[category]`; `villagerWalkSeconds(state, walkSeconds)` divides by the villager move-speed multiplier (once with and once without a researched move-speed tech); `markCompleted` sets `completedAt` and `status`. Changing `RESOURCE_TOLERANCE` to `1e-8` fails the first test.
-- [ ] Spend totals: a build with villagers, one non-villager unit, one `build house`, an auto-house and one `research`, observed by a late step handler through `withHandler`, shows `state.spent` of exactly (villager cost read from game data, summed over its four resources, not a hardcoded 50) x villagers paid for `villagers` (respec 2), the unit's four-resource cost for `military`, the sum of the paid building costs for `buildings` and the tech cost for `research`. Sending `startConstruction` to `'research'` fails it.
-- [ ] Research tolerance is the shared one: a research whose cost exceeds the bank by 5e-9 (between 1e-9 and 1.5e-8) is `waiting` with a `reserve`; before the change it started. Restoring `Math.sqrt(Number.EPSILON)` in `research.ts` fails this test.
-- [ ] House tolerance: `planAutoHouse` with a projected shortfall of 1e-10 returns 0 (`populationPerSecond` set so `population + pps x lead - headroom` is 1e-10); on main it returns 1. Restoring `shortfall <= 0` fails it.
-- [ ] Tier changes auto-house demand: with `editGameData` giving `spearman-3` a shorter build time than `spearman-2`, a barracks producing spearmen continuously and `veteran-spearmen` researched, the number of `spearman-3` produced by t = 400 differs from the same run with `houseDemand` reading the lowest-age entry (prototype on main with `engine.data.byBaseId.get(order.unit)?.[0]` in place of `currentUnitEntry`: 73 spearman-3 vs 108 with the real lookup, wood floating 48020 vs 47100). The test pins the real value; the mutation fails it.
-- [ ] Behavior is unchanged: `npm test` and the AoE4 Playwright specs (`npm run acceptance`) pass. Any expected value that changes is listed in the PR with its before and after; only the research affordability instant (tolerance 1.5e-8 to 1e-9, under 1e-8 resources) may move one.
-- [ ] (respec 1) `formatMinSec` moved: `git grep -n "export function formatMinSec" -- components lib` finds 1 line, in `lib/aoe4-build-order/format-time.ts` (on main: 1 line, in `chart-rows.ts`); `git grep -n "formatMinSec" -- components/apps/aoe4-build-order/chart-rows.ts` finds 0; `line-chart.tsx` and `parse-text.ts` import it from `lib/aoe4-build-order/format-time`; `format-time.test.ts` keeps the rows `0 -> 0:00`, `5 -> 0:05`, `65 -> 1:05`, `3600 -> 60:00`; `npx tsc --noEmit` passes.
-- [ ] `ARCHITECTURE.md` mentions `npm run lint:dup`, `.jscpd.json` and `test-helpers.ts`.
-- [ ] No INVARIANTS.md regressions
+- [x] `npm run lint:dup` exits 0 and reports 0 clones. Check: on main with `.jscpd.json` it reports 6 clones and exits 1 (all in the six test files named in Scope item 7).
+- [x] `lint:dup` can fail: pasting a 10-line block of `simulate.ts` into a second file under `lib/aoe4-build-order/` makes it exit non-zero; the PR states this was run and reverted.
+- [x] `package.json` lists `jscpd` as the exact string `4.3.0` in `devDependencies`, has script `lint:dup`, and `npx tsc --noEmit` passes.
+- [x] `git grep -nE "^const (RESOURCES|RESOURCE_TOLERANCE|VILLAGER|HOUSE|GATHER_NODE_ORDER)\b" -- lib/aoe4-build-order/simulate.ts lib/aoe4-build-order/research.ts lib/aoe4-build-order/houses.ts` finds 9 lines on main and 0 after.
+- [x] `git grep -nE "new RegExp|currentUnitEntry|function (spend|affordable|villagerWalk)\b" -- lib/aoe4-build-order/simulate.ts` finds 6 lines on main and 0 after.
+- [x] `git grep -n "Math.max(0, .*resources" -- lib/aoe4-build-order ':!*.test.ts'` finds 3 lines on main (payUnit, spend, research) and 1 after (`engine-common.ts`).
+- [x] `git grep -l "test-helpers" -- lib components pages ':!*.test.ts'` lists no file, and none of the six Scope-7 test files defines a local `inputsFor`, `gameData`, `run`, `series`, `countAt`, `withHandler` or `at` that `test-helpers.ts` exports.
+- [x] `engine-common.test.ts`: `canAfford` is true at `bank = cost - 5e-10` and false at `cost - 2e-9`; `payCost` never leaves a resource below 0 and adds the four-resource sum to `spent[category]`; `villagerWalkSeconds(state, walkSeconds)` divides by the villager move-speed multiplier (once with and once without a researched move-speed tech); `markCompleted` sets `completedAt` and `status`. Changing `RESOURCE_TOLERANCE` to `1e-8` fails the first test.
+- [x] Spend totals: a build with villagers, one non-villager unit, one `build house`, an auto-house and one `research`, observed by a late step handler through `withHandler`, shows `state.spent` of exactly (villager cost read from game data, summed over its four resources, not a hardcoded 50) x villagers paid for `villagers` (respec 2), the unit's four-resource cost for `military`, the sum of the paid building costs for `buildings` and the tech cost for `research`. Sending `startConstruction` to `'research'` fails it.
+- [x] Research tolerance is the shared one: a research whose cost exceeds the bank by 5e-9 (between 1e-9 and 1.5e-8) is `waiting` with a `reserve`; before the change it started. Restoring `Math.sqrt(Number.EPSILON)` in `research.ts` fails this test.
+- [x] House tolerance: `planAutoHouse` with a projected shortfall of 1e-10 returns 0 (`populationPerSecond` set so `population + pps x lead - headroom` is 1e-10); on main it returns 1. Restoring `shortfall <= 0` fails it.
+- [x] Tier changes auto-house demand: with `editGameData` giving `spearman-3` a shorter build time than `spearman-2`, a barracks producing spearmen continuously and `veteran-spearmen` researched, the number of `spearman-3` produced by t = 400 differs from the same run with `houseDemand` reading the lowest-age entry (prototype on main with `engine.data.byBaseId.get(order.unit)?.[0]` in place of `currentUnitEntry`: 73 spearman-3 vs 108 with the real lookup, wood floating 48020 vs 47100). The test pins the real value; the mutation fails it.
+- [x] Behavior is unchanged: `npm test` and the AoE4 Playwright specs (`npm run acceptance`) pass. Any expected value that changes is listed in the PR with its before and after; only the research affordability instant (tolerance 1.5e-8 to 1e-9, under 1e-8 resources) may move one.
+- [x] (respec 1) `formatMinSec` moved: `git grep -n "export function formatMinSec" -- components lib` finds 1 line, in `lib/aoe4-build-order/format-time.ts` (on main: 1 line, in `chart-rows.ts`); `git grep -n "formatMinSec" -- components/apps/aoe4-build-order/chart-rows.ts` finds 0; `line-chart.tsx` and `parse-text.ts` import it from `lib/aoe4-build-order/format-time`; `format-time.test.ts` keeps the rows `0 -> 0:00`, `5 -> 0:05`, `65 -> 1:05`, `3600 -> 60:00`; `npx tsc --noEmit` passes.
+- [x] `ARCHITECTURE.md` mentions `npm run lint:dup`, `.jscpd.json` and `test-helpers.ts`.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
 None.
+
+## Rework 1 - 2026-11-01 (review)
+
+Bounced by review (report `reports/SGS-035-review-1.md`) at branch tip 6dec3b1c18129270c9724de952a20977c9bc24fc. No earlier gate had passed it. Review verified behavior is unchanged: tsc clean, 704 tests, lint:dup 0 clones here and 6 on main, build and acceptance pass.
+
+### Findings
+- `ARCHITECTURE.md:42-44` (contract, doc): the new Rules line says the AoE4 build order "has no copied code" and that `npm run lint:dup` "fails on any duplicated block". `.jscpd.json` only catches clones of 8+ lines and 70+ tokens, so the sentence overstates the check.
+
+### Required fixes
+- [x] (rework 1) In `ARCHITECTURE.md` lines 42-44, state the check's bounds (blocks of at least 8 lines and 70 tokens) and drop or soften "no copied code" so the sentence matches `.jscpd.json`. Change that sentence only.
+- [x] (rework 1, optional, same commit) Add one phrase to the `RESOURCE_TOLERANCE` comment in `lib/aoe4-build-order/engine-common.ts` saying it also governs the house shortfall. Touch nothing else.

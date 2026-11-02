@@ -11,7 +11,7 @@ worktreeRoot: worktrees
 
 commands:
   build: "npm ci && npx next build"   # no build script in package.json; Vercel runs next build
-  lint: "npx tsc --noEmit"            # no ESLint config at the root; typecheck is the only static gate
+  lint: "npx tsc --noEmit && npm run lint:dup"   # tsc typecheck plus the jscpd duplication check (SGS-035)
   unit: "npm test"                    # Vitest (vitest run); golang/ is out of scope
   codegen: ""
   acceptance: "npm run acceptance"     # Playwright; starts its own next dev on a per-checkout port

@@ -30,12 +30,12 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] At a 1280 px wide viewport, on a 3600 s run with 4-digit Y ticks, the Playwright test finds no Y-axis label bounding box that intersects any Y tick label bounding box, for `chart-floating-resources`. The same check also passes for `chart-gather-rates` and `chart-units-produced` on that run.
-- [ ] The new Playwright test fails against `main`'s `line-chart.tsx` (revert the fix in a throwaway worktree and run it) and passes with the fix.
-- [ ] The Y-axis label is still present and shows each chart's `yLabel` text.
-- [ ] The existing `line-chart.test.ts` server-render tests and the existing chart acceptance tests (`expectChartsDrawn`) still pass.
-- [ ] `git diff main -- components/apps/aoe4-build-order/line-chart.tsx` touches only the `YAxis` element and `LineChart` props, so SGS-048 and SGS-049 rebase without conflicts.
-- [ ] No INVARIANTS.md regressions
+- [x] At a 1280 px wide viewport, on a 3600 s run with 4-digit Y ticks, the Playwright test finds no Y-axis label bounding box that intersects any Y tick label bounding box, for `chart-floating-resources`. The same check also passes for `chart-gather-rates` and `chart-units-produced` on that run.
+- [x] The new Playwright test fails against `main`'s `line-chart.tsx` (revert the fix in a throwaway worktree and run it) and passes with the fix.
+- [x] The Y-axis label is still present and shows each chart's `yLabel` text.
+- [x] The existing `line-chart.test.ts` server-render tests and the existing chart acceptance tests (`expectChartsDrawn`) still pass.
+- [x] `git diff main -- components/apps/aoe4-build-order/line-chart.tsx` touches only the `YAxis` element and `LineChart` props, so SGS-048 and SGS-049 rebase without conflicts.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

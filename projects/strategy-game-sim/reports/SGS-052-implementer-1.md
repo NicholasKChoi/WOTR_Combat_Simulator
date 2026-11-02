@@ -1,0 +1,3 @@
+SGS-052 implementer 1: needs_review. Branch sgs-052-aoe4-chart-yaxis-overlap, tip 0dd24116a1837be86025f69eaea3139e6965b24a, worktree .claude/code-factory/worktrees/sgs-052-aoe4-chart-yaxis-overlap.
+Change: YAxis width={110} (line-chart.tsx, one line); Playwright test at 1280px/3600s. tsc, npm test (695), next build, all 13 aoe4 acceptance tests pass. New test fails with line-chart.tsx reverted to main.
+Note: ticket selector .recharts-yAxis .recharts-cartesian-axis-tick-value matches nothing in recharts 3.10.1 (ticks render outside .recharts-yAxis); test uses numeric-text tick values in the chart instead. Ticks reach 100000 (6 digits) on that run.

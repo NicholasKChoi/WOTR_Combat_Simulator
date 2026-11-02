@@ -72,16 +72,16 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `grep -c "shaft-mining" docs/aoe4-build-order.md` is 0 (1 today) and `grep -c "admiralty" docs/aoe4-build-order.md` is 1 (0 today).
-- [ ] `grep -c 'parse -->|"syntax issues"| error' docs/aoe4-build-order.md` is 1 (0 today), and the mermaid block still renders (edge syntax matches the existing edges).
-- [ ] `grep -c "any other HTTP failure" docs/aoe4-build-order.md` is 1 (0 today), and the doc names the "Please try again." text for a thrown request error.
-- [ ] The doc states that a `syntax` issue from parsing a paste line carries `line` only, in both the Issues paragraph and the Route 400 bullet, and the Route bullet lists the pasted `start` (line only) and JSON `start` (neither) cases.
-- [ ] The `unitsProduced` bullet states the order: first spawn time, then unit id (matches `simulate.ts` `unitSeries`).
-- [ ] The Queues text states that a counted `produce` leaves the instance with no order after its last unit and the default villager order does not resume.
-- [ ] Every builder-walk statement in the doc (the ~221 walk-list bullet and the ~272 auto-house paragraph) states `inputs.walkSeconds` divided by the villager move-speed multiplier, and the `start.rally` route statement (~220) does too; `git grep -n "inputs.walkSeconds" docs/aoe4-build-order.md` shows no remaining builder or start-rally statement without the divisor (today the ~220, ~221 and ~272 lines lack it).
-- [ ] Each corrected statement was compared with the code cited in Scope; no code, test or `openapi.json` file is in the diff (`git diff --stat origin/main` lists only `docs/aoe4-build-order.md`).
+- [x] `grep -c "shaft-mining" docs/aoe4-build-order.md` is 0 (1 today) and `grep -c "admiralty" docs/aoe4-build-order.md` is 1 (0 today).
+- [x] `grep -c 'parse -->|"syntax issues"| error' docs/aoe4-build-order.md` is 1 (0 today), and the mermaid block still renders (edge syntax matches the existing edges).
+- [x] `grep -c "any other HTTP failure" docs/aoe4-build-order.md` is 1 (0 today), and the doc names the "Please try again." text for a thrown request error.
+- [x] The doc states that a `syntax` issue from parsing a paste line carries `line` only, in both the Issues paragraph and the Route 400 bullet, and the Route bullet lists the pasted `start` (line only) and JSON `start` (neither) cases.
+- [x] The `unitsProduced` bullet states the order: first spawn time, then unit id (matches `simulate.ts` `unitSeries`).
+- [x] The Queues text states that a counted `produce` leaves the instance with no order after its last unit and the default villager order does not resume.
+- [x] Every builder-walk statement in the doc (the ~221 walk-list bullet and the ~272 auto-house paragraph) states `inputs.walkSeconds` divided by the villager move-speed multiplier, and the `start.rally` route statement (~220) does too; `git grep -n "inputs.walkSeconds" docs/aoe4-build-order.md` shows no remaining builder or start-rally statement without the divisor (today the ~220, ~221 and ~272 lines lack it).
+- [x] Each corrected statement was compared with the code cited in Scope; no code, test or `openapi.json` file is in the diff (`git diff --stat origin/main` lists only `docs/aoe4-build-order.md`).
 - [ ] After merge, `design/M2.md` has 0 `shaft-mining` (1 today), 1 `admiralty` (0 today), `EffectState` and `ModifierTarget` in the effects.ts row (0 `EffectState` today), `rally` in the "walk Ns is always last" sentence, and no "`start: {}` is valid" (1 today).
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

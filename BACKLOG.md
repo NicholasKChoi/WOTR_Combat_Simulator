@@ -27,3 +27,8 @@ pull from here; triage moves an item into a milestone or deletes it.
 - research.ts:65-67 takes the highest age over all entries of an upgrade while the handler checks only the first entry's age (research.ts:35,37); harmless while each tech has one entry, same assumption as effects.ts activeEffects. (SGS-032 review)
 - research.test.ts:345: the test name claims a population check it does not make. (SGS-032 review)
 - `lib/aoe4-build-order/research.ts` (~lines 86, 94) builds note messages from display names rather than ids; the page shows the id separately as a workaround. Reported by SGS-034.
+- `lib/aoe4-build-order/parse-text.ts` has its own `GATHER_NODE_ORDER` and `validate.ts` its own `VILLAGER`; they could use the shared constants from `engine-common.ts`/model. Reported by SGS-035 (ticket excluded both).
+- `parse-text.ts` formats `@m:ss` triggers with the shared `formatMinSec`; rounding may differ from the old inline formatter for non-integer trigger seconds and no test covers it. Reported by SGS-035.
+- `lib/aoe4-build-order/modified-value.test.ts` keeps its own copy of `effectStateOf` (below the jscpd thresholds). Reported by SGS-035.
+- `pages/api/aoe4-build-order/simulate.ts:57,64` `handler` narrows with `'issues' in` / `'order' in` rather than `ok`; works today. Reported by SGS-036.
+- `lib/aoe4-build-order/gather.ts:6` uses a literal `'villager'` instead of `VILLAGER_ID`; `result-series.ts:4` `RESOURCE_ORDER` duplicates `RESOURCE_KINDS`; `type Resources` is declared in both `engine-common.ts` and `simulate.ts`. Reported by SGS-035 review.

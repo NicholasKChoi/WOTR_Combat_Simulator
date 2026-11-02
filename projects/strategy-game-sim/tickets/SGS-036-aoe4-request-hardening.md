@@ -67,31 +67,41 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] A request whose order and inputs produce 101 issues (for example `text` of 101 unparseable lines) returns
+- [x] A request whose order and inputs produce 101 issues (for example `text` of 101 unparseable lines) returns
       400 with `issues.length === 100`, `omittedIssues === 1`, and `error === issues[0].message`.
-- [ ] Exactly 100 issues returns 400 with 100 issues and no `omittedIssues` key.
-- [ ] With 60 paste issues and 60 inputs issues (120 total), `issues` is the 60 paste issues then the first 40
+- [x] Exactly 100 issues returns 400 with 100 issues and no `omittedIssues` key.
+- [x] With 60 paste issues and 60 inputs issues (120 total), `issues` is the 60 paste issues then the first 40
       inputs issues, and `omittedIssues === 20`.
-- [ ] A 400 body with `omittedIssues` validates against `SimulateError` in `docs/api/openapi.json` (ajv, in the
+- [x] A 400 body with `omittedIssues` validates against `SimulateError` in `docs/api/openapi.json` (ajv, in the
       contract spec); a body with 101 `issues` or `omittedIssues: 0` does not.
-- [ ] On the page, a 400 with `omittedIssues: 5` shows the listed messages plus `5 more issues not shown.`
+- [x] On the page, a 400 with `omittedIssues: 5` shows the listed messages plus `5 more issues not shown.`
       inside `simulation-error`; a 400 without it shows no such line.
-- [ ] `parseBuildOrderText` treats `produce villager from capital-town-center` and the same line with
+- [x] `parseBuildOrderText` treats `produce villager from capital-town-center` and the same line with
       ` ` exactly as the space-separated line.
-- [ ] A text of an unparseable line followed by a valid `start` line yields only the unparseable line's issue,
+- [x] A text of an unparseable line followed by a valid `start` line yields only the unparseable line's issue,
       not a second "`start` must come before every step" issue; a valid step line followed by `start` still
       yields that issue.
-- [ ] `validateBuildOrder({ civ: 'english', name: 'x', steps: [step, , step] }, data)` (a hole at index 1) returns a
+- [x] `validateBuildOrder({ civ: 'english', name: 'x', steps: [step, , step] }, data)` (a hole at index 1) returns a
       `syntax` issue with `step: 1` identical to the one for `steps: [step, null, step]`.
-- [ ] `git grep -n "'issues' in parsed" -- pages lib` finds nothing after the change (one match today) and
+- [x] `git grep -n "'issues' in parsed" -- pages lib` finds nothing after the change (one match today) and
       `checkOrder` narrows on `ok`.
-- [ ] `git grep -n "steps.forEach" -- lib/aoe4-build-order/validate.ts` finds nothing after the change (one match today).
-- [ ] Mutation: changing `MAX_REPORTED_ISSUES` handling to slice 101, or dropping the `+ U+00A0` from `WHITESPACE`,
+- [x] `git grep -n "steps.forEach" -- lib/aoe4-build-order/validate.ts` finds nothing after the change (one match today).
+- [x] Mutation: changing `MAX_REPORTED_ISSUES` handling to slice 101, or dropping the `+ U+00A0` from `WHITESPACE`,
       or restoring `sawStep ||= !isStart`, each fails a named test above.
-- [ ] `docs/aoe4-build-order.md` and `docs/api/openapi.json` match the code for every item in Scope 6 and 8.
-- [ ] `npx tsc --noEmit`, `npm test` and `npm run acceptance` pass.
-- [ ] No INVARIANTS.md regressions
+- [x] `docs/aoe4-build-order.md` and `docs/api/openapi.json` match the code for every item in Scope 6 and 8.
+- [x] `npx tsc --noEmit`, `npm test` and `npm run acceptance` pass.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
 None.
+
+## Rework 1 - 2026-11-01 (review)
+
+Bounced by review (report `reports/SGS-036-review-1.md`) at branch tip 8a494314da52392cdf8fdb67ca1f0f340244a084. No earlier gate had passed it. Review confirmed the three edited pre-existing tests are required by Scope 3/6 and that `parsed.ok === false` is sound.
+
+### Findings
+- `docs/api/openapi.json:191` (contract): the `simulateBuildOrder` operation `description` still says "Validation runs in two stages and every issue is reported." The route now lists at most 100 issues and counts the rest in `omittedIssues`. The diff fixed `SimulateError.issues` but missed this sentence.
+
+### Required fixes
+- [x] (rework 1) In `docs/api/openapi.json` operation `simulateBuildOrder` description, replace "every issue is reported" with wording that says at most 100 issues are listed and the rest are counted in `omittedIssues`. Change that sentence only; keep the rest of the description. Check `docs/aoe4-build-order.md` for the same stale claim and fix it if present.
