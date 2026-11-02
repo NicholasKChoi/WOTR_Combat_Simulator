@@ -190,7 +190,7 @@ researched entries apply, not those of other entries of the same tech.
 
 A `research` step pays its cost when it starts and is appended to its instance's paid units, behind any
 unit already paid. It never replaces the instance's order, which resumes (pays its next unit) when the
-research ends. It waits while no target instance exists or while no entry of the tech is at or below the
+research ends. A completed research adds a marker to the result's `markers`. It waits while no target instance exists or while no entry of the tech is at or below the
 current age, and it reserves resources only when it is short of resources alone.
 
 **Tiers.** A produced unit is the entry for the highest tier whose upgrade has been researched, else the
@@ -591,6 +591,14 @@ A `SimulationResult` holds:
 - `steps`: one `StepTiming` per step with `status`, `armedAt`, `startedAt`, `completedAt` and
   `waitSeconds`. `status` is one of `completed`, `in-progress`, `waiting` or `not-reached`.
 - `ages`: each age reached and its `reachedAt` time.
+- `markers`: `ChartMarker`s (`kind`, `label`, `at`) for the charts: one `age-up` marker per age reached after
+  the start age (label `Feudal`, `Castle` or `Imperial`, `at` its `reachedAt`) and one per completed research
+  (label the tech's `baseId`, `at` the step's `completedAt`). A research marker's `kind` is the first match of:
+  `economy` (class `economic_upgrade`), `unit-tier` (a veterancy upgrade: type `upgrade` or class
+  `scar_unit_upgrade`), `blacksmith` (produced at the blacksmith), else `other`. Markers are sorted by `at`,
+  then by kind in the order `age-up`, `economy`, `unit-tier`, `blacksmith`, `other`, then by `label`; markers at
+  the same instant are all kept. There is no marker for the start age or for work that has not completed by
+  the horizon, and markers do not affect the simulation.
 - `notes`: `BuildOrderNote`s, non-fatal, one per research step of a technology whose effects are not all
   simulated, whether or not the step is reached, in step order: `tech-effect-ignored` (ignored combat
   properties listed) and `tech-effect-unmodeled` (empty `properties`). Every note has `severity: 'info'`,

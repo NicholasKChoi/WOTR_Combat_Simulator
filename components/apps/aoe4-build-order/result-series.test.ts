@@ -23,6 +23,7 @@ function result(): SimulationResult {
         notes: [],
         depletions: [],
         warnings: [],
+        markers: [],
     }
 }
 

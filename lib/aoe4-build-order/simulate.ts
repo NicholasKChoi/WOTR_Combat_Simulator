@@ -11,8 +11,9 @@ import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, costOf, markCompl
 import { effectiveGatherRate } from './gather';
 import { planAutoHouse } from './houses';
 import type { HouseDemand } from './houses';
+import { ageMarker, compareMarkers } from './markers';
 import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
-import type { BuildOrder, BuildStep, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SpendCategory, StepTiming, Trigger, UnitSeries } from './model';
+import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SpendCategory, StepTiming, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 
 // Output resolution, not a game number.
@@ -64,6 +65,7 @@ export interface EngineState extends EffectState {
   readonly buildings: Map<string, number>;
   readonly researched: Set<string>;
   readonly researchedIds: Set<string>;
+  readonly markers: ChartMarker[];
   readonly coverage: Readonly<Record<string, number>>;
   // baseId -> instances; instance k at index k - 1.
   readonly instances: Map<string, BuildingInstance[]>;
@@ -344,6 +346,7 @@ function completeConstruction(state: EngineState, job: Construction): void {
   if (entry.age === state.age && entry.classes.some((name) => LANDMARK_CLASS.test(name))) {
     state.age += 1;
     ages.push({ age: state.age, reachedAt: state.time });
+    state.markers.push(ageMarker(state.age, state.time));
     state.rules.onAgeAdvance?.(state, { ...ruleContext(state), age: state.age });
   }
   if (job.step !== null) {
@@ -731,6 +734,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     ages: [{ age: start.age.value, reachedAt: 0 }],
     runOuts: [],
     houseSources: NODE_REFS.filter((ref) => nodeKindOf(ref) === ref || named.has(ref)),
+    markers: [],
   };
   engine.population = aliveVillagers(engine) + units;
   engine.spawnedPopulation = aliveVillagers(engine) + startUnitPopulation(data, start.units.value);
@@ -815,5 +819,6 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     notes: researchNotes(order, data),
     depletions,
     warnings,
+    markers: [...engine.markers].sort(compareMarkers),
   };
 }
