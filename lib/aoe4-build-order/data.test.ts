@@ -3,6 +3,7 @@ import englishSnapshot from '../../data/aoe4-build-order/aoe4world/english.json'
 import baseRules from '../../data/aoe4-build-order/rules/base.json'
 import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import { BaseRules, CivData, GameData, Snapshot, SnapshotEntry, buildGameData, loadGameData } from './data'
+import { baseRulesFileSchema, civRulesFileSchema, snapshotFileSchema } from './data-schema'
 import { SUPPORTED_EFFECT_PROPERTIES } from './effects'
 import { FINITE_GATHER_NODES } from './model'
 import type { CivId, GatherNodeId } from './model'
@@ -43,17 +44,39 @@ function byIdIsReadOnly(game: GameData, entry: SnapshotEntry) {
 }
 void byIdIsReadOnly
 
-describe('snapshot', () => {
-    it('records where it came from and which patch it reflects', () => {
-        const { source } = data
-        for (const field of ['repo', 'commit', 'committedAt', 'fetchedAt', 'patch', 'patchSource'] as const) {
-            expect(source[field], field).toEqual(expect.any(String))
-            expect(source[field].length, field).toBeGreaterThan(0)
-        }
-        expect(source.commit).toMatch(/^[0-9a-f]{40}$/)
-        expect(source.patchSource.startsWith('http')).toBe(true)
+describe('data file schemas', () => {
+    const files = {
+        snapshot: [snapshotFileSchema, englishSnapshot],
+        base: [baseRulesFileSchema, baseRules],
+        civ: [civRulesFileSchema, englishRules],
+    } as const
+
+    it.each(Object.entries(files))('accepts the shipped %s file', (_name, [schema, file]) => {
+        const result = schema.safeParse(file)
+        expect(result.success ? [] : result.error.issues).toEqual([])
     })
 
+    type Defect = [string, keyof typeof files, (file: any) => void]
+    const defects: Defect[] = [
+        ['a 39-hex commit', 'snapshot', (f) => (f.source.commit = f.source.commit.slice(1))],
+        ['a patchSource not starting http', 'snapshot', (f) => (f.source.patchSource = 'ftp://patch')],
+        ['an empty hand-value source', 'base', (f) => (f.walkSeconds.source = '')],
+        ['a hand value without unverified', 'base', (f) => delete f.maxPopCap.unverified],
+        ['a string value where a number is required', 'base', (f) => (f.gatherNodes.sheep.rate.value = '1')],
+        ['a missing gather node', 'base', (f) => delete f.gatherNodes.stone],
+        ['an overlay effect without grantedBy', 'civ', (f) => delete f.effects[0].grantedBy],
+        ['a snapshot entry of type hero', 'snapshot', (f) => (f.units[0].type = 'hero')],
+    ]
+
+    it.each(defects)('rejects %s', (_name, file, mutate) => {
+        const [schema, shipped] = files[file]
+        const broken = structuredClone(shipped)
+        mutate(broken)
+        expect(schema.safeParse(broken).success).toBe(false)
+    })
+})
+
+describe('snapshot', () => {
     it('holds only English entries, each id unique', () => {
         const entries = KINDS.flatMap((kind) => englishSnapshot[kind] as { id: string; civs: string[] }[])
         expect(entries.filter((e) => !e.civs.includes('en'))).toEqual([])
@@ -70,13 +93,6 @@ describe('hand-entered values', () => {
         expect(handValues(data.base, 'base').length).toBeGreaterThanOrEqual(50)
         expect(handValues(data.civData, 'english').length).toBeGreaterThanOrEqual(27)
         expect(found.length).toBeGreaterThanOrEqual(77)
-    })
-
-    it('labels every value with a source and whether it is verified', () => {
-        for (const { path, value } of found) {
-            expect(typeof value.source === 'string' && value.source.length > 0, `${path}.source`).toBe(true)
-            expect(typeof value.unverified, `${path}.unverified`).toBe('boolean')
-        }
     })
 
     it('marks only the owner-observed carry capacities as verified', () => {
