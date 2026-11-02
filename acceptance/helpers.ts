@@ -1,5 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test'
-import { FINITE_GATHER_NODES } from '../lib/aoe4-build-order/model'
+import { FINITE_GATHER_NODES, type SimulationResult } from '../lib/aoe4-build-order/model'
 
 export const FIELDS = [
   'attack-regs',
@@ -77,4 +77,16 @@ export async function runSimulation(page: Page) {
   )
   await page.getByTestId('run-simulation').click()
   return response
+}
+
+const COMPARE_ROW_KEYS = ['military-600', 'military-900', 'military-1200', 'age-2', 'age-3', 'age-4', 'pop-cap']
+
+// Compare rows with a number on at least one side, in table order.
+export function expectedCompareKeys(current: SimulationResult, pinned: SimulationResult): string[] {
+  const present = (result: SimulationResult, key: string): boolean => {
+    if (key === 'pop-cap') return result.populationCapReachedAt !== null
+    if (key.startsWith('age-')) return result.ages.some((a) => `age-${a.age}` === key)
+    return result.times.includes(Number(key.slice('military-'.length)))
+  }
+  return COMPARE_ROW_KEYS.filter((key) => present(current, key) || present(pinned, key))
 }

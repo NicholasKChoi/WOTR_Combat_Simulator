@@ -2,14 +2,13 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, openPage } from './helpers'
+import { SIMULATE_PATH, expectedCompareKeys, openPage } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
 const NOT_REACHED = 'not reached'
 const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
 const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
-const ROW_KEYS = ['military-600', 'military-900', 'military-1200', 'age-2', 'age-3', 'age-4', 'pop-cap']
 const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
 const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
@@ -108,8 +107,7 @@ test.describe('AoE4 build order pin and compare', () => {
 
     const rows = table.getByTestId('compare-row')
     const keys = await rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-key')))
-    expect(keys.length).toBeGreaterThanOrEqual(4)
-    expect(keys).toEqual(ROW_KEYS.filter((key) => keys.includes(key)))
+    expect(keys).toEqual(expectedCompareKeys(current, pinnedRun))
 
     let nonZero = 0
     for (const [key, t] of [['military-600', 600], ['military-900', 900], ['military-1200', 1200]] as const) {

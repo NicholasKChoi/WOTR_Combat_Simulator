@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult, SimWarning } from '../lib/aoe4-build-order/model'
-import { openPage, runSimulation } from './helpers'
+import { expectedCompareKeys, openPage, runSimulation } from './helpers'
 
 const FLOW_PASTE = [
   'start 6 sheep -> sheep',
@@ -8,7 +8,6 @@ const FLOW_PASTE = [
   '@25:00 produce villager from capital-town-center x1 -> sheep',
 ].join('\n')
 const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
-const COMPARE_KEYS = ['military-600', 'military-900', 'military-1200', 'age-2', 'age-3', 'age-4', 'pop-cap']
 const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
 
 test.describe('AoE4 build order M3 flow', () => {
@@ -22,7 +21,7 @@ test.describe('AoE4 build order M3 flow', () => {
     const count = page.getByTestId('step-row').nth(0).getByTestId('step-field-count')
     await expect(count).toHaveValue('3')
 
-    await runSimulation(page)
+    const pinnedResult = (await (await runSimulation(page)).json()) as SimulationResult
     await page.getByTestId('pin-run').click()
 
     await count.fill('5')
@@ -56,8 +55,7 @@ test.describe('AoE4 build order M3 flow', () => {
 
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
     const keys = await page.getByTestId('compare-row').evaluateAll((els) => els.map((el) => el.getAttribute('data-key')))
-    expect(keys.length).toBeGreaterThan(0)
-    expect(keys).toEqual(COMPARE_KEYS.filter((key) => keys.includes(key)))
+    expect(keys).toEqual(expectedCompareKeys(result, pinnedResult))
     for (const chart of RESOURCE_CHARTS) {
       await expect(page.getByTestId(chart).locator('path[data-series="food"]')).toHaveCount(1)
       await expect(page.getByTestId(chart).locator('path[data-series="pinned:food"]')).toHaveCount(1)
