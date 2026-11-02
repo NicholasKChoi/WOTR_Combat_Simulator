@@ -7,6 +7,7 @@ import { effectiveGatherRate } from './gather'
 import type { BuildOrder, BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
 import { researchHandler, researchNotes, resolveUnitEntry } from './research'
 import { simulateBuildOrder, stepHandlers } from './simulate'
+import { researchedOf } from './test-helpers'
 import { resolveSimInputs } from './validate'
 
 const data = loadGameData('english')
@@ -121,7 +122,7 @@ describe('the tier is fixed when a unit is paid', () => {
     })
 
     it('resolves a unit to the lowest tier until its upgrade is researched, and ignores an upgrade with no entry at its age', () => {
-        const state = (researched: string[]) => ({ data: game, age: 3, buildings: new Map<string, number>(), researched: new Set(researched), coverage: inputsFor(game).influenceCoverage })
+        const state = (researched: string[]) => ({ data: game, age: 3, buildings: new Map<string, number>(), ...researchedOf(researched, game), coverage: inputsFor(game).influenceCoverage })
         expect(resolveUnitEntry('spearman', state([]))?.id).toBe('spearman-2')
         expect(resolveUnitEntry('spearman', state(['veteran-spearmen']))?.id).toBe('spearman-3')
         expect(resolveUnitEntry('no-such-unit', state([]))).toBeUndefined()
@@ -175,7 +176,7 @@ describe('a research that cannot start', () => {
         const game = gameWith(2, buildings, base)
         const start: BuildStart = { rally: 'sheep', villagers: { gold: 5 } }
         const result = run([{ action: 'research', tech: 'textiles' }], game, start)
-        const goldRate = effectiveGatherRate('gold', { data: game, age: 2, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), coverage: inputsFor(game).influenceCoverage }, inputsFor(game))
+        const goldRate = effectiveGatherRate('gold', { data: game, age: 2, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: inputsFor(game).influenceCoverage }, inputsFor(game))
 
         it('starts at the instant five gold miners reach 100 gold', () => {
             expect(result.steps[0].status).toBe('completed')
@@ -224,7 +225,7 @@ describe('a technology applies from its completion', () => {
     const simInputs = inputsFor(game)
     const result = run([{ action: 'research', tech: 'wheelbarrow', at: 'mill' }], game)
     const plain = run([], game)
-    const effects = (researched: string[]) => ({ data: game, age: 1, buildings: new Map([['capital-town-center', 1], ['mill', 1]]), researched: new Set(researched), coverage: simInputs.influenceCoverage })
+    const effects = (researched: string[]) => ({ data: game, age: 1, buildings: new Map([['capital-town-center', 1], ['mill', 1]]), ...researchedOf(researched, game), coverage: simInputs.influenceCoverage })
     const nodes: GatherNodeId[] = ['sheep', 'berry', 'wood']
     const changed = nodes.filter((n) => effectiveGatherRate(n, effects(['wheelbarrow']), simInputs) !== effectiveGatherRate(n, effects([]), simInputs))
 

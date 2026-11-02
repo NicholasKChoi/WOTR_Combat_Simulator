@@ -11,7 +11,7 @@ const noHouses = { autoHouses: false }
 
 function rateOf(node: GatherNodeId, game = data, partial: unknown = {}, buildings = ['capital-town-center']): number {
     const simInputs = inputsFor(game, partial)
-    const state = { data: game, age: 1, buildings: new Map(buildings.map((b) => [b, 1])), researched: new Set<string>(), coverage: simInputs.influenceCoverage }
+    const state = { data: game, age: 1, buildings: new Map(buildings.map((b) => [b, 1])), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: simInputs.influenceCoverage }
     return effectiveGatherRate(node, state, simInputs)
 }
 

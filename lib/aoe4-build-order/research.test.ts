@@ -6,9 +6,9 @@ import { modifiedValue } from './effects'
 import type { EffectState } from './effects'
 import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
-import { researchHandler, researchNotes, resolveUnitEntry } from './research'
-import type { BuildingInstance } from './simulate'
-import { ENGLISH, at, buildOrder, editGameData, inputsFor, run, sampleIndex, withHandler } from './test-helpers'
+import { researchEntry, researchHandler, researchNotes, resolveUnitEntry } from './research'
+import type { BuildingInstance, EngineState } from './simulate'
+import { ENGLISH, at, buildOrder, editGameData, effectStateOf, inputsFor, researchedOf, run, sampleIndex, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
@@ -138,7 +138,7 @@ describe('the tier is fixed when a unit is paid', () => {
 })
 
 describe('resolveUnitEntry', () => {
-    const state = (game: GameData, researched: string[]): EffectState => ({ data: game, age: 4, buildings: new Map(), researched: new Set(researched), coverage: {} })
+    const state = (game: GameData, researched: string[]): EffectState => ({ data: game, age: 4, buildings: new Map(), ...researchedOf(researched, game), coverage: {} })
     const idOf = (entry: SnapshotEntry | undefined) => entry?.id
 
     it('gives the lowest-age entry with no upgrade researched', () => {
@@ -211,7 +211,7 @@ describe('research target', () => {
 
 describe('resources never go negative and waits are reported', () => {
     const goldRate = (game: GameData, simInputs: SimInputs) =>
-        effectiveGatherRate('gold', { data: game, age: 2, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), coverage: simInputs.influenceCoverage }, simInputs)
+        effectiveGatherRate('gold', { data: game, age: 2, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: simInputs.influenceCoverage }, simInputs)
 
     describe('a research short of gold only', () => {
         const game = startingWith(2, ['capital-town-center', ...houses], { food: 120, wood: 0, gold: 0, stone: 0 })
@@ -298,7 +298,7 @@ describe('technology effects apply from completion', () => {
     const wheelbarrow: BuildStep = { action: 'research', tech: 'wheelbarrow', at: 'mill' }
     const result = run([wheelbarrow], { game, inputs: { autoHouses: false } })
     const plain = run([], { game, inputs: { autoHouses: false } })
-    const effectState = (researched: string[]) => ({ data: game, age: 1, buildings: new Map([['capital-town-center', 1], ['mill', 1]]), researched: new Set(researched), coverage: simInputs.influenceCoverage })
+    const effectState = (researched: string[]) => ({ data: game, age: 1, buildings: new Map([['capital-town-center', 1], ['mill', 1]]), ...researchedOf(researched, game), coverage: simInputs.influenceCoverage })
     const sheepRate = (researched: string[]) => effectiveGatherRate('sheep' as GatherNodeId, effectState(researched), simInputs)
     const entry = game.byBaseId.get('wheelbarrow')[0]
     const speed = modifiedValue(1, 'productionSpeed', { baseId: entry.baseId, classes: entry.classes, producer: 'mill' }, effectState([]))
@@ -359,6 +359,121 @@ describe('research shares the queue with production', () => {
     })
 })
 
+describe('multi-tier research', () => {
+    // Adds an entry of baseId at age, copied from its existing entry with costs and effect values replaced.
+    function addTier(parts: Parts, baseId: string, age: number, costs: { wood: number; gold: number }, effectValue?: number): void {
+        const tier = structuredClone(entriesOf(parts, baseId)[0])
+        tier.id = `${baseId}-${age}`
+        tier.age = age
+        tier.costs = { ...tier.costs, ...costs }
+        if (effectValue !== undefined) {
+            tier.effects = tier.effects.map((e) => ({ ...e, value: effectValue }))
+        }
+        if (tier.type === 'upgrade') {
+            parts.snapshot.upgrades.push(tier)
+        } else {
+            parts.snapshot.technologies.push(tier)
+        }
+    }
+
+    const tiered = editGameData((parts) => {
+        addTier(parts, 'wheelbarrow', 3, { wood: 80, gold: 300 }, 20)
+        addTier(parts, 'veteran-spearmen', 4, { wood: 0, gold: 400 })
+    })
+    const idAt = (baseId: string, age: number) => researchEntry(baseId, effectStateOf({ data: tiered, age }))?.id
+
+    describe('researchEntry', () => {
+        it('picks the highest entry at or below the current age', () => {
+            expect(idAt('wheelbarrow', 1)).toBe('wheelbarrow-1')
+            expect(idAt('wheelbarrow', 2)).toBe('wheelbarrow-1')
+            expect(idAt('wheelbarrow', 3)).toBe('wheelbarrow-3')
+            expect(idAt('wheelbarrow', 4)).toBe('wheelbarrow-3')
+            expect(idAt('veteran-spearmen', 3)).toBe('veteran-spearmen-3')
+            expect(idAt('veteran-spearmen', 4)).toBe('veteran-spearmen-4')
+        })
+
+        it('finds nothing while every entry is above the age, for an unknown id, or for a non-tech', () => {
+            expect(idAt('veteran-spearmen', 2)).toBeUndefined()
+            expect(idAt('no-such-tech', 4)).toBeUndefined()
+            expect(idAt('spearman', 4)).toBeUndefined()
+        })
+    })
+
+    describe('a research step', () => {
+        const start: BuildStart = { villagers: { sheep: 6 }, rally: 'sheep' }
+        const noHouses = { autoHouses: false }
+        const abbey: BuildStep = { action: 'build', building: 'abbey-of-kings', builders: 3, from: 'sheep' }
+        const game = startingWith(1, ['capital-town-center', 'mill'], { food: 2000, wood: 500, gold: 1000, stone: 0 }, (parts) => {
+            addTier(parts, 'horticulture', 3, { wood: 80, gold: 300 }, 1.5)
+            addTier(parts, 'wheelbarrow', 2, { wood: 70, gold: 250 }, 20)
+        })
+        // Villagers gather only food, so the wood and gold a run ends with differ from a plain run by what research paid.
+        const plain = run([abbey], { game, start, inputs: noHouses })
+        const paid = (result: SimulationResult) => ({
+            wood: plain.floating.wood.at(-1) - result.floating.wood.at(-1),
+            gold: plain.floating.gold.at(-1) - result.floating.gold.at(-1),
+        })
+        function recorded(steps: BuildStep[]): { result: SimulationResult; outcomes: ReturnType<typeof researchHandler>[]; state: EngineState } {
+            const outcomes: ReturnType<typeof researchHandler>[] = []
+            let state: EngineState
+            let result: SimulationResult
+            withHandler(
+                'research',
+                (step, index, engine) => {
+                    state = engine
+                    outcomes.push(researchHandler(step, index, engine))
+                    return outcomes[outcomes.length - 1]
+                },
+                () => {
+                    result = run(steps, { game, start, inputs: noHouses })
+                },
+            )
+            return { result, outcomes, state }
+        }
+
+        it('waits with no reserve while every entry is above the age, then pays the entry of the age reached', () => {
+            const { result, outcomes, state } = recorded([abbey, { action: 'research', tech: 'horticulture' }])
+            const reachedAt = result.ages[1].reachedAt
+            expect(outcomes[0]).toEqual({ started: false })
+            expect(outcomes.filter((o) => o.started === false).every((o) => !('reserve' in o))).toBe(true)
+            expect(result.steps[1]).toMatchObject({ armedAt: 0, startedAt: reachedAt, status: 'completed' })
+            expect(paid(result)).toEqual({ wood: 50, gold: 100 })
+            expect([...state.researchedIds]).toEqual(['horticulture-2'])
+            expect([...state.researched]).toEqual(['horticulture'])
+        })
+
+        it('picks the tier on each attempt, so a step offered after an age-up pays the higher tier', () => {
+            const early = recorded([abbey, { action: 'research', tech: 'wheelbarrow' }])
+            expect(early.result.steps[1].startedAt).toBe(0)
+            expect(paid(early.result)).toEqual({ wood: 50, gold: 150 })
+            expect([...early.state.researchedIds]).toEqual(['wheelbarrow-1'])
+
+            const late = recorded([abbey, { action: 'research', tech: 'wheelbarrow', trigger: at(150) }])
+            expect(late.result.steps[1].startedAt).toBe(150)
+            expect(paid(late.result)).toEqual({ wood: 70, gold: 250 })
+            expect([...late.state.researchedIds]).toEqual(['wheelbarrow-2'])
+            expect([...late.state.researched]).toEqual(['wheelbarrow'])
+        })
+    })
+
+    it('applies only the effects of the researched entry, not of its sibling', () => {
+        const villager = { baseId: 'villager', classes: tiered.byBaseId.get('villager')[0].classes }
+        const carry = (researchedIds: string[]) =>
+            modifiedValue(10, 'carryCapacity', villager, effectStateOf({ data: tiered, researched: new Set(['wheelbarrow']), researchedIds: new Set(researchedIds) }))
+        expect(carry(['wheelbarrow-1'])).toBe(15)
+        expect(carry(['wheelbarrow-3'])).toBe(30)
+        expect(carry([])).toBe(10)
+    })
+
+    it('resolves a unit to the age of the researched upgrade entry, not the highest entry of its baseId', () => {
+        const unit = (researchedIds: string[]) =>
+            resolveUnitEntry('spearman', effectStateOf({ data: tiered, age: 4, researched: new Set(['veteran-spearmen']), researchedIds: new Set(researchedIds) }))?.id
+        expect(unit(['veteran-spearmen-3'])).toBe('spearman-3')
+        expect(unit(['veteran-spearmen-4'])).toBe('spearman-4')
+        expect(unit(['veteran-spearmen-3', 'veteran-spearmen-4'])).toBe('spearman-4')
+    })
+})
+
 describe('notes', () => {
     const steps: BuildStep[] = [
         { action: 'rally', producer: 'capital-town-center', to: 'sheep' },
@@ -379,11 +494,23 @@ describe('notes', () => {
         ])
     })
 
-    it('names the tech, and for ignored effects the properties', () => {
-        expect(result.notes[0].message).toContain('Bloomery')
-        expect(result.notes[0].message).toContain('meleeAttack')
-        expect(result.notes[1].message).toContain('Admiralty')
-        expect(result.notes[1].message).toContain('not simulated')
+    it('names the tech by id, and for ignored effects the properties', () => {
+        expect(result.notes.map((n) => n.message)).toEqual([
+            'bloomery: its effect on meleeAttack is not simulated; it still costs resources and queue time.',
+            'admiralty: its effect is not simulated; it still costs resources and queue time.',
+        ])
+    })
+
+    it('marks every note info and none error', () => {
+        expect(result.notes.map((n) => n.severity)).toEqual(['info', 'info'])
+        expect(result.notes.some((n) => n.severity === 'error')).toBe(false)
+    })
+
+    it('marks info the note of every tech in the data', () => {
+        const techs = [...data.byBaseId.values()].filter(([e]) => e.type === 'technology' || e.type === 'upgrade')
+        const notes = researchNotes(buildOrder(techs.map(([e]): BuildStep => ({ action: 'research', tech: e.baseId }))), data)
+        expect(notes.length).toBeGreaterThan(1)
+        expect(notes.filter((n) => n.severity !== 'info')).toEqual([])
     })
 
     it('is a pure function of the order and the data', () => {

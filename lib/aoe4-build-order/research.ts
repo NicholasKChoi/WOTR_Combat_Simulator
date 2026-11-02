@@ -20,16 +20,31 @@ function researchItem(entry: SnapshotEntry, index: number): PaidItem {
   return {
     entry,
     complete(state) {
+      state.researchedIds.add(entry.id);
       state.researched.add(entry.baseId);
       markCompleted(state, index);
     },
   };
 }
 
+// The highest tier available at the current age; undefined while every tier is above it.
+export function researchEntry(baseId: string, state: EffectState): SnapshotEntry | undefined {
+  let picked: SnapshotEntry | undefined;
+  for (const entry of state.data.byBaseId.get(baseId) ?? []) {
+    if ((entry.type === 'technology' || entry.type === 'upgrade') && entry.age <= state.age && (!picked || entry.age > picked.age)) {
+      picked = entry;
+    }
+  }
+  return picked;
+}
+
 export const researchHandler: StepHandler<'research'> = (step, index, state) => {
-  const entry = state.data.byBaseId.get(step.tech)[0];
+  const entry = researchEntry(step.tech, state);
+  if (!entry) {
+    return { started: false };
+  }
   const target = researchTarget(state, step.at === undefined ? entry.producedBy : [step.at]);
-  if (!target || entry.age > state.age) {
+  if (!target) {
     return { started: false };
   }
   const cost = costOf(entry, 1);
@@ -48,13 +63,12 @@ export function resolveUnitEntry(baseId: string, state: EffectState): SnapshotEn
     return undefined;
   }
   let tier: number | undefined;
-  for (const upgrade of state.researched) {
-    if (state.data.upgradeTargets.get(upgrade)?.value !== baseId) {
+  for (const id of state.researchedIds) {
+    const upgrade = state.data.byId.get(id);
+    if (!upgrade || state.data.upgradeTargets.get(upgrade.baseId)?.value !== baseId) {
       continue;
     }
-    for (const entry of state.data.byBaseId.get(upgrade) ?? []) {
-      tier = tier === undefined ? entry.age : Math.max(tier, entry.age);
-    }
+    tier = tier === undefined ? upgrade.age : Math.max(tier, upgrade.age);
   }
   return entries.find((entry) => entry.age === tier) ?? entries[0];
 }
@@ -73,7 +87,8 @@ export function researchNotes(order: BuildOrder, data: GameData): BuildOrderNote
         step: index,
         tech: step.tech,
         properties: support.properties,
-        message: `${entry.name}: its effect on ${support.properties.join(', ')} is not simulated; it still costs resources and queue time.`,
+        severity: 'info',
+        message: `${entry.baseId}: its effect on ${support.properties.join(', ')} is not simulated; it still costs resources and queue time.`,
       });
     } else if (support.kind === 'effects-unmodeled') {
       notes.push({
@@ -81,7 +96,8 @@ export function researchNotes(order: BuildOrder, data: GameData): BuildOrderNote
         step: index,
         tech: step.tech,
         properties: [],
-        message: `${entry.name}: its effect is not simulated; it still costs resources and queue time.`,
+        severity: 'info',
+        message: `${entry.baseId}: its effect is not simulated; it still costs resources and queue time.`,
       });
     }
   });

@@ -9,7 +9,7 @@ import { ENGLISH, editGameData, inputsFor } from './test-helpers'
 const data = ENGLISH
 
 function stateOf(population: number, supply: number, game = data, rules: CivRules = {}): EngineState {
-    return { data: game, rules, population, supply, time: 0, age: 1, buildings: new Map(), researched: new Set(), coverage: {} } as unknown as EngineState
+    return { data: game, rules, population, supply, time: 0, age: 1, buildings: new Map(), researched: new Set(), researchedIds: new Set(), coverage: {} } as unknown as EngineState
 }
 
 // Default lead: a 5 s walk plus 15 x 3 / (1 + 2) s of construction.

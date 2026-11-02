@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GameData, GatherNodeRules } from './data'
 import { effectiveGatherRate } from './gather'
 import type { GatherNodeId } from './model'
-import { ENGLISH, effectStateOf, tripInputsOf } from './test-helpers'
+import { ENGLISH, effectStateOf, researchedOf, tripInputsOf } from './test-helpers'
 
 const data = ENGLISH
 
@@ -49,7 +49,7 @@ describe('effectiveGatherRate trip model', () => {
 
 describe('effectiveGatherRate with technologies', () => {
     it('applies Wheelbarrow carry capacity and move speed', () => {
-        const state = effectStateOf({ researched: new Set(['wheelbarrow']) })
+        const state = effectStateOf(researchedOf(['wheelbarrow']))
         for (const [node, walk] of [['sheep', 2.86], ['wood', 6.02]] as const) {
             const expected = cycleRate(15, 0.75, walk / 1.15, 0)
             expect(effectiveGatherRate(node, state, inputs)).toBeCloseTo(expected, 12)
@@ -58,12 +58,12 @@ describe('effectiveGatherRate with technologies', () => {
     })
 
     it('applies Double Broadax to wood', () => {
-        const state = effectStateOf({ researched: new Set(['double-broadax']) })
+        const state = effectStateOf(researchedOf(['double-broadax']))
         expect(effectiveGatherRate('wood', state, inputs)).toBeCloseTo(cycleRate(10, 0.75 * 1.15, 6.02, 0), 12)
     })
 
     it('applies Shaft Mining to gold and stone but not wood', () => {
-        const state = effectStateOf({ researched: new Set(['shaft-mining']) })
+        const state = effectStateOf(researchedOf(['shaft-mining']))
         for (const node of ['gold', 'stone'] as const) {
             expect(effectiveGatherRate(node, state, inputs)).toBeCloseTo(cycleRate(10, 0.75 * 1.15, 2.88, 0), 12)
         }
@@ -73,7 +73,7 @@ describe('effectiveGatherRate with technologies', () => {
     it('chains every rate property of a node', () => {
         const foodRow = { ...data.civData.effects.find((row) => row.grantedBy === 'shaft-mining'), property: 'foodGatherRate', value: 2 }
         const game = { ...data, civData: { ...data.civData, effects: [...data.civData.effects, foodRow] } }
-        const state = effectStateOf({ data: game, age: 2, buildings: new Map([['mill', 1]]), coverage: { mill: 1 }, researched: new Set(['shaft-mining']) })
+        const state = effectStateOf({ data: game, age: 2, buildings: new Map([['mill', 1]]), coverage: { mill: 1 }, ...researchedOf(['shaft-mining'], game) })
         expect(effectiveGatherRate('farm', state, inputs)).toBeCloseTo(cycleRate(10, 0.75 * 2 * 1.25, 3.01, 0), 12)
     })
 })
@@ -81,7 +81,7 @@ describe('effectiveGatherRate with technologies', () => {
 describe('effectiveGatherRate purity', () => {
     it('gives the same number twice and leaves the state as it was', () => {
         const buildings = new Map([['lumber-camp', 1]])
-        const state = Object.freeze(effectStateOf({ buildings, researched: new Set(['wheelbarrow']) }))
+        const state = Object.freeze(effectStateOf({ buildings, ...researchedOf(['wheelbarrow']) }))
         const first = effectiveGatherRate('wood', state, inputs)
         expect(effectiveGatherRate('wood', state, inputs)).toBe(first)
         expect([...buildings]).toEqual([['lumber-camp', 1]])

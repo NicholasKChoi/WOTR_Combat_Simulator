@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { canAfford, costOf, markCompleted, payCost, villagerWalkSeconds } from './engine-common'
 import type { EngineState } from './simulate'
-import { ENGLISH, effectStateOf } from './test-helpers'
+import { ENGLISH, effectStateOf, researchedOf } from './test-helpers'
 
 const cost = { food: 50, wood: 25, gold: 0, stone: 0 }
 
@@ -42,7 +42,7 @@ describe('payCost', () => {
 describe('villagerWalkSeconds', () => {
     it('divides the walk by the villager move-speed multiplier', () => {
         expect(villagerWalkSeconds(effectStateOf(), 23)).toBe(23)
-        expect(villagerWalkSeconds(effectStateOf({ researched: new Set(['wheelbarrow']) }), 23)).toBeCloseTo(23 / 1.15, 12)
+        expect(villagerWalkSeconds(effectStateOf(researchedOf(['wheelbarrow'])), 23)).toBeCloseTo(23 / 1.15, 12)
     })
 })
 
