@@ -7,7 +7,7 @@ import type { NodeStock } from './depletion';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import type { Resources } from './engine-common';
-import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, costOf, markCompleted, payCost, villagerWalkSeconds } from './engine-common';
+import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, costOf, markCompleted, payCost, recordUnits, villagerWalkSeconds } from './engine-common';
 import { formatMinSec } from './format-time';
 import { effectiveGatherRate } from './gather';
 import { planAutoHouse } from './houses';
@@ -15,7 +15,7 @@ import type { HouseDemand } from './houses';
 import { ageMarker, compareMarkers } from './markers';
 import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
 import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, Trigger, UnitSeries } from './model';
-import { recordUnits, researchHandler, researchNotes, resolveUnitEntry } from './research';
+import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 
 // Output resolution, not a game number.
 export const SAMPLE_SECONDS = 5;
@@ -52,6 +52,17 @@ export interface BuildingInstance {
   // FIFO; paid[0] is in production while busyUntil is set.
   paid: PaidItem[];
   busyUntil: number | null;
+}
+
+interface UnitChange {
+  time: number;
+  delta: number;
+}
+
+interface SpawnedUnits {
+  entry: SnapshotEntry;
+  held: number;
+  changes: UnitChange[];
 }
 
 export interface EngineState extends EffectState {
@@ -91,7 +102,7 @@ export interface EngineState extends EffectState {
   spawnedPopulation: number;
   // Unit entry id -> spawned units at that entry's tier; starting units are not in it. changes is in time
   // order, so the units at time t are the sum of the deltas at or before t.
-  readonly spawned: Map<string, { entry: SnapshotEntry; held: number; changes: { time: number; delta: number }[] }>;
+  readonly spawned: Map<string, SpawnedUnits>;
   // Events run in (time, insertion) order.
   schedule(time: number, apply: (state: EngineState) => void): void;
 }
@@ -851,7 +862,7 @@ function finalStatus(timing: StepTiming): StepTiming['status'] {
 }
 
 // After all of an instant's changes, so a tier passed through within one instant is never held.
-function firstHeldAt(changes: readonly { time: number; delta: number }[]): number | undefined {
+function firstHeldAt(changes: readonly UnitChange[]): number | undefined {
   let held = 0;
   for (const [i, change] of changes.entries()) {
     held += change.delta;

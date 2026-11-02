@@ -43,3 +43,10 @@ export function markCompleted(state: EngineState, step: number): void {
   state.steps[step].completedAt = state.time;
   state.steps[step].status = 'completed';
 }
+
+export function recordUnits(state: EngineState, entry: SnapshotEntry, delta: number): void {
+  const record = state.spawned.get(entry.id) ?? { entry, held: 0, changes: [] };
+  state.spawned.set(entry.id, record);
+  record.held += delta;
+  record.changes.push({ time: state.time, delta });
+}
