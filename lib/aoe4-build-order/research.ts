@@ -1,7 +1,7 @@
 import type { GameData, SnapshotEntry } from './data';
 import { classifyTech } from './effects';
 import type { EffectState } from './effects';
-import { canAfford, costOf, markCompleted, payCost } from './engine-common';
+import { canAfford, costOf, markCompleted, payCost, recordUnits } from './engine-common';
 import { researchMarker } from './markers';
 import type { BuildOrder, BuildOrderNote } from './model';
 import type { BuildingInstance, EngineState, PaidItem, StepHandler } from './simulate';
@@ -58,13 +58,6 @@ export const researchHandler: StepHandler<'research'> = (step, index, state) => 
   target.paid.push(researchItem(entry, index));
   return { started: true };
 };
-
-export function recordUnits(state: EngineState, entry: SnapshotEntry, delta: number): void {
-  const record = state.spawned.get(entry.id) ?? { entry, held: 0, changes: [] };
-  state.spawned.set(entry.id, record);
-  record.held += delta;
-  record.changes.push({ time: state.time, delta });
-}
 
 // Moves every spawned unit the upgrade targets from a lower tier to the upgrade's tier.
 export function convertUnits(state: EngineState, upgrade: SnapshotEntry): void {
