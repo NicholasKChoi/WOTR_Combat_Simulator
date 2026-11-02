@@ -44,6 +44,7 @@ export default function AoE4BuildOrder({ builds }: PageProps) {
     const [text, setText] = useState(builds[0]?.text ?? '')
     const [duration, setDuration] = useState(String(DEFAULT_DURATION_SECONDS))
     const [result, setResult] = useState<SimulateResponse | null>(null)
+    const [resultText, setResultText] = useState('')
     const [pinned, setPinned] = useState<SimulateResponse | null>(null)
     const [issues, setIssues] = useState<string[]>([])
     const [running, setRunning] = useState(false)
@@ -52,7 +53,8 @@ export default function AoE4BuildOrder({ builds }: PageProps) {
     async function runSimulation() {
         setRunning(true)
         setIssues([])
-        const request: SimulateRequest = { text, inputs: { durationSeconds: Number(duration) } }
+        const runText = text
+        const request: SimulateRequest = { text: runText, inputs: { durationSeconds: Number(duration) } }
         try {
             const response = await fetch('/api/aoe4-build-order/simulate', {
                 method: 'POST',
@@ -64,7 +66,9 @@ export default function AoE4BuildOrder({ builds }: PageProps) {
                 setIssues(await errorMessages(response))
                 return
             }
-            setResult(await response.json())
+            const body: SimulateResponse = await response.json()
+            setResult(body)
+            setResultText(runText)
         } catch {
             setResult(null)
             setIssues(['The simulation could not be run. Please try again.'])
@@ -104,6 +108,7 @@ export default function AoE4BuildOrder({ builds }: PageProps) {
                     <Results
                         result={result}
                         pinned={pinned}
+                        text={resultText}
                         infoExpanded={infoExpanded}
                         onInfoToggle={() => setInfoExpanded((v) => !v)}
                     />
