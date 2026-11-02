@@ -158,7 +158,8 @@ a busy producer replaces its order (a switch); `pause` clears the order. A step 
 `baseId`, which applies to every instance, or by `instance` (1-based) for one.
 
 Every villager producer instance starts with a continuous villager order, which a `produce` or `pause`
-step replaces. A unit is paid before it is queued: its resource cost and its population are taken
+step replaces. When a counted `produce` spawns its last unit, the instance's order becomes empty; the
+villager order does not resume. Only a research resumes the instance's own order. A unit is paid before it is queued: its resource cost and its population are taken
 together, and only when every resource covers its cost and supply has room for it. Each instance runs its
 paid units first in, first out, one at a time. An order pays its next unit only when its instance has no
 paid unit left.
@@ -217,8 +218,8 @@ walk is paid:
 - twice on `build`: once to the site, then once from the site to `then`;
 - once per spawned villager, from spawn to its producer instance's rally node. The walk is
   `(source.walkSeconds ?? inputs.walkSeconds) / moveSpeedMultiplier`, where the source is the `rally` step
-  or `produce` that set the rally; a `start.rally` route uses `inputs.walkSeconds`;
-- for both legs by auto-house builders, at `inputs.walkSeconds` (no step to override it).
+  or `produce` that set the rally; a `start.rally` route uses `inputs.walkSeconds / moveSpeedMultiplier`;
+- for both legs by auto-house builders, at `inputs.walkSeconds / moveSpeedMultiplier` (no step to override it).
 
 The trip model's per-node `walkSecondsCamp`, `walkSecondsTownCenter` and `dropOffSeconds` model the gather
 cycle, not task switches.
@@ -269,7 +270,7 @@ builders; houses run concurrently. Planning stops once supply plus pending suppl
 
 `houseBuilderSource` is the preferred node. When it has fewer than `houseBuilders` villagers gathering,
 builders come from the node with the most gatherers (ties: the first in node order, `sheep, berry, deer,
-boar, farm, wood, gold, stone`). Builders walk `inputs.walkSeconds` each way and return to the node they
+boar, farm, wood, gold, stone`). Builders walk `inputs.walkSeconds / moveSpeedMultiplier` each way and return to the node they
 came from. A house pays its whole cost (all four resources) when it starts. A house waits only when no node
 has enough gatherers or a resource of its cost is short; supply may block production meanwhile. Auto-houses
 are not order payments: they ignore a waiting step's resource reservation, and never take a resource below
@@ -338,7 +339,7 @@ and `productionSpeed`. `IGNORED_EFFECT_PROPERTIES` are the combat properties (`h
 3. Any property in `IGNORED_EFFECT_PROPERTIES`: `effects-ignored`. The technology costs resources and
    queue time and applies its supported effects. Each research step of it gets one `tech-effect-ignored`
    note naming the ignored properties, reached or not, in step order.
-4. Empty or absent `effects` (`shaft-mining`) and no `OverlayEffect` with `grantedBy` equal to its
+4. Empty or absent `effects` (`admiralty`) and no `OverlayEffect` with `grantedBy` equal to its
    `baseId`: `effects-unmodeled`. It costs resources and queue time like any technology, and each research
    step of it gets one `tech-effect-unmodeled` note with empty `properties`, worded so the user sees its
    effect is not simulated. With such an overlay row it is `supported`.
@@ -418,8 +419,9 @@ Grammar details:
   repeated node, a second `start`, or a `start` after a step is a `syntax` issue. `formatBuildOrderText`
   emits it first, with nodes in `GatherNodeId` order.
 
-**Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line? }`. A paste
-step issue carries both `step` and the 1-based `line`; a paste `start` issue carries `line` only; a JSON
+**Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line? }`. A validation
+issue on a parsed paste step carries both `step` and the 1-based `line`; a `syntax` issue raised while
+parsing a paste line carries `line` only, as does a paste `start` issue; a JSON
 step issue carries `step` only and a JSON `start` issue carries neither. The codes are complete and the
 same for JSON and paste:
 
@@ -465,6 +467,7 @@ flowchart LR
   text["paste text"] --> parse["parseBuildOrderText"]
   json["BuildOrder JSON"] --> validate
   parse --> validate["validateBuildOrder + resolveSimInputs"]
+  parse -->|"syntax issues"| error
   data["loadGameData: aoe4world/english.json + rules/*.json"] --> validate & simulate
   validate -->|"issues"| error["400: SimulateError"]
   validate -->|"valid"| simulate["simulateBuildOrder"]
@@ -487,8 +490,10 @@ issue. Longer `text` is one `out-of-range` issue and is not parsed.
 - **400:** `SimulateError` `{ error, issues }`, where `issues` lists every `BuildOrderIssue` and `error` is
   the first issue's message. The order (`text` or `buildOrder`) is checked first and `inputs` second, and
   both always run, so order issues come first, then inputs issues. A body that is not a JSON object (an
-  array, string, number or `null`) gives one `syntax` issue and nothing else is checked. A pasted step's
-  issue carries `line` and `step`, a JSON step's carries `step` only, and `inputs` issues carry neither.
+  array, string, number or `null`) gives one `syntax` issue and nothing else is checked. A validation issue
+  on a pasted step carries `line` and `step`; a `syntax` issue raised while parsing a paste line carries
+  `line` only; a pasted `start` issue carries `line` only; a JSON step's issue carries `step` only; a JSON
+  `start` issue and `inputs` issues carry neither.
 - **405:** `{ error }` with an `Allow: POST` header, for any other method.
 - A body that is not valid JSON keeps Next's plain-text 400 `Invalid JSON`, and a body over Next's 1 MB
   default limit is its plain-text 413; neither reaches the handler.
@@ -506,7 +511,7 @@ A `SimulationResult` holds:
   itself, after the last multiple below it. Every series below has one value per sample. The t=0 sample
   reflects the state after the zero-time steps at t=0 have started.
 - `unitsProduced`: one `UnitSeries` per unit entry and tier (`unitId`, `baseId`, `name`, `tier`, the
-  entry's age), with cumulative `counts` of produced units. Starting units are not produced and never
+  entry's age), ordered by first spawn time, then `unitId`, with cumulative `counts` of produced units. Starting units are not produced and never
   appear in it, so every series starts at 0.
 - `gatherRates`: per `ResourceKind` (`food`, `wood`, `gold`, `stone`), the income rate per minute.
 - `floating`: per `ResourceKind`, the banked, unspent amount.
@@ -570,8 +575,9 @@ Each series' line carries its key as `data-series`. Clicking a legend item hides
 it again restores it. When `notes` is non-empty, a notes list shows each note's technology id and
 message; with no notes there is no list.
 
-A 400 shows every issue's `message` (each names its line or step) and removes any earlier charts. Any
-other failure shows "The simulation could not be run (HTTP <status>)."
+A 400 shows every issue's `message` (each names its line or step) and removes any earlier charts;
+any other HTTP failure shows "The simulation could not be run (HTTP <status>)."; a request or response-body
+error shows "The simulation could not be run. Please try again."
 
 Prebuilt builds live in `data/aoe4-build-order/builds/`, one `BuildOrder` JSON file per build, each
 with a `source`. Every prebuilt build is paste-representable: it re-parses from its own paste text to the
