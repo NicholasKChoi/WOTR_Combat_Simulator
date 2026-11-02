@@ -6,7 +6,7 @@ import { FINITE_GATHER_NODES, NODE_REFS } from './model'
 import type { BuildStart, BuildStep, NodeRef, SimulationResult, SimWarning } from './model'
 import { stepHandlers } from './simulate'
 import type { EngineState } from './simulate'
-import { ENGLISH, at, countAt, editGameData, run, sampleIndex, withHandler } from './test-helpers'
+import { ENGLISH, at, countAt, run, sampleIndex, withHandler } from './test-helpers'
 
 const PAUSE: BuildStep = { action: 'pause', producer: 'capital-town-center' }
 const noHouses = { autoHouses: false }
@@ -102,10 +102,10 @@ describe('stock and run-out', () => {
         expect(result.steps[1].startedAt).toBe(0)
     })
 
-    it('keeps every ref infinite without nodeAmounts', () => {
+    it('starts every finite ref at its base.json amount without nodeAmounts', () => {
+        const shipped = { sheep: 3000, berry: 1500, deer: 1750, boar: 2000, gold: 4000, stone: 1200 }
         const plain = run([])
-        expect(plain.depletions).toEqual(FINITE_GATHER_NODES.map((node) => ({ node, amount: null, depletedAt: null })))
-        expect(plain.warnings).toEqual([])
+        expect(plain.depletions.map((d) => [d.node, d.amount])).toEqual(FINITE_GATHER_NODES.map((node) => [node, shipped[node]]))
     })
 })
 
@@ -113,15 +113,12 @@ describe('gold deposits', () => {
     const start: BuildStart = { villagers: { gold: 1, 'gold#2': 3 }, rally: 'wood' }
 
     it('default each deposit to gold amount and let an override reach one deposit', () => {
-        const stocked = editGameData((parts) => {
-            parts.base.gatherNodes.gold.amount = { value: 3000, source: 'test', unverified: true }
-        })
-        const result = run([PAUSE], { game: stocked, start, inputs: { ...noHouses, nodeAmounts: { gold: null } } })
+        const result = run([PAUSE], { start, inputs: { ...noHouses, nodeAmounts: { gold: null } } })
         expect(depletion(result, 'gold').amount).toBeNull()
-        expect(depletion(result, 'gold#2').amount).toBe(3000)
+        expect(depletion(result, 'gold#2').amount).toBe(4000)
         const two = run([PAUSE], { start, inputs: { ...noHouses, nodeAmounts: { 'gold#2': 2500 } } })
         expect(depletion(two, 'gold#2').amount).toBe(2500)
-        expect(depletion(two, 'gold').amount).toBeNull()
+        expect(depletion(two, 'gold').amount).toBe(4000)
     })
 
     it('draws each deposit down independently', () => {

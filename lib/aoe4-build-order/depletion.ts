@@ -31,6 +31,9 @@ export function runRefs(order: BuildOrder): FiniteNodeRef[] {
   for (const step of order.steps) {
     const fields = step as Partial<Record<(typeof STEP_NODE_FIELDS)[number], unknown>>;
     STEP_NODE_FIELDS.forEach((field) => named.add(fields[field]));
+    if (step.trigger?.kind === 'depleted') {
+      named.add(step.trigger.node);
+    }
   }
   // Anything that is not a finite ref (farm, wood, or a value validation rejects) drops out here.
   return FINITE_NODE_REFS.filter((ref) => named.has(ref));

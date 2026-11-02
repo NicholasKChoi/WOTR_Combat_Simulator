@@ -220,6 +220,7 @@ test.describe('bounds match SIM_INPUT_BOUNDS', () => {
     durationSeconds: () => [overrides.durationSeconds],
     triggerSeconds: () => [trigger('time').properties.seconds],
     triggerCount: () => [trigger('villagers').properties.count],
+    triggerAtLeast: () => [trigger('bank').properties.atLeast],
     count: () => [variant('produce').properties.count, variant('move').properties.count.oneOf[0]],
     builders: () => [variant('build').properties.builders],
     houseBuilders: () => [overrides.houseBuilders],
@@ -359,7 +360,7 @@ test.describe('SimulateError issue cap', () => {
 
 test.describe('schema and server agree on requests', () => {
   test('the Trigger description pins the unknown-kind rule', () => {
-    expect(schemas.Trigger.description).toMatch(/neither time nor villagers is invalid under this schema/)
+    expect(schemas.Trigger.description).toMatch(/kind is not time, villagers, depleted or bank is invalid under this schema/)
     expect(schemas.Trigger.description).toContain('unknown-trigger-kind')
   })
 
@@ -374,6 +375,25 @@ test.describe('schema and server agree on requests', () => {
     const body = buildOrderBody([{ ...PRODUCE, trigger: { kind: 'time', seconds: 10 } }])
     expectValid('SimulateRequest', body)
     await expect200(request, body)
+  })
+
+  test('depleted and bank triggers and a reaction are schema-valid and the server accepts them', async ({ request }) => {
+    const bodies = [
+      buildOrderBody([{ ...PRODUCE, trigger: { kind: 'depleted', node: 'gold#3' } }]),
+      buildOrderBody([{ ...PRODUCE, trigger: { kind: 'bank', resource: 'wood', atLeast: 400 } }]),
+      buildOrderBody([{ action: 'move', count: 'all', from: 'sheep', to: 'wood', trigger: { kind: 'depleted', node: 'sheep' }, reaction: true }]),
+    ]
+    for (const body of bodies) {
+      expectValid('SimulateRequest', body)
+      await expect200(request, body)
+    }
+  })
+
+  test('a reaction on a time trigger is schema-valid and the server rejects it as invalid', async ({ request }) => {
+    const body = buildOrderBody([{ ...PRODUCE, trigger: { kind: 'time', seconds: 10 }, reaction: true }])
+    expectValid('SimulateRequest', body)
+    const json = await expect400(request, body)
+    expect(json.issues.map((i: BuildOrderIssue) => i.code)).toEqual(['invalid'])
   })
 
   test('text over maxLength is schema-invalid and the server rejects it', async ({ request }) => {

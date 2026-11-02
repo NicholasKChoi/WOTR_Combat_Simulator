@@ -1,4 +1,5 @@
 import type { APIRequestContext, Page } from '@playwright/test'
+import { FINITE_GATHER_NODES } from '../lib/aoe4-build-order/model'
 
 export const FIELDS = [
   'attack-regs',
@@ -46,6 +47,9 @@ export function postFight(request: APIRequestContext, body: Armies | FightBody, 
 }
 
 export const SIMULATE_PATH = '/api/aoe4-build-order/simulate'
+
+// An `inputs.nodeAmounts` that keeps every finite node from running out.
+export const INFINITE_NODES = Object.fromEntries(FINITE_GATHER_NODES.map((node) => [node, null]))
 
 export function postSimulate(request: APIRequestContext, body: unknown, timeout = 10_000) {
   return request.post(SIMULATE_PATH, { data: body, timeout })

@@ -6,6 +6,7 @@ import { BaseRules, CivData, GameData, Snapshot, buildGameData, loadGameData } f
 import { effectiveGatherRate } from './gather'
 import type { BuildOrder, BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
+import { INFINITE_NODES } from './test-helpers'
 import { resolveSimInputs } from './validate'
 
 const data = loadGameData('english')
@@ -220,7 +221,7 @@ describe('builders and movers still count as villagers', () => {
 })
 
 describe('auto-houses on a plain default order', () => {
-    const result = run([])
+    const result = run([], { inputs: { nodeAmounts: INFINITE_NODES } })
 
     it('never stalls the villager order at the starting supply of 10', () => {
         const counts = villagers(result)

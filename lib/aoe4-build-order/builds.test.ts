@@ -2,6 +2,8 @@ import { readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { listBuilds } from './builds'
 import { loadGameData } from './data'
+import { nodeKindOf } from './model'
+import type { NodeRef } from './model'
 import { formatBuildOrderText, parseBuildOrderText } from './parse-text'
 import { simulateBuildOrder } from './simulate'
 import { resolveSimInputs, validateBuildOrder } from './validate'
@@ -50,14 +52,30 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         expect(result.ok === false ? result.issues : []).toEqual([])
     })
 
-    it('completes or is still running every step at 3600 s', () => {
-        const resolved = resolveSimInputs({ durationSeconds: 3600 }, data)
+    function simulateTo(durationSeconds: number) {
+        const resolved = resolveSimInputs({ durationSeconds }, data)
         if (resolved.ok === false) {
             throw new Error(JSON.stringify(resolved.issues))
         }
-        const result = simulateBuildOrder(build, data, resolved.inputs)
-        const stuck = result.steps.filter((s) => s.status !== 'completed' && s.status !== 'in-progress')
-        expect(stuck).toEqual([])
+        return simulateBuildOrder(build, data, resolved.inputs)
+    }
+
+    it.each([1200, 3600])('starts every non-reaction step and leaves no step waiting by %i s', (horizon) => {
+        const result = simulateTo(horizon)
         expect(result.steps).toHaveLength(build.steps.length)
+        expect(result.steps.filter((s) => s.status === 'waiting')).toEqual([])
+        expect(result.steps.filter((s) => !build.steps[s.step].reaction && s.startedAt === null)).toEqual([])
+        expect(result.steps.filter((s) => s.status === 'not-reached' && s.waitingOn !== 'trigger')).toEqual([])
+    })
+
+    it('moves every gatherer off a gold deposit at its run-out by 1200 s, with no gold warning', () => {
+        const result = simulateTo(1200)
+        const gold = (node: string) => nodeKindOf(node as NodeRef) === 'gold'
+        for (const { node, depletedAt } of result.depletions.filter((d) => gold(d.node) && d.depletedAt !== null)) {
+            const leaving = build.steps.flatMap((step, i) => (step.reaction && step.action === 'move' && step.count === 'all' && step.from === node ? [result.steps[i]] : []))
+            expect(leaving.some((s) => s.startedAt === depletedAt), node).toBe(true)
+        }
+        const goldWarnings = result.warnings.filter((w) => w.code !== 'step-stuck' && gold(w.node))
+        expect(goldWarnings.filter((w) => w.severity === 'warning')).toEqual([])
     })
 })

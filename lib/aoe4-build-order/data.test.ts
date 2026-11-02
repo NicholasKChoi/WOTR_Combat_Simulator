@@ -4,6 +4,7 @@ import baseRules from '../../data/aoe4-build-order/rules/base.json'
 import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import { BaseRules, CivData, GameData, Snapshot, SnapshotEntry, buildGameData, loadGameData } from './data'
 import { SUPPORTED_EFFECT_PROPERTIES } from './effects'
+import { FINITE_GATHER_NODES } from './model'
 import type { CivId, GatherNodeId } from './model'
 
 const KINDS = ['units', 'buildings', 'technologies', 'upgrades'] as const
@@ -66,9 +67,9 @@ describe('hand-entered values', () => {
     const ownerObserved = new Set(['base.gatherNodes.sheep.capacity', 'base.gatherNodes.deer.capacity', 'base.gatherNodes.boar.capacity'])
 
     it('finds every value in both rules files', () => {
-        expect(handValues(data.base, 'base').length).toBeGreaterThanOrEqual(44)
+        expect(handValues(data.base, 'base').length).toBeGreaterThanOrEqual(50)
         expect(handValues(data.civData, 'english').length).toBeGreaterThanOrEqual(27)
-        expect(found.length).toBeGreaterThanOrEqual(71)
+        expect(found.length).toBeGreaterThanOrEqual(77)
     })
 
     it('labels every value with a source and whether it is verified', () => {
@@ -85,6 +86,26 @@ describe('hand-entered values', () => {
         for (const path of ownerObserved) {
             expect(found.find((f) => f.path === path)?.value.source).toBe('owner, in-game observation 2026-10-30')
         }
+    })
+})
+
+describe('node amounts', () => {
+    const owner = 'owner-supplied starting total (2026-11-01)'
+    const shipped = {
+        sheep: [3000, `${owner}: 15 sheep x 200 food`],
+        berry: [1500, owner],
+        deer: [1750, `${owner}: 7 deer x 250 food`],
+        boar: [2000, owner],
+        gold: [4000, 'owner-supplied amount per gold deposit (2026-11-01)'],
+        stone: [1200, owner],
+    }
+
+    it('ship on exactly the finite nodes', () => {
+        expect(GATHER_NODES.filter((node) => data.base.gatherNodes[node].amount !== undefined)).toEqual([...FINITE_GATHER_NODES])
+    })
+
+    it.each(Object.entries(shipped))('%s ships its owner-supplied amount, unverified', (node, [value, source]) => {
+        expect(data.base.gatherNodes[node as GatherNodeId].amount).toEqual({ value, source, unverified: true })
     })
 })
 

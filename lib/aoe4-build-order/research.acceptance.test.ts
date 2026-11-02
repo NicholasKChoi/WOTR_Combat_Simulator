@@ -7,7 +7,7 @@ import { effectiveGatherRate } from './gather'
 import type { BuildOrder, BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
 import { researchHandler, researchNotes, resolveUnitEntry } from './research'
 import { simulateBuildOrder, stepHandlers } from './simulate'
-import { researchedOf } from './test-helpers'
+import { INFINITE_NODES, researchedOf } from './test-helpers'
 import { resolveSimInputs } from './validate'
 
 const data = loadGameData('english')
@@ -35,17 +35,17 @@ function entriesOf(parts: Parts, baseId: string): SnapshotEntry[] {
     return [...parts.snapshot.units, ...parts.snapshot.technologies, ...parts.snapshot.upgrades].filter((e) => e.baseId === baseId)
 }
 
-function inputsFor(game: GameData): SimInputs {
-    const result = resolveSimInputs({}, game)
+function inputsFor(game: GameData, partial: unknown = {}): SimInputs {
+    const result = resolveSimInputs(partial, game)
     if (result.ok === false) {
         throw new Error(JSON.stringify(result.issues))
     }
     return result.inputs
 }
 
-function run(steps: BuildStep[], game: GameData, start: BuildStart = { rally: 'sheep' }): SimulationResult {
+function run(steps: BuildStep[], game: GameData, start: BuildStart = { rally: 'sheep' }, partial: unknown = {}): SimulationResult {
     const order: BuildOrder = { civ: 'english', name: 'research-acceptance', start, steps }
-    return simulateBuildOrder(order, game, inputsFor(game))
+    return simulateBuildOrder(order, game, inputsFor(game, partial))
 }
 
 function count(result: SimulationResult, unitId: string, t: number): number {
@@ -223,8 +223,9 @@ describe('a research that cannot start', () => {
 describe('a technology applies from its completion', () => {
     const game = gameWith(1, ['capital-town-center', 'mill', ...houses], { food: 500, wood: 500, gold: 500, stone: 0 })
     const simInputs = inputsFor(game)
-    const result = run([{ action: 'research', tech: 'wheelbarrow', at: 'mill' }], game)
-    const plain = run([], game)
+    const infinite = { nodeAmounts: INFINITE_NODES }
+    const result = run([{ action: 'research', tech: 'wheelbarrow', at: 'mill' }], game, undefined, infinite)
+    const plain = run([], game, undefined, infinite)
     const effects = (researched: string[]) => ({ data: game, age: 1, buildings: new Map([['capital-town-center', 1], ['mill', 1]]), ...researchedOf(researched, game), coverage: simInputs.influenceCoverage })
     const nodes: GatherNodeId[] = ['sheep', 'berry', 'wood']
     const changed = nodes.filter((n) => effectiveGatherRate(n, effects(['wheelbarrow']), simInputs) !== effectiveGatherRate(n, effects([]), simInputs))

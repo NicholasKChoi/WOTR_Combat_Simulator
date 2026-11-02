@@ -49,10 +49,15 @@ export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
 
 export type StepWait = 'resources' | 'villagers' | 'population' | 'prerequisite' | 'trigger' | 'earlier-step';
 
-// An omitted trigger means the step has no condition.
-export type Trigger = { kind: 'time'; seconds: number } | { kind: 'villagers'; count: number };
+// An omitted trigger means the step has no condition. bank holds while the stock of resource is at least atLeast.
+export type Trigger =
+  | { kind: 'time'; seconds: number }
+  | { kind: 'villagers'; count: number }
+  | { kind: 'depleted'; node: FiniteNodeRef }
+  | { kind: 'bank'; resource: ResourceKind; atLeast: number };
 
-export type BuildStep = { trigger?: Trigger } & (
+// A reaction (depleted trigger only) arms when its trigger holds, without waiting for earlier steps.
+export type BuildStep = { trigger?: Trigger; reaction?: true } & (
   // No count means continuous production; rally only for villagers and sets the producer's rally; walkSeconds only with rally.
   | { action: 'produce'; producer: string; instance?: number; unit: string; count?: number; rally?: NodeRef; walkSeconds?: number }
   // Rallies villagers that start from this step on; costs nothing.

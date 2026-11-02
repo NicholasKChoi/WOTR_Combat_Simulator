@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { postSimulate } from './helpers'
+import { INFINITE_NODES, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -36,7 +36,7 @@ test.beforeAll(async ({ request }) => {
 // walk-time code that moves any of them is a behavior change, not a refactor.
 test.describe('pinned timelines', () => {
   test('the prebuilt English build pays its first buildings after a 5 second wait and reaches Feudal at the pinned instant', async ({ request }) => {
-    const body = await simulate(request, { buildOrder: english1tc })
+    const body = await simulate(request, { buildOrder: english1tc, inputs: { nodeAmounts: INFINITE_NODES } })
     expectTiming(body.steps[1], { startedAt: 25, completedAt: 45, waitSeconds: 5 })
     expectTiming(body.steps[2], { startedAt: 45, completedAt: 70, waitSeconds: 5 })
     expectTiming(body.steps[4], { startedAt: 143.56666666666663, completedAt: 262.5666666666666, waitSeconds: 83.56666666666663 })
@@ -55,7 +55,7 @@ test.describe('pinned timelines', () => {
       { action: 'produce', producer: 'barracks', unit: 'spearman', count: 30 },
       { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 30 },
     ]
-    const body = await simulate(request, { buildOrder: { ...english1tc, steps }, inputs: { durationSeconds: 900 } })
+    const body = await simulate(request, { buildOrder: { ...english1tc, steps }, inputs: { durationSeconds: 900, nodeAmounts: INFINITE_NODES } })
     expectTiming(body.steps[14], { startedAt: 363.82392930629044, completedAt: 408.82392930629044, waitSeconds: 11.093483539094677 })
     expectTiming(body.steps[22], { startedAt: 461.01536958786636, completedAt: 521.0153695878664, waitSeconds: 24.075222661396595 })
     expectTiming(body.steps[23], { startedAt: 508.3666666666666, completedAt: 581.0153695878664, waitSeconds: 47.35129707880026 })
@@ -76,7 +76,7 @@ test.describe('pinned timelines', () => {
       start: START,
       steps: [{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 40 }],
     }
-    const body = await simulate(request, { buildOrder })
+    const body = await simulate(request, { buildOrder, inputs: { nodeAmounts: INFINITE_NODES } })
     expect(body.steps[0]).toMatchObject({ status: 'completed', completedAt: 800 })
     expect(finalCount(body, 'villager')).toBe(40)
     expect(body.floating.food.at(-1)).toBeCloseTo(21975.21613832855, 6)
@@ -96,7 +96,7 @@ test.describe('pinned timelines', () => {
         { action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 2 },
       ],
     }
-    const body = await simulate(request, { buildOrder })
+    const body = await simulate(request, { buildOrder, inputs: { nodeAmounts: INFINITE_NODES } })
     expect(body.steps.map((s: Timing) => s.status)).toEqual(['completed', 'completed', 'waiting', 'not-reached'])
     expect(body.steps[0].completedAt).toBe(600)
     expect(body.steps[1].completedAt).toBe(35)

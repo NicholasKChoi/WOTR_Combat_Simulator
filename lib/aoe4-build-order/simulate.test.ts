@@ -9,7 +9,7 @@ import type { BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult, 
 import { FINITE_GATHER_NODES } from './model'
 import { SAMPLE_SECONDS, accrueWait, addBuildingInstance, simulateBuildOrder, stepHandlers } from './simulate'
 import type { BuildingInstance, EngineState, RallySource } from './simulate'
-import { ENGLISH, at, buildOrder, countAt, editGameData, inputsFor, run, sampleIndex, series, withHandler } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, buildOrder, countAt, editGameData, inputsFor, run, sampleIndex, series, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
@@ -673,7 +673,7 @@ describe('performance', () => {
             )
         }
         const started = performance.now()
-        const result = run(steps, { inputs: { durationSeconds: 3600 }, rules: { supplyProvider: () => 200 } })
+        const result = run(steps, { inputs: { durationSeconds: 3600, nodeAmounts: INFINITE_NODES }, rules: { supplyProvider: () => 200 } })
         expect(performance.now() - started).toBeLessThan(1000)
         expect(result.steps.every((s) => s.status !== 'waiting')).toBe(true)
         expect(countAt(result, 'villager', 3600)).toBe(3600 / 20)
@@ -686,10 +686,10 @@ describe('source shape', () => {
     it('exports exactly the seam names', () => {
         const names = (file: string) => [...source(file).matchAll(/^export (?:const|function|interface|type) (\w+)/gm)].map((m) => m[1]).sort()
         expect(names('simulate.ts')).toEqual(
-            ['BuildingInstance', 'EngineState', 'PaidItem', 'ProductionOrder', 'RallySource', 'SAMPLE_SECONDS', 'StepHandler', 'StepStart', 'accrueWait', 'addBuildingInstance', 'assignGatherers', 'simulateBuildOrder', 'stepHandlers', 'triggerHolds'].sort(),
+            ['BuildingInstance', 'EngineState', 'PaidItem', 'ProductionOrder', 'RallySource', 'SAMPLE_SECONDS', 'StepHandler', 'StepStart', 'accrueWait', 'addBuildingInstance', 'assignGatherers', 'simulateBuildOrder', 'stepHandlers', 'triggerHolds', 'triggerWakeAt'].sort(),
         )
         expect(names('civ-rules.ts')).toEqual(['CivRuleContext', 'CivRules', 'NO_CIV_RULES', 'civRules'].sort())
-        expect(source('simulate.ts').match(/^export /gm)).toHaveLength(14)
+        expect(source('simulate.ts').match(/^export /gm)).toHaveLength(15)
         expect(source('civ-rules.ts').match(/^export /gm)).toHaveLength(4)
     })
 
@@ -712,8 +712,8 @@ describe('source shape', () => {
 
 describe('depletions and warnings', () => {
     it('are empty while every node is infinite', () => {
-        const prebuilt = simulateBuildOrder(listBuilds()[0], data, inputsFor(data, { durationSeconds: 3600 }))
-        const oneStep = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1 }])
+        const prebuilt = simulateBuildOrder(listBuilds()[0], data, inputsFor(data, { durationSeconds: 3600, nodeAmounts: INFINITE_NODES }))
+        const oneStep = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1 }], { inputs: { nodeAmounts: INFINITE_NODES } })
         for (const result of [prebuilt, oneStep]) {
             expect(result.depletions).toEqual(FINITE_GATHER_NODES.map((node) => ({ node, amount: null, depletedAt: null })))
             expect(result.warnings).toEqual([])
@@ -741,19 +741,24 @@ describe('why steps wait', () => {
         expect(step.waitingOn).toBeNull()
     })
 
-    it('reports prerequisite for a missing instance and earlier-step behind it', () => {
+    it('reports prerequisite for a missing instance and earlier-step behind it, never for a reaction', () => {
         const result = run([
             { action: 'produce', producer: 'capital-town-center', instance: 2, unit: 'villager' },
             { action: 'rally', producer: 'capital-town-center', to: 'wood' },
+            { action: 'rally', producer: 'capital-town-center', to: 'sheep', trigger: { kind: 'depleted', node: 'stone' }, reaction: true },
         ])
-        expect(result.steps.map((s) => s.waitingOn)).toEqual(['prerequisite', 'earlier-step'])
+        expect(result.steps.map((s) => s.waitingOn)).toEqual(['prerequisite', 'earlier-step', 'trigger'])
         expect(result.steps[0].waitBreakdown.prerequisite).toBeCloseTo(horizon, 9)
         expect(result.steps[1].waitBreakdown).toEqual({})
+        expect(result.steps[2]).toMatchObject({ status: 'not-reached', waitBreakdown: {} })
     })
 
-    it('reports trigger for a cursor step whose trigger never holds', () => {
-        const result = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', trigger: at(horizon + 1) }])
-        expect(result.steps[0]).toMatchObject({ status: 'not-reached', waitingOn: 'trigger', waitBreakdown: {} })
+    it('reports trigger for the first unstarted non-reaction step and for unarmed reactions around it', () => {
+        const unarmed: BuildStep = { action: 'rally', producer: 'capital-town-center', to: 'sheep', trigger: { kind: 'depleted', node: 'stone' }, reaction: true }
+        const result = run([unarmed, { action: 'rally', producer: 'capital-town-center', to: 'wood', trigger: at(horizon + 1) }, unarmed])
+        for (const step of result.steps) {
+            expect(step).toMatchObject({ status: 'not-reached', waitingOn: 'trigger', waitBreakdown: {} })
+        }
     })
 
     it('reports population when supply is full', () => {
@@ -821,13 +826,14 @@ describe('why steps wait', () => {
         }
     })
 
-    it('warns once per waiting step at the horizon, after node warnings at the same instant', () => {
+    it('warns once per waiting step at the horizon, reactions included, after node warnings at the same instant', () => {
         const stuckOrder: BuildStep[] = [
             { action: 'produce', producer: 'capital-town-center', instance: 2, unit: 'villager' },
             { action: 'rally', producer: 'capital-town-center', to: 'wood' },
+            { action: 'move', count: 6, from: 'berry', to: 'farm', trigger: { kind: 'depleted', node: 'berry' }, reaction: true },
         ]
         const result = run(stuckOrder, { start: { villagers: { berry: 3, wood: 3 }, rally: 'wood' }, inputs: { nodeAmounts: { berry: 0 } } })
-        expect(result.warnings.map((w) => w.code)).toEqual(['node-depleted', 'step-stuck'])
+        expect(result.warnings.map((w) => w.code)).toEqual(['node-depleted', 'step-stuck', 'step-stuck'])
         expect(result.warnings[1]).toEqual({
             code: 'step-stuck',
             severity: 'warning',
@@ -836,12 +842,15 @@ describe('why steps wait', () => {
             waitingOn: 'prerequisite',
             at: 0,
         })
+        expect(result.warnings[2]).toMatchObject({ step: 2, waitingOn: 'villagers', at: 0 })
+        expect(result.steps[2]).toMatchObject({ status: 'waiting', waitingOn: 'villagers', armedAt: 0 })
+        expect(sum(result.steps[2])).toBeCloseTo(horizon, 9)
         expect(run(stuckOrder).warnings).toEqual(run(stuckOrder).warnings)
         expect(run(stuckOrder).steps.map((s) => s.waitBreakdown)).toEqual(run(stuckOrder).steps.map((s) => s.waitBreakdown))
     })
 
     it('has no step-stuck when every step started', () => {
-        expect(run([{ action: 'rally', producer: 'capital-town-center', to: 'wood' }]).warnings).toEqual([])
+        expect(run([{ action: 'rally', producer: 'capital-town-center', to: 'wood' }], { inputs: { nodeAmounts: INFINITE_NODES } }).warnings).toEqual([])
     })
 
     it('charges only the steps whose reason is a breakdown reason', () => {

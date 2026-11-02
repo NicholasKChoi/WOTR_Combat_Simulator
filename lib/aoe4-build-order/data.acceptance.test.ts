@@ -129,7 +129,7 @@ describe('rules files', () => {
         }
         walk(baseRules, 'base')
         walk(englishRules, 'english')
-        expect(count).toBeGreaterThanOrEqual(71)
+        expect(count).toBeGreaterThanOrEqual(77)
         expect(falseAt.sort()).toEqual(['base.gatherNodes.boar.capacity', 'base.gatherNodes.deer.capacity', 'base.gatherNodes.sheep.capacity'])
     })
 

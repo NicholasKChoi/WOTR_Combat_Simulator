@@ -115,10 +115,12 @@ interface Engine extends EngineState {
   // Sorted by time; ties keep schedule order.
   readonly events: ScheduledEvent[];
   readonly spawns: Map<string, { entry: SnapshotEntry; times: number[] }>;
-  // First step not yet started; every earlier step has started.
+  // First non-reaction step not yet started; every earlier non-reaction step has started.
   cursor: number;
-  // What the armed step waits to afford, when it waits on resources alone.
+  // What the armed cursor step waits to afford, when it waits on resources alone.
   reserve: Readonly<Resources> | undefined;
+  // What armed reactions wait to afford; a wake time only, never reserved.
+  reactionNeeds: Readonly<Resources>[];
   // Order payments and auto-houses short of resources at the latest instant.
   needs: Resources[];
   // baseIds under construction, explicit or auto.
@@ -202,7 +204,30 @@ export function triggerHolds(trigger: Trigger | undefined, state: EngineState): 
       return state.time >= trigger.seconds;
     case 'villagers':
       return aliveVillagers(state) >= trigger.count;
+    case 'depleted':
+      return isDepleted(state.stock, trigger.node);
+    case 'bank':
+      return state.resources[trigger.resource] + RESOURCE_TOLERANCE >= trigger.atLeast;
   }
+}
+
+// The next instant the trigger can start to hold on its own; null when only another event can make it hold.
+export function triggerWakeAt(trigger: Trigger | undefined, state: EngineState, income: Readonly<Resources>): number | null {
+  switch (trigger?.kind) {
+    case 'time':
+      return trigger.seconds;
+    case 'bank': {
+      const shortfall = trigger.atLeast - state.resources[trigger.resource];
+      const perSecond = income[trigger.resource];
+      return perSecond > 0 && shortfall > RESOURCE_TOLERANCE ? state.time + shortfall / perSecond : null;
+    }
+    default:
+      return null;
+  }
+}
+
+function isReaction(step: BuildStep): boolean {
+  return step.reaction === true;
 }
 
 function targetInstances(state: EngineState, baseId: string, instance: number | undefined): BuildingInstance[] {
@@ -407,28 +432,57 @@ const move: StepHandler<'move'> = (step, index, state) => {
 
 export const stepHandlers: { [A in BuildStep['action']]?: StepHandler<A> } = { produce, pause, rally, research: researchHandler, build, move };
 
+// Arms the step if its trigger holds, then tries to start it; null while it stays unarmed.
+function offerStep(engine: Engine, index: number): StepStart | null {
+  const step = engine.order.steps[index];
+  const timing = engine.steps[index];
+  if (timing.armedAt === null) {
+    if (!triggerHolds(step.trigger, engine)) {
+      return null;
+    }
+    timing.armedAt = engine.time;
+  }
+  const handler = stepHandlers[step.action] as StepHandler | undefined;
+  const outcome: StepStart = handler ? handler(step, index, engine) : { started: false, waitingOn: 'prerequisite' };
+  if (outcome.started === false) {
+    timing.waitingOn = outcome.waitingOn;
+    return outcome;
+  }
+  timing.waitingOn = null;
+  timing.startedAt = engine.time;
+  timing.waitSeconds = timing.startedAt - timing.armedAt;
+  return outcome;
+}
+
+function offerReactions(engine: Engine): void {
+  engine.reactionNeeds = [];
+  engine.order.steps.forEach((step, index) => {
+    if (!isReaction(step) || engine.steps[index].startedAt !== null) {
+      return;
+    }
+    const outcome = offerStep(engine, index);
+    if (outcome?.started === false && outcome.reserve) {
+      engine.reactionNeeds.push(outcome.reserve);
+    }
+  });
+}
+
 function offerSteps(engine: Engine): void {
   engine.reserve = undefined;
-  while (engine.cursor < engine.order.steps.length) {
-    const step = engine.order.steps[engine.cursor];
-    const timing = engine.steps[engine.cursor];
-    if (timing.armedAt === null) {
-      if (!triggerHolds(step.trigger, engine)) {
-        return;
-      }
-      timing.armedAt = engine.time;
+  offerReactions(engine);
+  const steps = engine.order.steps;
+  for (; engine.cursor < steps.length; engine.cursor += 1) {
+    if (isReaction(steps[engine.cursor])) {
+      continue;
     }
-    const handler = stepHandlers[step.action] as StepHandler | undefined;
-    const outcome: StepStart = handler ? handler(step, engine.cursor, engine) : { started: false, waitingOn: 'prerequisite' };
+    const outcome = offerStep(engine, engine.cursor);
+    if (outcome === null) {
+      return;
+    }
     if (outcome.started === false) {
-      timing.waitingOn = outcome.waitingOn;
       engine.reserve = outcome.reserve;
       return;
     }
-    timing.waitingOn = null;
-    timing.startedAt = engine.time;
-    timing.waitSeconds = timing.startedAt - timing.armedAt;
-    engine.cursor += 1;
   }
 }
 
@@ -659,11 +713,11 @@ function nextWake(engine: Engine, income: Resources, rateOf: RefRate, nextSample
   if (engine.events.length > 0) {
     candidates.push(engine.events[0].time);
   }
-  const trigger = engine.order.steps[engine.cursor]?.trigger;
-  if (trigger?.kind === 'time' && engine.steps[engine.cursor].armedAt === null) {
-    candidates.push(trigger.seconds);
+  const triggerWake = engine.steps[engine.cursor]?.armedAt === null ? triggerWakeAt(engine.order.steps[engine.cursor].trigger, engine, income) : null;
+  if (triggerWake !== null) {
+    candidates.push(triggerWake);
   }
-  const needs = engine.reserve ? [engine.reserve, ...engine.needs] : engine.needs;
+  const needs = [...(engine.reserve ? [engine.reserve] : []), ...engine.needs, ...engine.reactionNeeds];
   candidates.push(...needs.map((need) => affordableAt(engine, need, income)));
   return Math.min(...candidates.filter((time) => time > engine.time));
 }
@@ -740,6 +794,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     spawns: new Map(),
     cursor: 0,
     reserve: undefined,
+    reactionNeeds: [],
     needs: [],
     constructing: [],
     ages: [{ age: start.age.value, reachedAt: 0 }],
@@ -765,6 +820,11 @@ export function accrueWait(engine: Pick<Engine, 'steps'>, stepIndexes: readonly 
       timing.waitBreakdown[key] = (timing.waitBreakdown[key] ?? 0) + seconds;
     }
   }
+}
+
+// The armed cursor step and every armed reaction not yet started.
+function waitingSteps(engine: Engine): number[] {
+  return engine.steps.filter((timing) => timing.armedAt !== null && timing.startedAt === null).map((timing) => timing.step);
 }
 
 function stepStuckWarning(timing: StepTiming, engine: Engine): SimWarning {
@@ -834,15 +894,13 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     }
     const next = nextWake(engine, income, rateOf, times[sample]);
     creditIncome(engine, rateOf, next - engine.time);
-    if (engine.cursor < engine.steps.length && engine.steps[engine.cursor].armedAt !== null) {
-      accrueWait(engine, [engine.cursor], next - engine.time);
-    }
+    accrueWait(engine, waitingSteps(engine), next - engine.time);
     engine.time = next;
   }
   engine.steps.forEach((timing) => {
     timing.status = finalStatus(timing);
     if (timing.status === 'not-reached') {
-      timing.waitingOn = timing.step === engine.cursor ? 'trigger' : 'earlier-step';
+      timing.waitingOn = timing.step === engine.cursor || isReaction(order.steps[timing.step]) ? 'trigger' : 'earlier-step';
     }
   });
   const nodeResults = depletionResults(engine.stock);

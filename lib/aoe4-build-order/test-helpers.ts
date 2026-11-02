@@ -2,8 +2,8 @@ import type { CivRules } from './civ-rules'
 import { buildGameData, loadGameData } from './data'
 import type { BaseRules, CivData, GameData, Snapshot } from './data'
 import type { EffectState } from './effects'
-import { GATHER_NODES } from './model'
-import type { BuildOrder, BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult, Trigger, TripInputs } from './model'
+import { FINITE_GATHER_NODES, GATHER_NODES } from './model'
+import type { BuildOrder, BuildStart, BuildStep, FiniteGatherNodeId, GatherNodeId, SimInputs, SimulationResult, Trigger, TripInputs } from './model'
 import { simulateBuildOrder, stepHandlers } from './simulate'
 import type { StepHandler } from './simulate'
 import { resolveSimInputs } from './validate'
@@ -17,6 +17,9 @@ export interface Parts {
 }
 
 export const at = (seconds: number): Trigger => ({ kind: 'time', seconds })
+
+// Pins every shipped node amount to infinite.
+export const INFINITE_NODES = Object.fromEntries(FINITE_GATHER_NODES.map((node) => [node, null])) as Record<FiniteGatherNodeId, null>
 
 export function editGameData(edit: (parts: Parts) => void, from: GameData = ENGLISH): GameData {
     const entries = structuredClone([...from.byId.values()])
