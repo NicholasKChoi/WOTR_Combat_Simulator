@@ -78,9 +78,8 @@ with its reason.
   From 5:47 new villagers go to gold (the 5:30 rally waits behind the 5:15 farms), so the King's Palace's
   600 gold is paid without moving gatherers; once the palace starts they go to farms, and from 12:00 to wood. The King's Palace is rallied to wood.
   Three stables and two archery ranges; the second `produce longbowman` step comes after the second range
-  is built, because a `produce` step only orders the producers that exist when it starts. Three houses
-  are built before the King's Palace: auto-houses count the palace's supply as soon as it is under
-  construction, so without them population stalls at the cap until the palace completes. Auto-houses stay
+  is built, because a `produce` step only orders the producers that exist when it starts. Three explicit
+  houses are built before the King's Palace. Auto-houses stay
   off until the third of these (step 24) starts, so at default inputs, and at 1800 s and 3600 s, the run
   returns one `auto-houses-held` warning: production is held at the supply limit for 0:21 (21.2 s) from
   7:42 (461.8 s). Farms are added
@@ -92,7 +91,9 @@ with its reason.
   follow `produce knight`. Gold: 5 deposits (`gold` to `gold#5`) run out by 3600 s, at 15:32 (`gold`),
   24:37 (`gold#2`), 33:43 (`gold#3`), 42:48 (`gold#4`) and 51:54 (`gold#5`); each has a
   `whenever <ref> runs out move all <ref> to <next>` reaction at the end of the list, and `gold#5` moves to
-  `wood`. Omitted: none.
+  `wood`. The five gold reactions are followed by one for the starting sheep, which run out at 16:38
+  (997.9 s): `whenever sheep runs out move all sheep to farm` moves the sheep gatherers to the farms, so no
+  villager is idle through 1800 s. Omitted: none.
 
 ## Hand-entered values
 

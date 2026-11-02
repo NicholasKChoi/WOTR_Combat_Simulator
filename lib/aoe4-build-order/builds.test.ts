@@ -106,6 +106,20 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         }
     })
 
+    it.runIf(build.name.includes('King'))('leaves no villager idle through 1800 s and moves the sheep gatherers off at the sheep run-out', () => {
+        const result = simulateTo(1800)
+        expect(result.warnings.filter((w) => w.code === 'idle-arrival' || w.code === 'step-stuck')).toEqual([])
+        expect(result.steps.filter((s) => s.status === 'waiting')).toEqual([])
+        const depleted = result.warnings.filter((w) => w.code === 'node-depleted')
+        expect(depleted.map((w) => w.node)).toContain('sheep')
+        for (const warning of depleted) {
+            expect(warning.idleVillagers, warning.node).toBe(0)
+        }
+        const reactionIndex = build.steps.findIndex((step) => step.reaction && step.action === 'move' && step.from === 'sheep')
+        expect(reactionIndex).toBeGreaterThanOrEqual(0)
+        expect(result.steps[reactionIndex].startedAt).toBe(result.depletions.find((d) => d.node === 'sheep')?.depletedAt)
+    })
+
     it.runIf(build.name.includes('King'))('runs several gold deposits dry by 3600 s', () => {
         const dry = simulateTo(3600).depletions.filter((d) => nodeKindOf(d.node) === 'gold' && d.depletedAt !== null)
         expect(dry.length).toBeGreaterThan(1)

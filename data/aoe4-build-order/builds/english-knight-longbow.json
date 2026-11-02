@@ -434,6 +434,17 @@
       "count": "all",
       "from": "gold#5",
       "to": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "sheep"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "sheep",
+      "to": "farm"
     }
   ]
 }
