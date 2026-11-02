@@ -504,7 +504,9 @@
                       "armedAt": 0,
                       "startedAt": 0,
                       "completedAt": 40,
-                      "waitSeconds": 0
+                      "waitSeconds": 0,
+                      "waitingOn": null,
+                      "waitBreakdown": {}
                     },
                     {
                       "step": 1,
@@ -512,7 +514,9 @@
                       "armedAt": 30,
                       "startedAt": 30,
                       "completedAt": 30,
-                      "waitSeconds": 0
+                      "waitSeconds": 0,
+                      "waitingOn": null,
+                      "waitBreakdown": {}
                     }
                   ],
                   "ages": [
@@ -1817,7 +1821,7 @@
             "items": {
               "$ref": "#/components/schemas/SimWarning"
             },
-            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then step-stuck by step. node-depleted and idle-arrival come from run-outs (see nodeAmounts); nothing emits step-stuck yet."
+            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then step-stuck by step. Holds node-depleted and idle-arrival warnings when a finite node runs out (see nodeAmounts) and a step-stuck warning for each step still waiting at durationSeconds."
           },
           "markers": {
             "type": "array",
@@ -1876,7 +1880,9 @@
           "armedAt",
           "startedAt",
           "completedAt",
-          "waitSeconds"
+          "waitSeconds",
+          "waitingOn",
+          "waitBreakdown"
         ],
         "additionalProperties": false,
         "properties": {
@@ -1923,6 +1929,40 @@
             "type": "number",
             "minimum": 0,
             "description": "startedAt - armedAt once the step has started; 0 before it starts."
+          },
+          "waitingOn": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StepWait"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the step has not started: the reason of its last failed check while waiting, trigger or earlier-step when not-reached, null once started."
+          },
+          "waitBreakdown": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "resources": {
+                "type": "number",
+                "minimum": 0
+              },
+              "villagers": {
+                "type": "number",
+                "minimum": 0
+              },
+              "population": {
+                "type": "number",
+                "minimum": 0
+              },
+              "prerequisite": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "description": "Seconds from armedAt spent on each reason; a reason with 0 seconds is absent. Sums to waitSeconds once started, and to the time from armedAt to durationSeconds while waiting."
           }
         }
       },

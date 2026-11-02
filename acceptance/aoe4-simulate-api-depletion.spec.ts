@@ -8,10 +8,23 @@ const WARM_UP_TIMEOUT_MS = 60_000
 test.describe.configure({ timeout: 60_000 })
 
 const START_LINE = 'start 6 sheep -> sheep'
-const ORDERS: [string, unknown][] = [
-  ['the start line alone', { text: START_LINE }],
-  ['villagers from the town center', { text: [START_LINE, 'produce villager from capital-town-center x3'].join('\n') }],
-  ['a research step', { text: [START_LINE, 'produce villager from capital-town-center x3', 'research textiles'].join('\n') }],
+const ORDERS: [string, unknown, unknown[]][] = [
+  ['the start line alone', { text: START_LINE }, []],
+  ['villagers from the town center', { text: [START_LINE, 'produce villager from capital-town-center x3'].join('\n') }, []],
+  [
+    'a research step above the age',
+    { text: [START_LINE, 'produce villager from capital-town-center x3', 'research textiles'].join('\n') },
+    [
+      {
+        code: 'step-stuck',
+        severity: 'warning',
+        message: 'step 2 (research) was still waiting on prerequisite at 20:00, from 0:00.',
+        step: 1,
+        waitingOn: 'prerequisite',
+        at: 0,
+      },
+    ],
+  ],
   [
     'a JSON order with a custom duration',
     {
@@ -23,6 +36,7 @@ const ORDERS: [string, unknown][] = [
       },
       inputs: { durationSeconds: 300 },
     },
+    [],
   ],
 ]
 
@@ -31,13 +45,13 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.describe('depletions and warnings with every node infinite', () => {
-  for (const [name, body] of ORDERS) {
-    test(`${name} returns one null depletion row per finite node and no warnings`, async ({ request }) => {
+  for (const [name, body, expected] of ORDERS) {
+    test(`${name} returns one null depletion row per finite node and ${expected.length === 0 ? 'no warnings' : 'only its step-stuck warning'}`, async ({ request }) => {
       const response = await postSimulate(request, body)
       expect(response.status(), await response.text()).toBe(200)
       const result = await response.json()
       expect(result.depletions).toEqual(FINITE_GATHER_NODES.map((node) => ({ node, amount: null, depletedAt: null })))
-      expect(result.warnings).toEqual([])
+      expect(result.warnings).toEqual(expected)
     })
   }
 

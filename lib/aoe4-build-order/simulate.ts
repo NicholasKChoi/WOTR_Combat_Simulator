@@ -2,18 +2,19 @@ import { civRules } from './civ-rules';
 import type { CivRuleContext, CivRules } from './civ-rules';
 import { constructionSeconds } from './construction';
 import type { GameData, SnapshotEntry } from './data';
-import { createNodeStock, depletionResults, drawDown, isDepleted, nextRunOut, recordIdleArrival, recordRunOut, runRefs } from './depletion';
+import { createNodeStock, depletionResults, drawDown, isDepleted, nextRunOut, recordIdleArrival, recordRunOut, runRefs, sortWarnings } from './depletion';
 import type { NodeStock } from './depletion';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import type { Resources } from './engine-common';
 import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, costOf, markCompleted, payCost, villagerWalkSeconds } from './engine-common';
+import { formatMinSec } from './format-time';
 import { effectiveGatherRate } from './gather';
 import { planAutoHouse } from './houses';
 import type { HouseDemand } from './houses';
 import { ageMarker, compareMarkers } from './markers';
 import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
-import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SpendCategory, StepTiming, Trigger, UnitSeries } from './model';
+import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 
 // Output resolution, not a game number.
@@ -92,7 +93,9 @@ export interface EngineState extends EffectState {
   schedule(time: number, apply: (state: EngineState) => void): void;
 }
 
-export type StepStart = { started: true } | { started: false; reserve?: Readonly<Record<ResourceKind, number>> };
+export type StepStart =
+  | { started: true }
+  | { started: false; waitingOn: StepWait; reserve?: Readonly<Record<ResourceKind, number>> };
 
 export type StepHandler<A extends BuildStep['action'] = BuildStep['action']> = (
   step: Extract<BuildStep, { action: A }>,
@@ -282,12 +285,15 @@ function payUnit(state: EngineState, instance: BuildingInstance, entry: Snapshot
 const produce: StepHandler<'produce'> = (step, index, state) => {
   const targets = targetInstances(state, step.producer, step.instance);
   const entry = resolveUnitEntry(step.unit, state);
-  if (targets.length === 0 || !entry || entry.age > state.age || state.population + targets.length * entry.costs.popcap > state.supply) {
-    return { started: false };
+  if (targets.length === 0 || !entry || entry.age > state.age) {
+    return { started: false, waitingOn: 'prerequisite' };
+  }
+  if (state.population + targets.length * entry.costs.popcap > state.supply) {
+    return { started: false, waitingOn: 'population' };
   }
   const total = costOf(entry, targets.length);
   if (!canAfford(state.resources, total)) {
-    return { started: false, reserve: total };
+    return { started: false, waitingOn: 'resources', reserve: total };
   }
   const replaced = targets.map((target) => target.order?.step ?? null);
   for (const target of targets) {
@@ -366,12 +372,15 @@ function completeConstruction(state: EngineState, job: Construction): void {
 const build: StepHandler<'build'> = (step, index, state) => {
   const entry = state.data.byBaseId.get(step.building)?.[0];
   const builders = step.builders ?? 1;
-  if (!entry || entry.age > state.age || availableAt(state, step.from) < builders) {
-    return { started: false };
+  if (!entry || entry.age > state.age) {
+    return { started: false, waitingOn: 'prerequisite' };
+  }
+  if (availableAt(state, step.from) < builders) {
+    return { started: false, waitingOn: 'villagers' };
   }
   const cost = costOf(entry, 1);
   if (!canAfford(state.resources, cost)) {
-    return { started: false, reserve: cost };
+    return { started: false, waitingOn: 'resources', reserve: cost };
   }
   startConstruction(state, { entry, builders, from: step.from, then: step.then ?? step.from, walkSeconds: step.walkSeconds, step: index });
   return { started: true };
@@ -381,7 +390,7 @@ const move: StepHandler<'move'> = (step, index, state) => {
   const available = availableAt(state, step.from);
   const count = step.count === 'all' ? available : step.count;
   if (available < count) {
-    return { started: false };
+    return { started: false, waitingOn: 'villagers' };
   }
   if (count === 0) {
     markCompleted(state, index);
@@ -410,11 +419,13 @@ function offerSteps(engine: Engine): void {
       timing.armedAt = engine.time;
     }
     const handler = stepHandlers[step.action] as StepHandler | undefined;
-    const outcome: StepStart = handler ? handler(step, engine.cursor, engine) : { started: false };
-    if ('reserve' in outcome || outcome.started !== true) {
-      engine.reserve = 'reserve' in outcome ? outcome.reserve : undefined;
+    const outcome: StepStart = handler ? handler(step, engine.cursor, engine) : { started: false, waitingOn: 'prerequisite' };
+    if (outcome.started === false) {
+      timing.waitingOn = outcome.waitingOn;
+      engine.reserve = outcome.reserve;
       return;
     }
+    timing.waitingOn = null;
     timing.startedAt = engine.time;
     timing.waitSeconds = timing.startedAt - timing.armedAt;
     engine.cursor += 1;
@@ -714,7 +725,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     walking: 0,
     population: 0,
     supply: 0,
-    steps: order.steps.map((_, step) => ({ step, status: 'not-reached', armedAt: null, startedAt: null, completedAt: null, waitSeconds: 0 })),
+    steps: order.steps.map((_, step) => ({ step, status: 'not-reached', armedAt: null, startedAt: null, completedAt: null, waitSeconds: 0, waitingOn: null, waitBreakdown: {} })),
     spent: { villagers: 0, military: 0, buildings: 0, research: 0 },
     spawnedPopulation: 0,
     populationCapReachedAt: null,
@@ -741,6 +752,32 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
   noteCapReached(engine);
   start.buildings.value.forEach((baseId) => addBuildingInstance(engine, baseId));
   return engine;
+}
+
+const BREAKDOWN_REASONS: readonly StepWait[] = ['resources', 'villagers', 'population', 'prerequisite'];
+
+export function accrueWait(engine: Pick<Engine, 'steps'>, stepIndexes: readonly number[], seconds: number): void {
+  for (const index of stepIndexes) {
+    const timing = engine.steps[index];
+    const reason = timing.waitingOn;
+    if (reason !== null && BREAKDOWN_REASONS.includes(reason) && seconds > 0) {
+      const key = reason as keyof StepTiming['waitBreakdown'];
+      timing.waitBreakdown[key] = (timing.waitBreakdown[key] ?? 0) + seconds;
+    }
+  }
+}
+
+function stepStuckWarning(timing: StepTiming, engine: Engine): SimWarning {
+  const { waitingOn, armedAt } = timing;
+  const action = engine.order.steps[timing.step].action;
+  return {
+    code: 'step-stuck',
+    severity: 'warning',
+    message: `step ${timing.step + 1} (${action}) was still waiting on ${waitingOn} at ${formatMinSec(engine.inputs.durationSeconds)}, from ${formatMinSec(armedAt)}.`,
+    step: timing.step,
+    waitingOn,
+    at: armedAt,
+  };
 }
 
 function finalStatus(timing: StepTiming): StepTiming['status'] {
@@ -797,12 +834,21 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     }
     const next = nextWake(engine, income, rateOf, times[sample]);
     creditIncome(engine, rateOf, next - engine.time);
+    if (engine.cursor < engine.steps.length && engine.steps[engine.cursor].armedAt !== null) {
+      accrueWait(engine, [engine.cursor], next - engine.time);
+    }
     engine.time = next;
   }
   engine.steps.forEach((timing) => {
     timing.status = finalStatus(timing);
+    if (timing.status === 'not-reached') {
+      timing.waitingOn = timing.step === engine.cursor ? 'trigger' : 'earlier-step';
+    }
   });
-  const { depletions, warnings } = depletionResults(engine.stock);
+  const nodeResults = depletionResults(engine.stock);
+  const stuck = engine.steps.filter((timing) => timing.status === 'waiting').map((timing) => stepStuckWarning(timing, engine));
+  const warnings = sortWarnings([...nodeResults.warnings, ...stuck]);
+  const { depletions } = nodeResults;
   return {
     civ: order.civ,
     durationSeconds: inputs.durationSeconds,

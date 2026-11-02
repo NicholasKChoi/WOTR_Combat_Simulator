@@ -189,6 +189,13 @@ describe('an age 2 building waits for the landmark', () => {
         expect(floatAt(result, 'wood', 120)).toBe(350)
     })
 
+    it('reports the wait as prerequisite until the age-up', () => {
+        const result = run([{ action: 'build', building: 'abbey-of-kings', builders: 3, from: 'sheep' }, stable], { game, start, inputs: noHouses })
+        expect(result.steps[1].waitingOn).toBeNull()
+        expect(Object.keys(result.steps[1].waitBreakdown)).toEqual(['prerequisite'])
+        expect(result.steps[1].waitBreakdown.prerequisite).toBeCloseTo(119, 9)
+    })
+
     it('never starts or pays it at age 1', () => {
         const result = run([stable], { game, start, inputs: noHouses })
         expect(result.steps[0]).toMatchObject({ status: 'waiting', startedAt: null })

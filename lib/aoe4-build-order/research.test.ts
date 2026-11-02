@@ -226,6 +226,11 @@ describe('resources never go negative and waits are reported', () => {
             expect(result.steps[0].waitSeconds).toBeCloseTo(result.steps[0].startedAt, 9)
         })
 
+        it('reports every waiting second as resources', () => {
+            expect(Object.keys(result.steps[0].waitBreakdown)).toEqual(['resources'])
+            expect(result.steps[0].waitBreakdown.resources).toBeCloseTo(result.steps[0].waitSeconds, 9)
+        })
+
         it('keeps every floating value at or above zero', () => {
             for (const values of Object.values(result.floating)) {
                 values.forEach((v) => expect(v).toBeGreaterThanOrEqual(0))
@@ -261,13 +266,14 @@ describe('resources never go negative and waits are reported', () => {
                 result = run([{ action: 'research', tech: 'wheelbarrow' }], { game })
             },
         )
-        expect(outcomes[0]).toEqual({ started: false, reserve: { food, wood, gold, stone } })
+        expect(outcomes[0]).toEqual({ started: false, waitingOn: 'resources', reserve: { food, wood, gold, stone } })
         expect(result.steps[0].status).toBe('waiting')
     })
 
     function waitsWithoutReserve(step: BuildStep, game: GameData) {
         const result = run([step, rallyStep], { game })
         expect(result.steps.map((s) => s.status)).toEqual(['waiting', 'not-reached'])
+        expect(result.steps.map((s) => s.waitingOn)).toEqual(['prerequisite', 'earlier-step'])
         expect(tierCountAt(result, 'villager-1', 20)).toBe(1)
         return result
     }
@@ -434,7 +440,7 @@ describe('multi-tier research', () => {
         it('waits with no reserve while every entry is above the age, then pays the entry of the age reached', () => {
             const { result, outcomes, state } = recorded([abbey, { action: 'research', tech: 'horticulture' }])
             const reachedAt = result.ages[1].reachedAt
-            expect(outcomes[0]).toEqual({ started: false })
+            expect(outcomes[0]).toEqual({ started: false, waitingOn: 'prerequisite' })
             expect(outcomes.filter((o) => o.started === false).every((o) => !('reserve' in o))).toBe(true)
             expect(result.steps[1]).toMatchObject({ armedAt: 0, startedAt: reachedAt, status: 'completed' })
             expect(paid(result)).toEqual({ wood: 50, gold: 100 })

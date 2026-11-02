@@ -89,7 +89,7 @@ describe('reserve returned by a registered handler', () => {
     it('holds a villager payment until food stays at or above the reserve afterwards', () => {
         withHandler(
             'build',
-            () => ({ started: false, reserve: { ...NO_RESERVE, food: 200 } }),
+            () => ({ started: false, waitingOn: 'resources', reserve: { ...NO_RESERVE, food: 200 } }),
             () => {
                 const result = run([{ action: 'build', building: 'house', from: 'sheep' }])
                 const payAt = 50 / (6 * sheepRate)
@@ -104,7 +104,7 @@ describe('reserve returned by a registered handler', () => {
     it('reserves nothing when the handler reports no reserve', () => {
         withHandler(
             'build',
-            () => ({ started: false }),
+            () => ({ started: false, waitingOn: 'prerequisite' }),
             () => {
                 const result = run([{ action: 'build', building: 'house', from: 'sheep' }])
                 expect(countAt(result, 'villager', 20)).toBe(1)
