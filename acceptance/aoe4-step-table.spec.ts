@@ -510,4 +510,63 @@ test.describe("AoE4 step table", () => {
       expect(new Set(tops).size).toBeLessThan(tops.length);
     }).toPass();
   });
+
+  test("every action hides exactly its optional fields until step-more opens them", async ({
+    page,
+  }) => {
+    await openWith(
+      page,
+      FORMS.split("\n")
+        .slice(2)
+        .join("\n")
+        .replace(" at blacksmith", ""),
+    );
+    // Rows follow FORMS after its first two lines: pause, build, research, move, rally.
+    const optionalByRow: Record<number, string[]> = {
+      0: ["instance"],
+      1: ["builders", "then", "walkSeconds"],
+      2: ["at"],
+      3: ["walkSeconds"],
+      4: ["instance", "walkSeconds"],
+    };
+    for (const [i, names] of Object.entries(optionalByRow)) {
+      const idx = Number(i);
+      const more = row(page, idx).getByTestId("step-more");
+      await expect(more).toHaveAttribute("aria-expanded", "false");
+      for (const n of names) await expect(field(page, idx, n)).toHaveCount(0);
+      await more.click();
+      for (const n of names) await expect(field(page, idx, n)).toBeVisible();
+    }
+  });
+
+  test("a start pair's node can be changed and the other pair's node is then offered", async ({
+    page,
+  }) => {
+    await openWith(
+      page,
+      "start 3 sheep 1 wood\nproduce villager from capital-town-center",
+    );
+    const start = page.getByTestId("step-start-row");
+    await start.getByTestId("start-villagers-node").nth(1).selectOption("berry");
+    await expect(textarea(page)).toHaveValue(
+      "start 3 sheep 1 berry\nproduce villager from capital-town-center",
+    );
+    const offered = await start
+      .getByTestId("start-villagers-node")
+      .nth(0)
+      .locator("option")
+      .evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value));
+    expect(offered).toContain("sheep");
+    expect(offered).not.toContain("berry");
+  });
+
+  test("the step row count matches the steps with and without a start line", async ({
+    page,
+  }) => {
+    await openWith(page, "produce villager from capital-town-center\n@1:00 build house from wood");
+    await expect(page.getByTestId("step-row")).toHaveCount(2);
+    await page.getByTestId("start-customize").click();
+    await expect(page.getByTestId("step-start-row")).toHaveCount(1);
+    await expect(page.getByTestId("step-row")).toHaveCount(2);
+  });
 });
