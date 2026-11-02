@@ -21,13 +21,13 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-052 | Stop the chart Y-axis label overlapping 4-digit ticks | M3 | M3.8 | | low | | | sgs-052-aoe4-chart-yaxis-overlap | 0dd2411 | integrated | | 45 | tickets/SGS-052-aoe4-chart-yaxis-overlap.md |
 | SGS-045 | Show warnings and collapsible info messages on the page | M3 | M3.12,M3.2 | | standard | SGS-041 | | | | spec_ready | | | tickets/SGS-045-aoe4-severity-message-lists.md |
 | SGS-043 | Add spend and spawned population series | M3 | M3.6 | | standard | SGS-035,SGS-037 | | | | spec_ready | | | tickets/SGS-043-aoe4-spend-population-series.md |
-| SGS-036 | Cap API issues and harden paste and validate input | M3 | M3.8 | | high | | | sgs-036-aoe4-request-hardening | b83701a | in_review | 1 | 43 | tickets/SGS-036-aoe4-request-hardening.md |
+| SGS-036 | Cap API issues and harden paste and validate input | M3 | M3.8 | | high | | | sgs-036-aoe4-request-hardening | b83701a | integrated | 1 | 43 | tickets/SGS-036-aoe4-request-hardening.md |
 | SGS-053 | Fix M2 doc wording in the AoE4 docs and design | M3 | M3.8 | | low | | | sgs-053-aoe4-m2-doc-wording | 9998b4f | integrated | | 42 | tickets/SGS-053-aoe4-m2-doc-wording.md |
 | SGS-041 | Research multi-tier techs, id-named notes and note severity | M3 | M3.8,M3.12 | | high | SGS-037 | | | | spec_ready | | | tickets/SGS-041-aoe4-research-multitier-note-severity.md |
 | SGS-044 | Add chart marker data to the engine result | M3 | M3.10 | | standard | SGS-041 | | | | spec_ready | | | tickets/SGS-044-aoe4-chart-marker-data.md |
 | SGS-038 | Deplete resource nodes in the engine with deposits and move all | M3 | M3.1,M3.2,M3.11,M3.8 | | high | SGS-037,SGS-035 | | | | spec_ready | | | tickets/SGS-038-aoe4-depletion-engine.md |
 | SGS-042 | Report why steps wait and warn on stuck steps | M3 | M3.5,M3.12 | | standard | SGS-037,SGS-038,SGS-041 | | | | spec_ready | | | tickets/SGS-042-aoe4-step-wait-step-stuck.md |
-| SGS-037 | Add node refs, warnings contract and the depletion module | M3 | M3.1,M3.11,M3.12 | | high | SGS-035 | | | | spec_ready | | | tickets/SGS-037-aoe4-node-refs-warnings-depletion-module.md |
+| SGS-037 | Add node refs, warnings contract and the depletion module | M3 | M3.1,M3.11,M3.12 | | high | SGS-035 | | sgs-037-aoe4-node-refs-warnings-depletion-module | 279bcf9 | needs_review | | | tickets/SGS-037-aoe4-node-refs-warnings-depletion-module.md |
 | SGS-035 | Share engine code, test helpers and add a duplication check | M3 | M3.13 | | high | | | sgs-035-aoe4-engine-common-dup-check | b52e9f5 | integrated | 1 | 44 | tickets/SGS-035-aoe4-engine-common-dup-check.md |
 | SGS-048 | Pin a run and compare key numbers and chart overlays | M3 | M3.6 | | standard | SGS-043,SGS-052 | | | | spec_ready | | | tickets/SGS-048-aoe4-pin-compare.md |
 | SGS-049 | Draw age-up and research markers on the charts | M3 | M3.10 | | standard | SGS-044,SGS-052,SGS-048 | | | | spec_ready | | | tickets/SGS-049-aoe4-chart-markers-ui.md |

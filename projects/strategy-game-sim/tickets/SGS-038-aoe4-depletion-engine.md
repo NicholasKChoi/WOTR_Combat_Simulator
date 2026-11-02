@@ -68,6 +68,9 @@ Names below follow `design/M3.md` and SGS-037/SGS-035. Line numbers refer to `ma
 
 **Tests** (use `test-helpers.ts`; drive depletion with `nodeAmounts` and `editGameData`; no new local `run`/`inputsFor`): see criteria. New files `simulate-depletion.test.ts`, additions to `validate.test.ts`.
 
+**Tests that must change**
+- `acceptance/aoe4-simulate-api-contract.spec.ts`: the `simInputOverrides: Record<keyof SimInputOverrides, true>` key literal gains `nodeAmounts: true` (tsc fails otherwise; its "keys match the schema properties" test then checks it against the new `SimInputOverrides.nodeAmounts` property). This ticket adds, removes and renames no `model.ts` export, so the `model.ts`-exports test in `lib/aoe4-build-order/data.acceptance.test.ts` stays as SGS-037 leaves it.
+
 **Out of scope:** `Trigger` kinds `depleted`/`bank` and `reaction` (SGS-039); `waitingOn`/`waitBreakdown`/`step-stuck` (SGS-042); paste grammar for `gold#2`, `move all` (SGS-040); `base.json` `amount` values and ENG 1TC reactions (SGS-039); severity lists on the page (SGS-045); `trips`/`houseBuilderSource` keyed by deposit; automatic fallback node for idle villagers; `spent` and population series (SGS-043); `markers`.
 
 ## Diagrams

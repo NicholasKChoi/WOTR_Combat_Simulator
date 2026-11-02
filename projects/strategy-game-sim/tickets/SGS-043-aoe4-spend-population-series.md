@@ -73,6 +73,11 @@ totals `EngineState.spent: Record<SpendCategory, number>` accumulated inside `pa
 5. (respec 2) `components/apps/aoe4-build-order/result-series.test.ts`: the hand-made `SimulationResult` literal
    (line ~17) gains `spent` (four series of `times.length`), `spawnedPopulation` and `populationCapReachedAt: null`.
    No expected value in that file changes.
+   (respec 3) `acceptance/aoe4-simulate-api-edges.spec.ts`, "result shape" > "a villager-only order returns every
+   result field, aligned to the times axis" (the `Object.keys(body).sort()` assertion, ~lines 47-49 on main): the
+   pinned response key list gains `spent`, `spawnedPopulation` and `populationCapReachedAt`; no other change. Edit
+   relative to the base (SGS-037 adds `depletions` and `warnings`, SGS-044 adds `markers`); do not rewrite entries
+   other tickets added.
 6. (respec 2) Unit tests: a new `lib/aoe4-build-order/simulate-series.test.ts` holds the `spent` and
    `spawnedPopulation` / `populationCapReachedAt` criteria below, using `test-helpers.ts` (`run`, `editGameData`,
    `buildOrder`, `inputsFor`, `sampleIndex`) and defining none of its exports locally (the jscpd check stays at zero
@@ -128,8 +133,10 @@ existing sampling loop and one counter increment at the existing spawn point; no
   finds it (0 matches today).
 - [ ] (respec 2) No expected value in any existing test changes: the `floating`, `gatherRates`, `steps`,
   `unitsProduced`, `depletions` and `warnings` outputs are unchanged for the shipped English build. The only edits to
-  existing test files are the added fields in the `result-series.test.ts` literal and the contract spec additions in
-  Scope 4. `npm test`, `npx tsc --noEmit` and `npm run lint:dup` pass.
+  existing test files are the added fields in the `result-series.test.ts` literal, the contract spec additions in
+  Scope 4 and (respec 3) the three keys added to the `aoe4-simulate-api-edges.spec.ts` pinned key list (Scope 5), which
+  is exactly the base's list plus those three. `npm test`, `npx tsc --noEmit`, `npm run lint:dup` and
+  `npm run acceptance -- aoe4-simulate-api-edges` pass.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
@@ -147,3 +154,9 @@ None.
 - Underspecified: Risk tier (criticalPaths), the 200 example's exact-equality test, merge-order-dependent required count, unlisted test files, and the missing-start-unit seed case.
 - Changed: Risk high; depends on SGS-037; example copied from a real run; required-list check is a jq set difference against base; Scope 4-6 name the contract spec, `result-series.test.ts` and `simulate-series.test.ts`; missing start-unit baseId throws; "no expected value changes" criterion.
 - Branch work: none yet; engine scope 1-2 stands.
+
+## Re-spec 2026-11-01 (3)
+
+- Underspecified: `acceptance/aoe4-simulate-api-edges.spec.ts` pins the exact response key list; the three new top-level fields break it and it was not an allowed edit.
+- Changed: Scope 5 adds the key-list edit (relative to the base); the "only edits to existing test files" criterion allows it and runs that spec.
+- Branch work: none yet; everything else stands.

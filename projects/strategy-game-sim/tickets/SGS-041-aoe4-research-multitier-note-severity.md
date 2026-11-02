@@ -40,6 +40,9 @@ All names come from design/M3.md.
    - Notes name `baseId` and have `severity: 'info'`; no note has `severity: 'error'`.
    - Update `research.test.ts` (~lines 400-402), which asserts the display names `'Bloomery'` and `'Admiralty'` in note messages, to the `baseId` wording (`bloomery`, `admiralty`).
 
+**Tests that must change**
+- `acceptance/aoe4-simulate-api-contract.spec.ts`: the `buildOrderNote: Record<keyof BuildOrderNote, true>` key literal gains `severity: true` (tsc fails otherwise; its "keys match the schema properties" test then checks it against the new `BuildOrderNote.severity` property). This ticket adds, removes and renames no `model.ts` export (`Severity` is SGS-037's), so the `model.ts`-exports test in `lib/aoe4-build-order/data.acceptance.test.ts` stays as SGS-037 leaves it.
+
 **Out of scope:** `waitingOn`/`step-stuck` (SGS-042); the page notes list and collapse (SGS-045); chart markers (SGS-044, which uses `researchEntry`); the validator's repeat-research rule (unchanged); parse-text and the paste grammar; a per-entry or per-age note rule for multi-tier techs (design fixes the lowest-age entry).
 
 ## Diagrams
