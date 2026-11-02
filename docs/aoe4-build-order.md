@@ -736,6 +736,14 @@ Those of severity `warning` appear in a warnings list. Those of severity `info` 
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
 message shows its `message` text only. With no message of a severity there is no list for it.
 
+A step timeline sits above the charts and below the message lists: one row per `steps` entry in step order, with
+the step's text, `startedAt` and `completedAt` as `m:ss` (an en dash when null), `waitSeconds` as `m:ss`, and the
+non-zero `waitBreakdown` reasons as `<reason> <m:ss>` in the order resources, villagers, population, prerequisite.
+A `waiting` or `not-reached` row is flagged and also shows its `waitingOn`. A reaction step's row is marked. The
+step text is the pasted text as it was when Run was clicked, so editing the textarea afterwards does not change
+the labels until the next run. A result with empty `steps` (a `start`-only paste) shows no timeline, and a 400
+shows none.
+
 Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown) keeps the shown
 result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is pinned) drops it. The pin
 survives later runs, text and build edits, and failed runs (a failed run clears the shown result but not the

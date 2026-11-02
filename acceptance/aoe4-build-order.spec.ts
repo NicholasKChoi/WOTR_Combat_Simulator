@@ -528,4 +528,76 @@ test.describe('AoE4 build order page', () => {
       }
     })
   })
+
+  test.describe('step timeline', () => {
+    const WAITING_PASTE = ['start -> sheep', 'build kings-palace from wood'].join('\n')
+    const rows = (page: Page) => page.getByTestId('step-timeline-row')
+
+    test('lists one row per step with the response status, flagging the unreached ENG 1TC reaction', async ({ page }) => {
+      await openPage(page)
+      const result = (await (await runSimulation(page)).json()) as SimulationResult
+      await expect(page.getByTestId('step-timeline')).toBeVisible()
+      await expect(rows(page)).toHaveCount(result.steps.length)
+      for (const timing of result.steps) {
+        const row = rows(page).nth(timing.step)
+        await expect(row).toHaveAttribute('data-step', String(timing.step))
+        await expect(row).toHaveAttribute('data-status', timing.status)
+      }
+      await expect(rows(page).first()).toContainText('produce villager')
+      await expect(page.locator('[data-testid="step-timeline-row"][data-reaction="true"]')).toHaveCount(1)
+      const reaction = page.locator('[data-testid="step-timeline-row"][data-reaction="true"]')
+      await expect(reaction).toContainText('whenever')
+      await expect(reaction).toHaveAttribute('data-status', 'not-reached')
+      await expect(reaction).toHaveAttribute('data-flagged', 'true')
+      await expect(page.locator('[data-testid="step-timeline-row"][data-status="completed"][data-flagged]')).toHaveCount(0)
+    })
+
+    test('flags a step that cannot start with the response waitingOn', async ({ page }) => {
+      await openPage(page)
+      await page.getByTestId('build-order-text').fill(WAITING_PASTE)
+      const result = (await (await runSimulation(page)).json()) as SimulationResult
+      const timing = result.steps[0]
+      expect(timing.status).toBe('waiting')
+      expect(timing.waitingOn).not.toBeNull()
+      const row = rows(page).first()
+      await expect(row).toHaveAttribute('data-status', 'waiting')
+      await expect(row).toHaveAttribute('data-flagged', 'true')
+      await expect(row).toContainText(timing.waitingOn as string)
+    })
+
+    test('editing the text after a run keeps the labels until the next run', async ({ page }) => {
+      await openPage(page)
+      await runSimulation(page)
+      const label = rows(page).first().locator('td').first()
+      const before = await label.innerText()
+      await page.getByTestId('build-order-text').fill(WAITING_PASTE)
+      await expect(label).toHaveText(before)
+      await runSimulation(page)
+      await expect(rows(page).first()).toContainText('kings-palace')
+    })
+
+    test('a 400 run and a start-only run show no timeline', async ({ page }) => {
+      await openPage(page)
+      await runSimulation(page)
+      await expect(page.getByTestId('step-timeline')).toBeVisible()
+      await page.getByTestId('build-order-text').fill(INVALID_PASTE)
+      expect((await runSimulation(page)).status()).toBe(400)
+      await expect(page.getByTestId('simulation-error')).toBeVisible()
+      await expect(page.getByTestId('step-timeline')).toHaveCount(0)
+
+      await page.getByTestId('build-order-text').fill('start -> sheep')
+      expect((await runSimulation(page)).status()).toBe(200)
+      await expect(page.getByTestId('step-timeline')).toHaveCount(0)
+    })
+
+    test('fits the table inside the page at 1280 px', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      await openPage(page)
+      await runSimulation(page)
+      const table = await page.getByTestId('step-timeline').boundingBox()
+      expect(table).not.toBeNull()
+      expect((table as { x: number; width: number }).x + (table as { width: number }).width).toBeLessThanOrEqual(1280)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    })
+  })
 })
