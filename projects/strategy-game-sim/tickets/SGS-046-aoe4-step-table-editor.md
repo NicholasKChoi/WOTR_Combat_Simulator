@@ -117,6 +117,6 @@ Findings:
 - Non-blocking, fix because cheap: `step-table-model.ts:113` a number draft of 22 or more digits becomes a number at or above 1e21, which prints as `x1e+21` and does not parse; reject values that fail `Number.isSafeInteger`.
 
 Required fixes:
-- [ ] (rework 1) Drop the empty option from the `rally` action's `to` select. Only `produce.rally`, `build.then` and `research.at` offer an empty choice. Add a model or option-level test that fails if `rally.to` offers an empty choice.
-- [ ] (rework 1) Add the `rally` assertion to that test (or rename it so the name matches what it checks).
-- [ ] (rework 1) Reject number drafts that are not safe integers, with a test.
+- [x] (rework 1) Drop the empty option from the `rally` action's `to` select. Only `produce.rally`, `build.then` and `research.at` offer an empty choice. Add a model or option-level test that fails if `rally.to` offers an empty choice.
+- [x] (rework 1) Add the `rally` assertion to that test (or rename it so the name matches what it checks).
+- [x] (rework 1) Reject number drafts that are not safe integers, with a test.
