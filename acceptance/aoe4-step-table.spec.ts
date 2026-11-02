@@ -13,20 +13,20 @@ const textarea = (page: Page) => page.getByTestId("build-order-text");
 async function openWith(page: Page, text: string) {
   await openPage(page);
   await textarea(page).fill(text);
-  await page.getByTestId("editor-view-table").click();
+  await showView(page, "table");
 }
 
 // The textarea only exists in the text view: read it there and come back to the table.
 async function expectText(page: Page, expected: string | RegExp) {
   await showView(page, "text");
   await expect(textarea(page)).toHaveValue(expected);
-  await page.getByTestId("editor-view-table").click();
+  await showView(page, "table");
 }
 
 async function textValue(page: Page) {
   await showView(page, "text");
   const value = await textarea(page).inputValue();
-  await page.getByTestId("editor-view-table").click();
+  await showView(page, "table");
   return value;
 }
 
@@ -66,19 +66,19 @@ test.describe("AoE4 step table", () => {
     );
     await page.getByTestId("step-add").click();
     await expect(page.getByTestId("step-row")).toHaveCount(3);
-    await expectText(page, 
+    await expectText(page,
       "start -> sheep\nproduce villager from capital-town-center\n@1:00 build house from wood\nproduce villager from capital-town-center",
     );
     await field(page, 2, "unit").selectOption("scout");
-    await expectText(page, 
+    await expectText(page,
       /\nproduce scout from capital-town-center$/,
     );
     await row(page, 2).getByTestId("step-move-up").click();
-    await expectText(page, 
+    await expectText(page,
       "start -> sheep\nproduce villager from capital-town-center\nproduce scout from capital-town-center\n@1:00 build house from wood",
     );
     await row(page, 1).getByTestId("step-delete").click();
-    await expectText(page, 
+    await expectText(page,
       "start -> sheep\nproduce villager from capital-town-center\n@1:00 build house from wood",
     );
   });
@@ -89,7 +89,7 @@ test.describe("AoE4 step table", () => {
     await openPage(page);
     const typed = "start -> sheep\n\n# keep\n@1:30 build house from wood";
     await textarea(page).fill(typed);
-    await page.getByTestId("editor-view-table").click();
+    await showView(page, "table");
     await expect(page.getByTestId("step-row")).toHaveCount(1);
     await expect(row(page, 0).getByTestId("step-trigger-kind")).toHaveValue(
       "time",
@@ -120,7 +120,7 @@ test.describe("AoE4 step table", () => {
     await expect(field(page, 3, "atLeast")).toHaveValue("400");
     await expect(field(page, 1, "trigger-count")).toHaveValue("8");
     await field(page, 4, "reaction").uncheck();
-    await expectText(page, 
+    await expectText(page,
       FORMS.replace("whenever gold", "when gold"),
     );
   });
@@ -138,7 +138,7 @@ test.describe("AoE4 step table", () => {
     await textarea(page).fill(
       "start -> sheep\nproduce villager from capital-town-center",
     );
-    await page.getByTestId("editor-view-table").click();
+    await showView(page, "table");
     await expect(page.getByTestId("step-table")).toBeVisible();
     await expect(page.getByTestId("step-table-unavailable")).toHaveCount(0);
   });
@@ -169,11 +169,13 @@ test.describe("AoE4 step table", () => {
     await count.click();
     await count.press("ControlOrMeta+a");
     await count.press("Delete");
-    await expectText(page, 
+    await expectText(page,
       "start -> sheep\n@2:00 produce villager from capital-town-center",
     );
+    // Returning from the text view remounts the row, and an unset optional field starts hidden.
+    await row(page, 0).getByTestId("step-more").click();
     await count.fill("7");
-    await expectText(page, 
+    await expectText(page,
       "start -> sheep\n@2:00 produce villager from capital-town-center x7",
     );
     const before = await textValue(page);
@@ -196,7 +198,7 @@ test.describe("AoE4 step table", () => {
     await expect(row(page, 0).getByTestId("step-move-up")).toBeDisabled();
     await expect(row(page, 1).getByTestId("step-move-down")).toBeDisabled();
     await row(page, 1).getByTestId("step-move-up").click();
-    await expectText(page, 
+    await expectText(page,
       "start -> sheep\n@1:00 build house from wood\nproduce villager from capital-town-center",
     );
     await page.getByTestId("step-delete").first().click();
@@ -209,7 +211,7 @@ test.describe("AoE4 step table", () => {
 
   test("table buttons never post to the simulate route", async ({ page }) => {
     await openPage(page);
-    await page.getByTestId("editor-view-table").click();
+    await showView(page, "table");
     let posted = false;
     page.on("request", (r) => {
       if (r.url().endsWith(SIMULATE_PATH) && r.method() === "POST")
@@ -228,7 +230,7 @@ test.describe("AoE4 step table", () => {
     await page
       .getByTestId("build-order-select")
       .selectOption(listBuilds()[0].name);
-    await page.getByTestId("editor-view-table").click();
+    await showView(page, "table");
     await page.getByTestId("step-add").click();
     const request = page.waitForRequest(
       (r) => r.url().endsWith(SIMULATE_PATH) && r.method() === "POST",
@@ -255,7 +257,7 @@ test.describe("AoE4 step table", () => {
     ).not.toContain("");
     await to.selectOption("stone");
     await expect(page.getByTestId("step-table")).toBeVisible();
-    await expectText(page, 
+    await expectText(page,
       "start -> sheep\nat 8 vils rally capital-town-center -> stone",
     );
     await expect(page.getByTestId("step-table-unavailable")).toHaveCount(0);
@@ -265,11 +267,11 @@ test.describe("AoE4 step table", () => {
     await textarea(page).fill(
       "start -> sheep\nbuild house from wood then sheep\nproduce villager from capital-town-center -> sheep",
     );
-    await page.getByTestId("editor-view-table").click();
+    await showView(page, "table");
     await field(page, 0, "then").selectOption("");
     await field(page, 1, "rally").selectOption("");
     await expect(page.getByTestId("step-table")).toBeVisible();
-    await expectText(page, 
+    await expectText(page,
       "start -> sheep\nbuild house from wood\nproduce villager from capital-town-center",
     );
   });
@@ -278,7 +280,7 @@ test.describe("AoE4 step table", () => {
     page,
   }) => {
     await openPage(page);
-    await page.getByTestId("editor-view-table").click();
+    await showView(page, "table");
     const select = page.getByTestId("build-order-select");
     const [first, second] = listBuilds();
     for (const build of [second, first]) {
@@ -372,6 +374,7 @@ test.describe("AoE4 step table", () => {
     page,
   }) => {
     await openPage(page);
+    await showView(page, "table");
     const first = row(page, 0);
     await expect(first.getByRole("button", { name: "Move up" })).toBeVisible();
     await expect(first.getByRole("button", { name: "Move down" })).toBeVisible();
@@ -408,16 +411,16 @@ test.describe("AoE4 step table", () => {
     ).not.toContain("sheep");
 
     await counts.nth(0).fill("5");
-    await expect(textarea(page)).toHaveValue(
+    await expectText(page,
       "start 5 sheep 1 wood -> sheep\nproduce villager from capital-town-center",
     );
     await start.getByTestId("start-field-rally").selectOption("");
-    await expect(textarea(page)).toHaveValue(
+    await expectText(page,
       "start 5 sheep 1 wood\nproduce villager from capital-town-center",
     );
     await start.getByTestId("start-villagers-delete").first().click();
     await start.getByTestId("start-villagers-delete").first().click();
-    await expect(textarea(page)).toHaveValue(
+    await expectText(page,
       "produce villager from capital-town-center",
     );
     await expect(start.getByTestId("start-customize")).toBeVisible();
@@ -432,7 +435,7 @@ test.describe("AoE4 step table", () => {
     await expect(page.locator('[data-testid^="start-field-"]')).toHaveCount(0);
     await start.getByTestId("start-customize").click();
     const catalog = buildOrderCatalog(loadGameData("english"));
-    await expect(textarea(page)).toHaveValue(
+    await expectText(page,
       formatBuildOrderText({
         civ: "english",
         name: "x",
@@ -501,7 +504,7 @@ test.describe("AoE4 step table", () => {
     await expect(row(page, 0)).toHaveAttribute("data-step", "0");
 
     await field(page, 0, "building").selectOption("barracks");
-    await expect(textarea(page)).toHaveValue(
+    await expectText(page,
       "start 3 sheep 1 wood -> sheep\n@1:00 build barracks from wood",
     );
   });
@@ -571,7 +574,7 @@ test.describe("AoE4 step table", () => {
     );
     const start = page.getByTestId("step-start-row");
     await start.getByTestId("start-villagers-node").nth(1).selectOption("berry");
-    await expect(textarea(page)).toHaveValue(
+    await expectText(page,
       "start 3 sheep 1 berry\nproduce villager from capital-town-center",
     );
     const offered = await start

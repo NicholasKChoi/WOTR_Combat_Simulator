@@ -14,7 +14,7 @@ const NO_MILITARY_PASTE = 'start -> sheep'
 
 async function run(page: Page, opts: { duration?: number; text?: string } = {}) {
   if (opts.text !== undefined) {
-    await page.getByTestId('tab-build').click()
+    await showTab(page, 'build')
     await page.getByTestId('build-order-text').fill(opts.text)
   }
   if (opts.duration !== undefined) await page.getByTestId('duration-seconds').fill(String(opts.duration))
@@ -176,7 +176,7 @@ test.describe('AoE4 build order pin and compare', () => {
     await openPage(page)
     await runOk(page, { duration: 300 })
     await pin(page)
-    await page.getByTestId('tab-build').click()
+    await showTab(page, 'build')
     await page.getByTestId('build-order-text').fill(NO_MILITARY_PASTE)
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
     await showTab(page, 'results')
@@ -195,7 +195,7 @@ test.describe('AoE4 build order pin and compare', () => {
     await runOk(page, { duration: 600 })
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
 
-    await page.getByTestId('tab-build').click()
+    await showTab(page, 'build')
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
     await runRejected(page)
     await expectFlySyntaxIssue(page)

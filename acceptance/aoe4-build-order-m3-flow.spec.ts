@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult, SimWarning } from '../lib/aoe4-build-order/model'
-import { INVALID_PASTE, expectedCompareKeys, openPage, runSimulation, showView } from './helpers'
+import { INVALID_PASTE, expectedCompareKeys, openPage, runSimulation, showView, showTab } from './helpers'
 
 const FLOW_PASTE = [
   'start 6 sheep -> sheep',
@@ -24,7 +24,7 @@ test.describe('AoE4 build order M3 flow', () => {
     const pinnedResult = (await (await runSimulation(page)).json()) as SimulationResult
     await page.getByTestId('pin-run').click()
 
-    await page.getByTestId('tab-build').click()
+    await showTab(page, 'build')
     await count.fill('5')
     await showView(page, 'text')
     await expect(text).toHaveValue(/produce villager from capital-town-center x5 -> sheep/)
@@ -84,7 +84,7 @@ test.describe('AoE4 build order M3 flow', () => {
     const lastTimeline = page.getByTestId('step-timeline-row').last()
     await expect(lastTimeline).toHaveAttribute('data-reaction', 'true')
     await expect(lastTimeline).toHaveAttribute('data-status', 'completed')
-    await page.getByTestId('tab-build').click()
+    await showTab(page, 'build')
     await showView(page, 'table')
     await expect(page.getByTestId('step-row').last().getByTestId('step-field-reaction')).toBeChecked()
     await expect(page.getByTestId('simulation-warnings').getByTestId('simulation-message').filter({ hasText: /^gold ran out/ })).toHaveCount(0)

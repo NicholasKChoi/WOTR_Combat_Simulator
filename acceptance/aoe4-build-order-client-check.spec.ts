@@ -74,9 +74,9 @@ test.describe('AoE4 build order page checks the paste before posting', () => {
     await textarea(page).fill(TWO_UNKNOWN_IDS)
     await runRejected(page)
     const { textBottom, listTop } = await page.evaluate(() => {
-        const text = document.querySelector('textarea')!.getBoundingClientRect()
-        const list = document.querySelector('[data-testid="build-order-issues"]')!.getBoundingClientRect()
-        return { textBottom: text.bottom, listTop: list.top }
+      const text = document.querySelector('[data-testid="build-order-text"]')!.getBoundingClientRect()
+      const list = document.querySelector('[data-testid="build-order-issues"]')!.getBoundingClientRect()
+      return { textBottom: text.bottom, listTop: list.top }
     })
     expect(listTop).toBeGreaterThanOrEqual(textBottom)
   })
