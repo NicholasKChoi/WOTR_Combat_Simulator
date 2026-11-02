@@ -443,7 +443,7 @@ an optional `"reaction": true`, allowed only beside a `depleted` trigger (any ot
 `start.rally` and `start.villagers` keys) takes a node ref (`NodeRef`): a gather node, or a numbered gold
 deposit `gold#2`..`gold#8`, where deposit 1 is plain `gold`. `gold#1` and `wood#2` are `invalid`,
 `gold#9` is `out-of-range`, `iron` is `unknown-id` and `gold#02` is `syntax`, in every node field alike.
-The paste format does not accept deposits or `move all` yet; use JSON for them.
+The paste format writes the same forms (see Paste format).
 
 **Paste format.** One step per line. `#` comment lines and blank lines are ignored. An optional trigger
 prefix comes first, then the action:
@@ -452,7 +452,10 @@ prefix comes first, then the action:
 |---|---|---|
 | `@m:ss ` | time | `produce <unit> from <producer>[#k] [xN] [-> <node>] [walk Ns]` |
 | `at N vils ` | villagers | `pause <producer>[#k]` |
-| (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move N <node> to <node> [walk Ns]`; `rally <producer>[#k] -> <node> [walk Ns]` |
+| `when <node> runs out ` | depleted | |
+| `whenever <node> runs out ` | depleted, as a reaction | |
+| `when <resource> >= N ` | bank | |
+| (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move N|all <node> to <node> [walk Ns]`; `rally <producer>[#k] -> <node> [walk Ns]` |
 
 One example per action; each line is a separate example:
 
@@ -486,16 +489,29 @@ Grammar details:
   delimited by whitespace.
 - Whitespace between tokens is any run of spaces, tabs, `\r`, U+00A0 (no-break space) and U+202F (narrow
   no-break space). Lines are split on `\n` only.
-- Ids (unit, producer, building, technology) and node names are lowercase kebab-case
+- Ids (unit, producer, building, technology) and resource names are lowercase kebab-case
   `[a-z0-9]+(-[a-z0-9]+)*` and case-sensitive. Uppercase or other characters are a `syntax` issue; input
   is never lowercased for the user.
+- A node token is `<id>` or `<id>#<chars>` (any non-space characters after `#`). The parser accepts the
+  shape and validation classifies it: `gold#2`..`gold#8` are valid, deposit 1 is plain `gold`, and `gold#1`,
+  `gold#9`, `gold#02` and `wood#2` are `invalid`, `out-of-range`, `syntax` and `invalid`.
+- `move all <node> to <node>` moves every villager at the node; the count is a number or the lowercase word
+  `all`.
+- `when <node> runs out` is a `depleted` trigger and `whenever <node> runs out` is the same trigger with
+  `reaction: true`. `whenever` takes only that form. `when <resource> >= N` is a `bank` trigger; `>` alone
+  is a `syntax` issue (only `>=` is supported). Whether the node or resource is valid is validation's job
+  (`when farm runs out` is `invalid`, `when food runs out` is `unknown-id`).
+- A `when` or `whenever` line that does not match these forms is a `syntax` issue, and so is either prefix
+  on the `start` line.
+- `formatBuildOrderText` and `formatBuildStep` print exactly these forms: `formatBuildStep` is one step as
+  one line, and `reaction` prints (as `whenever`) only beside a `depleted` trigger.
 - Keywords are lowercase. Numbers are unsigned decimal integers, with no sign and no decimals.
 - The `start` line is `start [N <node>]... [-> <node>]` with at least one part, for example
   `start 4 sheep 2 wood -> sheep`. There is at most one, before every step line, with no trigger prefix. A
   repeated node, a second `start`, or a `start` after a step is a `syntax` issue. Only a step line that
   parsed counts as a step here: a line that fails to parse is its own issue and does not make a later `start`
   an issue. A `start` line that fails to parse still counts as the first `start`. `formatBuildOrderText`
-  emits it first, with nodes in `GatherNodeId` order.
+  emits it first, with nodes in node-ref order (`gold`, then `gold#2`..`gold#8`).
 
 **Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line? }`. A validation
 issue on a parsed paste step carries both `step` and the 1-based `line`; a `syntax` issue raised while
@@ -506,7 +522,7 @@ same for JSON and paste:
 | code | meaning |
 |---|---|
 | `syntax` | text cannot be parsed, or JSON structure is wrong: bad paste grammar, a step that is not an object, a missing or mistyped field, an unknown `action` value, a wrong-typed `trigger` |
-| `unknown-trigger-kind` | the trigger's `kind` is not `time`, `villagers`, `depleted` or `bank` (an omitted trigger means no condition) (paste: unknown line prefix is `syntax`) |
+| `unknown-trigger-kind` | the trigger's `kind` is not `time`, `villagers`, `depleted` or `bank` (an omitted trigger means no condition) (paste: unknown line prefix is `syntax`, and so is a `when` or `whenever` line that matches none of the forms above) |
 | `unknown-id` | a well-formed id not in the civilization's data (unit, producer, building, technology, node, civilization), including an unknown `start` node key |
 | `unsupported-tech`, `unknown-tech-effect` | a technology rejected by `classifyTech` |
 | `out-of-range` | a number outside `SIM_INPUT_BOUNDS` (including a `start.villagers` value outside 0..200), a non-integer, or a non-finite number |
@@ -745,8 +761,9 @@ Prebuilt builds live in `data/aoe4-build-order/builds/`, one `BuildOrder` JSON f
 with a `source`. Every prebuilt build is paste-representable: it re-parses from its own paste text to the
 same `start` and `steps`. At default inputs, with depletion on, every prebuilt build meets this bar: at
 1200 s and at 3600 s no step is `waiting`, every non-reaction step has started, and a `not-reached`
-reaction has `waitingOn: 'trigger'`; at 1200 s every gold deposit that has run out has a `move all`
-reaction from it whose `startedAt` is its `depletedAt`, and no gold warning has severity `warning`.
+reaction has `waitingOn: 'trigger'`; at both horizons every gold deposit that has run out has a `move all`
+reaction from it whose `startedAt` is its `depletedAt`, and no gold warning has severity `warning`. ENG 1TC
+ends with a `whenever gold runs out move all gold to gold#2` reaction.
 
 ## CivRules seams
 

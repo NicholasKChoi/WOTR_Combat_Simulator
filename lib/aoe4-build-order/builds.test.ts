@@ -42,9 +42,13 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         const parsed = parseBuildOrderText(formatBuildOrderText(build))
         expect(parsed.ok).toBe(true)
         if (parsed.ok) {
-            expect(parsed.order.start).toEqual(build.start)
-            expect(parsed.order.steps).toEqual(build.steps)
+            expect(parsed.order.start).toStrictEqual(build.start)
+            expect(parsed.order.steps).toStrictEqual(build.steps)
         }
+    })
+
+    it.runIf(build.name.includes('1TC'))('prints its gold reaction as a whenever line', () => {
+        expect(formatBuildOrderText(build).split('\n')).toContain('whenever gold runs out move all gold to gold#2')
     })
 
     it('validates', () => {
@@ -68,8 +72,8 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         expect(result.steps.filter((s) => s.status === 'not-reached' && s.waitingOn !== 'trigger')).toEqual([])
     })
 
-    it('moves every gatherer off a gold deposit at its run-out by 1200 s, with no gold warning', () => {
-        const result = simulateTo(1200)
+    it.each([1200, 3600])('moves every gatherer off a gold deposit at its run-out by %i s, with no gold warning', (horizon) => {
+        const result = simulateTo(horizon)
         const gold = (node: string) => nodeKindOf(node as NodeRef) === 'gold'
         for (const { node, depletedAt } of result.depletions.filter((d) => gold(d.node) && d.depletedAt !== null)) {
             const leaving = build.steps.flatMap((step, i) => (step.reaction && step.action === 'move' && step.count === 'all' && step.from === node ? [result.steps[i]] : []))
@@ -77,5 +81,15 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         }
         const goldWarnings = result.warnings.filter((w) => w.code !== 'step-stuck' && gold(w.node))
         expect(goldWarnings.filter((w) => w.severity === 'warning')).toEqual([])
+    })
+
+    it.runIf(build.name.includes('1TC'))('runs its first gold deposit dry by 3600 s and moves off it at that instant', () => {
+        const result = simulateTo(3600)
+        const gold = result.depletions.find((d) => d.node === 'gold')
+        const second = result.depletions.find((d) => d.node === 'gold#2')
+        const reactionIndex = build.steps.findIndex((step) => step.reaction)
+        expect(gold?.depletedAt).not.toBeNull()
+        expect(second?.depletedAt).toBeNull()
+        expect(result.steps[reactionIndex].startedAt).toBe(gold?.depletedAt)
     })
 })

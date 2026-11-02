@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { BuildOrder, BuildOrderIssue } from './model'
-import { formatBuildOrderText, parseBuildOrderText } from './parse-text'
+import type { BuildOrder, BuildOrderIssue, BuildStep } from './model'
+import { formatBuildOrderText, formatBuildStep, parseBuildOrderText } from './parse-text'
+import { ENGLISH } from './test-helpers'
+import { validateBuildOrder } from './validate'
 
 function parsed(text: string) {
     const result = parseBuildOrderText(text)
@@ -28,12 +30,23 @@ function step(text: string) {
     return parsed(text).order.steps[0]
 }
 
+function validationCode(text: string): string | undefined {
+    const result = validateBuildOrder(parsed(`start -> sheep\n${text}`).order, ENGLISH)
+    return result.ok === false ? result.issues[0].code : undefined
+}
+
 const representable: BuildOrder = {
     civ: 'english',
     name: 'Every action',
-    start: { villagers: { sheep: 4, wood: 2 }, rally: 'sheep' },
+    start: { villagers: { sheep: 4, wood: 2, 'gold#2': 1 }, rally: 'sheep' },
     steps: [
         { action: 'produce', unit: 'villager', producer: 'capital-town-center', count: 3, rally: 'sheep', walkSeconds: 4 },
+        { action: 'produce', unit: 'villager', producer: 'capital-town-center', rally: 'gold#3' },
+        { action: 'build', building: 'mining-camp', from: 'wood', then: 'gold#2' },
+        { trigger: { kind: 'depleted', node: 'berry' }, action: 'move', count: 6, from: 'berry', to: 'farm' },
+        { trigger: { kind: 'depleted', node: 'gold' }, reaction: true, action: 'move', count: 'all', from: 'gold', to: 'gold#2', walkSeconds: 2 },
+        { trigger: { kind: 'bank', resource: 'wood', atLeast: 400 }, action: 'build', building: 'lumber-camp', from: 'wood' },
+        { trigger: { kind: 'depleted', node: 'gold#2' }, reaction: true, action: 'rally', producer: 'capital-town-center', to: 'gold#4' },
         { trigger: { kind: 'time', seconds: 45 }, action: 'build', building: 'house', builders: 2, from: 'wood', then: 'wood', walkSeconds: 6 },
         { trigger: { kind: 'villagers', count: 9 }, action: 'build', building: 'mill', from: 'sheep', then: 'berry' },
         { action: 'build', building: 'house', from: 'wood' },
@@ -150,7 +163,7 @@ describe('triggers', () => {
         ['@:30 pause a', "'@:30'"],
         ['at 9 villagers pause a', "'villagers'"],
         ['at nine vils pause a', "'nine'"],
-        ['when 9 pause a', "'when'"],
+        ['when 9 pause a', "'runs'"],
         ['@1:00', 'end of line'],
     ])('rejects %j', (text, token) => {
         const issue = onlyIssue(text)
@@ -158,6 +171,130 @@ describe('triggers', () => {
         expect(issue.line).toBe(1)
         expect(issue.message).toContain('line 1')
         expect(issue.message).toContain(token)
+    })
+})
+
+describe('node tokens', () => {
+    it.each(['gold#2', 'gold#8'])('parses %s in every node position', (node) => {
+        const result = parsed(
+            [
+                `start 1 ${node} -> ${node}`,
+                `produce villager from tc -> ${node}`,
+                `build house from ${node} then ${node}`,
+                `move 1 ${node} to ${node}`,
+                `rally tc -> ${node}`,
+                `when ${node} runs out pause tc`,
+            ].join('\n'),
+        )
+        expect(result.order.start).toStrictEqual({ villagers: { [node]: 1 }, rally: node })
+        expect(result.order.steps).toStrictEqual([
+            { action: 'produce', producer: 'tc', unit: 'villager', rally: node },
+            { action: 'build', building: 'house', from: node, then: node },
+            { action: 'move', count: 1, from: node, to: node },
+            { action: 'rally', producer: 'tc', to: node },
+            { trigger: { kind: 'depleted', node }, action: 'pause', producer: 'tc' },
+        ])
+    })
+
+    it.each([
+        ['gold#1', 'invalid'],
+        ['gold#9', 'out-of-range'],
+        ['gold#02', 'syntax'],
+        ['gold#', 'syntax'],
+        ['gold#x', 'syntax'],
+        ['gold#2#3', 'syntax'],
+        ['wood#2', 'invalid'],
+    ])('parses %s and leaves it to validation as %s', (node, code) => {
+        expect(step(`move 1 ${node} to wood`)).toMatchObject({ from: node })
+        expect(validationCode(`move 1 ${node} to wood`)).toBe(code)
+    })
+
+    it('rejects an uppercase node token', () => {
+        expect(onlyIssue('move 1 Gold#2 to wood').code).toBe('syntax')
+    })
+})
+
+describe('move all', () => {
+    it('parses all as the count', () => {
+        expect(step('move all gold to gold#2')).toStrictEqual({ action: 'move', count: 'all', from: 'gold', to: 'gold#2' })
+    })
+
+    it.each(['move All gold to gold#2', 'move ALL gold to gold#2'])('rejects %j', (text) => {
+        expect(onlyIssue(text).code).toBe('syntax')
+    })
+
+    it('parses a zero count and leaves it to validation', () => {
+        expect(step('move 0 gold to wood')).toMatchObject({ count: 0 })
+        expect(validationCode('move 0 gold to wood')).toBe('out-of-range')
+    })
+})
+
+describe('when and whenever triggers', () => {
+    it('parses a depleted trigger without a reaction flag', () => {
+        expect(step('when berry runs out move 6 berry to farm')).toStrictEqual({
+            trigger: { kind: 'depleted', node: 'berry' },
+            action: 'move',
+            count: 6,
+            from: 'berry',
+            to: 'farm',
+        })
+    })
+
+    it('parses whenever as a depleted reaction', () => {
+        expect(step('whenever gold runs out move all gold to gold#2')).toStrictEqual({
+            trigger: { kind: 'depleted', node: 'gold' },
+            reaction: true,
+            action: 'move',
+            count: 'all',
+            from: 'gold',
+            to: 'gold#2',
+        })
+    })
+
+    it('parses a bank trigger', () => {
+        expect(step('when wood >= 400 build lumber-camp from wood').trigger).toStrictEqual({ kind: 'bank', resource: 'wood', atLeast: 400 })
+    })
+
+    it.each([
+        ['when farm runs out pause capital-town-center', 'invalid'],
+        ['when food runs out pause capital-town-center', 'unknown-id'],
+        ['when gold#9 runs out pause capital-town-center', 'out-of-range'],
+        ['when sheep >= 400 pause capital-town-center', 'unknown-id'],
+        ['when wood >= 400000 pause capital-town-center', 'out-of-range'],
+    ])('parses %j and leaves it to validation as %s', (text, code) => {
+        expect(step(text)).toHaveProperty('trigger')
+        expect(validationCode(text)).toBe(code)
+    })
+
+    it.each([
+        ['when berry pause tc', "'runs'"],
+        ['when berry runs pause tc', "'out'"],
+        ['when berry', 'end of line'],
+        ['when wood > 400 pause tc', ">="],
+        ['when wood >= -5 pause tc', "'-5'"],
+        ['when wood >= 4.5 pause tc', "'4.5'"],
+        ['when wood>=400 pause tc', "'wood>=400'"],
+        ['when Wood >= 400 pause tc', "'Wood'"],
+        ['when gold#2 >= 400 pause tc', 'resource id'],
+        ['whenever wood >= 400 pause tc', 'whenever takes only `<node> runs out`'],
+        ['whenever berry pause tc', 'whenever takes only `<node> runs out`'],
+        ['whenever', 'whenever takes only `<node> runs out`'],
+        ['when berry runs out', 'expected an action'],
+    ])('rejects %j', (text, expected) => {
+        const issue = onlyIssue(text)
+        expect(issue.code).toBe('syntax')
+        expect(issue.line).toBe(1)
+        expect(issue.message).toContain(expected)
+    })
+
+    it.each(['when gold runs out', 'whenever gold runs out'])('rejects a start line with the prefix %j', (prefix) => {
+        const issue = onlyIssue(`${prefix} start 1 sheep`)
+        expect(issue.message).toContain("'start' takes no trigger")
+    })
+
+    it('reports one issue per bad when line without hiding others', () => {
+        const found = issues('pause a\nwhen wood > 400 pause a\nwhenever berry pause a\nwhen berry runs out pause a\nbogus')
+        expect(found.map((i) => i.line)).toEqual([2, 3, 5])
     })
 })
 
@@ -368,6 +505,38 @@ describe('multiple issues', () => {
             expect('step' in issue).toBe(false)
             expect(issue.message).toContain(`line ${issue.line}`)
         }
+    })
+})
+
+describe('formatBuildStep', () => {
+    it.each<[BuildStep, string]>([
+        [{ trigger: { kind: 'depleted', node: 'gold' }, reaction: true, action: 'move', count: 'all', from: 'gold', to: 'gold#2' }, 'whenever gold runs out move all gold to gold#2'],
+        [{ trigger: { kind: 'depleted', node: 'berry' }, action: 'move', count: 6, from: 'berry', to: 'farm' }, 'when berry runs out move 6 berry to farm'],
+        [{ trigger: { kind: 'bank', resource: 'wood', atLeast: 400 }, action: 'pause', producer: 'tc' }, 'when wood >= 400 pause tc'],
+        [{ trigger: { kind: 'time', seconds: 65 }, action: 'pause', producer: 'tc' }, '@1:05 pause tc'],
+        [{ trigger: { kind: 'villagers', count: 9 }, action: 'pause', producer: 'tc' }, 'at 9 vils pause tc'],
+        [{ action: 'move', count: 3, from: 'sheep', to: 'wood' }, 'move 3 sheep to wood'],
+    ])('prints %j as one line', (input, text) => {
+        expect(formatBuildStep(input)).toBe(text)
+        expect(text).not.toContain('\n')
+    })
+
+    it('prints a reaction flag without whenever unless the trigger is depleted, and never throws', () => {
+        const odd: unknown[] = [
+            { trigger: { kind: 'time', seconds: 5 }, reaction: true, action: 'pause', producer: 'tc' },
+            { reaction: true, action: 'pause', producer: 'tc' },
+            { trigger: { kind: 'bank', resource: 'wood', atLeast: 1 }, reaction: true, action: 'pause', producer: 'tc' },
+        ]
+        expect(odd.map((o) => formatBuildStep(o as BuildStep))).toEqual(['@0:05 pause tc', 'pause tc', 'when wood >= 1 pause tc'])
+        expect(() => formatBuildStep({ trigger: { kind: 'mystery' }, action: 'pause', producer: 'tc' } as unknown as BuildStep)).not.toThrow()
+        expect(formatBuildStep({ trigger: { kind: 'mystery' }, action: 'pause', producer: 'tc' } as unknown as BuildStep)).toBe('pause tc')
+    })
+
+    it('makes formatBuildOrderText the start line then one step line each', () => {
+        const text = formatBuildOrderText(representable)
+        const lines = text.split('\n')
+        expect(lines[0]).toBe('start 4 sheep 2 wood 1 gold#2 -> sheep')
+        expect(lines.slice(1)).toEqual(representable.steps.map(formatBuildStep))
     })
 })
 

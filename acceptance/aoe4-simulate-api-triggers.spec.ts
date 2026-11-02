@@ -431,7 +431,7 @@ test.describe('default node amounts', () => {
 })
 
 test.describe('the default English 1TC build with default amounts', () => {
-  // Start times of the 24 steps, measured with every node infinite before default amounts shipped.
+  // Start times of the first 24 steps, measured with every node infinite before default amounts shipped.
   const STARTED_AT = [
     0, 25, 45, 60, 143.56666666666663, 143.56666666666663, 166.81904761904764, 230, 240, 246.41254761904764, 260.8153142857143, 273.75049206349206,
     315.805130952381, 352.73044576719576, 363.82392930629044, 363.82392930629044, 371.2841744708995, 379.24054484126987, 387.73044576719576,
@@ -442,9 +442,11 @@ test.describe('the default English 1TC build with default amounts', () => {
     const finite = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 3600 } })
     const infinite = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 3600, nodeAmounts: INFINITE_NODES } })
 
-    expect(finite.steps.map((s) => s.startedAt)).toEqual(infinite.steps.map((s) => s.startedAt))
+    const ownSteps = (r: typeof finite) => r.steps.slice(0, STARTED_AT.length).map((s) => s.startedAt)
+    expect(ownSteps(finite)).toEqual(ownSteps(infinite))
     for (const [index, startedAt] of STARTED_AT.entries()) expect(finite.steps[index].startedAt).toBeCloseTo(startedAt, 9)
-    expect(finite.steps).toHaveLength(24)
+    expect(finite.steps).toHaveLength(STARTED_AT.length + 1)
+    expect(infinite.steps[STARTED_AT.length].startedAt).toBeNull()
   })
 
   test('runs the sheep out at 782.85 s with six villagers idle and never touches berry, deer, boar or stone', async ({ request }) => {
@@ -458,14 +460,15 @@ test.describe('the default English 1TC build with default amounts', () => {
     for (const node of ['berry', 'deer', 'boar', 'stone', 'gold']) expect(depletionOf(result, node)!.depletedAt).toBeNull()
   })
 
-  test('runs gold deposit 1 out at 3305.17 s with two villagers idle and lists no second deposit', async ({ request }) => {
+  test('runs gold deposit 1 out at 3305.17 s and moves its villagers to gold#2 at that instant', async ({ request }) => {
     const result = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 3600 } })
 
     expect(depletionOf(result, 'gold')).toMatchObject({ amount: 4000 })
     expect(depletionOf(result, 'gold')!.depletedAt).toBeCloseTo(3305.17, 2)
-    expect(depletionOf(result, 'gold#2')).toBeUndefined()
+    expect(depletionOf(result, 'gold#2')).toEqual({ node: 'gold#2', amount: 4000, depletedAt: null })
+    expect(result.steps[result.steps.length - 1].startedAt).toBe(depletionOf(result, 'gold')!.depletedAt)
     expect(result.warnings.filter((w) => w.code === 'node-depleted' && w.node === 'gold')).toEqual([
-      expect.objectContaining({ severity: 'warning', idleVillagers: 2 }),
+      expect.objectContaining({ severity: 'info', idleVillagers: 0 }),
     ])
     for (const node of ['berry', 'deer', 'boar', 'stone']) expect(depletionOf(result, node)!.depletedAt).toBeNull()
     expect(result.warnings.map((w) => w.at)).toEqual([...result.warnings.map((w) => w.at)].sort((a, b) => a - b))

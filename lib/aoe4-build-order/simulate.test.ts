@@ -714,8 +714,12 @@ describe('depletions and warnings', () => {
     it('are empty while every node is infinite', () => {
         const prebuilt = simulateBuildOrder(listBuilds()[0], data, inputsFor(data, { durationSeconds: 3600, nodeAmounts: INFINITE_NODES }))
         const oneStep = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1 }], { inputs: { nodeAmounts: INFINITE_NODES } })
+        const infinite = FINITE_GATHER_NODES.map((node) => ({ node, amount: null, depletedAt: null }))
+        const goldAt = infinite.findIndex((d) => d.node === 'gold') + 1
+        const withReactionDeposit = [...infinite.slice(0, goldAt), { node: 'gold#2', amount: 4000, depletedAt: null }, ...infinite.slice(goldAt)]
+        expect(prebuilt.depletions).toEqual(withReactionDeposit)
+        expect(oneStep.depletions).toEqual(infinite)
         for (const result of [prebuilt, oneStep]) {
-            expect(result.depletions).toEqual(FINITE_GATHER_NODES.map((node) => ({ node, amount: null, depletedAt: null })))
             expect(result.warnings).toEqual([])
         }
     })

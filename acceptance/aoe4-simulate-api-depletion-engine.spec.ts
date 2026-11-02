@@ -249,7 +249,7 @@ test.describe('a farm build', () => {
 
 test.describe('the prebuilt English build against the pre-depletion engine', () => {
   const noDepletion = (result: Result) => {
-    expect(result.depletions.every((d) => d.amount === null && d.depletedAt === null)).toBe(true)
+    expect(result.depletions.filter((d) => d.node !== 'gold#2').every((d) => d.amount === null && d.depletedAt === null)).toBe(true)
     expect(result.warnings).toEqual([])
   }
 
