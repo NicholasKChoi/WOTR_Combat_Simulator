@@ -38,7 +38,7 @@ Each file in `builds/` is one `BuildOrder` the page offers in its prebuilt list,
 paste text unchanged. Ids are aoe4world `baseId`s. A guide step the paste grammar cannot express is left
 out, never approximated, and is listed under its build below. Every build meets a bar in the simulation,
 at default inputs with depletion on: at 1200 s and at 3600 s no step is waiting, every non-reaction step
-has started, and a reaction that is not reached is only waiting for its trigger; at 1200 s every gold
+has started, and a reaction that is not reached is only waiting for its trigger; at both horizons every gold
 deposit that has run out has a `move all` reaction from it that starts at the run-out instant, and no gold
 warning is a `warning`. A guide step that would break the bar is left out and listed under its build
 with its reason.

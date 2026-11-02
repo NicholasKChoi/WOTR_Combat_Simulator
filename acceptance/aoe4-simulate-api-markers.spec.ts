@@ -100,9 +100,10 @@ test.describe('markers on the prebuilt English build', () => {
   test('classifies a tech with no other class as other', async ({ request }) => {
     const steps = [...english1tc.steps, { action: 'research', tech: 'textiles' }, { action: 'research', tech: 'professional-scouts' }]
     const body = await simulate(request, { buildOrder: { ...english1tc, steps }, inputs: { durationSeconds: 1800 } })
+    const appended = english1tc.steps.length
     expect(body.markers.slice(-2)).toEqual([
-      { kind: 'other', label: 'textiles', at: body.steps[24].completedAt },
-      { kind: 'other', label: 'professional-scouts', at: body.steps[25].completedAt },
+      { kind: 'other', label: 'textiles', at: body.steps[appended].completedAt },
+      { kind: 'other', label: 'professional-scouts', at: body.steps[appended + 1].completedAt },
     ])
     expectSorted(body.markers)
   })

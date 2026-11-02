@@ -82,6 +82,17 @@ test.describe('AoE4 build order page', () => {
     await expect(page.getByTestId('simulation-error')).toHaveCount(0)
   })
 
+  test('runs the default prebuilt build to 3600 s with its gold reaction and no error', async ({ page }) => {
+    await openPage(page)
+    await expect(page.getByTestId('build-order-text')).toHaveValue(/whenever gold runs out move all gold to gold#2/)
+    await page.getByTestId('duration-seconds').fill('3600')
+    const response = await runSimulation(page)
+    expect(response.status()).toBe(200)
+    expect(((await response.json()) as SimulationResult).durationSeconds).toBe(3600)
+    await expectChartsDrawn(page)
+    await expect(page.getByTestId('simulation-error')).toHaveCount(0)
+  })
+
   test('runs a pasted build with a start line and a rally step', async ({ page }) => {
     await openPage(page)
     await page.getByTestId('build-order-text').fill(RALLY_PASTE)

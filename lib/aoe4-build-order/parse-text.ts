@@ -1,6 +1,7 @@
 // Paste text <-> BuildOrder. Grammar only: ids, bounds and cross-field rules are checked by validation.
 import { formatMinSec } from './format-time';
-import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStart, BuildStep, GatherNodeId, Trigger } from './model';
+import { NODE_REFS } from './model';
+import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStart, BuildStep, FiniteNodeRef, NodeRef, ResourceKind, Trigger } from './model';
 
 export type ParseTextResult =
   | { ok: true; order: BuildOrder; lines: BuildOrderLines }
@@ -9,11 +10,10 @@ export type ParseTextResult =
 type StepOf<A extends BuildStep['action']> = Extract<BuildStep, { action: A }>;
 
 const PASTED_ORDER_NAME = 'Pasted build order';
-// Keys are the canonical start order; `satisfies` makes a new GatherNodeId a compile error instead of a silently dropped node.
-const GATHER_NODE_ORDER = Object.keys({ sheep: 0, berry: 0, deer: 0, boar: 0, farm: 0, wood: 0, gold: 0, stone: 0 } satisfies Record<GatherNodeId, 0>) as GatherNodeId[];
-
 // Every pattern is anchored with no nested quantifier over the same characters, so matching is linear.
 const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// Validation classifies whatever follows `#`.
+const NODE_TOKEN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:#\S*)?$/;
 const INSTANCE_REF = /^([a-z0-9]+(?:-[a-z0-9]+)*)(?:#(\d+))?$/;
 const NUMBER = /^\d+$/;
 const TIME = /^@(\d+):(\d\d)$/;
@@ -77,8 +77,8 @@ class Tokens {
     return this.take(what, ID)[0];
   }
 
-  node(): GatherNodeId {
-    return this.take('a node name', ID)[0] as GatherNodeId;
+  node(): NodeRef {
+    return this.take('a node name', NODE_TOKEN)[0] as NodeRef;
   }
 
   number(what: string): number {
@@ -145,7 +145,7 @@ function parseResearch(t: Tokens): BuildStep {
 }
 
 function parseMove(t: Tokens): BuildStep {
-  const count = t.number('a villager count');
+  const count = t.accept('all') ? 'all' : t.number('a villager count or all');
   const from = t.node();
   t.keyword('to');
   const step: StepOf<'move'> = { action: 'move', count, from, to: t.node() };
@@ -168,24 +168,63 @@ const ACTIONS = new Map<string, (t: Tokens) => BuildStep>([
   ['rally', parseRally],
 ]);
 
-function parseTrigger(t: Tokens): Trigger | undefined {
+interface ParsedTrigger {
+  trigger?: Trigger;
+  reaction?: true;
+}
+
+function parseDepleted(t: Tokens, node: string): Trigger {
+  t.keyword('runs');
+  t.keyword('out');
+  return { kind: 'depleted', node: node as FiniteNodeRef };
+}
+
+function parseWhen(t: Tokens): ParsedTrigger {
+  const name = t.take('a node or resource name', NODE_TOKEN)[0];
+  if (t.accept('>=')) {
+    if (!ID.test(name)) {
+      throw new LineError(`expected a resource id, got ${quote(name)}`);
+    }
+    return { trigger: { kind: 'bank', resource: name as ResourceKind, atLeast: t.number('an amount') } };
+  }
+  if (t.peek() === '>') {
+    throw new LineError(`only '>=' is supported, got '>'`);
+  }
+  return { trigger: parseDepleted(t, name) };
+}
+
+function parseWhenever(t: Tokens): ParsedTrigger {
+  const name = t.optional(NODE_TOKEN)?.[0];
+  if (name === undefined || t.peek() !== 'runs') {
+    throw new LineError('whenever takes only `<node> runs out`');
+  }
+  return { trigger: parseDepleted(t, name), reaction: true };
+}
+
+function parseTrigger(t: Tokens): ParsedTrigger {
   if (t.peek()?.startsWith('@')) {
     const match = t.take('a time like @1:30', TIME);
     const seconds = Number(match[2]);
     if (seconds > 59) {
       throw new LineError(`seconds over 59 in ${quote(match[0])}`);
     }
-    return { kind: 'time', seconds: Number(match[1]) * 60 + seconds };
+    return { trigger: { kind: 'time', seconds: Number(match[1]) * 60 + seconds } };
   }
   if (t.accept('at')) {
     const count = t.number('a villager count');
     t.keyword('vils');
-    return { kind: 'villagers', count };
+    return { trigger: { kind: 'villagers', count } };
   }
-  return undefined;
+  if (t.accept('when')) {
+    return parseWhen(t);
+  }
+  if (t.accept('whenever')) {
+    return parseWhenever(t);
+  }
+  return {};
 }
 
-function parseAction(t: Tokens, trigger: Trigger | undefined): BuildStep {
+function parseAction(t: Tokens, { trigger, reaction }: ParsedTrigger): BuildStep {
   const word = t.peek();
   const parse = word === undefined ? undefined : ACTIONS.get(word);
   if (!parse) {
@@ -193,7 +232,10 @@ function parseAction(t: Tokens, trigger: Trigger | undefined): BuildStep {
   }
   t.accept(word);
   const step = parse(t);
-  return trigger ? { trigger, ...step } : step;
+  if (!trigger) {
+    return step;
+  }
+  return reaction ? { trigger, reaction, ...step } : { trigger, ...step };
 }
 
 function parseStart(t: Tokens): BuildStart {
@@ -233,10 +275,10 @@ export function parseBuildOrderText(text: string): ParseTextResult {
     let isStart = false;
     try {
       const t = new Tokens(tokens);
-      const trigger = parseTrigger(t);
+      const parsedTrigger = parseTrigger(t);
       if (t.accept('start')) {
         isStart = true;
-        if (trigger) {
+        if (parsedTrigger.trigger) {
           throw new LineError(`'start' takes no trigger, got ${quote(tokens[0])}`);
         }
         if (sawStart) {
@@ -250,7 +292,7 @@ export function parseBuildOrderText(text: string): ParseTextResult {
         start = parsed;
         lines.start = line;
       } else {
-        const step = parseAction(t, trigger);
+        const step = parseAction(t, parsedTrigger);
         t.end();
         steps.push(step);
         lines.steps.push(line);
@@ -289,19 +331,24 @@ function walk(seconds: number | undefined): string | undefined {
 
 function formatStart(start: BuildStart): string | undefined {
   const villagers = start.villagers ?? {};
-  const parts = GATHER_NODE_ORDER.filter((node) => villagers[node] !== undefined).map((node) => `${villagers[node]} ${node}`);
+  const parts = NODE_REFS.filter((node) => villagers[node] !== undefined).map((node) => `${villagers[node]} ${node}`);
   if (start.rally !== undefined) {
     parts.push(`-> ${start.rally}`);
   }
   return parts.length > 0 ? `start ${parts.join(' ')}` : undefined;
 }
 
-function formatTrigger(trigger: Trigger | undefined): string | undefined {
+function formatTrigger(step: BuildStep): string | undefined {
+  const trigger = step.trigger;
   switch (trigger?.kind) {
     case 'time':
       return `@${formatMinSec(trigger.seconds)}`;
     case 'villagers':
       return `at ${trigger.count} vils`;
+    case 'depleted':
+      return `${step.reaction === true ? 'whenever' : 'when'} ${trigger.node} runs out`;
+    case 'bank':
+      return `when ${trigger.resource} >= ${trigger.atLeast}`;
     default:
       return undefined;
   }
@@ -342,6 +389,10 @@ function formatAction(step: BuildStep): string {
   }
 }
 
+export function formatBuildStep(step: BuildStep): string {
+  return words(formatTrigger(step), formatAction(step));
+}
+
 // Total: never throws. Numbers print as String(n), so only non-negative integer orders re-parse equal.
 export function formatBuildOrderText(order: BuildOrder): string {
   const out: string[] = [];
@@ -350,7 +401,7 @@ export function formatBuildOrderText(order: BuildOrder): string {
     out.push(start);
   }
   for (const step of order.steps) {
-    out.push(words(formatTrigger(step.trigger), formatAction(step)));
+    out.push(formatBuildStep(step));
   }
   return out.join('\n');
 }

@@ -182,6 +182,17 @@
     {
       "action": "research",
       "tech": "iron-undermesh"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold",
+      "to": "gold#2"
     }
   ]
 }

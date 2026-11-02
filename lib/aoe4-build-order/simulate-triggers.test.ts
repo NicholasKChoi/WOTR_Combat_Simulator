@@ -266,11 +266,11 @@ describe('default amounts', () => {
         ])
     })
 
-    it('runs ENG 1TC dry on sheep and gold within the hour, leaving the other nodes and no gold#2', () => {
+    it('runs ENG 1TC dry on sheep and gold within the hour, leaving the other nodes and gold#2', () => {
         const result = runEng({ durationSeconds: 3600 })
         const ranDry = result.depletions.filter((d) => d.depletedAt !== null).map((d) => d.node)
         expect(ranDry).toEqual(['sheep', 'gold'])
-        expect(result.depletions.some((d) => d.node === 'gold#2')).toBe(false)
+        expect(result.depletions.find((d) => d.node === 'gold#2')).toEqual({ node: 'gold#2', amount: 4000, depletedAt: null })
         const times = result.warnings.map((w) => w.at)
         expect(times).toEqual([...times].sort((a, b) => a - b))
     })
@@ -278,8 +278,10 @@ describe('default amounts', () => {
     it('keeps every ENG 1TC start time', () => {
         const starts = (inputs: unknown) => runEng({ durationSeconds: 3600, ...(inputs as object) }).steps.map((s) => s.startedAt)
         const shipped = starts({})
-        expect(shipped).toHaveLength(24)
+        expect(shipped).toHaveLength(25)
         expect(shipped.every((t) => t !== null)).toBe(true)
-        expect(shipped).toEqual(starts({ nodeAmounts: INFINITE_NODES }))
+        const infinite = starts({ nodeAmounts: INFINITE_NODES })
+        expect(infinite.slice(0, -1)).toEqual(shipped.slice(0, -1))
+        expect(infinite.at(-1)).toBeNull()
     })
 })
