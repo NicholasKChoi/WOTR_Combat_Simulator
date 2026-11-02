@@ -1,3 +1,4 @@
+import cn from 'classnames'
 import { useState } from 'react'
 
 import type { BuildOrder, BuildStep, Trigger } from '../../../lib/aoe4-build-order/model'
@@ -76,7 +77,7 @@ function actionFields(step: BuildStep, options: StepOptions): FieldDef[] {
 
 function Labeled({ field, children }: { field: string; children: React.ReactNode }) {
     return (
-        <label className={`${styles.field} d-inline-flex align-items-center gap-1 me-2 mb-1`}>
+        <label className="d-flex d-md-inline-flex align-items-center gap-1 me-2 mb-1">
             <span className="small text-muted">{FIELD_LABELS[field]}</span>
             {children}
         </label>
@@ -298,7 +299,7 @@ export function StepTable({ order, catalog, onChange }: StepTableProps) {
 
     return (
         <div data-testid="step-table" className="mb-3">
-            <table className={`${styles.table} table table-sm align-middle`}>
+            <table className={cn(styles.table, 'table table-sm align-middle')}>
                 <tbody>
                     <StartRow order={order} catalog={catalog} onChange={onChange} />
                     {steps.map((step, index) => {

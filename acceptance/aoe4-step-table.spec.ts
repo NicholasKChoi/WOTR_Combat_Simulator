@@ -444,33 +444,70 @@ test.describe("AoE4 step table", () => {
       page,
       "start 3 sheep 1 wood -> sheep\n@1:00 build house from wood",
     );
-    const box = async (id: string, scope = row(page, 0)) =>
-      (await scope.getByTestId(id).boundingBox())!;
-    const startBox = async (id: string) =>
-      (await page.getByTestId("step-start-row").getByTestId(id).first().boundingBox())!;
+    const tops = (page2: Page, scope: string, ids: string[]) =>
+      page2.evaluate(
+        ([root, list]) => {
+          const el = document.querySelector(root)!;
+          return list.map((id) => {
+            const r = el.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect();
+            return { x: r.x, y: r.y };
+          });
+        },
+        [scope, ids] as [string, string[]],
+      );
+    const stepRow = '[data-testid="step-row"]';
+    const startRow = '[data-testid="step-start-row"]';
 
     await page.setViewportSize({ width: 1280, height: 900 });
-    const wideTrigger = await box("step-trigger-kind");
-    const wideAction = await box("step-action");
-    expect(Math.abs(wideTrigger.y - wideAction.y)).toBeLessThan(4);
-    const wideRally = await startBox("start-field-rally");
-    const wideCount = await startBox("start-villagers-count");
-    expect(Math.abs(wideRally.y - wideCount.y)).toBeLessThan(4);
+    await expect(async () => {
+      const [trigger, action] = await tops(page, stepRow, ["step-trigger-kind", "step-action"]);
+      expect(Math.abs(trigger.y - action.y)).toBeLessThan(4);
+      const [rally, count] = await tops(page, startRow, ["start-field-rally", "start-villagers-count"]);
+      expect(Math.abs(rally.y - count.y)).toBeLessThan(4);
+    }).toPass();
     await expect(row(page, 0)).toHaveAttribute("data-step", "0");
 
     await page.setViewportSize({ width: 390, height: 800 });
-    const narrowTrigger = await box("step-trigger-kind");
-    const narrowAction = await box("step-action");
-    expect(narrowAction.x).toBeCloseTo(narrowTrigger.x, 0);
-    expect(narrowAction.y).toBeGreaterThan(narrowTrigger.y);
-    const narrowRally = await startBox("start-field-rally");
-    const narrowCount = await startBox("start-villagers-count");
-    expect(narrowCount.y).toBeGreaterThan(narrowRally.y);
+    await expect(async () => {
+      const [trigger, action] = await tops(page, stepRow, ["step-trigger-kind", "step-action"]);
+      expect(action.x).toBeCloseTo(trigger.x, 0);
+      expect(action.y).toBeGreaterThan(trigger.y);
+      const [rally, count] = await tops(page, startRow, ["start-field-rally", "start-villagers-count"]);
+      expect(count.y).toBeGreaterThan(rally.y);
+    }).toPass();
     await expect(row(page, 0)).toHaveAttribute("data-step", "0");
 
     await field(page, 0, "building").selectOption("barracks");
     await expect(textarea(page)).toHaveValue(
       "start 3 sheep 1 wood -> sheep\n@1:00 build barracks from wood",
     );
+  });
+
+  test("labelled fields share a line from 768 px and stack one per line below it", async ({
+    page,
+  }) => {
+    await openWith(
+      page,
+      "produce villager from capital-town-center x3 -> sheep",
+    );
+    const labelTops = () =>
+      page.evaluate(() =>
+        Array.from(
+          document.querySelectorAll('[data-testid="step-row"] label'),
+        ).map((l) => Math.round(l.getBoundingClientRect().y)),
+      );
+
+    await page.setViewportSize({ width: 700, height: 900 });
+    await expect(async () => {
+      const tops = await labelTops();
+      expect(tops.length).toBeGreaterThan(2);
+      expect(new Set(tops).size).toBe(tops.length);
+    }).toPass();
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(async () => {
+      const tops = await labelTops();
+      expect(new Set(tops).size).toBeLessThan(tops.length);
+    }).toPass();
   });
 });
