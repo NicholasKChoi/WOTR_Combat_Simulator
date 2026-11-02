@@ -59,7 +59,7 @@ function countAt(result: SimulationResult, baseId: string, t: number): number {
 
 function perSecond(node: GatherNodeId, game = data): number {
     const simInputs = inputsFor(game)
-    const state = { data: game, age: 1, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), coverage: simInputs.influenceCoverage }
+    const state = { data: game, age: 1, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: simInputs.influenceCoverage }
     return effectiveGatherRate(node, state, simInputs)
 }
 

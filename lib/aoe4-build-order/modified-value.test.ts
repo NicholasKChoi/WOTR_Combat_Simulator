@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { GameData, loadGameData } from './data'
 import { EffectState, ModifierTarget, modifiedValue } from './effects'
 import type { OverlayEffect } from './model'
+import { researchedOf } from './test-helpers'
 
 const data = loadGameData('english')
 const villager: ModifierTarget = { baseId: 'villager', classes: data.byBaseId.get('villager')[0].classes }
 
 function stateOf(overrides: Partial<EffectState> = {}): EffectState {
-    return { data, age: 1, buildings: new Map(), researched: new Set(), coverage: {}, ...overrides }
+    return { data, age: 1, buildings: new Map(), researched: new Set(), researchedIds: new Set(), coverage: {}, ...overrides }
 }
 
 function row(overrides: Partial<OverlayEffect>): OverlayEffect {
@@ -31,12 +32,12 @@ function withOverlay(...effects: OverlayEffect[]): GameData {
 describe('modifiedValue activation', () => {
     it('applies a researched technology and nothing before it is researched', () => {
         expect(modifiedValue(10, 'carryCapacity', villager, stateOf())).toBe(10)
-        expect(modifiedValue(10, 'carryCapacity', villager, stateOf({ researched: new Set(['wheelbarrow']) }))).toBe(15)
-        expect(modifiedValue(1, 'moveSpeed', villager, stateOf({ researched: new Set(['wheelbarrow']) }))).toBeCloseTo(1.15, 12)
+        expect(modifiedValue(10, 'carryCapacity', villager, stateOf(researchedOf(['wheelbarrow'])))).toBe(15)
+        expect(modifiedValue(1, 'moveSpeed', villager, stateOf(researchedOf(['wheelbarrow'])))).toBeCloseTo(1.15, 12)
     })
 
     it('applies an overlay row granted by research, a building or the civ', () => {
-        expect(modifiedValue(1, 'goldGatherRate', villager, stateOf({ researched: new Set(['shaft-mining']) }))).toBeCloseTo(1.15, 12)
+        expect(modifiedValue(1, 'goldGatherRate', villager, stateOf(researchedOf(['shaft-mining'])))).toBeCloseTo(1.15, 12)
         const game = withOverlay(row({ grantedBy: 'blacksmith' }), row({ property: 'goldGatherRate', grantedBy: 'civ', value: 3 }))
         expect(modifiedValue(1, 'woodGatherRate', villager, stateOf({ data: game }))).toBe(1)
         expect(modifiedValue(1, 'woodGatherRate', villager, stateOf({ data: game, buildings: new Map([['blacksmith', 0]]) }))).toBe(1)
@@ -45,7 +46,7 @@ describe('modifiedValue activation', () => {
     })
 
     it('applies a property only to itself', () => {
-        const state = stateOf({ researched: new Set(['double-broadax']) })
+        const state = stateOf(researchedOf(['double-broadax']))
         expect(modifiedValue(1, 'woodGatherRate', villager, state)).toBeCloseTo(1.15, 12)
         expect(modifiedValue(1, 'goldGatherRate', villager, state)).toBe(1)
     })
@@ -75,7 +76,7 @@ describe('modifiedValue arithmetic', () => {
 
 describe('modifiedValue select', () => {
     it('leaves a villager unchanged by a fishing-boat technology', () => {
-        const state = stateOf({ researched: new Set(['extended-lines']) })
+        const state = stateOf(researchedOf(['extended-lines']))
         expect(modifiedValue(10, 'carryCapacity', villager, state)).toBe(10)
         expect(modifiedValue(1, 'foodGatherRate', villager, state)).toBe(1)
         expect(modifiedValue(10, 'carryCapacity', { baseId: 'fishing-boat', classes: [] }, state)).toBe(20)
@@ -143,12 +144,13 @@ describe('modifiedValue conditions', () => {
 describe('modifiedValue purity', () => {
     it('gives the same number twice and leaves the state as it was', () => {
         const buildings = new Map([['mill', 1]])
-        const researched = new Set(['wheelbarrow', 'shaft-mining'])
+        const { researched, researchedIds } = researchedOf(['wheelbarrow', 'shaft-mining'])
         const coverage = Object.freeze({ mill: 0.5 })
-        const state = Object.freeze(stateOf({ age: 2, buildings, researched, coverage }))
+        const state = Object.freeze(stateOf({ age: 2, buildings, researched, researchedIds, coverage }))
         const first = modifiedValue(1, 'farmGatherRate', villager, state)
         expect(modifiedValue(1, 'farmGatherRate', villager, state)).toBe(first)
         expect([...buildings]).toEqual([['mill', 1]])
         expect([...researched]).toEqual(['wheelbarrow', 'shaft-mining'])
+        expect([...researchedIds]).toEqual(['wheelbarrow-1', 'shaft-mining-3'])
     })
 })

@@ -14,7 +14,7 @@ function startingWith(edit: (start: CivData['startingState']) => void): GameData
 }
 
 function rate(node: 'sheep' | 'wood', buildings = ['capital-town-center']): number {
-    const state = { data, age: 1, buildings: new Map(buildings.map((b) => [b, 1])), researched: new Set<string>(), coverage: inputs.influenceCoverage }
+    const state = { data, age: 1, buildings: new Map(buildings.map((b) => [b, 1])), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: inputs.influenceCoverage }
     return effectiveGatherRate(node, state, inputs)
 }
 

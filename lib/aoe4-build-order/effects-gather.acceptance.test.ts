@@ -4,7 +4,7 @@ import { ModifierTarget, modifiedValue } from './effects'
 import { constructionSeconds } from './construction'
 import { effectiveGatherRate } from './gather'
 import type { GatherNodeId, OverlayEffect } from './model'
-import { ENGLISH, effectStateOf, tripInputsOf } from './test-helpers'
+import { ENGLISH, effectStateOf, researchedOf, tripInputsOf } from './test-helpers'
 
 const data = ENGLISH
 
@@ -70,20 +70,20 @@ describe('effectiveGatherRate', () => {
 
     it('applies wheelbarrow capacity and move speed to wood and sheep', () => {
         const plain = effectStateOf()
-        const wb = effectStateOf({ researched: new Set(['wheelbarrow']) })
+        const wb = effectStateOf(researchedOf(['wheelbarrow']))
         expect(effectiveGatherRate('wood', wb, inputs)).toBeCloseTo(cycle(15, 0.75, 6.02, 1.15), 10)
         expect(effectiveGatherRate('sheep', wb, inputs)).toBeCloseTo(cycle(15, 0.75, 2.86, 1.15), 10)
         expect(effectiveGatherRate('wood', wb, inputs)).not.toBeCloseTo(effectiveGatherRate('wood', plain, inputs), 3)
     })
 
     it('raises wood by 15% rate with double-broadax', () => {
-        const state = effectStateOf({ researched: new Set(['double-broadax']) })
+        const state = effectStateOf(researchedOf(['double-broadax']))
         expect(effectiveGatherRate('wood', state, inputs)).toBeCloseTo(cycle(10, 0.75 * 1.15, 6.02), 10)
         expect(effectiveGatherRate('gold', state, inputs)).toBeCloseTo(effectiveGatherRate('gold', effectStateOf(), inputs), 10)
     })
 
     it('raises gold and stone but not wood with shaft-mining', () => {
-        const state = effectStateOf({ researched: new Set(['shaft-mining']) })
+        const state = effectStateOf(researchedOf(['shaft-mining']))
         expect(effectiveGatherRate('gold', state, inputs)).toBeCloseTo(cycle(10, 0.75 * 1.15, 2.88), 10)
         expect(effectiveGatherRate('stone', state, inputs)).toBeCloseTo(cycle(10, 0.75 * 1.15, 2.88), 10)
         expect(effectiveGatherRate('wood', state, inputs)).toBeCloseTo(effectiveGatherRate('wood', effectStateOf(), inputs), 10)
@@ -123,7 +123,7 @@ describe('effectiveGatherRate', () => {
     })
 
     it('is deterministic and leaves state untouched', () => {
-        const state = effectStateOf({ researched: new Set(['wheelbarrow']), buildings: new Map([['mill', 1]]) })
+        const state = effectStateOf({ ...researchedOf(['wheelbarrow']), buildings: new Map([['mill', 1]]) })
         const a = effectiveGatherRate('sheep', state, inputs)
         expect(effectiveGatherRate('sheep', state, inputs)).toBe(a)
         expect([...state.researched]).toEqual(['wheelbarrow'])
@@ -143,7 +143,7 @@ describe('modifiedValue', () => {
     })
 
     it('ignores a fishing-boat tech for villagers', () => {
-        const state = effectStateOf({ researched: new Set(['extended-lines']) })
+        const state = effectStateOf(researchedOf(['extended-lines']))
         expect(modifiedValue(10, 'carryCapacity', villager, state)).toBe(10)
         expect(modifiedValue(1, 'foodGatherRate', villager, state)).toBe(1)
     })
@@ -187,7 +187,7 @@ describe('modifiedValue', () => {
     })
 
     it('is deterministic and does not mutate state', () => {
-        const state = effectStateOf({ researched: new Set(['wheelbarrow']) })
+        const state = effectStateOf(researchedOf(['wheelbarrow']))
         expect(modifiedValue(10, 'carryCapacity', villager, state)).toBe(modifiedValue(10, 'carryCapacity', villager, state))
         expect([...state.researched]).toEqual(['wheelbarrow'])
     })

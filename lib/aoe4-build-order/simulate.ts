@@ -62,6 +62,7 @@ export interface EngineState extends EffectState {
   // Completed instances per baseId.
   readonly buildings: Map<string, number>;
   readonly researched: Set<string>;
+  readonly researchedIds: Set<string>;
   readonly coverage: Readonly<Record<string, number>>;
   // baseId -> instances; instance k at index k - 1.
   readonly instances: Map<string, BuildingInstance[]>;
@@ -573,6 +574,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     resources: { ...start.resources.value },
     buildings: new Map(),
     researched: new Set(),
+    researchedIds: new Set(),
     coverage: inputs.influenceCoverage,
     instances: new Map(),
     rallyDefaults: new Map(),

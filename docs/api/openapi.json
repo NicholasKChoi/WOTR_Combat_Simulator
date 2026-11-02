@@ -1785,6 +1785,7 @@
         "description": "A non-fatal note on a research step.",
         "required": [
           "code",
+          "severity",
           "message",
           "step",
           "tech",
@@ -1800,10 +1801,14 @@
             ],
             "description": "tech-effect-ignored: some effect properties are ignored (listed); tech-effect-unmodeled: the technology has no simulated effect."
           },
+          "severity": {
+            "$ref": "#/components/schemas/Severity",
+            "description": "Severity of this note; every note is info."
+          },
           "message": {
             "type": "string",
             "minLength": 1,
-            "description": "Human-readable note naming the step and technology."
+            "description": "Human-readable note that names the technology by id (baseId)."
           },
           "step": {
             "type": "integer",

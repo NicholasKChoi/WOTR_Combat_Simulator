@@ -82,6 +82,8 @@ export interface EffectState {
   // Completed building baseId -> count.
   readonly buildings: ReadonlyMap<string, number>;
   readonly researched: ReadonlySet<string>;
+  // Entry ids of completed research; a multi-tier tech applies only the tier researched.
+  readonly researchedIds: ReadonlySet<string>;
   // Share of gatherers inside a building's influence, keyed by building baseId.
   readonly coverage: Readonly<Record<string, number>>;
 }
@@ -102,9 +104,10 @@ function isGranted(grantedBy: string, state: EffectState): boolean {
 }
 
 function activeEffects(state: EffectState): (SnapshotEffect | OverlayEffect)[] {
-  const fromTechs = [...state.researched].flatMap((baseId) =>
-    (state.data.byBaseId.get(baseId) ?? []).filter((e) => e.type === 'technology').flatMap((e) => e.effects ?? []),
-  );
+  const fromTechs = [...state.researchedIds]
+    .map((id) => state.data.byId.get(id))
+    .filter((e) => e?.type === 'technology')
+    .flatMap((e) => e.effects ?? []);
   const fromOverlay = state.data.civData.effects.filter((row) => isGranted(row.grantedBy, state));
   return [...fromTechs, ...fromOverlay];
 }

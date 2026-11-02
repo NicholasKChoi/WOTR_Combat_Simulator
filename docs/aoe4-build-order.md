@@ -178,15 +178,21 @@ Queue length is not consulted, `research` has no `instance` field, and a tech wi
 and no `at` never starts. With a capital town center and two town centers, `research textiles` goes to
 the capital town center and `research textiles at town-center` to town center 1.
 
+A tech can have one entry per age. Each time a `research` step is offered it researches the tech's
+highest-age entry at or below the current age; that entry gives its producing buildings, cost, research
+time and effects. A step that waited for an age-up therefore researches the entry of the age it reaches.
+A completed research records that entry's `id` (and the tech's `baseId`), and only the effects of
+researched entries apply, not those of other entries of the same tech.
+
 A `research` step pays its cost when it starts and is appended to its instance's paid units, behind any
 unit already paid. It never replaces the instance's order, which resumes (pays its next unit) when the
-research ends. It waits while no target instance exists or while the tech's age is not reached, and it
-reserves resources only when it is short of resources alone.
+research ends. It waits while no target instance exists or while no entry of the tech is at or below the
+current age, and it reserves resources only when it is short of resources alone.
 
 **Tiers.** A produced unit is the entry for the highest tier whose upgrade has been researched, else the
 lowest-age entry for its `baseId`. `upgradeTargets` maps an upgrade `baseId` to the unit `baseId` it
 upgrades, because aoe4world's `unlocks` is empty; the target tier is the unit entry whose `age` equals the
-upgrade's `age`. A veterancy upgrade occupies its building's queue for its research time, and units
+`age` of the upgrade entry that was researched, not of any other entry of that upgrade. A veterancy upgrade occupies its building's queue for its research time, and units
 paid afterwards are the upgraded tier. A unit's tier is fixed when paid: a unit paid before an upgrade
 completes keeps the lower tier. An upgrade with no unit entry at its age does not change the tier.
 
@@ -339,12 +345,17 @@ and `productionSpeed`. `IGNORED_EFFECT_PROPERTIES` are the combat properties (`h
    `military-academy` and `lightweight-beams` are rejected rather than silently mis-timed.
 3. Any property in `IGNORED_EFFECT_PROPERTIES`: `effects-ignored`. The technology costs resources and
    queue time and applies its supported effects. Each research step of it gets one `tech-effect-ignored`
-   note naming the ignored properties, reached or not, in step order.
+   note naming the ignored properties, reached or not, in step order, worded with the tech's `baseId`
+   (`bloomery: its effect on meleeAttack is not simulated; it still costs resources and queue time.`).
 4. Empty or absent `effects` (`admiralty`) and no `OverlayEffect` with `grantedBy` equal to its
    `baseId`: `effects-unmodeled`. It costs resources and queue time like any technology, and each research
-   step of it gets one `tech-effect-unmodeled` note with empty `properties`, worded so the user sees its
-   effect is not simulated. With such an overlay row it is `supported`.
+   step of it gets one `tech-effect-unmodeled` note with empty `properties`, worded with the tech's
+   `baseId` so the user sees its effect is not simulated (`admiralty: its effect is not simulated; it still
+   costs resources and queue time.`). With such an overlay row it is `supported`.
 5. Otherwise: `supported`.
+
+Notes classify a tech by its lowest-age entry, so they depend only on the build order and the data, not on
+the age a step is reached at.
 
 An upgrade (`type: 'upgrade'`) is supported if and only if `upgradeTargets` lists it; otherwise it is
 rejected as `unsupported-tech` with `property: 'upgradeTargets'`. A rejection is a `BuildOrderIssue`
@@ -527,7 +538,8 @@ A `SimulationResult` holds:
 - `ages`: each age reached and its `reachedAt` time.
 - `notes`: `BuildOrderNote`s, non-fatal, one per research step of a technology whose effects are not all
   simulated, whether or not the step is reached, in step order: `tech-effect-ignored` (ignored combat
-  properties listed) and `tech-effect-unmodeled` (empty `properties`).
+  properties listed) and `tech-effect-unmodeled` (empty `properties`). Every note has `severity: 'info'`,
+  and its message starts with the tech's `baseId`.
 - `depletions`: `NodeDepletion`s (`node`, `amount`, `depletedAt`), one per finite node ref the run uses, in
   node-ref order: `node` is a finite node (`sheep`, `berry`, `deer`, `boar`, `gold`, `stone`) or a numbered
   gold deposit (`gold#2` to `gold#8`), `amount` its starting stock (`null` when infinite), and `depletedAt`

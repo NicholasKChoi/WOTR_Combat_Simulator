@@ -15,7 +15,7 @@ const data = ENGLISH
 const inputs = inputsFor(data)
 
 function rateOf(node: GatherNodeId, game: GameData, simInputs: SimInputs, buildings = ['capital-town-center']): number {
-    const state = { data: game, age: 1, buildings: new Map(buildings.map((b) => [b, 1])), researched: new Set<string>(), coverage: simInputs.influenceCoverage }
+    const state = { data: game, age: 1, buildings: new Map(buildings.map((b) => [b, 1])), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: simInputs.influenceCoverage }
     return effectiveGatherRate(node, state, simInputs)
 }
 

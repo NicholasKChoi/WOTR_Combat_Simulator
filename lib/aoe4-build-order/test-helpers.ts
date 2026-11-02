@@ -85,7 +85,15 @@ export function withHandler<A extends BuildStep['action']>(action: A, handler: S
 }
 
 export function effectStateOf(overrides: Partial<EffectState> = {}): EffectState {
-    return { data: ENGLISH, age: 1, buildings: new Map(), researched: new Set(), coverage: {}, ...overrides }
+    return { data: ENGLISH, age: 1, buildings: new Map(), researched: new Set(), researchedIds: new Set(), coverage: {}, ...overrides }
+}
+
+// Each tech counts as researched at its lowest-age entry.
+export function researchedOf(baseIds: readonly string[], data: GameData = ENGLISH): Pick<EffectState, 'researched' | 'researchedIds'> {
+    return {
+        researched: new Set(baseIds),
+        researchedIds: new Set(baseIds.flatMap((baseId) => data.byBaseId.get(baseId)?.[0]?.id ?? [])),
+    }
 }
 
 // Only trips is read by the trip model.

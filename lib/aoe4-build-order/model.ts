@@ -159,6 +159,7 @@ export interface BuildOrderIssue {
 
 export interface BuildOrderNote {
   code: 'tech-effect-ignored' | 'tech-effect-unmodeled';
+  severity: Severity;
   message: string;
   step: number;
   tech: string;
