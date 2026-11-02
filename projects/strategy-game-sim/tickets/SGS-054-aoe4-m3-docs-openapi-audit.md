@@ -129,6 +129,18 @@ Findings:
 - `docs/aoe4-build-order.md:488`: "The issue message is `<reason> in <path>`" is stated for every node position including `nodeAmounts` keys, but those go through `inputIssue` (`validate.ts:417-418`, `:474`) and read `inputs.nodeAmounts.iron: unknown node "iron"`.
 
 Required fixes:
-- [x] (rework 1) Restore wording that says `spawnedPopulation` is the summed popcap.
-- [x] (rework 1) Limit the `<reason> in <path>` form to step fields, `start` and the trigger, and state the `inputs.nodeAmounts.<ref>: <reason>` form for `nodeAmounts` keys. Re-run the node-ref spot check after the edit.
-- [x] (rework 1) Fix the non-blocking wording notes in the review report that are cheap (intro "graphs ... population" vs "no graph", "with the markers and warnings", "never read" in Technologies).
+- [ ] (rework 1) Restore wording that says `spawnedPopulation` is the summed popcap.
+- [ ] (rework 1) Limit the `<reason> in <path>` form to step fields, `start` and the trigger, and state the `inputs.nodeAmounts.<ref>: <reason>` form for `nodeAmounts` keys. Re-run the node-ref spot check after the edit.
+- [ ] (rework 1) Fix the non-blocking wording notes in the review report that are cheap (intro "graphs ... population" vs "no graph", "with the markers and warnings", "never read" in Technologies).
+
+## Rework 2 - 2026-11-02 (review)
+
+Gate that bounced: delta review at tip 9a2937c58c544f841b53f1c2a5fc8be02f30ece0 (`reports/SGS-054-review-2.md`). Rework 1's two fixes were verified correct.
+
+Findings:
+- `docs/aoe4-build-order.md:357`: rework 1 lowercased "Resource depletion (Depletion), on by default" to "resource depletion". The ticket's stale-statements grep is case-sensitive and includes `resource depletion`; it must print 0 and now prints 1 on that line.
+- Non-blocking: `:488` "The reason quotes the value" is not true when the value is not a string (the reason is `node must be a string`).
+
+Required fixes:
+- [ ] (rework 2) Reword the line so the phrase `resource depletion` is gone (for example "depletion of finite nodes (Depletion), on by default: ..."), keeping the meaning; re-run every ticket criterion grep and confirm each prints the expected count.
+- [ ] (rework 2) Fix the `:488` sentence so it is true for non-string values.
