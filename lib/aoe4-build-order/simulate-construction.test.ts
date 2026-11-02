@@ -414,7 +414,7 @@ describe('auto-houses', () => {
         })
         withHandler(
             'research',
-            () => ({ started: false, reserve: { food: 0, wood: 1e9, gold: 0, stone: 0 } }),
+            () => ({ started: false, waitingOn: 'resources', reserve: { food: 0, wood: 1e9, gold: 0, stone: 0 } }),
             () => {
                 const result = run([{ action: 'research', tech: 'wheelbarrow' }], { game: woodVillagers, start: { villagers: { sheep: 9 }, rally: 'sheep' } })
                 expect(result.floating.wood[0]).toBe(150)

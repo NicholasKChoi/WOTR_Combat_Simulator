@@ -43,15 +43,15 @@ export function researchEntry(baseId: string, state: EffectState): SnapshotEntry
 export const researchHandler: StepHandler<'research'> = (step, index, state) => {
   const entry = researchEntry(step.tech, state);
   if (!entry) {
-    return { started: false };
+    return { started: false, waitingOn: 'prerequisite' };
   }
   const target = researchTarget(state, step.at === undefined ? entry.producedBy : [step.at]);
   if (!target) {
-    return { started: false };
+    return { started: false, waitingOn: 'prerequisite' };
   }
   const cost = costOf(entry, 1);
   if (!canAfford(state.resources, cost)) {
-    return { started: false, reserve: cost };
+    return { started: false, waitingOn: 'resources', reserve: cost };
   }
   payCost(state, cost, 'research');
   target.paid.push(researchItem(entry, index));

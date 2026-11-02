@@ -122,6 +122,8 @@ export interface StepTiming {
   startedAt: number | null;
   completedAt: number | null;
   waitSeconds: number;
+  waitingOn: StepWait | null;
+  waitBreakdown: Partial<Record<'resources' | 'villagers' | 'population' | 'prerequisite', number>>;
 }
 
 export type ChartMarkerKind = 'age-up' | 'economy' | 'unit-tier' | 'blacksmith' | 'other';

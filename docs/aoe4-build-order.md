@@ -588,8 +588,14 @@ A `SimulationResult` holds:
   until it spawns, unlike the supply-check population, which counts it at payment.
 - `populationCapReachedAt`: the instant `spawnedPopulation` first reaches the population cap (`0` when the
   start already does), or `null`. It is a spawn instant, not rounded to a sample time.
-- `steps`: one `StepTiming` per step with `status`, `armedAt`, `startedAt`, `completedAt` and
-  `waitSeconds`. `status` is one of `completed`, `in-progress`, `waiting` or `not-reached`.
+- `steps`: one `StepTiming` per step with `status`, `armedAt`, `startedAt`, `completedAt`,
+  `waitSeconds`, `waitingOn` and `waitBreakdown`. `status` is one of `completed`, `in-progress`, `waiting` or
+  `not-reached`. `waitingOn` is why the step has not started: `null` once it has started, the reason of its
+  last failed check while `waiting`, `trigger` for a `not-reached` step whose own trigger never held, and
+  `earlier-step` for a `not-reached` step behind an unstarted one. `waitBreakdown` is the seconds from
+  `armedAt` spent on each of `resources`, `villagers`, `population` and `prerequisite`; the values sum to
+  `waitSeconds` for a started step and to the time from `armedAt` to the horizon for a `waiting` one, and a
+  reason with 0 seconds is absent.
 - `ages`: each age reached and its `reachedAt` time.
 - `markers`: `ChartMarker`s (`kind`, `label`, `at`) for the charts: one `age-up` marker per age reached after
   the start age (label `Feudal`, `Castle` or `Imperial`, `at` its `reachedAt`) and one per completed research
@@ -608,11 +614,14 @@ A `SimulationResult` holds:
   gold deposit (`gold#2` to `gold#8`), `amount` its starting stock (`null` when infinite), and `depletedAt`
   when it ran out (`null` if it still had stock at the horizon).
 - `warnings`: non-fatal `SimWarning`s, each with a `code` (`node-depleted`, `idle-arrival` or `step-stuck`),
-  a `severity` (one of `error`, `warning`, `info`), a `message` and an `at` time. They are sorted by `at`;
+  a `severity` (one of `error`, `warning`, `info`), a `message` and an `at` time. They hold the node
+  warnings when a finite node runs out and one `step-stuck` warning (severity `warning`) for each step
+  still `waiting` at the horizon, whose message reads `step 12 (build) was still waiting on resources at
+  60:00, from 11:40.` (1-based step number; `at` is the step's `armedAt`). They are sorted by `at`;
   at the same `at`, node warnings come first in node-ref order with `node-depleted` before `idle-arrival`
   for one node, then `step-stuck` by step index.
 - `depletions` always lists the six finite nodes, plus any deposit the order names. With no
-  `nodeAmounts` every `amount` is `null` and `warnings` is empty; nothing emits `step-stuck` yet.
+  `nodeAmounts` every `amount` is `null`.
 
 The page draws three graphs over time from it: units produced (by unit and tier), gather rates, and
 floating resources.
@@ -624,7 +633,7 @@ At the horizon each state maps to a `StepTiming.status`:
 stateDiagram-v2
   [*] --> Unarmed
   Unarmed --> Armed: trigger holds and every earlier step started (armedAt)
-  Armed --> Waiting: unaffordable, supply-blocked, unit unavailable or no targeted instance
+  Armed --> Waiting: a check fails (prerequisite, villagers, population or resources)
   Waiting --> Started: affordable and supply allows (startedAt)
   Armed --> Started: affordable and supply allows (startedAt)
   Started --> Completed: work done (completedAt)
@@ -641,7 +650,19 @@ stateDiagram-v2
 A step waits while it cannot be paid, while supply has no room, while the unit's entry is above the
 current age, or while no building instance it targets exists. A `build` step also waits while its
 building's entry is above the current age or while fewer than `builders` villagers gather at `from`; a
-`move` step waits while fewer than `count` villagers gather at `from`. A `produce` step completes when no
+`move` step waits while fewer than `count` villagers gather at `from`. Each reason is reported: `waitingOn`
+holds the current one and `waitBreakdown` the seconds spent on each. A handler checks in a fixed order
+and reports the first check that fails:
+
+| `waitingOn` | produced when |
+|---|---|
+| `prerequisite` | `produce`: no targeted instance exists, or the unit's entry is above the current age. `build`: the building's entry is above the current age. `research`: no producing instance exists, or every tier of the tech is above the current age. An action with no handler always reports it |
+| `villagers` | `build`: fewer than `builders` villagers gather at `from` or idle there. `move` with a number `count`: fewer than `count` do. `move` with `count: all` never waits and never reports it |
+| `population` | `produce`: the population after paying would pass supply |
+| `resources` | the step is otherwise ready but the bank is short of its cost; this is the only reason that reserves |
+
+The order is `prerequisite`, then `villagers` or `population`, then `resources`. `rally` and `pause`
+never wait. A `trigger` or `earlier-step` reason is only reported for a step that never armed. A `produce` step completes when no
 instance carries its order any more: a counted one at the spawn of its last unit on the last instance, a
 continuous one (or a counted one replaced early) when a later `produce` or `pause` on that producer
 starts. `rally` and `pause` complete the instant they start; `build` completes when the building does,
