@@ -5,8 +5,8 @@ import type { SimInputs } from './model';
 import type { EngineState } from './simulate';
 
 export interface HouseDemand {
-  // Supply of buildings under construction.
-  pendingSupply: number;
+  // Every building under construction: its supply and its expected completion time.
+  pending: { supply: number; completesAt: number }[];
   populationPerSecond: number;
 }
 
@@ -19,11 +19,13 @@ export function planAutoHouse(state: EngineState, inputs: SimInputs, data: GameD
     return 0;
   }
   const lead = villagerWalkSeconds(state, inputs.walkSeconds) + constructionSeconds(house.costs.time, inputs.houseBuilders, data);
-  const headroom = state.supply + demand.pendingSupply;
+  const arriving = demand.pending.filter((item) => item.completesAt <= state.time + lead);
+  const headroom = state.supply + arriving.reduce((sum, item) => sum + item.supply, 0);
   const shortfall = state.population + demand.populationPerSecond * lead - headroom;
   if (shortfall <= RESOURCE_TOLERANCE) {
     return 0;
   }
-  const room = Math.ceil((data.base.maxPopCap.value - headroom) / houseSupply);
+  const allPending = demand.pending.reduce((sum, item) => sum + item.supply, 0);
+  const room = Math.ceil((data.base.maxPopCap.value - state.supply - allPending) / houseSupply);
   return Math.max(0, Math.min(Math.ceil(shortfall / houseSupply), room));
 }

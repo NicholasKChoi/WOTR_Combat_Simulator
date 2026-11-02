@@ -300,9 +300,12 @@ supply is capped at `maxPopCap`, 200. With `autoHouses` on (the default), the si
 its own so supply does not block production. At every instant, after production starts, it projects the
 population one lead ahead, where the lead is the builders' walk to the site plus the house build time with
 `houseBuilders` builders. The projection adds to the current population the combined rate of every
-producer with an order, in population per second. When it passes the supply plus the supply of buildings
-under construction, enough houses start at once to cover the difference, each with its own `houseBuilders`
-builders; houses run concurrently. Planning stops once supply plus pending supply reaches `maxPopCap`.
+producer with an order, in population per second. When it passes the headroom, enough houses start at once
+to cover the difference, each with its own `houseBuilders` builders; houses run concurrently. The headroom is
+the supply plus the supply of the buildings under construction that finish within the lead (one finishing
+exactly at the lead counts), so a long build such as a landmark does not hold houses back. Every building
+under construction still counts toward `maxPopCap`, so planning stops once supply plus the supply of all of
+them reaches 200.
 
 `houseBuilderSource` is the preferred node (`gold` is deposit 1). When it has fewer than `houseBuilders`
 villagers gathering, builders come from the node ref with the most gatherers (ties: the first in node order,
