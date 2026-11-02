@@ -77,7 +77,7 @@ test.describe('AoE4 build order M3 flow', () => {
     const response = await runSimulation(page)
     expect(response.status()).toBe(200)
     const result = (await response.json()) as SimulationResult
-    expect(result.depletions.find((d) => d.node === 'gold')?.depletedAt).not.toBeNull()
+    expect(result.depletions.find((d) => d.node === 'gold')).toMatchObject({ depletedAt: expect.any(Number) })
 
     const lastTimeline = page.getByTestId('step-timeline-row').last()
     await expect(lastTimeline).toHaveAttribute('data-reaction', 'true')

@@ -1,19 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 import { listBuilds } from "../lib/aoe4-build-order/builds";
 import { formatBuildOrderText } from "../lib/aoe4-build-order/parse-text";
-import { SIMULATE_PATH } from "./helpers";
-
-const PAGE = "/apps/aoe4-build-order";
+import { SIMULATE_PATH, openPage } from "./helpers";
 
 const row = (page: Page, i: number) => page.getByTestId("step-row").nth(i);
 const field = (page: Page, i: number, name: string) =>
   row(page, i).getByTestId(`step-field-${name}`);
 const textarea = (page: Page) => page.getByTestId("build-order-text");
-
-async function openPage(page: Page) {
-  await page.goto(PAGE);
-  await page.waitForLoadState("networkidle");
-}
 
 async function openWith(page: Page, text: string) {
   await openPage(page);
