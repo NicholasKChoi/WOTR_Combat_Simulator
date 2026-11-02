@@ -36,7 +36,7 @@ Names follow `design/M3.md` and the written tickets SGS-035, 037, 038, 039, 040 
 
 **`components/apps/aoe4-build-order/step-table.tsx`** (new). `StepTable({ order, options, onChange })` where `order` is the parsed `BuildOrder` and `onChange(next: BuildOrder)` is called with `{ ...order, steps }` for every edit. One `step-row` per step (`data-step` is the 0-based index). Columns: trigger kind select (`step-trigger-kind`) and its fields (`time`: `step-field-seconds`; `villagers`: `step-field-trigger-count`), action select (`step-action`), the action's fields, the reaction checkbox, and the buttons `step-move-up`, `step-move-down`, `step-delete`; below the rows, `step-add`.
 - Fields by action follow `STEP_FIELDS` in `validate.ts:62-69`, every one rendered whether or not it is set, so a pasted value is always visible: `produce` producer, `instance`, unit, `count`, `rally`, `walkSeconds`; `rally` producer, `instance`, `to`, `walkSeconds`; `pause` producer, `instance`; `build` building, `builders`, `from`, `then`, `walkSeconds`; `research` tech, `at`; `move` `count`, `from`, `to`, `walkSeconds`. Trigger fields: `time` `seconds`, `villagers` `count`, `depleted` `node`, `bank` `resource` and `atLeast`. Each control has `data-testid="step-field-<field>"` where `<field>` is the JSON name. A `villagers` trigger's count is `step-field-trigger-count`, because a row can also hold `produce ... x3` or `move 4 ...`, whose `count` is `step-field-count`. (The design's test-id table names `step-field-trigger-count`; SGS-055 uses it.) (respec 1)
-- Selects take their choices from `options`: producer from `producers` (`rally` action: `villagerProducers`), `unit` from `unitsByProducer[producer] ?? []`, `building` from `buildings`, `tech` from `techs`, `at` from `techSites[tech] ?? []` plus an empty option meaning none, node fields from `nodes` (`then` and `rally` carry an empty option), trigger `node` from `finiteNodes`, `resource` from `resources`. Each goes through `selectChoices`, so a value the options do not list renders as an extra selected `<option>` labelled `<id> (unknown)` with `data-unknown="true"`, and the table never rewrites it by itself (a change of another field leaves it alone, except the producer-to-unit rule).
+- Selects take their choices from `options`: producer from `producers` (`rally` action: `villagerProducers`), `unit` from `unitsByProducer[producer] ?? []`, `building` from `buildings`, `tech` from `techs`, `at` from `techSites[tech] ?? []` plus an empty option meaning none, node fields from `nodes` (only `build.then` and `produce.rally` carry an empty option; the `rally` action's required `to` has none), trigger `node` from `finiteNodes`, `resource` from `resources`. Each goes through `selectChoices`, so a value the options do not list renders as an extra selected `<option>` labelled `<id> (unknown)` with `data-unknown="true"`, and the table never rewrites it by itself (a change of another field leaves it alone, except the producer-to-unit rule).
 - Number fields (`step-field-count`, `-builders`, `-instance`, `-walkSeconds`, `-seconds`, `-atLeast`) are text inputs with `inputMode="numeric"`. Each keeps a local draft string while focused so a user can clear a field to retype it; the step changes only when the draft passes the number rule (an invalid draft leaves the step as it was), and on blur the field shows the step's own value again. Per the design, the time field (`step-field-seconds`) takes whole seconds (matching `Trigger.seconds`), not `m:ss`, and its label says "seconds". (respec 1)
 - `step-field-reaction` is a checkbox rendered only while the trigger kind is `depleted`.
 - Move up is disabled on row 0 and move down on the last row (`disabled` attribute). Delete removes the row; deleting the last row leaves `steps: []`.
@@ -106,3 +106,17 @@ flowchart LR
 ## Open questions
 
 None.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review at tip 4652ca9e0836fd7bc706b4cf4cc10904c3f5ac38 (report `reports/SGS-046-review-1.md`). No other gate has passed yet.
+
+Findings:
+- `components/apps/aoe4-build-order/step-table.tsx:45` (correctness): the `rally` action's `to` select has a `(none)` option, but `to` is required (`model.ts:64`, `validate.ts` STEP_FIELDS `req('to','node')`). Picking it writes `rally capital-town-center ->` into the text, which no longer parses, and the table is replaced by `step-table-unavailable`.
+- `step-table-model.test.ts:109`: the test "only swaps the producer on pause and rally" checks only `pause`.
+- Non-blocking, fix because cheap: `step-table-model.ts:113` a number draft of 22 or more digits becomes a number at or above 1e21, which prints as `x1e+21` and does not parse; reject values that fail `Number.isSafeInteger`.
+
+Required fixes:
+- [ ] (rework 1) Drop the empty option from the `rally` action's `to` select. Only `produce.rally`, `build.then` and `research.at` offer an empty choice. Add a model or option-level test that fails if `rally.to` offers an empty choice.
+- [ ] (rework 1) Add the `rally` assertion to that test (or rename it so the name matches what it checks).
+- [ ] (rework 1) Reject number drafts that are not safe integers, with a test.
