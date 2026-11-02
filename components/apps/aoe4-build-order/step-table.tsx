@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import type { BuildOrder, BuildStep, Trigger } from '../../../lib/aoe4-build-order/model'
 import { formatBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
+import type { BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
 import type { StepOptions } from '../../../lib/aoe4-build-order/step-options'
 import {
     changeAction,
@@ -22,7 +23,7 @@ import {
 
 interface StepTableProps {
     order: BuildOrder
-    options: StepOptions
+    catalog: BuildOrderCatalog
     onChange: (next: BuildOrder) => void
 }
 
@@ -199,7 +200,7 @@ function ActionFields({ step, options, onEdit }: { step: BuildStep; options: Ste
     )
 }
 
-export function StepTable({ order, options, onChange }: StepTableProps) {
+export function StepTable({ order, catalog, onChange }: StepTableProps) {
     const { steps } = order
     const commit = (next: BuildStep[]) => {
         if (next !== steps) onChange({ ...order, steps: next })
@@ -223,15 +224,15 @@ export function StepTable({ order, options, onChange }: StepTableProps) {
                                         aria-label="trigger"
                                         className="form-select form-select-sm w-auto mb-1"
                                         value={step.trigger?.kind ?? 'none'}
-                                        onChange={(e) => edit(changeTriggerKind(step, e.target.value as Trigger['kind'] | 'none', options))}
+                                        onChange={(e) => edit(changeTriggerKind(step, e.target.value as Trigger['kind'] | 'none', catalog))}
                                     >
-                                        {options.triggerKinds.map((kind) => (
+                                        {catalog.triggerKinds.map((kind) => (
                                             <option key={kind} value={kind}>
                                                 {kind}
                                             </option>
                                         ))}
                                     </select>
-                                    <TriggerFields step={step} options={options} onEdit={edit} />
+                                    <TriggerFields step={step} options={catalog} onEdit={edit} />
                                 </td>
                                 <td>
                                     <select
@@ -239,15 +240,15 @@ export function StepTable({ order, options, onChange }: StepTableProps) {
                                         aria-label="action"
                                         className="form-select form-select-sm w-auto mb-1"
                                         value={step.action}
-                                        onChange={(e) => edit(changeAction(step, e.target.value as BuildStep['action'], options))}
+                                        onChange={(e) => edit(changeAction(step, e.target.value as BuildStep['action'], catalog))}
                                     >
-                                        {options.actions.map((action) => (
+                                        {catalog.actions.map((action) => (
                                             <option key={action} value={action}>
                                                 {action}
                                             </option>
                                         ))}
                                     </select>
-                                    <ActionFields step={step} options={options} onEdit={edit} />
+                                    <ActionFields step={step} options={catalog} onEdit={edit} />
                                 </td>
                                 <td className="text-nowrap">
                                     <button type="button" data-testid="step-move-up" className="btn btn-sm btn-outline-secondary me-1" disabled={index === 0} onClick={() => commit(moveStep(steps, index, -1))}>
@@ -269,7 +270,7 @@ export function StepTable({ order, options, onChange }: StepTableProps) {
                 type="button"
                 data-testid="step-add"
                 className="btn btn-sm btn-outline-primary"
-                onClick={() => commit(insertStep(steps, steps.length, defaultStep('produce', options)))}
+                onClick={() => commit(insertStep(steps, steps.length, defaultStep('produce', catalog)))}
             >
                 Add step
             </button>

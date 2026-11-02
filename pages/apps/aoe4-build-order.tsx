@@ -13,7 +13,9 @@ import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { loadGameData } from '../../lib/aoe4-build-order/data'
 import { formatBuildOrderText, parseBuildOrderText } from '../../lib/aoe4-build-order/parse-text'
-import { type StepOptions, stepOptions } from '../../lib/aoe4-build-order/step-options'
+import type { BuildOrderIssue } from '../../lib/aoe4-build-order/model'
+import { type BuildOrderCatalog, buildOrderCatalog } from '../../lib/aoe4-build-order/schema'
+import { textToBuildOrder } from '../../lib/aoe4-build-order/text-to-build'
 import type { SimulateError, SimulateRequest, SimulateResponse } from '../../lib/aoe4-build-order/api'
 
 const pageTitle = 'AoE4 Build Order Simulator'
@@ -21,13 +23,13 @@ const DEFAULT_DURATION_SECONDS = 1200
 
 interface PageProps {
     builds: PrebuiltBuild[]
-    options: StepOptions
+    catalog: BuildOrderCatalog
 }
 
 export const getStaticProps: GetStaticProps<PageProps> = async () => ({
     props: {
         builds: listBuilds().map((order) => ({ name: order.name, text: formatBuildOrderText(order) })),
-        options: stepOptions(loadGameData('english')),
+        catalog: buildOrderCatalog(loadGameData('english')),
     },
 })
 
@@ -47,22 +49,30 @@ async function errorMessages(response: Response): Promise<string[]> {
     return [`The simulation could not be run (HTTP ${response.status}).`]
 }
 
-export default function AoE4BuildOrder({ builds, options }: PageProps) {
+export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [text, setText] = useState(builds[0]?.text ?? '')
     const [duration, setDuration] = useState(String(DEFAULT_DURATION_SECONDS))
     const [result, setResult] = useState<SimulateResponse | null>(null)
     const [resultText, setResultText] = useState('')
     const [pinned, setPinned] = useState<SimulateResponse | null>(null)
     const [issues, setIssues] = useState<string[]>([])
+    const [clientIssues, setClientIssues] = useState<BuildOrderIssue[]>([])
     const [running, setRunning] = useState(false)
     const [infoExpanded, setInfoExpanded] = useState(false)
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
 
     async function runSimulation() {
-        setRunning(true)
         setIssues([])
+        setClientIssues([])
         const runText = text
-        const request: SimulateRequest = { text: runText, inputs: { durationSeconds: Number(duration) } }
+        const converted = textToBuildOrder(runText, catalog)
+        if (converted.ok === false) {
+            setClientIssues(converted.issues)
+            setResult(null)
+            return
+        }
+        setRunning(true)
+        const request: SimulateRequest = { buildOrder: converted.order, inputs: { durationSeconds: Number(duration) } }
         try {
             const response = await fetch('/api/aoe4-build-order/simulate', {
                 method: 'POST',
@@ -100,9 +110,10 @@ export default function AoE4BuildOrder({ builds, options }: PageProps) {
                     onDurationChange={setDuration}
                     running={running}
                     onRun={runSimulation}
+                    issues={clientIssues}
                 />
                 {parsed.ok === true ? (
-                    <StepTable order={parsed.order} options={options} onChange={(order) => setText(formatBuildOrderText(order))} />
+                    <StepTable order={parsed.order} catalog={catalog} onChange={(order) => setText(formatBuildOrderText(order))} />
                 ) : (
                     <div data-testid="step-table-unavailable" className="alert alert-secondary">
                         {parsed.issues[0].message}

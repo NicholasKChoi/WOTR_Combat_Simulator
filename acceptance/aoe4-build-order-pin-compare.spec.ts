@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, expectedCompareKeys, hexToRgb, openPage } from './helpers'
+import { SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys, hexToRgb, openPage, runRejected } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -191,8 +191,9 @@ test.describe('AoE4 build order pin and compare', () => {
     await runOk(page, { duration: 600 })
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
 
-    expect((await run(page, { text: INVALID_PASTE })).status()).toBe(400)
-    await expect(page.getByTestId('simulation-error')).toBeVisible()
+    await page.getByTestId('build-order-text').fill(INVALID_PASTE)
+    await runRejected(page)
+    await expectFlySyntaxIssue(page)
     await expect(page.getByTestId('compare-key-numbers')).toHaveCount(0)
     for (const chart of CHART_IDS) await expect(page.getByTestId(chart)).toHaveCount(0)
     await expect(page.getByTestId('unpin-run')).toBeEnabled()

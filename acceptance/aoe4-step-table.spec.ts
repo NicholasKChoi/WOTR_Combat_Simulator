@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { listBuilds } from "../lib/aoe4-build-order/builds";
 import { formatBuildOrderText } from "../lib/aoe4-build-order/parse-text";
-import { SIMULATE_PATH, openPage } from "./helpers";
+import { SIMULATE_PATH, buildOrderFrom, openPage } from "./helpers";
 
 const row = (page: Page, i: number) => page.getByTestId("step-row").nth(i);
 const field = (page: Page, i: number, name: string) =>
@@ -212,8 +212,8 @@ test.describe("AoE4 step table", () => {
       (r) => r.url().endsWith(SIMULATE_PATH) && r.method() === "POST",
     );
     await page.getByTestId("run-simulation").click();
-    expect(JSON.parse((await request).postData() ?? "{}").text).toBe(
-      await textarea(page).inputValue(),
+    expect((await request).postDataJSON().buildOrder).toEqual(
+      buildOrderFrom(await textarea(page).inputValue()),
     );
     await expect(page.getByTestId("chart-units-produced")).toBeVisible();
   });

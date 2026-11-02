@@ -6,7 +6,7 @@ import { MARKER_COLORS, MARKER_KIND_LABELS } from '../components/apps/aoe4-build
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { CHART_MARKER_KINDS, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { hexToRgb, openPage, runSimulation, SIMULATE_PATH } from './helpers'
+import { expectFlySyntaxIssue, buildOrderFrom, hexToRgb, openPage, runRejected, runSimulation, SIMULATE_PATH } from './helpers'
 
 const TITLE = 'AoE4 Build Order Simulator'
 const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
@@ -88,7 +88,9 @@ test.describe('AoE4 build order page', () => {
     await page.getByTestId('build-order-text').fill(RALLY_PASTE)
     const response = await runSimulation(page)
     expect(response.status()).toBe(200)
-    expect(response.request().postDataJSON().text).toBe(RALLY_PASTE)
+    const body = response.request().postDataJSON()
+    expect(body.buildOrder).toEqual(buildOrderFrom(RALLY_PASTE))
+    expect(body).not.toHaveProperty('text')
     await expectChartsDrawn(page)
   })
 
@@ -104,20 +106,37 @@ test.describe('AoE4 build order page', () => {
   test('an invalid paste shows the line and token with no chart; a valid run then clears it', async ({ page }) => {
     await openPage(page)
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
-    const bad = await runSimulation(page)
-    expect(bad.status()).toBe(400)
-    const error = page.getByTestId('simulation-error')
-    await expect(error).toBeVisible()
-    await expect(error).toContainText('2')
-    await expect(error).toContainText('fly')
+    await runRejected(page)
+    await expectFlySyntaxIssue(page)
     for (const chart of CHARTS) {
       await expect(page.getByTestId(chart)).toHaveCount(0)
     }
 
     await page.getByTestId('build-order-text').fill(RALLY_PASTE)
     expect((await runSimulation(page)).status()).toBe(200)
-    await expect(error).toHaveCount(0)
+    await expect(page.getByTestId('build-order-issues')).toHaveCount(0)
     await expectChartsDrawn(page)
+  })
+
+  test('a paste that parses but names an unknown id shows an unknown-id issue and posts nothing', async ({ page }) => {
+    await openPage(page)
+    await page.getByTestId('build-order-text').fill(['start -> sheep', 'produce knigt from stable'].join('\n'))
+    await runRejected(page)
+    const issue = page.getByTestId('build-order-issue')
+    await expect(issue).toHaveCount(1)
+    await expect(issue).toHaveAttribute('data-code', 'unknown-id')
+    await expect(issue).toHaveAttribute('data-line', '2')
+    await expect(issue).toContainText('knigt')
+    await expect(page.getByTestId('simulation-error')).toHaveCount(0)
+  })
+
+  test('a paste over 20000 characters shows one out-of-range issue and posts nothing', async ({ page }) => {
+    await openPage(page)
+    await page.getByTestId('build-order-text').fill('x'.repeat(20001))
+    await runRejected(page)
+    await expect(page.getByTestId('build-order-issue')).toHaveText('text: 20001 characters, more than 20000')
+    await expect(page.getByTestId('build-order-issue')).toHaveAttribute('data-code', 'out-of-range')
+    await expect(page.getByTestId('simulation-error')).toHaveCount(0)
   })
 
   test('a failed run after a successful one removes the charts', async ({ page }) => {
@@ -126,8 +145,8 @@ test.describe('AoE4 build order page', () => {
     await expectChartsDrawn(page)
 
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
-    expect((await runSimulation(page)).status()).toBe(400)
-    await expect(page.getByTestId('simulation-error')).toBeVisible()
+    await runRejected(page)
+    await expectFlySyntaxIssue(page)
     for (const chart of CHARTS) {
       await expect(page.getByTestId(chart)).toHaveCount(0)
     }
@@ -302,7 +321,7 @@ test.describe('AoE4 build order page', () => {
     await expect(infos).toHaveText(['Info one.', 'Note info.'])
 
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
-    expect((await runSimulation(page)).status()).toBe(400)
+    await runRejected(page)
     await expect(page.getByTestId('simulation-notes')).toHaveCount(0)
     await page.getByTestId('build-order-text').fill('start -> sheep')
     expect((await runSimulation(page)).status()).toBe(200)
@@ -319,8 +338,8 @@ test.describe('AoE4 build order page', () => {
   test('a failed run shows neither the warnings nor the info messages', async ({ page }) => {
     await openPage(page)
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
-    expect((await runSimulation(page)).status()).toBe(400)
-    await expect(page.getByTestId('simulation-error')).toBeVisible()
+    await runRejected(page)
+    await expectFlySyntaxIssue(page)
     await expect(page.getByTestId('simulation-warnings')).toHaveCount(0)
     await expect(page.getByTestId('simulation-notes')).toHaveCount(0)
   })
@@ -659,8 +678,8 @@ test.describe('AoE4 build order page', () => {
       await runSimulation(page)
       await expect(page.getByTestId('step-timeline')).toBeVisible()
       await page.getByTestId('build-order-text').fill(INVALID_PASTE)
-      expect((await runSimulation(page)).status()).toBe(400)
-      await expect(page.getByTestId('simulation-error')).toBeVisible()
+      await runRejected(page)
+      await expectFlySyntaxIssue(page)
       await expect(page.getByTestId('step-timeline')).toHaveCount(0)
 
       await page.getByTestId('build-order-text').fill('start -> sheep')
