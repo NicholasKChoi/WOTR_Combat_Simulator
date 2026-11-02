@@ -5,6 +5,7 @@ import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import { BaseRules, CivData, GameData, Snapshot, SnapshotEntry, buildGameData, loadGameData } from './data'
 import { effectiveGatherRate } from './gather'
 import type { BuildOrder, BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
+import { listBuilds } from './builds'
 import { researchHandler, researchNotes, resolveUnitEntry } from './research'
 import { simulateBuildOrder, stepHandlers } from './simulate'
 import { INFINITE_NODES, researchedOf } from './test-helpers'
@@ -76,11 +77,14 @@ describe('research delays the queue and upgrades the tier of later units', () =>
         expect(count(result, 'spearman-2', 15)).toBe(1)
     })
 
-    it('pays the next spearman when the research ends and spawns it 60 s later than without research, at tier 3', () => {
+    it('moves the spearman already spawned to tier 3 when the research ends, and spawns the next one 60 s later than without research', () => {
         expect(count(plain, 'spearman-2', 30)).toBe(2)
         expect(count(result, 'spearman-2', 30)).toBe(1)
-        expect(count(result, 'spearman-3', 85)).toBe(0)
-        expect(count(result, 'spearman-3', 90)).toBe(1)
+        expect(count(result, 'spearman-3', 70)).toBe(0)
+        expect(count(result, 'spearman-3', 75)).toBe(1)
+        expect(count(result, 'spearman-2', 75)).toBe(0)
+        expect(count(result, 'spearman-3', 85)).toBe(1)
+        expect(count(result, 'spearman-3', 90)).toBe(2)
         expect(result.unitsProduced.filter((u) => u.baseId === 'spearman').map((u) => [u.unitId, u.tier])).toEqual([
             ['spearman-2', 2],
             ['spearman-3', 3],
@@ -94,7 +98,7 @@ describe('research delays the queue and upgrades the tier of later units', () =>
     })
 })
 
-describe('the tier is fixed when a unit is paid', () => {
+describe('a unit spawns at the tier researched when it spawns', () => {
     const game = gameWith(3, ['capital-town-center', 'barracks', 'barracks', ...houses], plenty, (parts) => {
         entriesOf(parts, 'spearman').forEach((e) => {
             e.costs.time = 100
@@ -112,13 +116,14 @@ describe('the tier is fixed when a unit is paid', () => {
         game,
     )
 
-    it('keeps tier 2 for the unit paid at 0 although the upgrade completed at 40, and gives tier 3 to the one paid at 45', () => {
+    it('spawns the unit paid at 0 at tier 3 because the upgrade completed at 40, and the one paid at 45 too', () => {
         expect(result.steps[1]).toMatchObject({ startedAt: 0, completedAt: 40 })
         expect(result.steps[2]).toMatchObject({ startedAt: 45 })
-        expect(count(result, 'spearman-2', 95)).toBe(0)
-        expect(count(result, 'spearman-2', 100)).toBe(1)
-        expect(count(result, 'spearman-3', 140)).toBe(0)
-        expect(count(result, 'spearman-3', 145)).toBe(1)
+        expect(count(result, 'spearman-3', 95)).toBe(0)
+        expect(count(result, 'spearman-3', 100)).toBe(1)
+        expect(count(result, 'spearman-3', 140)).toBe(1)
+        expect(count(result, 'spearman-3', 145)).toBe(2)
+        expect(result.unitsProduced.filter((u) => u.baseId === 'spearman').map((u) => u.unitId)).toEqual(['spearman-3'])
     })
 
     it('resolves a unit to the lowest tier until its upgrade is researched, and ignores an upgrade with no entry at its age', () => {
@@ -126,6 +131,44 @@ describe('the tier is fixed when a unit is paid', () => {
         expect(resolveUnitEntry('spearman', state([]))?.id).toBe('spearman-2')
         expect(resolveUnitEntry('spearman', state(['veteran-spearmen']))?.id).toBe('spearman-3')
         expect(resolveUnitEntry('no-such-unit', state([]))).toBeUndefined()
+    })
+})
+
+describe('the Knight/Longbow build converts its longbowmen when veteran longbowmen completes', () => {
+    const build = listBuilds().find((b) => b.name === "ENG Knight/Longbow (King's Palace)")
+    if (build === undefined) {
+        throw new Error('build missing')
+    }
+    const simulate = (game: GameData) => simulateBuildOrder(build, game, inputsFor(game, { durationSeconds: 1800 }))
+    const result = simulate(data)
+    const unconverted = simulate(
+        gameWith(englishRules.startingState.age.value, englishRules.startingState.buildings.value, englishRules.startingState.resources.value, (parts) => {
+            parts.snapshot.units = parts.snapshot.units.filter((u) => u.id !== 'longbowman-3')
+        }),
+    )
+    const veteran = build.steps.findIndex((s) => s.action === 'research' && s.tech === 'veteran-longbowmen')
+
+    it('holds 12 tier-2 longbowmen just before completion and moves them all to tier 3 at it', () => {
+        expect(result.steps[veteran].completedAt).toBeGreaterThan(845)
+        expect(result.steps[veteran].completedAt).toBeLessThanOrEqual(850)
+        expect(count(result, 'longbowman-2', 845)).toBe(12)
+        expect(count(result, 'longbowman-3', 845)).toBe(0)
+        expect(count(result, 'longbowman-2', 850)).toBe(0)
+        expect(count(result, 'longbowman-3', 850)).toBe(13)
+        expect(count(result, 'longbowman-3', 1800)).toBe(66)
+        const lower = result.unitsProduced.find((u) => u.unitId === 'longbowman-2')!
+        expect(lower.counts.filter((_, i) => result.times[i] >= 850).every((c) => c === 0)).toBe(true)
+    })
+
+    it('changes nothing but the tier split of unitsProduced, whose per-unit sum is the units produced', () => {
+        const { unitsProduced, ...rest } = result
+        const { unitsProduced: plainUnits, ...plainRest } = unconverted
+        expect(rest).toEqual(plainRest)
+        const longbowmen = (units: typeof unitsProduced) => units.filter((u) => u.baseId === 'longbowman')
+        expect(longbowmen(plainUnits).map((u) => u.unitId)).toEqual(['longbowman-2'])
+        const sum = result.times.map((_, i) => longbowmen(unitsProduced).reduce((n, u) => n + u.counts[i], 0))
+        expect(sum).toEqual(longbowmen(plainUnits)[0].counts)
+        expect(unitsProduced.filter((u) => u.baseId !== 'longbowman')).toEqual(plainUnits.filter((u) => u.baseId !== 'longbowman'))
     })
 })
 

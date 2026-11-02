@@ -1709,7 +1709,7 @@
             "items": {
               "$ref": "#/components/schemas/UnitSeries"
             },
-            "description": "One series per unit entry and tier produced; starting units never appear."
+            "description": "One series per unit entry and tier that held a produced unit at some instant, ordered by that first instant, then unitId; starting units never appear."
           },
           "gatherRates": {
             "type": "object",
@@ -1901,7 +1901,7 @@
       },
       "UnitSeries": {
         "type": "object",
-        "description": "Cumulative count of one unit entry produced over time.",
+        "description": "Produced units at one unit entry and tier over time. A veterancy upgrade moves units to a higher tier's series; the series of one baseId sum to its cumulative produced units.",
         "required": [
           "unitId",
           "baseId",
@@ -1934,7 +1934,7 @@
               "type": "integer",
               "minimum": 0
             },
-            "description": "Units of this entry produced up to each sample time, cumulative."
+            "description": "Produced units at this entry's tier at each sample time; a series whose units all moved to a higher tier stays at 0."
           }
         }
       },

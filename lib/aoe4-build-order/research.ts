@@ -22,6 +22,7 @@ function researchItem(entry: SnapshotEntry, index: number): PaidItem {
     entry,
     complete(state) {
       state.researchedIds.add(entry.id);
+      convertUnits(state, entry);
       state.researched.add(entry.baseId);
       state.markers.push(researchMarker(entry, state.time));
       markCompleted(state, index);
@@ -58,7 +59,32 @@ export const researchHandler: StepHandler<'research'> = (step, index, state) => 
   return { started: true };
 };
 
-// A unit's entry is read when it is paid, so a unit paid before an upgrade completes keeps the lower tier.
+export function recordUnits(state: EngineState, entry: SnapshotEntry, delta: number): void {
+  const record = state.spawned.get(entry.id) ?? { entry, held: 0, changes: [] };
+  state.spawned.set(entry.id, record);
+  record.held += delta;
+  record.changes.push({ time: state.time, delta });
+}
+
+// Moves every spawned unit the upgrade targets from a lower tier to the upgrade's tier.
+export function convertUnits(state: EngineState, upgrade: SnapshotEntry): void {
+  const baseId = state.data.upgradeTargets.get(upgrade.baseId)?.value;
+  const target = baseId === undefined ? undefined : state.data.byBaseId.get(baseId)?.find((entry) => entry.age === upgrade.age);
+  if (!target) {
+    return;
+  }
+  let moved = 0;
+  for (const record of state.spawned.values()) {
+    if (record.entry.baseId === baseId && record.entry.age < target.age && record.held > 0) {
+      moved += record.held;
+      recordUnits(state, record.entry, -record.held);
+    }
+  }
+  recordUnits(state, target, moved);
+}
+
+// The tier at payment sets only a unit's cost, production time and population; the unit spawns at the highest
+// researched tier, never below the tier paid.
 export function resolveUnitEntry(baseId: string, state: EffectState): SnapshotEntry | undefined {
   const entries = state.data.byBaseId.get(baseId);
   if (!entries) {
