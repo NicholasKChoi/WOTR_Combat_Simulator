@@ -29,3 +29,13 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-042 | Report why steps wait and warn on stuck steps | M3 | M3.5,M3.12 | | high | SGS-037 | | | | draft | | | tickets/SGS-042-aoe4-step-wait-step-stuck.md |
 | SGS-037 | Add node refs, warnings contract and the depletion module | M3 | M3.1,M3.11,M3.12 | | high | SGS-035 | | | | draft | | | tickets/SGS-037-aoe4-node-refs-warnings-depletion-module.md |
 | SGS-035 | Share engine code, test helpers and add a duplication check | M3 | M3.13 | | high | | | | | draft | | | tickets/SGS-035-aoe4-engine-common-dup-check.md |
+| SGS-048 | Pin a run and compare key numbers and chart overlays | M3 | M3.6 | | standard | SGS-043,SGS-052 | | | | draft | | | tickets/SGS-048-aoe4-pin-compare.md |
+| SGS-049 | Draw age-up and research markers on the charts | M3 | M3.10 | | standard | SGS-044,SGS-052,SGS-048 | | | | draft | | | tickets/SGS-049-aoe4-chart-markers-ui.md |
+| SGS-039 | Add depleted and bank triggers, reactions and default node amounts | M3 | M3.1,M3.3,M3.11,M3.7 | | high | SGS-038,SGS-042 | | | | draft | | | tickets/SGS-039-aoe4-triggers-reactions-default-amounts.md |
+| SGS-040 | Parse and format deposits, move all and reaction steps in paste text | M3 | M3.3,M3.11,M3.4 | | high | SGS-039 | | | | draft | | | tickets/SGS-040-aoe4-paste-grammar-deposits-reactions.md |
+| SGS-047 | Show a per-step timeline of start, finish and waits | M3 | M3.5 | | low | SGS-042,SGS-040 | | | | draft | | | tickets/SGS-047-aoe4-step-timeline.md |
+| SGS-055 | Add the M3 end-to-end Playwright flow | M3 | M3.9 | | standard | SGS-039,SGS-040,SGS-045,SGS-046,SGS-047,SGS-048 | | | | draft | | | tickets/SGS-055-aoe4-m3-playwright-flow.md |
+| SGS-051 | Add the knight + longbow King's Palace prebuilt build | M3 | M3.7,M3.11 | | high | SGS-039,SGS-040,SGS-041 | | | | draft | | | tickets/SGS-051-aoe4-build-knight-longbow.md |
+| SGS-046 | Edit build steps in a table synced with the paste text | M3 | M3.4 | | high | SGS-040 | | | | draft | | | tickets/SGS-046-aoe4-step-table-editor.md |
+| SGS-050 | Add the spear + longbow into men-at-arms + crossbow prebuilt build | M3 | M3.7,M3.11 | | high | SGS-039,SGS-040 | | | | draft | | | tickets/SGS-050-aoe4-build-spear-longbow-maa-crossbow.md |
+| SGS-054 | Audit M3 docs and OpenAPI and pin the schema names | M3 | M3.9 | | standard | SGS-036,SGS-038,SGS-039,SGS-040,SGS-041,SGS-042,SGS-043,SGS-044,SGS-045,SGS-046,SGS-047,SGS-048,SGS-049,SGS-050,SGS-051,SGS-053 | | | | draft | | | tickets/SGS-054-aoe4-m3-docs-openapi-audit.md |
