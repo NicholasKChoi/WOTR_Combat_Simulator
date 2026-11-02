@@ -81,7 +81,7 @@ export function researchNotes(order: BuildOrder, data: GameData): BuildOrderNote
     if (step.action !== 'research') {
       return;
     }
-    const entry = data.byBaseId.get(step.tech)[0];
+    const entry = data.byBaseId.get(step.tech)![0];
     const support = classifyTech(entry, data);
     if (support.kind === 'effects-ignored') {
       notes.push({

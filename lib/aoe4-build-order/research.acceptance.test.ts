@@ -193,7 +193,7 @@ describe('a research that cannot start', () => {
         it('keeps food at or above the 50 the research needs while waiting for gold', () => {
             const startedAt = result.steps[0].startedAt
             result.times.forEach((t, i) => {
-                if (t < startedAt) {
+                if (t < startedAt!) {
                     expect(result.floating.food[i]).toBeGreaterThanOrEqual(50 - 1e-9)
                 }
             })

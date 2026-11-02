@@ -73,7 +73,7 @@ export class OutcomeAccumulator {
       }
     }
 
-    this.outcomeCounts.set(battle.outcome, this.outcomeCounts.get(battle.outcome) + 1);
+    this.outcomeCounts.set(battle.outcome, this.outcomeCounts.get(battle.outcome)! + 1);
     this.roundCounts.push(battle.rounds);
     this.totalRounds += battle.rounds;
     for (const [side, hits] of hitArrays) {
@@ -82,7 +82,7 @@ export class OutcomeAccumulator {
       }
     }
     if (isSide(battle.outcome)) {
-      this.tallySurvivors(battle.outcome, battle.winner);
+      this.tallySurvivors(battle.outcome, battle.winner!);
     }
   }
 
@@ -109,7 +109,7 @@ export class OutcomeAccumulator {
 
     const outcomes: Record<string, OutcomeTally> = {};
     for (const kind of this.kinds) {
-      const count = this.outcomeCounts.get(kind);
+      const count = this.outcomeCounts.get(kind)!;
       outcomes[kind] = { count, frequency: count / battles };
     }
 

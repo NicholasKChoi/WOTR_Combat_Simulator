@@ -5,7 +5,7 @@ import type { OverlayEffect } from './model'
 import { researchedOf } from './test-helpers'
 
 const data = loadGameData('english')
-const villager: ModifierTarget = { baseId: 'villager', classes: data.byBaseId.get('villager')[0].classes }
+const villager: ModifierTarget = { baseId: 'villager', classes: data.byBaseId.get('villager')![0].classes }
 
 function stateOf(overrides: Partial<EffectState> = {}): EffectState {
     return { data, age: 1, buildings: new Map(), researched: new Set(), researchedIds: new Set(), coverage: {}, ...overrides }

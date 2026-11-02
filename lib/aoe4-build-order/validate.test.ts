@@ -218,7 +218,7 @@ describe('validateBuildOrder rally and start rules', () => {
     const tcStart = (villagers: Record<string, number>) => order([], { start: { villagers, rally: 'sheep' } })
 
     it('requires start.villagers to sum to the civ start', () => {
-        for (const villagers of [{ sheep: 5 }, { sheep: 4, wood: 3 }]) {
+        for (const villagers of [{ sheep: 5 }, { sheep: 4, wood: 3 }] as Record<string, number>[]) {
             const found = only(tcStart(villagers))
             expect(found.code).toBe('invalid')
             expect(found.message).toContain('start.villagers')
@@ -571,7 +571,7 @@ describe('node refs', () => {
             if (code === null) {
                 expect(issues, value).toEqual([])
             } else {
-                expect(issues, value).toEqual([expect.objectContaining({ code, message: expect.stringContaining(`${nodeRefIssue(value, false).reason} in ${path}`) })])
+                expect(issues, value).toEqual([expect.objectContaining({ code, message: expect.stringContaining(`${nodeRefIssue(value, false)!.reason} in ${path}`) })])
             }
         }
     })
@@ -612,7 +612,7 @@ describe('triggers and reactions', () => {
     })
 
     it('reports a node problem at the trigger path and names every kind for an unknown one', () => {
-        expect(stepIssue({ ...PAUSE, trigger: depleted('gold#9') }).message).toContain(`${nodeRefIssue('gold#9', true).reason} in trigger.node`)
+        expect(stepIssue({ ...PAUSE, trigger: depleted('gold#9') }).message).toContain(`${nodeRefIssue('gold#9', true)!.reason} in trigger.node`)
         expect(stepIssue({ ...PAUSE, trigger: depleted('wood') }).message).toContain('in trigger.node')
         const unknown = stepIssue({ ...PAUSE, trigger: { kind: 'event' } }).message
         for (const kind of ['time', 'villagers', 'depleted', 'bank']) {

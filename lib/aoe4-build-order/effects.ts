@@ -105,7 +105,7 @@ function isGranted(grantedBy: string, state: EffectState): boolean {
 
 function activeEffects(state: EffectState): (SnapshotEffect | OverlayEffect)[] {
   const fromTechs = [...state.researchedIds]
-    .map((id) => state.data.byId.get(id))
+    .map((id) => state.data.byId.get(id)!)
     .filter((e) => e?.type === 'technology')
     .flatMap((e) => e.effects ?? []);
   const fromOverlay = state.data.civData.effects.filter((row) => isGranted(row.grantedBy, state));

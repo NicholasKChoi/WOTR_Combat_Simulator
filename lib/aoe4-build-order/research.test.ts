@@ -169,7 +169,7 @@ describe('resolveUnitEntry', () => {
     it('paces auto-houses by the build time of the upgraded tier', () => {
         const rich = { food: 50000, wood: 50000, gold: 50000, stone: 50000 }
         const game = startingWith(3, ['capital-town-center', 'barracks'], rich, (parts) => {
-            parts.snapshot.units.find((u) => u.id === 'spearman-3').costs.time = 5
+            parts.snapshot.units.find((u) => u.id === 'spearman-3')!.costs.time = 5
         })
         const result = run(
             [
@@ -223,7 +223,7 @@ describe('resources never go negative and waits are reported', () => {
         it('starts when six gold miners have gathered its 100 gold', () => {
             expect(result.steps[0].armedAt).toBe(0)
             expect(result.steps[0].startedAt).toBeCloseTo(100 / (6 * goldRate(game, simInputs)), 6)
-            expect(result.steps[0].waitSeconds).toBeCloseTo(result.steps[0].startedAt, 9)
+            expect(result.steps[0].waitSeconds).toBeCloseTo(result.steps[0].startedAt!, 9)
         })
 
         it('reports every waiting second as resources', () => {
@@ -252,10 +252,10 @@ describe('resources never go negative and waits are reported', () => {
     })
 
     it('waits with a reserve when the bank is short by more than the resource tolerance', () => {
-        const { food, wood, gold, stone } = data.byBaseId.get('wheelbarrow')[0].costs
+        const { food, wood, gold, stone } = data.byBaseId.get('wheelbarrow')![0].costs
         const game = startingWith(1, ['capital-town-center', 'mill', ...houses], { food, wood, gold: gold - 5e-9, stone })
         const outcomes: ReturnType<typeof researchHandler>[] = []
-        let result: SimulationResult
+        let result!: SimulationResult
         withHandler(
             'research',
             (step, index, state) => {
@@ -306,7 +306,7 @@ describe('technology effects apply from completion', () => {
     const plain = run([], { game, inputs: { autoHouses: false } })
     const effectState = (researched: string[]) => ({ data: game, age: 1, buildings: new Map([['capital-town-center', 1], ['mill', 1]]), ...researchedOf(researched, game), coverage: simInputs.influenceCoverage })
     const sheepRate = (researched: string[]) => effectiveGatherRate('sheep' as GatherNodeId, effectState(researched), simInputs)
-    const entry = game.byBaseId.get('wheelbarrow')[0]
+    const entry = game.byBaseId.get('wheelbarrow')![0]
     const speed = modifiedValue(1, 'productionSpeed', { baseId: entry.baseId, classes: entry.classes, producer: 'mill' }, effectState([]))
 
     it('pays 50 wood and 150 gold at its start and completes after its research time', () => {
@@ -373,7 +373,7 @@ describe('multi-tier research', () => {
         tier.age = age
         tier.costs = { ...tier.costs, ...costs }
         if (effectValue !== undefined) {
-            tier.effects = tier.effects.map((e) => ({ ...e, value: effectValue }))
+            tier.effects = tier.effects!.map((e) => ({ ...e, value: effectValue }))
         }
         if (tier.type === 'upgrade') {
             parts.snapshot.upgrades.push(tier)
@@ -416,13 +416,13 @@ describe('multi-tier research', () => {
         // Villagers gather only food, so the wood and gold a run ends with differ from a plain run by what research paid.
         const plain = run([abbey], { game, start, inputs: noHouses })
         const paid = (result: SimulationResult) => ({
-            wood: plain.floating.wood.at(-1) - result.floating.wood.at(-1),
-            gold: plain.floating.gold.at(-1) - result.floating.gold.at(-1),
+            wood: plain.floating.wood.at(-1)! - result.floating.wood.at(-1)!,
+            gold: plain.floating.gold.at(-1)! - result.floating.gold.at(-1)!,
         })
         function recorded(steps: BuildStep[]): { result: SimulationResult; outcomes: ReturnType<typeof researchHandler>[]; state: EngineState } {
             const outcomes: ReturnType<typeof researchHandler>[] = []
-            let state: EngineState
-            let result: SimulationResult
+            let state!: EngineState
+            let result!: SimulationResult
             withHandler(
                 'research',
                 (step, index, engine) => {
@@ -463,7 +463,7 @@ describe('multi-tier research', () => {
     })
 
     it('applies only the effects of the researched entry, not of its sibling', () => {
-        const villager = { baseId: 'villager', classes: tiered.byBaseId.get('villager')[0].classes }
+        const villager = { baseId: 'villager', classes: tiered.byBaseId.get('villager')![0].classes }
         const carry = (researchedIds: string[]) =>
             modifiedValue(10, 'carryCapacity', villager, effectStateOf({ data: tiered, researched: new Set(['wheelbarrow']), researchedIds: new Set(researchedIds) }))
         expect(carry(['wheelbarrow-1'])).toBe(15)

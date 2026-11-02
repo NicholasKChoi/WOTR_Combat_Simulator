@@ -52,15 +52,15 @@ describe('resources never go negative and waits are reported', () => {
 
     it('starts the step once 90 food has been gathered by six villagers', () => {
         expect(step.armedAt).toBe(0)
-        expect(step.startedAt).toBeGreaterThan(step.armedAt)
+        expect(step.startedAt).toBeGreaterThan(step.armedAt!)
         expect(step.waitSeconds).toBeGreaterThan(0)
         expect(step.startedAt).toBeCloseTo(90 / (6 * r), 6)
-        expect(step.waitSeconds).toBeCloseTo(step.startedAt - step.armedAt, 9)
+        expect(step.waitSeconds).toBeCloseTo(step.startedAt! - step.armedAt!, 9)
     })
 
     it('pays no villager before the step starts and the first one 50 food after it', () => {
-        expect(result.steps[1].armedAt).toBeCloseTo(step.startedAt + 50 / (6 * r) + 20, 6)
-        expect(step.completedAt).toBeCloseTo(step.startedAt + 14.65, 6)
+        expect(result.steps[1].armedAt).toBeCloseTo(step.startedAt! + 50 / (6 * r) + 20, 6)
+        expect(step.completedAt).toBeCloseTo(step.startedAt! + 14.65, 6)
     })
 
     it('lets the villager order keep paying while food stays above the step reserve', () => {
@@ -118,17 +118,17 @@ describe('payment', () => {
             }),
         )
         const total = (baseId: string) => {
-            const { food, wood, gold, stone } = rich.byBaseId.get(baseId)[0].costs
+            const { food, wood, gold, stone } = rich.byBaseId.get(baseId)![0].costs
             return food + wood + gold + stone
         }
-        let spent: EngineState['spent']
-        let houses: number
-        let result: SimulationResult
+        let spent!: EngineState['spent']
+        let houses!: number
+        let result!: SimulationResult
         withHandler(
             'rally',
             (_step, _index, state) => {
                 spent = { ...state.spent }
-                houses = state.buildings.get('house')
+                houses = state.buildings.get('house')!
                 return { started: true }
             },
             () => {
@@ -299,11 +299,11 @@ describe('rally scope', () => {
                 )
             },
         )
-        return { state, result, seen }
+        return { state: state!, result: result!, seen }
     }
 
     const look: BuildStep = { action: 'move', count: 0, from: 'sheep', to: 'sheep' }
-    const rallies = (state: EngineState, baseId: string) => state.instances.get(baseId).map((i: BuildingInstance) => i.rally?.node)
+    const rallies = (state: EngineState, baseId: string) => state.instances.get(baseId)!.map((i: BuildingInstance) => i.rally?.node)
 
     it('changes only the named instance', () => {
         const { state, result } = probe([{ action: 'rally', producer: 'town-center', instance: 1, to: 'wood' }, look])
@@ -336,9 +336,9 @@ describe('rally scope', () => {
         expect(seen[0]).toEqual({ held: new Map([['town-center', new Map([[2, { node: 'wood', walkSeconds: undefined }]])]]), defaults: new Map(), towns: [] })
         const second = seen[1] as { held: Map<string, Map<number, RallySource>>; towns: RallySource[] }
         expect(second.towns.map((s) => s.node)).toEqual(['sheep', 'wood'])
-        expect(second.held.get('town-center').size).toBe(0)
+        expect(second.held.get('town-center')!.size).toBe(0)
         expect(rallies(state, 'town-center')).toEqual(['gold', 'gold', 'gold'])
-        expect(state.instances.get('town-center').map((i) => i.order)).toEqual([0, 0, 0].map(() => ({ step: null, unit: 'villager', remaining: null })))
+        expect(state.instances.get('town-center')!.map((i) => i.order)).toEqual([0, 0, 0].map(() => ({ step: null, unit: 'villager', remaining: null })))
     })
 
     it('prefers a held rally over the baseId default', () => {
@@ -603,7 +603,7 @@ describe('civ rules', () => {
         const result = run([], { inputs: { autoHouses: false }, rules: { supplyProvider: (supply) => supply + 10 } })
         expect(countAt(result, 'villager', 80)).toBe(4)
         expect(countAt(run([], { inputs: { autoHouses: false } }), 'villager', 80)).toBe(3)
-        let supply: number
+        let supply!: number
         withHandler(
             'move',
             (_step, _index, s) => {
@@ -641,7 +641,7 @@ describe('game data drives the run', () => {
     it('follows the villager production time', () => {
         const quick = editGameData((parts) => {
             const villager = (parts.snapshot.units as unknown as { id: string; costs: { time: number } }[]).find((u) => u.id === 'villager-1')
-            villager.costs.time = 10
+            villager!.costs.time = 10
         })
         expect(countAt(run([], { game: quick }), 'villager', 10)).toBe(1)
     })
@@ -809,7 +809,7 @@ describe('why steps wait', () => {
         expect(step.status).not.toBe('waiting')
         expect(step.waitBreakdown.villagers).toBeGreaterThan(0)
         expect(step.waitBreakdown.resources).toBeGreaterThan(0)
-        expect(sum(step)).toBeCloseTo(step.startedAt - step.armedAt, 9)
+        expect(sum(step)).toBeCloseTo(step.startedAt! - step.armedAt!, 9)
     })
 
     it('keeps breakdowns summing to the wait, with no zero keys', () => {
@@ -823,7 +823,7 @@ describe('why steps wait', () => {
         )
         const [started, stuck, behind] = result.steps
         expect(sum(started)).toBeCloseTo(started.waitSeconds, 9)
-        expect(sum(stuck)).toBeCloseTo(horizon - stuck.armedAt, 9)
+        expect(sum(stuck)).toBeCloseTo(horizon - stuck.armedAt!, 9)
         expect(behind.waitBreakdown).toEqual({})
         for (const step of result.steps) {
             Object.values(step.waitBreakdown).forEach((seconds) => expect(seconds).toBeGreaterThan(0))

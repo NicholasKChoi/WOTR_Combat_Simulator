@@ -362,7 +362,7 @@ test.describe('AoE4 build order page', () => {
 
   test.describe('chart markers', () => {
     async function expectMarkerLabelsApart(root: Locator, markers: SimulationResult['markers'], chart: string) {
-      const boxes = []
+      const boxes: { x: number; y: number; width: number; height: number }[] = []
       for (const marker of markers) {
         const text = root.locator('svg text.recharts-label', { hasText: `${marker.label} ${formatMinSec(marker.at)}` })
         await expect(text).toHaveCount(1)

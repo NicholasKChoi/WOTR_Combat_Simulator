@@ -82,34 +82,34 @@ describe('drawDown', () => {
     it('never takes a ref below 0 and returns only what was there', () => {
         const stock = stockOf({ berry: 20 })
         expect(drawDown(stock, { berry: 10 }, rateOne, 5)).toEqual({ berry: 20 })
-        expect(stock.get('berry').remaining).toBe(0)
+        expect(stock.get('berry')!.remaining).toBe(0)
         expect(isDepleted(stock, 'berry')).toBe(true)
     })
 
     it('snaps a remainder within RESOURCE_TOLERANCE to exactly 0', () => {
         const stock = stockOf({ berry: 20 })
         drawDown(stock, { berry: 1 }, rateOne, 20 - RESOURCE_TOLERANCE / 2)
-        expect(stock.get('berry').remaining).toBe(0)
+        expect(stock.get('berry')!.remaining).toBe(0)
 
         const above = stockOf({ berry: 20 })
         drawDown(above, { berry: 1 }, rateOne, 20 - RESOURCE_TOLERANCE * 4)
-        expect(above.get('berry').remaining).toBeGreaterThan(0)
+        expect(above.get('berry')!.remaining).toBeGreaterThan(0)
     })
 
     it('draws gatherers x rate x seconds from a ref with stock left', () => {
         const stock = stockOf({ sheep: 100 })
         expect(drawDown(stock, { sheep: 3 }, () => 2, 4)).toEqual({ sheep: 24 })
-        expect(stock.get('sheep').remaining).toBe(76)
+        expect(stock.get('sheep')!.remaining).toBe(76)
     })
 
     it('draws nothing from an infinite or depleted ref and draws deposits independently', () => {
         const stock = stockOf({ gold: 50, 'gold#2': 50, berry: null, stone: 0 })
         const drawn = drawDown(stock, { gold: 0, 'gold#2': 2, berry: 4, stone: 4 }, rateOne, 5)
         expect(drawn).toEqual({ 'gold#2': 10 })
-        expect(stock.get('gold').remaining).toBe(50)
-        expect(stock.get('gold#2').remaining).toBe(40)
-        expect(stock.get('berry').remaining).toBeNull()
-        expect(stock.get('stone').remaining).toBe(0)
+        expect(stock.get('gold')!.remaining).toBe(50)
+        expect(stock.get('gold#2')!.remaining).toBe(40)
+        expect(stock.get('berry')!.remaining).toBeNull()
+        expect(stock.get('stone')!.remaining).toBe(0)
     })
 })
 

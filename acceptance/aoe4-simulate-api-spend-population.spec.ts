@@ -68,7 +68,7 @@ test.describe('spent on the prebuilt English build', () => {
     const body = await simulate(request, { buildOrder: english1tc, inputs: { nodeAmounts: INFINITE_NODES } })
     const started = english1tc.steps.filter((_, i) => body.steps[i].startedAt !== null)
     const sumOf = (action: string, key: 'building' | 'tech') =>
-      started.filter((s) => s.action === action).reduce((sum, s) => sum + costOf((s as Record<string, string>)[key]), 0)
+      started.filter((s) => s.action === action).reduce((sum, s) => sum + costOf((s as unknown as Record<string, string>)[key]), 0)
 
     expect(last(body.spent.research)).toBe(sumOf('research', 'tech'))
 

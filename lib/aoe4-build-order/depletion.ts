@@ -64,8 +64,8 @@ export function drawDown(stock: NodeStock, gatherers: Gatherers, rateOf: RateOf,
     if (!(wanted > 0)) {
       continue;
     }
-    const taken = Math.min(wanted, entry.remaining);
-    const left = entry.remaining - taken;
+    const taken = Math.min(wanted, entry.remaining!);
+    const left = entry.remaining! - taken;
     entry.remaining = left <= RESOURCE_TOLERANCE ? 0 : left;
     drawn[ref] = taken;
   }
@@ -77,7 +77,7 @@ export function nextRunOut(stock: NodeStock, gatherers: Gatherers, rateOf: RateO
   for (const [ref, entry] of drawable(stock)) {
     const perSecond = (gatherers[ref] ?? 0) * rateOf(ref);
     if (perSecond > 0) {
-      const at = now + entry.remaining / perSecond;
+      const at = now + entry.remaining! / perSecond;
       earliest = earliest === null ? at : Math.min(earliest, at);
     }
   }
@@ -86,7 +86,7 @@ export function nextRunOut(stock: NodeStock, gatherers: Gatherers, rateOf: RateO
 
 // The first record wins.
 export function recordRunOut(stock: NodeStock, ref: FiniteNodeRef, at: number, idleVillagers: number): void {
-  const entry = stock.get(ref);
+  const entry = stock.get(ref)!;
   if (!isDepleted(stock, ref) || entry.depletedAt !== null) {
     return;
   }
@@ -98,7 +98,7 @@ export function recordIdleArrival(stock: NodeStock, ref: FiniteNodeRef, at: numb
   if (count <= 0 || !isDepleted(stock, ref)) {
     return;
   }
-  const entry = stock.get(ref);
+  const entry = stock.get(ref)!;
   entry.idleArrival ??= { at, idleVillagers: 0 };
   entry.idleArrival.idleVillagers += count;
 }
