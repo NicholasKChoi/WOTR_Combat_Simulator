@@ -86,8 +86,8 @@ test.describe('AoE4 build order pin and compare', () => {
 
     const keys = await chart.getByTestId('chart-series-legend-item').evaluateAll((els) => els.map((e) => e.getAttribute('data-series')))
     expect(keys.slice(0, 4)).toEqual(['food', 'pinned:food', 'wood', 'pinned:wood'])
-    const stroke = (await path(page, 'chart-gather-rates', 'food').getAttribute('stroke'))!
     for (const key of ['food', 'pinned:food']) {
+      const stroke = (await path(page, 'chart-gather-rates', key).getAttribute('stroke'))!
       const swatch = chart.locator(`[data-series="${key}"]`).getByTestId('chart-series-legend-swatch')
       await expect(swatch).toHaveCSS('border-top-style', key === 'food' ? 'solid' : 'dashed')
       await expect(swatch).toHaveCSS('border-top-color', hexToRgb(stroke))
