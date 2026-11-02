@@ -73,3 +73,16 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 None.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review at tip 9a8d2efb6c7356a496c2d8ce376c04ac1d83d69d. No other gate has passed yet.
+
+Findings:
+- `data/aoe4-build-order/builds/english-spear-longbow-maa-crossbow.json`: step 23 (`@12:40 rally capital-town-center -> farm`) sits before step 24 (`@11:21 produce man-at-arms`). A step arms only once every earlier non-reaction step has started, so the man-at-arms step arms at 760 s because of step order, and its 681 s trigger never takes effect (measured `armedAt` 760, `startedAt` 760.31; deleting the trigger changes nothing). `data/aoe4-build-order/README.md:64-66` says the trigger stops men-at-arms starting before Castle, which the build does not do. The implementer report's "resource wait" explanation is wrong.
+- README: "Town Center rallies to gold from 560 s to 760 s" leaves out the earlier 130-200 s gold rally. The report's claim that spearman and longbowman production continues after the switch is wrong (their counts stay at 15 and 13).
+
+Required fixes:
+- [ ] (rework 1) Move the `produce man-at-arms` and `produce crossbowman` steps to just before the `@12:40` rally step. The reviewer tried this in a scratch copy: both units start at 681 s, the bar holds at 1200 s and 3600 s, gold run-outs are unchanged (1218.40, 1943.99, 2669.58 s), and counts at 1200 s are spearman 10, longbowman 9, man-at-arms 34, crossbowman 22.
+- [ ] (rework 1) Update the README text (trigger sentence, rally span, production sentence) and the quoted counts and times to the measured results of the corrected build. Re-run the mutation checks against the corrected file.
+- [ ] (rework 1) Make the shape test pin the new order so that moving the units back after the rally fails it, and assert the man-at-arms `startedAt` is at least the Castle completion.
