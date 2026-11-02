@@ -6,7 +6,7 @@ import { MARKER_COLORS, MARKER_KIND_LABELS } from '../components/apps/aoe4-build
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { CHART_MARKER_KINDS, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { INVALID_PASTE, expectFlySyntaxIssue, buildOrderFrom, hexToRgb, openPage, runRejected, runSimulation, SIMULATE_PATH } from './helpers'
+import { INVALID_PASTE, expectFlySyntaxIssue, buildOrderFrom, hexToRgb, openPage, runRejected, runSimulation, showTab, showView, SIMULATE_PATH } from './helpers'
 
 const TITLE = 'AoE4 Build Order Simulator'
 const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
@@ -143,6 +143,7 @@ test.describe('AoE4 build order page', () => {
     expect((await runSimulation(page)).status()).toBe(200)
     await expectChartsDrawn(page)
 
+    await page.getByTestId('tab-build').click()
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
     await runRejected(page)
     await expectFlySyntaxIssue(page)
@@ -319,6 +320,7 @@ test.describe('AoE4 build order page', () => {
     const infos = page.getByTestId('simulation-notes-list').getByTestId('simulation-message')
     await expect(infos).toHaveText(['Info one.', 'Note info.'])
 
+    await page.getByTestId('tab-build').click()
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
     await runRejected(page)
     await expectFlySyntaxIssue(page)
@@ -667,6 +669,7 @@ test.describe('AoE4 build order page', () => {
       await runSimulation(page)
       const label = rows(page).first().locator('td').first()
       const before = await label.innerText()
+      await page.getByTestId('tab-build').click()
       await page.getByTestId('build-order-text').fill(WAITING_PASTE)
       await expect(label).toHaveText(before)
       await runSimulation(page)
@@ -677,6 +680,7 @@ test.describe('AoE4 build order page', () => {
       await openPage(page)
       await runSimulation(page)
       await expect(page.getByTestId('step-timeline')).toBeVisible()
+      await page.getByTestId('tab-build').click()
       await page.getByTestId('build-order-text').fill(INVALID_PASTE)
       await runRejected(page)
       await expectFlySyntaxIssue(page)
@@ -695,6 +699,185 @@ test.describe('AoE4 build order page', () => {
       expect(table).not.toBeNull()
       expect((table as { x: number; width: number }).x + (table as { width: number }).width).toBeLessThanOrEqual(1280)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    })
+  })
+
+  test.describe('workbench tabs, run bar and editor', () => {
+    const selected = (page: Page, tab: 'build' | 'results') => expect(page.getByTestId(`tab-${tab}`)).toHaveAttribute('aria-selected', 'true')
+    const lineNumbers = (page: Page) => page.getByTestId('build-order-line-number')
+    const THIRTY_LINES = Array.from({ length: 30 }, (_, i) => (i === 0 ? 'start -> sheep' : `# line ${i + 1}`)).join('\n')
+    const FLY_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
+
+    async function runThenFail(page: Page, status: number) {
+      let calls = 0
+      await page.route(`**${SIMULATE_PATH}`, (route) => {
+        calls += 1
+        if (calls === 1) return route.continue()
+        return route.fulfill({ status, contentType: 'text/plain', body: 'broken' })
+      })
+      await openPage(page)
+      expect((await runSimulation(page)).status()).toBe(200)
+      await expectChartsDrawn(page)
+      expect((await runSimulation(page)).status()).toBe(status)
+    }
+
+    test('loads on the Build tab in the text view with Results disabled', async ({ page }) => {
+      await openPage(page)
+      await selected(page, 'build')
+      await expect(page.getByTestId('panel-build')).toBeVisible()
+      await expect(page.getByTestId('panel-results')).toHaveAttribute('hidden', '')
+      await expect(page.getByTestId('tab-results')).toBeDisabled()
+      await expect(page.getByTestId('editor-view-text')).toHaveAttribute('aria-pressed', 'true')
+      await expect(page.getByTestId('build-order-text')).toBeVisible()
+      await expect(page.getByTestId('step-table')).toHaveCount(0)
+    })
+
+    test('a successful run selects Results below the run bar and both panels stay mounted', async ({ page }) => {
+      await openPage(page)
+      const text = await page.getByTestId('build-order-text').inputValue()
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+      expect((await runSimulation(page)).status()).toBe(200)
+      await selected(page, 'results')
+      await expect(page.getByTestId('tab-results')).toBeEnabled()
+      await expect(page.getByTestId('panel-results')).toBeVisible()
+      await expect(page.getByTestId('panel-build')).toBeHidden()
+      await expect
+        .poll(async () => {
+          const panel = (await page.getByTestId('panel-results').boundingBox())!
+          const bar = (await page.getByTestId('run-bar').boundingBox())!
+          const height = page.viewportSize()!.height
+          return panel.y >= bar.y + bar.height - 1 && panel.y < height
+        })
+        .toBe(true)
+
+      await page.getByTestId('tab-build').click()
+      await expect(page.getByTestId('build-order-text')).toHaveValue(text)
+      await showTab(page, 'results')
+      await expectChartsDrawn(page)
+    })
+
+    for (const pinned of [true, false]) {
+      test(`a rejected paste after a run selects Build; Results is ${pinned ? 'still enabled with a pin' : 'disabled without one'}`, async ({ page }) => {
+        await openPage(page)
+        expect((await runSimulation(page)).status()).toBe(200)
+        if (pinned) await page.getByTestId('pin-run').click()
+        await page.getByTestId('tab-build').click()
+        await page.getByTestId('build-order-text').fill(FLY_PASTE)
+        await runRejected(page)
+        await selected(page, 'build')
+        await expect(page.getByTestId('build-order-issues')).toBeVisible()
+        await expect(page.getByTestId('simulation-error')).toHaveCount(0)
+        if (pinned) await expect(page.getByTestId('tab-results')).toBeEnabled()
+        else await expect(page.getByTestId('tab-results')).toBeDisabled()
+        for (const chart of CHARTS) await expect(page.getByTestId(chart)).toHaveCount(0)
+      })
+    }
+
+    for (const status of [400, 500]) {
+      test(`a ${status} run after a successful one selects Build and shows simulation-error`, async ({ page }) => {
+        await runThenFail(page, status)
+        await selected(page, 'build')
+        await expect(page.getByTestId('simulation-error')).toBeVisible()
+        await expect(page.getByTestId('tab-results')).toBeDisabled()
+        for (const chart of CHARTS) await expect(page.getByTestId(chart)).toHaveCount(0)
+      })
+    }
+
+    test('unpinning on Results with no current result selects Build and disables Results', async ({ page }) => {
+      await openPage(page)
+      expect((await runSimulation(page)).status()).toBe(200)
+      await page.getByTestId('pin-run').click()
+      await page.getByTestId('tab-build').click()
+      await page.getByTestId('build-order-text').fill(FLY_PASTE)
+      await runRejected(page)
+      await showTab(page, 'results')
+      await selected(page, 'results')
+      await page.getByTestId('unpin-run').click()
+      await selected(page, 'build')
+      await expect(page.getByTestId('tab-results')).toBeDisabled()
+    })
+
+    test('the run bar stays at the top of the viewport in both tabs', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 720 })
+      await openPage(page)
+      const barTop = async () => (await page.getByTestId('run-bar').boundingBox())!.y
+      const scrollToBottom = () => page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+
+      expect((await runSimulation(page)).status()).toBe(200)
+      await scrollToBottom()
+      expect(Math.abs(await barTop())).toBeLessThanOrEqual(1)
+      await page.getByTestId('run-simulation').click({ trial: true })
+
+      await page.getByTestId('tab-build').click()
+      const longest = listBuilds().reduce((a, b) => (formatBuildOrderText(b).length > formatBuildOrderText(a).length ? b : a))
+      await page.getByTestId('build-order-select').selectOption({ label: longest.name })
+      await scrollToBottom()
+      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+      expect(Math.abs(await barTop())).toBeLessThanOrEqual(1)
+      await page.getByTestId('run-simulation').click({ trial: true })
+    })
+
+    test('the gutter has one line number per line of text', async ({ page }) => {
+      await openPage(page)
+      const count = (await page.getByTestId('build-order-text').inputValue()).split('\n').length
+      await expect(lineNumbers(page)).toHaveCount(count)
+      await expect(lineNumbers(page).first()).toHaveAttribute('data-line', '1')
+      await expect(lineNumbers(page).last()).toHaveAttribute('data-line', String(count))
+
+      await page.getByTestId('build-order-text').fill('')
+      await expect(lineNumbers(page)).toHaveText(['1'])
+      await page.getByTestId('build-order-text').fill('a\nb\n')
+      await expect(lineNumbers(page)).toHaveText(['1', '2', '3'])
+      await expect(lineNumbers(page).first()).not.toHaveAttribute('data-error', /.*/)
+    })
+
+    test('the textarea grows to its text without an inner scroll and line numbers sit level with their lines', async ({ page }) => {
+      await openPage(page)
+      const text = page.getByTestId('build-order-text')
+      await text.fill(THIRTY_LINES)
+      await expect(text).toHaveAttribute('rows', '30')
+      expect(await text.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true)
+
+      const offset = await text.evaluate((el) => {
+        const style = getComputedStyle(el)
+        const first = parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop)
+        const expected = el.getBoundingClientRect().top + first + 19 * parseFloat(style.lineHeight)
+        const number = document.querySelectorAll('[data-testid="build-order-line-number"]')[19]
+        return number.getBoundingClientRect().top - expected
+      })
+      expect(Math.abs(offset)).toBeLessThanOrEqual(2)
+
+      await text.fill('a\nb\nc')
+      await expect(text).toHaveAttribute('rows', '8')
+    })
+
+    test('the view toggle shows one editor at a time, keeps the text, and survives a run and a tab switch', async ({ page }) => {
+      await openPage(page)
+      const typed = 'start -> sheep\nat 8 vils fly capital-town-center'
+      await page.getByTestId('build-order-text').fill(typed)
+
+      await showView(page, 'table')
+      await expect(page.getByTestId('editor-view-table')).toHaveAttribute('aria-pressed', 'true')
+      await expect(page.getByTestId('editor-view-text')).toHaveAttribute('aria-pressed', 'false')
+      await expect(page.getByTestId('build-order-text')).toHaveCount(0)
+      await expect(page.getByTestId('step-table-unavailable')).toContainText('fly')
+      await expect(page.getByTestId('step-table')).toHaveCount(0)
+
+      await showView(page, 'text')
+      await expect(page.getByTestId('build-order-text')).toHaveValue(typed)
+
+      await page.getByTestId('build-order-text').fill('start -> sheep')
+      await showView(page, 'table')
+      await expect(page.getByTestId('step-table')).toBeVisible()
+      expect((await runSimulation(page)).status()).toBe(200)
+      await page.getByTestId('tab-build').click()
+      await expect(page.getByTestId('step-table')).toBeVisible()
+      await expect(page.getByTestId('build-order-text')).toHaveCount(0)
+
+      await page.reload()
+      await page.waitForLoadState('networkidle')
+      await expect(page.getByTestId('build-order-text')).toBeVisible()
+      await expect(page.getByTestId('step-table')).toHaveCount(0)
     })
   })
 })

@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { INVALID_PASTE, SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys, hexToRgb, openPage, runRejected } from './helpers'
+import { INVALID_PASTE, SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys, hexToRgb, openPage, runRejected, showTab } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -13,7 +13,10 @@ const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
 
 async function run(page: Page, opts: { duration?: number; text?: string } = {}) {
-  if (opts.text !== undefined) await page.getByTestId('build-order-text').fill(opts.text)
+  if (opts.text !== undefined) {
+    await page.getByTestId('tab-build').click()
+    await page.getByTestId('build-order-text').fill(opts.text)
+  }
   if (opts.duration !== undefined) await page.getByTestId('duration-seconds').fill(String(opts.duration))
   const response = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH) && r.request().method() === 'POST')
   await page.getByTestId('run-simulation').click()
@@ -173,8 +176,10 @@ test.describe('AoE4 build order pin and compare', () => {
     await openPage(page)
     await runOk(page, { duration: 300 })
     await pin(page)
+    await page.getByTestId('tab-build').click()
     await page.getByTestId('build-order-text').fill(NO_MILITARY_PASTE)
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
+    await showTab(page, 'results')
     await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
     await page.getByTestId('build-order-select').selectOption({ index: 0 })
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
@@ -190,6 +195,7 @@ test.describe('AoE4 build order pin and compare', () => {
     await runOk(page, { duration: 600 })
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
 
+    await page.getByTestId('tab-build').click()
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
     await runRejected(page)
     await expectFlySyntaxIssue(page)

@@ -9,6 +9,7 @@ const EN_DASH = '–'
 const rows = (page: Page) => page.getByTestId('step-timeline-row')
 
 async function runWith(page: Page, text: string, duration: number) {
+  await page.getByTestId('tab-build').click()
   await page.getByTestId('build-order-text').fill(text)
   await page.getByTestId('duration-seconds').fill(String(duration))
   const response = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH) && r.request().method() === 'POST')

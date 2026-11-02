@@ -83,6 +83,14 @@ export async function openPage(page: Page) {
   await page.waitForLoadState('networkidle')
 }
 
+export async function showTab(page: Page, tab: 'build' | 'results') {
+  await page.getByTestId(`tab-${tab}`).click()
+}
+
+export async function showView(page: Page, view: 'text' | 'table') {
+  await page.getByTestId(`editor-view-${view}`).click()
+}
+
 export async function runSimulation(page: Page) {
   const response = page.waitForResponse(
     (r) => r.url().endsWith(SIMULATE_PATH) && r.request().method() === 'POST'
