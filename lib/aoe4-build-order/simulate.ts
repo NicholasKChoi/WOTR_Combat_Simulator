@@ -143,7 +143,7 @@ interface Engine extends EngineState {
   readonly runOuts: FiniteNodeRef[];
   // Auto-house fallback candidates: every node ref but the deposits the order never names.
   readonly houseSources: readonly NodeRef[];
-  // Production was refused for lack of supply during the latest runInstant.
+  // Production was refused for lack of supply in the final pass of the latest runInstant.
   supplyBlocked: boolean;
   // First instant, and total seconds, that production sat at the supply limit while the house gate kept auto-houses off.
   heldAt: number | null;
@@ -648,10 +648,11 @@ function recordRunOuts(engine: Engine): void {
 }
 
 function runInstant(engine: Engine): void {
-  engine.supplyBlocked = false;
   collectRunOuts(engine);
   offerSteps(engine);
   applyDueEvents(engine);
+  // A step refused for supply in the first pass is offered again after this instant's houses complete.
+  engine.supplyBlocked = false;
   offerSteps(engine);
   startProduction(engine);
   startAutoHouses(engine);
@@ -866,7 +867,7 @@ function stepStuckWarning(timing: StepTiming, engine: Engine): SimWarning {
 
 // Judged after the instant's steps ran, so a gate that opens within the instant does not count.
 function accrueHeld(engine: Engine, seconds: number): void {
-  const held = engine.supplyBlocked && !houseGateOpen(engine) && engine.supply < engine.data.base.maxPopCap.value;
+  const held = engine.inputs.autoHouses && engine.supplyBlocked && !houseGateOpen(engine) && engine.supply < engine.data.base.maxPopCap.value;
   if (held) {
     engine.heldAt ??= engine.time;
     engine.heldSeconds += seconds;

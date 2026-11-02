@@ -101,6 +101,28 @@ describe('auto-houses-held', () => {
         expect(houseWarnings(result).map(({ step, at, ...w }) => ({ step, at, seconds: 'seconds' in w ? w.seconds : null }))).toEqual([{ step: 2, at: 30, seconds: 170 }])
     })
 
+    it('pins a late house on stock data', () => {
+        const result = run([house('sheep', { trigger: at(300) })], { start: { rally: 'sheep' }, inputs: { durationSeconds: 400 } })
+        expect(houseWarnings(result).map(({ code, step, at, ...w }) => ({ code, step, at, seconds: 'seconds' in w ? w.seconds : null }))).toEqual([
+            { code: 'auto-houses-held', step: 0, at: 60, seconds: 240 },
+        ])
+    })
+
+    it.each([
+        [0, 1, 19],
+        [5, 5, 20],
+    ])('stops counting when an earlier house completing at the instant lets production start (house at %i)', (houseAt, heldAt, seconds) => {
+        const steps: BuildStep[] = [
+            { action: 'pause', producer: 'capital-town-center' },
+            house('wood', { trigger: at(houseAt) }),
+            { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1, trigger: at(1) },
+            house('wood', { trigger: at(150) }),
+        ]
+        const result = run(steps, { start: { villagers: { wood: 9 }, rally: 'wood' }, inputs: { durationSeconds: 200 } })
+        expect(result.steps[2].waitSeconds).toBe(seconds)
+        expect(houseWarnings(result).map(({ step, at, ...w }) => ({ step, at, seconds: 'seconds' in w ? w.seconds : null }))).toEqual([{ step: 3, at: heldAt, seconds }])
+    })
+
     it.each([
         ['auto-houses are off', () => lateHouse(undefined, { autoHouses: false })],
         ['the gate is already open', () => run([house('wood', { trigger: at(0) })], { game: twoTowns, start: woodStart, inputs: { durationSeconds: 400 } })],
