@@ -47,7 +47,7 @@ function CompareTable({ current, pinned }: { current: SimulationResult; pinned: 
     const rows = compareRows(keyNumbers(current), keyNumbers(pinned))
     if (rows.length === 0) return <p data-testid="compare-empty" className="mt-3">Nothing to compare yet</p>
     return (
-        <div data-testid="compare-scroll" className="mt-3" style={{ overflowX: 'auto' }}>
+        <div data-testid="compare-scroll" className="mt-3 overflow-x-auto">
             <table data-testid="compare-key-numbers" className="table table-sm">
                 <thead>
                     <tr>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StepTiming } from '../../../lib/aoe4-build-order/model'
 import { formatBuildStep, parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { LONG_WAIT_SECONDS, formatStepTime, formatWaitBreakdown, timelineRows } from './step-timeline-rows'
+import { formatStepTime, formatWaitBreakdown, timelineRows } from './step-timeline-rows'
 
 const TEXT = [
     'start -> sheep',
@@ -69,7 +69,6 @@ describe('timelineRows', () => {
     })
 
     it('highlights a long wait from exactly 60 seconds', () => {
-        expect(LONG_WAIT_SECONDS).toBe(60)
         const rows = timelineRows([59.9, 60, 61].map((waitSeconds) => timing(0, { waitSeconds })), TEXT)
         expect(rows.map((r) => r.longWait)).toEqual([false, true, true])
     })

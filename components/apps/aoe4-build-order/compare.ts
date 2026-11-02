@@ -43,14 +43,13 @@ export function keyNumbers(result: SimulationResult): KeyNumbers {
 export function compareRows(current: KeyNumbers, pinned: KeyNumbers): CompareRow[] {
     const row = (key: string, label: string, c: KeyValue, p: KeyValue, higherIsBetter: boolean): CompareRow => {
         const delta = c.value !== null && p.value !== null ? c.value - p.value : null
-        const better = delta !== null && (higherIsBetter ? delta > 0 : delta < 0)
         return {
             key,
             label,
             current: c,
             pinned: p,
             delta,
-            direction: delta === null ? null : delta === 0 ? 'same' : better ? 'better' : 'worse',
+            direction: delta === null ? null : delta === 0 ? 'same' : delta > 0 === higherIsBetter ? 'better' : 'worse',
         }
     }
     return [
