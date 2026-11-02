@@ -111,6 +111,20 @@ describe('line map', () => {
             count: 2,
         })
     })
+
+    it.each([
+        ['U+00A0', '\u00a0'],
+        ['U+202F', '\u202f'],
+    ])('treats %s as a space between tokens', (_, space) => {
+        const spaced = parsed('produce villager from capital-town-center')
+        const result = parsed(['produce', 'villager', 'from', 'capital-town-center'].join(space))
+        expect(result).toStrictEqual(spaced)
+        expect(parsed(`${space}pause a${space}${space}\npause b`).lines.steps).toEqual([1, 2])
+    })
+
+    it('does not split lines on a no-break space', () => {
+        expect(onlyIssue('pause a\u00a0pause b').line).toBe(1)
+    })
 })
 
 describe('triggers', () => {
@@ -327,8 +341,15 @@ describe('start line', () => {
         expect(issue.message).toContain(`line ${line}`)
     })
 
-    it('treats a failed step line as a step for start ordering', () => {
-        expect(issues('bogus\nstart -> sheep').map((i) => i.line)).toEqual([1, 2])
+    it('does not count a failed step line as a step for start ordering', () => {
+        expect(onlyIssue('bogus\nstart -> sheep').line).toBe(1)
+        expect(onlyIssue('pause B\nstart -> sheep').line).toBe(1)
+    })
+
+    it('still rejects a start after a parsed step when an earlier line failed', () => {
+        const found = issues('bogus\npause a\nstart -> sheep')
+        expect(found.map((i) => i.line)).toEqual([1, 3])
+        expect(found[1].message).toContain('before every step')
     })
 
     it('treats a failed start line as a start for the second-start rule', () => {

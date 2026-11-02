@@ -186,7 +186,9 @@ class OrderChecker {
     }
     if (startShaped) this.checkStart(start as Fields | undefined);
     if (Array.isArray(steps) && steps.length <= SIM_INPUT_BOUNDS.steps.max) {
-      steps.forEach((step, index) => this.checkStep(step, index));
+      for (let index = 0; index < steps.length; index++) {
+        this.checkStep(steps[index], index);
+      }
     }
   }
 

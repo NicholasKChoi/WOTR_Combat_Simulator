@@ -113,7 +113,7 @@ test.describe('spec structure', () => {
   })
 
   test('response-side schemas are closed and require every property the type does not mark optional', () => {
-    const optional: Record<string, string[]> = { BuildOrderIssue: ['line', 'step'] }
+    const optional: Record<string, string[]> = { BuildOrderIssue: ['line', 'step'], SimulateError: ['omittedIssues'] }
     for (const name of RESPONSE_SCHEMAS) {
       const schema = schemas[name]
       expect(schema.additionalProperties, name).toBe(false)
@@ -295,7 +295,7 @@ test.describe('schema and server agree on requests', () => {
 
 test.describe('exported types match the spec', () => {
   const simulateRequest: Record<keyof SimulateRequest, true> = { text: true, buildOrder: true, inputs: true }
-  const simulateError: Record<keyof SimulateError, true> = { error: true, issues: true }
+  const simulateError: Record<keyof SimulateError, true> = { error: true, issues: true, omittedIssues: true }
   const tripInputOverrides: Record<keyof TripInputOverrides, true> = { walkSecondsCamp: true, walkSecondsTownCenter: true, dropOffSeconds: true }
   const simInputOverrides: Record<keyof SimInputOverrides, true> = {
     durationSeconds: true,

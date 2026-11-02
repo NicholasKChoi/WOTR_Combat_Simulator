@@ -1774,7 +1774,13 @@
             "items": {
               "$ref": "#/components/schemas/BuildOrderIssue"
             },
-            "description": "Every issue found: order-stage issues first (text or buildOrder), then inputs issues."
+            "description": "The first 100 issues found: order-stage issues first (text or buildOrder), then inputs issues.",
+            "maxItems": 100
+          },
+          "omittedIssues": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Count of issues dropped past the 100-issue cap; absent when none were dropped."
           }
         }
       }
