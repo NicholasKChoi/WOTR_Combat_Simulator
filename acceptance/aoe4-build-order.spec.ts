@@ -366,6 +366,11 @@ test.describe('AoE4 build order page', () => {
         await expect(text).toHaveCount(1)
         boxes.push((await text.boundingBox())!)
       }
+      const plot = (await root.locator('.recharts-cartesian-grid').boundingBox())!
+      for (const [i, box] of boxes.entries()) {
+        const inside = box.x >= plot.x && box.x + box.width <= plot.x + plot.width
+        expect(inside, `label ${i} in ${chart} leaves the plot`).toBe(true)
+      }
       for (let a = 0; a < boxes.length; a++) {
         for (let b = a + 1; b < boxes.length; b++) {
           const [p, q] = [boxes[a], boxes[b]]
@@ -375,20 +380,22 @@ test.describe('AoE4 build order page', () => {
       }
     }
 
-    test('marker labels stay apart on a narrow screen', async ({ page }) => {
-      await page.setViewportSize({ width: 768, height: 900 })
-      await openPage(page)
-      await page.getByTestId('build-order-text').fill(formatBuildOrderText(english1tc as BuildOrder))
-      const response = await runSimulation(page)
-      expect(response.status()).toBe(200)
-      const { markers } = (await response.json()) as SimulationResult
-      expect(markers.length).toBeGreaterThan(1)
-      await expectChartsDrawn(page)
-      for (const chart of CHARTS) {
-        await expect(page.getByTestId(chart).locator('svg [data-testid="chart-marker"]')).toHaveCount(markers.length)
-        await expectMarkerLabelsApart(page.getByTestId(chart), markers, chart)
-      }
-    })
+    for (const width of [768, 390]) {
+      test(`marker labels stay apart and inside the plot at ${width} px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await openPage(page)
+        await page.getByTestId('build-order-text').fill(formatBuildOrderText(english1tc as BuildOrder))
+        const response = await runSimulation(page)
+        expect(response.status()).toBe(200)
+        const { markers } = (await response.json()) as SimulationResult
+        expect(markers.length).toBeGreaterThan(1)
+        await expectChartsDrawn(page)
+        for (const chart of CHARTS) {
+          await expect(page.getByTestId(chart).locator('svg [data-testid="chart-marker"]')).toHaveCount(markers.length)
+          await expectMarkerLabelsApart(page.getByTestId(chart), markers, chart)
+        }
+      })
+    }
 
     const GRID_DASH = '3 3'
 

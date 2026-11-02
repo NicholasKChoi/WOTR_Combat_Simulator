@@ -17,26 +17,32 @@ import {
 const LABEL_LINE_HEIGHT = 14
 const LABEL_CHAR_PX = 7
 const Y_AXIS_WIDTH = 110
+// Mirrors recharts' default chart margin.
 const CHART_MARGIN_PX = 5
 
 interface PlacedMarker {
     marker: ChartMarker
     side: 'left' | 'right'
     row: number
+    dx: number
 }
 
 // Labels are stacked in rows: a marker takes the first row whose last label ends before this one starts, so
-// markers close in time never share a row. plotWidth is the measured pixel width of the plot, so row choice tracks the screen. Labels near the right edge extend leftward to stay inside the plot.
+// markers close in time never share a row. A label that fits on neither side of its line is pinned to the
+// plot's left edge (dx shifts it there) so it never covers the Y-axis ticks.
 function placeMarkers(markers: readonly ChartMarker[], end: number, plotWidth: number): PlacedMarker[] {
     const rowEnds: number[] = []
     return markers.map((marker) => {
         const width = (markerLabel(marker).length * LABEL_CHAR_PX * end) / plotWidth
-        const side = marker.at + width > end ? 'right' : 'left'
-        const [from, to] = side === 'left' ? [marker.at, marker.at + width] : [marker.at - width, marker.at]
+        const fitsRight = marker.at + width <= end
+        const pinned = !fitsRight && marker.at - width < 0
+        const side = fitsRight || pinned ? 'left' : 'right'
+        const dx = pinned ? (-marker.at * plotWidth) / end : 0
+        const [from, to] = pinned ? [0, width] : side === 'left' ? [marker.at, marker.at + width] : [marker.at - width, marker.at]
         let row = rowEnds.findIndex((rowEnd) => rowEnd < from)
         if (row < 0) row = rowEnds.length
         rowEnds[row] = to
-        return { marker, side, row }
+        return { marker, side, row, dx }
     })
 }
 
@@ -96,7 +102,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             />
                         )
                     })}
-                    {placeMarkers(markers, end, plotWidth).map(({ marker, side, row }, i) => (
+                    {(chartWidth === null ? [] : placeMarkers(markers, end, plotWidth)).map(({ marker, side, row, dx }) => (
                         <ReferenceLine
                             key={`${marker.kind}:${marker.label}:${marker.at}`}
                             x={marker.at}
@@ -111,6 +117,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                 position: side === 'left' ? 'insideTopLeft' : 'insideTopRight',
                                 fill: MARKER_COLORS[marker.kind],
                                 fontSize: 12,
+                                dx,
                                 dy: row * LABEL_LINE_HEIGHT,
                             }}
                         />
