@@ -6,6 +6,7 @@ import { nodeKindOf } from './model'
 import type { NodeRef } from './model'
 import { formatBuildOrderText, parseBuildOrderText } from './parse-text'
 import { simulateBuildOrder } from './simulate'
+import { countAt } from './test-helpers'
 import { resolveSimInputs, validateBuildOrder } from './validate'
 
 const BUILDS_DIR = new URL('../../data/aoe4-build-order/builds/', import.meta.url)
@@ -91,5 +92,37 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         expect(gold?.depletedAt).not.toBeNull()
         expect(second?.depletedAt).toBeNull()
         expect(result.steps[reactionIndex].startedAt).toBe(gold?.depletedAt)
+    })
+})
+
+describe('ENG Spear/Longbow into MAA/Crossbow', () => {
+    const build = listBuilds().find((b) => b.name === 'ENG Spear/Longbow into MAA/Crossbow')
+    const resolved = resolveSimInputs({ durationSeconds: 1200 }, data)
+
+    it('reaches Castle, with the opening army before the Castle landmark and the transition after it', () => {
+        if (build === undefined || resolved.ok === false) {
+            throw new Error('build or inputs missing')
+        }
+        const result = simulateBuildOrder(build, data, resolved.inputs)
+        const indexOf = (action: string, key: 'building' | 'unit', id: string) =>
+            build.steps.findIndex((s) => s.action === action && (s as Record<string, unknown>)[key] === id)
+        const palace = indexOf('build', 'building', 'kings-palace')
+        expect(indexOf('build', 'building', 'council-hall')).toBeGreaterThanOrEqual(0)
+        expect(palace).toBeGreaterThan(indexOf('build', 'building', 'council-hall'))
+        for (const unit of ['spearman', 'longbowman']) {
+            expect(indexOf('produce', 'unit', unit), unit).toBeGreaterThanOrEqual(0)
+            expect(indexOf('produce', 'unit', unit), unit).toBeLessThan(palace)
+        }
+        expect(result.ages.map((a) => a.age)).toContain(3)
+        for (const unit of ['spearman', 'longbowman', 'man-at-arms', 'crossbowman']) {
+            expect(countAt(result, unit, 1200), unit).toBeGreaterThan(0)
+        }
+        const palaceDone = result.steps[palace].completedAt
+        expect(palaceDone).not.toBeNull()
+        for (const unit of ['man-at-arms', 'crossbowman']) {
+            const step = indexOf('produce', 'unit', unit)
+            expect(step, unit).toBeGreaterThan(palace)
+            expect(result.steps[step].startedAt ?? -1, unit).toBeGreaterThanOrEqual(palaceDone ?? Infinity)
+        }
     })
 })
