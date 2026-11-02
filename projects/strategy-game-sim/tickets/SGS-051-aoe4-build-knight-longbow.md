@@ -91,3 +91,10 @@ Required fixes:
 - [ ] (rework 2) Either move the `@5:30` rally above the 5:15 farm block (re-measure and keep every other README number true) or reword the README (and the implementer report) to the measured times: rally fires at 5:47, the 10:00 farm block starts at 10:01.
 - [ ] (rework 2) Rebase onto origin/main; resolve `builds.ts` as `[english1tc, englishSpearLongbowMaaCrossbow, englishKnightLongbow]` one entry per line; in the README put the spear entry first, then the knight entry, each set off by a blank line like main's entries.
 - [ ] (rework 2) Re-run tsc, `lint:dup`, `npm test`, `npm run acceptance`, `next build` after the rebase and report counts. Report the README's run-out times as the page shows them (rounded `m:ss`: 15:32, 33:43, 51:54 for the 1st, 3rd and 5th) or state they are truncated.
+
+## Rework 3 - 2026-11-02 (review)
+
+Gate: delta review at tip 5100cff (`reports/SGS-051-review-3.md`). Finding: `data/aoe4-build-order/README.md:84` says the 10:00 farm block starts at "10:01"; the first farm starts at 601.53 s, which the page shows as 10:02 (`formatMinSec` rounds).
+
+Required fixes:
+- [ ] (rework 3) Reword that sentence to the measured time ("about 1.5 s after 10:00", or 10:02 as the page shows it). Also restore the blank line before the spear bullet that the rebase dropped. Nothing else changes; the build JSON stays byte-identical.
