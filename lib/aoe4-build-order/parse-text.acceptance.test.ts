@@ -137,8 +137,8 @@ describe('parseBuildOrderText start line', () => {
         expect(syntaxLines(text)).toEqual(lines)
     })
 
-    it('rejects a start after a step even when that step line was itself bad', () => {
-        expect(syntaxLines('bogus\nstart 6 sheep')).toEqual([1, 2])
+    it('does not reject a start after a step line that was itself bad', () => {
+        expect(syntaxLines('bogus\nstart 6 sheep')).toEqual([1])
     })
 })
 

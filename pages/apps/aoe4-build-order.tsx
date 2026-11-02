@@ -28,7 +28,11 @@ async function errorMessages(response: Response): Promise<string[]> {
         try {
             const body: Partial<SimulateError> = await response.json()
             if (Array.isArray(body.issues) && body.issues.length > 0) {
-                return body.issues.map((issue) => issue.message)
+                const messages = body.issues.map((issue) => issue.message)
+                if (typeof body.omittedIssues === 'number' && body.omittedIssues > 0) {
+                    messages.push(`${body.omittedIssues} more issues not shown.`)
+                }
+                return messages
             }
         } catch {}
     }

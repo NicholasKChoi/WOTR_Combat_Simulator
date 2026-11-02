@@ -196,3 +196,49 @@ test.describe('framework responses', () => {
     expect(json.issues).toEqual([expect.objectContaining({ code: 'out-of-range' })])
   })
 })
+
+test.describe('issue cap', () => {
+  const junkLines = (count: number, tag = 'bogus') => Array.from({ length: count }, (_, i) => `${tag} ${i + 1}`).join('\n')
+  const unknownBuildings = (count: number) =>
+    Object.fromEntries(Array.from({ length: count }, (_, i) => [`no-such-building-${i + 1}`, 1]))
+
+  async function rejected(request: Parameters<typeof postSimulate>[0], body: unknown) {
+    const response = await postSimulate(request, body)
+    expect(response.status(), await response.text()).toBe(400)
+    const json = await response.json()
+    expect(json.error).toBe(json.issues[0].message)
+    return json as { error: string; issues: { code: string; message: string; line?: number }[]; omittedIssues?: number }
+  }
+
+  for (const count of [99, 100]) {
+    test(`${count} issues are all listed with no omittedIssues key`, async ({ request }) => {
+      const json = await rejected(request, { text: junkLines(count) })
+      expect(json.issues).toHaveLength(count)
+      expect('omittedIssues' in json).toBe(false)
+    })
+  }
+
+  for (const [count, omitted] of [[101, 1], [250, 150]]) {
+    test(`${count} issues return the first 100 and omittedIssues ${omitted}`, async ({ request }) => {
+      const json = await rejected(request, { text: junkLines(count) })
+      expect(json.issues).toHaveLength(100)
+      expect(json.omittedIssues).toBe(omitted)
+      expect(json.issues.map((i) => i.line)).toEqual(Array.from({ length: 100 }, (_, i) => i + 1))
+    })
+  }
+
+  test('the cap applies after paste issues and inputs issues are combined, paste first', async ({ request }) => {
+    const json = await rejected(request, { text: junkLines(60), inputs: { influenceCoverage: unknownBuildings(60) } })
+    expect(json.issues).toHaveLength(100)
+    expect(json.omittedIssues).toBe(20)
+    expect(json.issues.slice(0, 60).map((i) => i.line)).toEqual(Array.from({ length: 60 }, (_, i) => i + 1))
+    expect(json.issues.slice(60).map((i) => i.message)).toEqual(
+      Array.from({ length: 40 }, (_, i) => `inputs.influenceCoverage.no-such-building-${i + 1}: unknown building "no-such-building-${i + 1}"`),
+    )
+  })
+
+  test('a capped body is the same on repeat', async ({ request }) => {
+    const body = { text: junkLines(101) }
+    expect(await rejected(request, body)).toEqual(await rejected(request, body))
+  })
+})

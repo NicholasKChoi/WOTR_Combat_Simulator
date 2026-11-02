@@ -61,7 +61,8 @@ Unknown extra properties on a build order, its `start`, its steps, their trigger
 ignored. Every omitted `inputs` field takes its default at any depth: `trips` merges per node and then
 per field, and `influenceCoverage` per key, so `{ trips: { farm: { walkSecondsCamp: 3 } } }` changes only
 that one value. A build order with more than 200 steps is one `out-of-range` issue, and its steps are not
-checked.
+checked. A hole in a `steps` array (index `i` with no element) is the same `syntax` issue on step `i` as a step
+that is not an object; only library callers can send one, since JSON cannot carry holes.
 
 The result is sampled every `sampleSeconds` = 5 seconds.
 
@@ -410,13 +411,17 @@ Grammar details:
 - Walk values in paste text are integers; JSON may use decimals.
 - `xN` takes no space (`x5`), `#k` follows the producer with no space (`capital-town-center#1`), and `->` is
   delimited by whitespace.
+- Whitespace between tokens is any run of spaces, tabs, `\r`, U+00A0 (no-break space) and U+202F (narrow
+  no-break space). Lines are split on `\n` only.
 - Ids (unit, producer, building, technology) and node names are lowercase kebab-case
   `[a-z0-9]+(-[a-z0-9]+)*` and case-sensitive. Uppercase or other characters are a `syntax` issue; input
   is never lowercased for the user.
 - Keywords are lowercase. Numbers are unsigned decimal integers, with no sign and no decimals.
 - The `start` line is `start [N <node>]... [-> <node>]` with at least one part, for example
   `start 4 sheep 2 wood -> sheep`. There is at most one, before every step line, with no trigger prefix. A
-  repeated node, a second `start`, or a `start` after a step is a `syntax` issue. `formatBuildOrderText`
+  repeated node, a second `start`, or a `start` after a step is a `syntax` issue. Only a step line that
+  parsed counts as a step here: a line that fails to parse is its own issue and does not make a later `start`
+  an issue. A `start` line that fails to parse still counts as the first `start`. `formatBuildOrderText`
   emits it first, with nodes in `GatherNodeId` order.
 
 **Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line? }`. A validation
@@ -487,13 +492,15 @@ whose value is `null` counts as present, so `text: null` beside `buildOrder` is 
 issue. Longer `text` is one `out-of-range` issue and is not parsed.
 
 - **200:** the `SimulationResult`.
-- **400:** `SimulateError` `{ error, issues }`, where `issues` lists every `BuildOrderIssue` and `error` is
-  the first issue's message. The order (`text` or `buildOrder`) is checked first and `inputs` second, and
-  both always run, so order issues come first, then inputs issues. A body that is not a JSON object (an
-  array, string, number or `null`) gives one `syntax` issue and nothing else is checked. A validation issue
-  on a pasted step carries `line` and `step`; a `syntax` issue raised while parsing a paste line carries
-  `line` only; a pasted `start` issue carries `line` only; a JSON step's issue carries `step` only; a JSON
-  `start` issue and `inputs` issues carry neither.
+- **400:** `SimulateError` `{ error, issues, omittedIssues? }`. The order (`text` or `buildOrder`) is
+  checked first and `inputs` second, and both always run, so order issues come first, then inputs issues.
+  The combined list is then capped at `MAX_REPORTED_ISSUES` = 100: `issues` holds the first 100 in that
+  order, so inputs issues past the 100th are dropped too, and `omittedIssues` is the number dropped,
+  present only when above 0 (100 issues give no `omittedIssues`, 101 give `1`). `error` is the first issue's
+  message. A body that is not a JSON object (an array, string, number or `null`) gives one `syntax` issue
+  and nothing else is checked. A validation issue on a pasted step carries `line` and `step`; a `syntax`
+  issue raised while parsing a paste line carries `line` only; a pasted `start` issue carries `line` only;
+  a JSON step's issue carries `step` only; a JSON `start` issue and `inputs` issues carry neither.
 - **405:** `{ error }` with an `Allow: POST` header, for any other method.
 - A body that is not valid JSON keeps Next's plain-text 400 `Invalid JSON`, and a body over Next's 1 MB
   default limit is its plain-text 413; neither reaches the handler.
@@ -575,8 +582,9 @@ Each series' line carries its key as `data-series`. Clicking a legend item hides
 it again restores it. When `notes` is non-empty, a notes list shows each note's technology id and
 message; with no notes there is no list.
 
-A 400 shows every issue's `message` (each names its line or step) and removes any earlier charts;
-any other HTTP failure shows "The simulation could not be run (HTTP <status>)."; a request or response-body
+A 400 shows every returned issue's `message` (each names its line or step) and removes any earlier charts.
+When the body has `omittedIssues`, the list ends with one more item, "N more issues not shown." Any
+other HTTP failure shows "The simulation could not be run (HTTP <status>)."; a request or response-body
 error shows "The simulation could not be run. Please try again."
 
 Prebuilt builds live in `data/aoe4-build-order/builds/`, one `BuildOrder` JSON file per build, each

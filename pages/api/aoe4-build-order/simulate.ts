@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import type { SimulateError, SimulateRequest, SimulateResponse } from '../../../lib/aoe4-build-order/api';
+import { MAX_REPORTED_ISSUES, type SimulateError, type SimulateRequest, type SimulateResponse } from '../../../lib/aoe4-build-order/api';
 import { loadGameData, type GameData } from '../../../lib/aoe4-build-order/data';
 import type { BuildOrderIssue } from '../../../lib/aoe4-build-order/model';
 import { parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text';
@@ -32,7 +32,7 @@ function checkOrder(body: SimulateRequest, data: GameData): OrderResult {
     return rejected('out-of-range', `text: ${text.length} characters, more than ${maxChars}`);
   }
   const parsed = parseBuildOrderText(text);
-  if ('issues' in parsed) {
+  if (parsed.ok === false) {
     return { ok: false, issues: parsed.issues };
   }
   return validateBuildOrder(parsed.order, data, { lines: parsed.lines });
@@ -61,6 +61,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse<Simula
     return;
   }
 
-  const issues = [...('issues' in order ? order.issues : []), ...('issues' in inputs ? inputs.issues : [])];
-  res.status(400).json({ error: issues[0].message, issues });
+  const all = [...('issues' in order ? order.issues : []), ...('issues' in inputs ? inputs.issues : [])];
+  const issues = all.slice(0, MAX_REPORTED_ISSUES);
+  const omittedIssues = all.length - issues.length;
+  res.status(400).json({ error: issues[0].message, issues, ...(omittedIssues > 0 ? { omittedIssues } : {}) });
 }

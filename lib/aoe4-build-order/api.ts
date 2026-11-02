@@ -13,7 +13,10 @@ export interface SimulateRequest {
 
 export type SimulateResponse = SimulationResult;
 
+export const MAX_REPORTED_ISSUES = 100;
+
 export interface SimulateError {
   error: string;
   issues: BuildOrderIssue[];
+  omittedIssues?: number;
 }

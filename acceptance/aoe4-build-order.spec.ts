@@ -151,6 +151,36 @@ test.describe('AoE4 build order page', () => {
     await expect(page.getByTestId('simulation-error')).toHaveText('The simulation could not be run (HTTP 500).')
   })
 
+  for (const { omittedIssues, shown } of [{ omittedIssues: 5, shown: true }, { omittedIssues: undefined, shown: false }]) {
+    test(`a 400 ${shown ? 'with' : 'without'} omittedIssues ${shown ? 'ends the list with the omitted count' : 'shows no omitted-count line'}`, async ({ page }) => {
+      await page.route(`**${SIMULATE_PATH}`, (route) =>
+        route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: 'first problem',
+            issues: [
+              { code: 'syntax', message: 'first problem' },
+              { code: 'syntax', message: 'second problem' },
+            ],
+            ...(omittedIssues === undefined ? {} : { omittedIssues }),
+          }),
+        })
+      )
+      await openPage(page)
+      expect((await runSimulation(page)).status()).toBe(400)
+      const error = page.getByTestId('simulation-error')
+      await expect(error).toContainText('first problem')
+      await expect(error).toContainText('second problem')
+      if (shown) {
+        await expect(error.getByText('5 more issues not shown.')).toHaveCount(1)
+        await expect(error.locator('li').last()).toHaveText('5 more issues not shown.')
+      } else {
+        await expect(error).not.toContainText('more issues not shown')
+      }
+    })
+  }
+
   test('clicking a legend item hides its series and clicking again restores it', async ({ page }) => {
     await openPage(page)
     expect((await runSimulation(page)).status()).toBe(200)

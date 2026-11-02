@@ -20,7 +20,8 @@ const TIME = /^@(\d+):(\d\d)$/;
 const COUNT = /^x(\d+)$/;
 const SECONDS = /^(\d+)s$/;
 // \r is whitespace, so a CRLF break needs no separate split and a stray \r never joins a token.
-const WHITESPACE = /[ \t\r]+/;
+// U+00A0 and U+202F (no-break spaces) arrive from copied web text.
+const WHITESPACE = /[ \t\r\u00a0\u202f]+/;
 const MAX_QUOTED_LENGTH = 40;
 
 class LineError extends Error {}
@@ -253,6 +254,7 @@ export function parseBuildOrderText(text: string): ParseTextResult {
         t.end();
         steps.push(step);
         lines.steps.push(line);
+        sawStep = true;
       }
     } catch (error) {
       if (!(error instanceof LineError)) {
@@ -261,7 +263,6 @@ export function parseBuildOrderText(text: string): ParseTextResult {
       issues.push({ code: 'syntax', message: `line ${line}: ${error.message}`, line });
     }
     sawStart ||= isStart;
-    sawStep ||= !isStart;
   });
 
   if (issues.length > 0) {

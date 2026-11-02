@@ -100,6 +100,13 @@ describe('validateBuildOrder syntax', () => {
         expect(only(order([], { start: { villagers: { sheep: 6 }, rally: 1 } })).code).toBe('syntax')
     })
 
+    it('reports a hole in steps as the same issue as a null step', () => {
+        const sparse = issuesOf({ civ: 'english', name: 'x', start: START, steps: [PAUSE, , PAUSE] })
+        const nulled = issuesOf({ civ: 'english', name: 'x', start: START, steps: [PAUSE, null, PAUSE] })
+        expect(nulled).toEqual([{ code: 'syntax', step: 1, message: expect.stringContaining('steps[1]') }])
+        expect(sparse).toStrictEqual(nulled)
+    })
+
     it('gives a step with a shape issue no further checks', () => {
         const issues = issuesOf(order([{ action: 'produce', producer: 'no-such-building', unit: 'villager', count: 'x' }]))
         expect(issues.map((i) => i.code)).toEqual(['syntax'])
