@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StepTiming } from '../../../lib/aoe4-build-order/model'
 import { formatBuildStep, parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { timelineRows } from './step-timeline-rows'
+import { formatStepTime, formatWaitBreakdown, timelineRows } from './step-timeline-rows'
 
 const TEXT = [
     'start -> sheep',
@@ -60,5 +60,19 @@ describe('timelineRows', () => {
         const rows = timelineRows([timing(7)], TEXT)
         expect(rows[0].label).toBe('step 8')
         expect(rows[0].reaction).toBe(false)
+    })
+})
+
+describe('step time formatting', () => {
+    it('formats seconds as m:ss and null as an en dash', () => {
+        expect(formatStepTime(65)).toBe('1:05')
+        expect(formatStepTime(null)).toBe('–')
+    })
+
+    it('joins wait reasons with m:ss durations', () => {
+        expect(formatWaitBreakdown([{ reason: 'resources', seconds: 2 }, { reason: 'villagers', seconds: 75 }])).toBe(
+            'resources 0:02, villagers 1:15'
+        )
+        expect(formatWaitBreakdown([])).toBe('')
     })
 })

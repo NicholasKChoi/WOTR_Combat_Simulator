@@ -1,7 +1,15 @@
 import type { StepTiming, StepWait } from '../../../lib/aoe4-build-order/model'
+import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import { formatBuildStep, parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
 
 const BREAKDOWN_ORDER = ['resources', 'villagers', 'population', 'prerequisite'] as const
+
+const EN_DASH = '–'
+
+export const formatStepTime = (seconds: number | null): string => (seconds === null ? EN_DASH : formatMinSec(seconds))
+
+export const formatWaitBreakdown = (breakdown: TimelineRow['waitBreakdown']): string =>
+    breakdown.map((w) => `${w.reason} ${formatMinSec(w.seconds)}`).join(', ')
 
 export interface TimelineRow {
     step: number

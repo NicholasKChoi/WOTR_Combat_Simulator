@@ -1,10 +1,7 @@
 import { useMemo } from 'react'
 import type { StepTiming } from '../../../lib/aoe4-build-order/model'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
-import { timelineRows } from './step-timeline-rows'
-
-const EN_DASH = '–'
-const time = (seconds: number | null) => (seconds === null ? EN_DASH : formatMinSec(seconds))
+import { formatStepTime, formatWaitBreakdown, timelineRows } from './step-timeline-rows'
 
 interface StepTimelineProps {
     steps: StepTiming[]
@@ -40,10 +37,10 @@ export function StepTimeline({ steps, text }: StepTimelineProps) {
                             className={row.flagged ? 'table-warning' : undefined}
                         >
                             <td>{row.label}</td>
-                            <td>{time(row.startedAt)}</td>
-                            <td>{time(row.completedAt)}</td>
+                            <td>{formatStepTime(row.startedAt)}</td>
+                            <td>{formatStepTime(row.completedAt)}</td>
                             <td>{formatMinSec(row.waitSeconds)}</td>
-                            <td>{row.waitBreakdown.map((w) => `${w.reason} ${formatMinSec(w.seconds)}`).join(', ')}</td>
+                            <td>{formatWaitBreakdown(row.waitBreakdown)}</td>
                             <td>{row.flagged ? row.waitingOn : null}</td>
                         </tr>
                     ))}
