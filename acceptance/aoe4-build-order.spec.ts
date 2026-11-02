@@ -51,6 +51,11 @@ test.describe('AoE4 build order page', () => {
     const select = page.getByTestId('build-order-select')
     const builds = listBuilds()
     await expect(select.locator('option')).toHaveText(builds.map((b) => b.name))
+    await expect(select.locator('option')).toHaveText([
+      'ENG 1TC',
+      'ENG Spear/Longbow into MAA/Crossbow',
+      "ENG Knight/Longbow (King's Palace)",
+    ])
 
     const text = page.getByTestId('build-order-text')
     await expect(text).toHaveValue(formatBuildOrderText(builds[0]))
