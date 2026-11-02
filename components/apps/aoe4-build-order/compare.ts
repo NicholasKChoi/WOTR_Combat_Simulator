@@ -1,4 +1,4 @@
-import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
+import { AGE_NAMES, type SimulationResult } from '../../../lib/aoe4-build-order/model'
 
 export const KEY_TIMES = [600, 900, 1200] as const
 const AGES = [2, 3, 4] as const
@@ -33,8 +33,6 @@ export function keyNumbers(result: SimulationResult): KeyNumbers {
         populationCapReachedAt: result.populationCapReachedAt,
     }
 }
-
-const AGE_NAMES: Record<KeyAge, string> = { 2: 'Feudal', 3: 'Castle', 4: 'Imperial' }
 
 export function compareRows(current: KeyNumbers, pinned: KeyNumbers): CompareRow[] {
     const row = (key: string, label: string, c: number | null, p: number | null): CompareRow => ({

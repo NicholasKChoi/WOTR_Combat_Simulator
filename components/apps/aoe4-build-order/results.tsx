@@ -22,6 +22,7 @@ export function Results({ result, pinned, infoExpanded, onInfoToggle }: ResultsP
                 title="Units produced"
                 yLabel="Units"
                 times={result.times}
+                markers={result.markers}
                 series={unitSeries(result)}
                 pinned={pinned ? { times: pinned.times, series: unitSeries(pinned) } : undefined}
             />
@@ -30,6 +31,7 @@ export function Results({ result, pinned, infoExpanded, onInfoToggle }: ResultsP
                 title="Gather rates"
                 yLabel="Per minute"
                 times={result.times}
+                markers={result.markers}
                 series={resourceSeries(result.gatherRates)}
                 pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.gatherRates) } : undefined}
             />
@@ -38,6 +40,7 @@ export function Results({ result, pinned, infoExpanded, onInfoToggle }: ResultsP
                 title="Floating resources"
                 yLabel="Resources"
                 times={result.times}
+                markers={result.markers}
                 series={resourceSeries(result.floating)}
                 pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.floating) } : undefined}
             />

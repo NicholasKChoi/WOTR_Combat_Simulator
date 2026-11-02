@@ -1,3 +1,6 @@
+import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
+import type { ChartMarker, ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
+
 export interface ChartSeries {
     key: string
     name: string
@@ -52,3 +55,21 @@ export function toggleHidden(hidden: ReadonlySet<string>, key: string): Set<stri
     if (!next.delete(key)) next.add(key)
     return next
 }
+
+export const MARKER_COLORS: Readonly<Record<ChartMarkerKind, string>> = {
+    'age-up': '#b8860b',
+    economy: '#008080',
+    'unit-tier': '#c43bb0',
+    blacksmith: '#5f7d8c',
+    other: '#6b6bd6',
+}
+
+export const MARKER_KIND_LABELS: Readonly<Record<ChartMarkerKind, string>> = {
+    'age-up': 'Age-up',
+    economy: 'Economy',
+    'unit-tier': 'Unit tier',
+    blacksmith: 'Blacksmith',
+    other: 'Other',
+}
+
+export const markerLabel = (marker: ChartMarker): string => `${marker.label} ${formatMinSec(marker.at)}`
