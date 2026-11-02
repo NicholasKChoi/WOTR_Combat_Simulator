@@ -77,6 +77,7 @@ here.
 - `acceptance/aoe4-build-order-from.spec.ts` (new, Playwright, no page): `buildOrderFrom` returns the checked
   order for each prebuilt build's formatted text (via `formatBuildOrderText` of `listBuilds()`), and throws an
   error whose message contains an issue message for text with an unknown unit.
+- `lib/aoe4-build-order/schema.test.ts` (extend, fresh cases): (a) `nearestId` equals an unoptimised reference (the pre-change loop, written in the test as full `editDistance`-style Levenshtein over every choice with the same threshold and tie rule) for a set of near and far ids against the catalog `units` list (for example `knigt`, `KNIGHT`, `x`, `''`, a 40-character id, an id that is a prefix of a choice); (b) a single unknown unit id of about 900,000 characters passed to `nearestId(value, catalog.units)` returns `undefined` in under 500 ms (generous bound; measured with `performance.now()`), and `checkBuildOrder` on a one-step order with that unit id returns one `unknown-id` issue without `suggestion` in under 500 ms in total.
 - Rule for existing tests (the issue-order and combined-issue behavior changes): a test whose expected issue
   list changes only because of the field vs cross-field rule, the new issue order (cross-step issues come after
   all per-step issues) or the rule that an unknown action hides that step's trigger issues (a spec that expects
@@ -101,6 +102,8 @@ here.
 **7. Un-export dead helpers.** Once `validate.ts` is deleted, nothing imports `isKnownId`, `isBoundKey` or `issue`
 from `schema.ts` (on the SGS-057 branch only `validate.ts` does). Un-export each that `schema.ts` still uses
 itself, and delete any it no longer uses. The rest of the SGS-057 export list stays.
+
+**8. Bound `nearestId` before the route serves JSON build orders (tech-lead finding, `reports/SGS-057-tech-lead-1.md`).** `nearestId` in `lib/aoe4-build-order/schema.ts` (lines 234 to 246 on the SGS-057 branch) runs a full `editDistance` against every choice, so a near-1MB unknown id costs about len(value) x len(choice) per choice once the route calls `checkBuildOrder`. Make `nearestId` skip a candidate when `|len(value) - len(choice)|` is greater than the suggestion threshold (`Math.max(1, Math.floor(value.length / 3))`) before calling `editDistance`. Results stay exactly those of the current function for every input (same suggestion, same tie order, so `undefined` stays `undefined`); only work is skipped, because an edit distance is at least the length difference. No other change to `nearestId` or its callers.
 
 **Out of scope:** the zod schema (beyond item 7), `text-to-build.ts`, `StepOptions.names`, OpenAPI `suggestion` and the contract
 spec rows (SGS-057); `data-schema.ts` and the `data.test.ts` rewrite (SGS-058); the page, `PageProps`, the
@@ -140,6 +143,7 @@ flowchart LR
 - [ ] `docs/aoe4-build-order.md` and `data/aoe4-build-order/README.md` name no removed symbol (`git grep -nE "validateBuildOrder|validate\.ts" -- docs data` prints nothing; 1 hit in `docs/aoe4-build-order.md` today); the Issues section documents `suggestion` and the issue-order and field vs cross-field rules; the data-flow diagram names `checkBuildOrder + checkSimInputs`.
 - [ ] `schema.ts` exports the SGS-057 list minus `isKnownId`, `isBoundKey` and `issue` (`git grep -nE "^export .*\b(isKnownId|isBoundKey|issue)\b" -- lib/aoe4-build-order/schema.ts` prints nothing; 3 lines before the change) and `git grep -nwE "isKnownId|isBoundKey" -- . ':!golang'` outside `schema.ts` prints nothing. (respec 3)
 - [ ] An existing spec that expected both an action issue and a trigger issue on one step, or cross-step issues before later per-step issues, is edited to the new order and listed in the PR body (respec 3).
+- [ ] `nearestId` skips length-mismatched candidates and keeps its results (`git grep -nE "Math\.abs\(.*length" -- lib/aoe4-build-order/schema.ts` finds the early exit; none before the change). The new `schema.test.ts` cases pass: equality with the unoptimised reference on the near/far id set, and a ~900,000-character unknown unit id rejected with `nearestId` under 500 ms and `checkBuildOrder` under 500 ms. Mutation check: removing the early exit makes the 900,000-character test fail (it takes well over 500 ms against the `units` list).
 - [ ] `npx tsc --noEmit` passes; `npm test` passes; `npm run acceptance` passes (Node 24).
 - [ ] No INVARIANTS.md regressions
 

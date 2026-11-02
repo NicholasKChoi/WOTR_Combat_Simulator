@@ -87,14 +87,14 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `lib/aoe4-build-order/data-schema.ts` exports exactly `snapshotFileSchema`, `baseRulesFileSchema`, `civRulesFileSchema`, each annotated `z.ZodType<Snapshot>`, `z.ZodType<BaseRules>`, `z.ZodType<CivData>` (`git grep -n "z.ZodType<" lib/aoe4-build-order/data-schema.ts` prints three lines); `npx tsc --noEmit` passes.
-- [ ] No runtime importer: `git grep -ln "data-schema" -- lib components pages acceptance ':!lib/aoe4-build-order/data-schema.ts' ':!*.test.ts'` prints nothing (it prints nothing today and must still print nothing), and the file imports `./data` and `./model` only with `import type` and no JSON, `fs` or `node:` module (`git grep -nE "^import [^t].*'(\./data|\./model|fs|node:[a-z]+)'|\.json'" -- lib/aoe4-build-order/data-schema.ts` prints nothing, except `./model` imports of the constants `GATHER_NODES` and `RESOURCE_KINDS`, which are the one allowed value import).
-- [ ] `data.test.ts` parses the three shipped files with their schemas and each succeeds (unit test).
-- [ ] Each of these defects fails the matching schema, one test per defect in `data.test.ts`: 39-hex `commit`; `patchSource` not starting `http`; empty hand-value `source`; hand value without `unverified`; string `value` at `gatherNodes.sheep.rate.value`; a missing `gatherNodes` node; overlay effect without `grantedBy`; snapshot entry `type: 'hero'`. Reverting the schema's `commit` rule makes the 39-hex test fail.
-- [ ] The per-field assertions the schemas replace are gone from `data.test.ts`: `git grep -nE "0-9a-f\]\{40\}|startsWith\('http'\)|typeof value\.unverified|typeof value\.source" -- lib/aoe4-build-order/data.test.ts` prints nothing (4 lines on origin/main `d5c2549` before the change; none of the new defect tests may use these patterns, they assert through `safeParse`).
-- [ ] Every other `data.test.ts` test and the count thresholds of `finds every value in both rules files` are unchanged and pass; the PR body lists every removed or moved assertion.
-- [ ] `npm test`, `npx tsc --noEmit` and `npm run lint:dup` pass; `npm run acceptance` still passes (Node 24).
-- [ ] No INVARIANTS.md regressions
+- [x] `lib/aoe4-build-order/data-schema.ts` exports exactly `snapshotFileSchema`, `baseRulesFileSchema`, `civRulesFileSchema`, each annotated `z.ZodType<Snapshot>`, `z.ZodType<BaseRules>`, `z.ZodType<CivData>` (`git grep -n "z.ZodType<" lib/aoe4-build-order/data-schema.ts` prints three lines); `npx tsc --noEmit` passes.
+- [x] No runtime importer: `git grep -ln "data-schema" -- lib components pages acceptance ':!lib/aoe4-build-order/data-schema.ts' ':!*.test.ts'` prints nothing (it prints nothing today and must still print nothing), and the file imports `./data` and `./model` only with `import type` and no JSON, `fs` or `node:` module (`git grep -nE "^import [^t].*'(\./data|\./model|fs|node:[a-z]+)'|\.json'" -- lib/aoe4-build-order/data-schema.ts` prints nothing, except `./model` imports of the constants `GATHER_NODES` and `RESOURCE_KINDS`, which are the one allowed value import).
+- [x] `data.test.ts` parses the three shipped files with their schemas and each succeeds (unit test).
+- [x] Each of these defects fails the matching schema, one test per defect in `data.test.ts`: 39-hex `commit`; `patchSource` not starting `http`; empty hand-value `source`; hand value without `unverified`; string `value` at `gatherNodes.sheep.rate.value`; a missing `gatherNodes` node; overlay effect without `grantedBy`; snapshot entry `type: 'hero'`. Reverting the schema's `commit` rule makes the 39-hex test fail.
+- [x] The per-field assertions the schemas replace are gone from `data.test.ts`: `git grep -nE "0-9a-f\]\{40\}|startsWith\('http'\)|typeof value\.unverified|typeof value\.source" -- lib/aoe4-build-order/data.test.ts` prints nothing (4 lines on origin/main `d5c2549` before the change; none of the new defect tests may use these patterns, they assert through `safeParse`).
+- [x] Every other `data.test.ts` test and the count thresholds of `finds every value in both rules files` are unchanged and pass; the PR body lists every removed or moved assertion.
+- [x] `npm test`, `npx tsc --noEmit` and `npm run lint:dup` pass; `npm run acceptance` still passes (Node 24).
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -105,3 +105,15 @@ None.
 - Underspecified: the ticket split of SGS-057 (designer pass 4); this ticket is row 2c of the M4.1 order.
 - Changed: Source row 2b to 2c; Depends on stays SGS-057 only (independent of SGS-075).
 - Stands: all Scope and criteria.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review (reports/SGS-058-review-1.md). Tip reviewed: 82f2832c2388351f0a3d67337f6b478d62e894e4. No earlier gate had passed it.
+
+Findings:
+- `lib/aoe4-build-order/data-schema.ts`, `overlayEffectSchema`: `source: z.string()` accepts an empty string. The removed "labels every value with a source" test walked every object with a `value` key, including the english.json effects, so it required a non-empty `source` on each effect. A clone of english.json with `effects[0].source = ''` still passes `civRulesFileSchema.safeParse`. Coverage the old test gave is lost.
+
+Required fixes:
+- [x] (rework 1) Make the overlay effect `source` non-empty (use the same non-empty string schema as the other `source` fields, e.g. `text`).
+- [x] (rework 1) Add a ninth defect test: english.json with `effects[0].source = ''` fails `civRulesFileSchema.safeParse` and no other rule is the reason; mutation check (weaken it back to `z.string()`) must fail only that test. The ticket's "eight defect" wording becomes nine.
+- [x] No other changes; the other eight defect tests, greps and criteria stay as reviewed.

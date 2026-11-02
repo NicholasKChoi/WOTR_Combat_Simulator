@@ -33,6 +33,7 @@ this list only names the surfaces.
 
 - `POST /api/fight`: WOTR combat simulator (`operationId: runFight`).
 - `POST /api/aoe4-build-order/simulate` (`operationId: simulateBuildOrder`).
+- AoE4 build checking: `lib/aoe4-build-order/schema.ts` (`checkBuildOrder`, `checkSimInputs`, `buildOrderCatalog`) and `lib/aoe4-build-order/text-to-build.ts` (`textToBuildOrder`), both zod-based.
 - Routes: `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`, `/apps/aoe4-build-order`.
 
 ## Design docs
