@@ -205,6 +205,8 @@ describe('depletionResults', () => {
 describe('sortWarnings', () => {
     const node = (code: 'node-depleted' | 'idle-arrival', ref: FiniteNodeRef, at: number): SimWarning => ({ code, severity: 'warning', message: '', node: ref, at, idleVillagers: 1 })
     const stuck = (step: number, at: number): SimWarning => ({ code: 'step-stuck', severity: 'warning', message: '', step, waitingOn: 'resources', at })
+    const neverStart = (step: number, at: number): SimWarning => ({ code: 'auto-houses-never-start', severity: 'warning', message: '', step, at })
+    const held = (step: number, at: number): SimWarning => ({ code: 'auto-houses-held', severity: 'warning', message: '', step, at, seconds: 1 })
     const sorted = [
         node('node-depleted', 'stone', 5),
         node('idle-arrival', 'sheep', 10),
@@ -217,11 +219,15 @@ describe('sortWarnings', () => {
         node('node-depleted', 'stone', 10),
         stuck(1, 10),
         stuck(4, 10),
+        neverStart(0, 10),
+        held(0, 10),
+        neverStart(3, 10),
+        held(3, 10),
         node('node-depleted', 'berry', 11),
     ]
-    const shuffled = [9, 3, 11, 7, 0, 10, 5, 1, 8, 2, 6, 4].map((i) => sorted[i])
+    const shuffled = [9, 13, 3, 11, 7, 0, 15, 10, 5, 12, 1, 8, 14, 2, 6, 4].map((i) => sorted[i])
 
-    it('orders by at, then node warnings by ref and code, then step-stuck by step', () => {
+    it('orders by at, then node warnings by ref and code, then step-stuck by step, then auto-house warnings by step, never-start first', () => {
         expect(sortWarnings(shuffled)).toEqual(sorted)
     })
 

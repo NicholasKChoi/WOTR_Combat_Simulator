@@ -1888,7 +1888,7 @@
             "items": {
               "$ref": "#/components/schemas/SimWarning"
             },
-            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then step-stuck by step. Holds node-depleted and idle-arrival warnings when a finite node runs out (see nodeAmounts) and a step-stuck warning for each step still waiting at durationSeconds."
+            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then step-stuck by step, then auto-houses-never-start and auto-houses-held, never-start first. Holds node-depleted and idle-arrival warnings when a finite node runs out (see nodeAmounts), a step-stuck warning for each step still waiting at durationSeconds, and, with autoHouses on, at most one auto-houses-never-start (the last build house step is a reaction that never fired) and at most one auto-houses-held (production sat at the supply limit while that step had not started)."
           },
           "markers": {
             "type": "array",
@@ -2303,6 +2303,86 @@
                 "type": "number",
                 "minimum": 0,
                 "description": "Game time in seconds the step was armed."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "With autoHouses on, the order's last build house step is a reaction that never fired by durationSeconds, so no auto-house is built; severity is warning.",
+            "required": [
+              "code",
+              "severity",
+              "message",
+              "step",
+              "at"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "const": "auto-houses-never-start",
+                "description": "Warning code: auto-houses-never-start."
+              },
+              "severity": {
+                "$ref": "#/components/schemas/Severity",
+                "description": "Severity of this warning; always warning."
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable warning naming the step (1-based) and durationSeconds as m:ss."
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "0-based index of the order's last build house step, the step auto-houses wait for."
+              },
+              "at": {
+                "type": "number",
+                "const": 0,
+                "description": "Always 0: the condition holds for the whole run."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "With autoHouses on and supply below the max population cap, production was held at the supply limit while the order's last build house step had not started, which keeps auto-houses off; severity is warning.",
+            "required": [
+              "code",
+              "severity",
+              "message",
+              "step",
+              "at",
+              "seconds"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "const": "auto-houses-held",
+                "description": "Warning code: auto-houses-held."
+              },
+              "severity": {
+                "$ref": "#/components/schemas/Severity",
+                "description": "Severity of this warning; always warning."
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable warning naming the held seconds and the first held instant as m:ss, and the step (1-based)."
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "0-based index of the order's last build house step, the step auto-houses wait for."
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Game time in seconds of the first instant production was held."
+              },
+              "seconds": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Total seconds production was held: the sum of every interval from a held instant to the next simulation instant."
               }
             }
           }

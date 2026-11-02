@@ -80,7 +80,7 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
             const leaving = build.steps.flatMap((step, i) => (step.reaction && step.action === 'move' && step.count === 'all' && step.from === node ? [result.steps[i]] : []))
             expect(leaving.some((s) => s.startedAt === depletedAt), node).toBe(true)
         }
-        const goldWarnings = result.warnings.filter((w) => w.code !== 'step-stuck' && gold(w.node))
+        const goldWarnings = result.warnings.filter((w) => 'node' in w && gold(w.node))
         expect(goldWarnings.filter((w) => w.severity === 'warning')).toEqual([])
     })
 
