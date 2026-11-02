@@ -19,17 +19,21 @@ async function expectNoErrorMarks(page: Page) {
   await expect(page.locator('[data-testid="build-order-line-number"][data-error]')).toHaveCount(0)
 }
 
-// Scrolling is smooth and boundingBox reads are sequential, so read both rects in one evaluate and poll.
+// Scrolling is smooth: the target passes through the valid window on its way past, so a position only counts
+// once it has not moved for a while. Both rects are read in one evaluate.
 // The list can be taller than the room left below it at the bottom of the page, so only its top has to be visible.
 async function expectInViewBelowRunBar(page: Page, testId: string, line?: number) {
   const selector = line === undefined ? `[data-testid="${testId}"]` : `[data-testid="${testId}"][data-line="${line}"]`
   await expect
     .poll(() =>
-      page.evaluate((sel) => {
-        const rect = document.querySelector(sel)!.getBoundingClientRect()
+      page.evaluate(async ({ sel, wholeItem }) => {
+        const target = document.querySelector(sel)!
         const barBottom = document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect().bottom
-        return rect.top >= barBottom && rect.top < window.innerHeight && (sel.includes('data-line') ? rect.bottom <= window.innerHeight : true)
-      }, selector)
+        const before = target.getBoundingClientRect().top
+        await new Promise((resolve) => setTimeout(resolve, 250))
+        const rect = target.getBoundingClientRect()
+        return rect.top === before && rect.top >= barBottom && rect.top < window.innerHeight && (!wholeItem || rect.bottom <= window.innerHeight)
+      }, { sel: selector, wholeItem: line !== undefined })
     )
     .toBe(true)
 }
@@ -106,9 +110,35 @@ test.describe('AoE4 build order live issues', () => {
   test('a rejected Run whose issue has no line scrolls to the list', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 })
     await openPage(page)
-    await textarea(page).fill('x'.repeat(20001))
+    await textarea(page).fill(Array.from({ length: 201 }, () => 'x'.repeat(99)).join('\n'))
+    await expect(page.getByTestId('build-order-issues')).toBeVisible()
+    await scrollToTop(page)
+    expect(await page.getByTestId('build-order-issues').evaluate((el) => el.getBoundingClientRect().top > window.innerHeight)).toBe(true)
     await runRejected(page)
     await expectInViewBelowRunBar(page, 'build-order-issues')
+  })
+
+  test('rejecting the same text again scrolls to the issue again', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await openPage(page)
+    await textarea(page).fill(LONG_PASTE)
+    await runRejected(page)
+    await expectInViewBelowRunBar(page, 'build-order-line-number', 62)
+    await scrollToTop(page)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+    await runRejected(page)
+    await expectInViewBelowRunBar(page, 'build-order-line-number', 62)
+  })
+
+  test('an issue in the middle of the text lands below the run bar', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await openPage(page)
+    const lines = Array.from({ length: 151 }, () => 'produce villager from capital-town-center x3 -> sheep')
+    lines[0] = 'start -> sheep'
+    lines[80] = 'produce knigt from stable'
+    await textarea(page).fill(lines.join('\n'))
+    await runRejected(page)
+    await expectInViewBelowRunBar(page, 'build-order-line-number', 81)
   })
 
   test('in table view a rejection scrolls the list and keeps the table view', async ({ page }) => {

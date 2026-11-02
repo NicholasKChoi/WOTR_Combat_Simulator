@@ -88,7 +88,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         if (rejection === null) return
         const marginTop = `${runBar.current?.getBoundingClientRect().height ?? 0}px`
         const { line } = rejection.first
-        const item = view === 'text' && line !== undefined ? editorBox.current?.querySelector(`[data-line="${line}"]`) : null
+        const item = view === 'text' && line !== undefined ? editorBox.current?.querySelector(`[data-testid="build-order-line-number"][data-line="${line}"]`) : null
         const target = item ?? issuesBox.current
         if (!(target instanceof HTMLElement)) return
         target.style.scrollMarginTop = marginTop
