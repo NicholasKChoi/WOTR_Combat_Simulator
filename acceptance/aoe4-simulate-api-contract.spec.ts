@@ -11,6 +11,7 @@ import type {
   BuildOrderIssue,
   BuildOrderNote,
   BuildStart,
+  ChartMarker,
   NodeDepletion,
   SimWarning,
   SimulationResult,
@@ -63,8 +64,8 @@ function objectVariants(schema: Schema): Schema[] {
 }
 
 const REQUEST_SCHEMAS = ['SimulateRequest', 'BuildOrder', 'BuildStart', 'BuildStep', 'Trigger', 'SimInputOverrides', 'TripInputOverrides']
-const RESPONSE_SCHEMAS = ['SimulateError', 'SimulationResult', 'UnitSeries', 'StepTiming', 'BuildOrderIssue', 'BuildOrderNote', 'NodeDepletion']
-const SHARED_SCHEMAS = ['GatherNodeId', 'ResourceKind', 'SpendCategory', 'CivId', 'FiniteGatherNodeId', 'DepositRef', 'NodeRef', 'FiniteNodeRef', 'Severity', 'StepWait', 'SimWarning']
+const RESPONSE_SCHEMAS = ['SimulateError', 'SimulationResult', 'UnitSeries', 'StepTiming', 'BuildOrderIssue', 'BuildOrderNote', 'NodeDepletion', 'ChartMarker']
+const SHARED_SCHEMAS = ['GatherNodeId', 'ResourceKind', 'SpendCategory', 'CivId', 'FiniteGatherNodeId', 'DepositRef', 'NodeRef', 'FiniteNodeRef', 'Severity', 'StepWait', 'SimWarning', 'ChartMarkerKind']
 
 const PRODUCE = { action: 'produce', producer: 'capital-town-center', unit: 'villager' }
 const START = { villagers: { sheep: 6 }, rally: 'sheep' }
@@ -453,7 +454,9 @@ test.describe('exported types match the spec', () => {
     notes: true,
     depletions: true,
     warnings: true,
+    markers: true,
   }
+  const chartMarker: Record<keyof ChartMarker, true> = { kind: true, label: true, at: true }
   const nodeDepletion: Record<keyof NodeDepletion, true> = { node: true, amount: true, depletedAt: true }
   type WarningKeys<C extends SimWarning['code']> = Record<keyof Extract<SimWarning, { code: C }>, true>
   const nodeWarning = { code: true, severity: true, message: true, node: true, at: true, idleVillagers: true } as const
@@ -480,6 +483,7 @@ test.describe('exported types match the spec', () => {
     BuildOrderIssue: buildOrderIssue,
     BuildOrderNote: buildOrderNote,
     NodeDepletion: nodeDepletion,
+    ChartMarker: chartMarker,
   }
 
   for (const [name, literal] of Object.entries(typeKeys)) {

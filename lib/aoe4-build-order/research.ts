@@ -2,6 +2,7 @@ import type { GameData, SnapshotEntry } from './data';
 import { classifyTech } from './effects';
 import type { EffectState } from './effects';
 import { canAfford, costOf, markCompleted, payCost } from './engine-common';
+import { researchMarker } from './markers';
 import type { BuildOrder, BuildOrderNote } from './model';
 import type { BuildingInstance, EngineState, PaidItem, StepHandler } from './simulate';
 
@@ -22,6 +23,7 @@ function researchItem(entry: SnapshotEntry, index: number): PaidItem {
     complete(state) {
       state.researchedIds.add(entry.id);
       state.researched.add(entry.baseId);
+      state.markers.push(researchMarker(entry, state.time));
       markCompleted(state, index);
     },
   };

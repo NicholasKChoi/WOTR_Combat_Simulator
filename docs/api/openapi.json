@@ -554,7 +554,8 @@
                       "depletedAt": null
                     }
                   ],
-                  "warnings": []
+                  "warnings": [],
+                  "markers": []
                 }
               }
             }
@@ -1603,7 +1604,8 @@
           "warnings",
           "spent",
           "spawnedPopulation",
-          "populationCapReachedAt"
+          "populationCapReachedAt",
+          "markers"
         ],
         "additionalProperties": false,
         "properties": {
@@ -1816,6 +1818,13 @@
               "$ref": "#/components/schemas/SimWarning"
             },
             "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then step-stuck by step. node-depleted and idle-arrival come from run-outs (see nodeAmounts); nothing emits step-stuck yet."
+          },
+          "markers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChartMarker"
+            },
+            "description": "One marker per age reached after the start age and per completed research, sorted by at, then kind, then label."
           }
         }
       },
@@ -2227,6 +2236,42 @@
           "research"
         ],
         "description": "What a payment bought: villager production, any other unit, a building (including auto-houses) or a technology."
+      },
+      "ChartMarkerKind": {
+        "type": "string",
+        "enum": [
+          "age-up",
+          "economy",
+          "unit-tier",
+          "blacksmith",
+          "other"
+        ],
+        "description": "What a chart marker marks: an age-up, or a completed research classified as economy, unit-tier, blacksmith or other."
+      },
+      "ChartMarker": {
+        "type": "object",
+        "description": "A point on the time axis where an age was reached or a research completed.",
+        "required": [
+          "kind",
+          "label",
+          "at"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ChartMarkerKind",
+            "description": "Marker kind."
+          },
+          "label": {
+            "type": "string",
+            "description": "Age name (Feudal, Castle, Imperial) for age-up, else the researched tech's baseId."
+          },
+          "at": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Game time in seconds the age was reached or the research completed."
+          }
+        }
       }
     }
   }

@@ -124,6 +124,20 @@ export interface StepTiming {
   waitSeconds: number;
 }
 
+export type ChartMarkerKind = 'age-up' | 'economy' | 'unit-tier' | 'blacksmith' | 'other';
+
+// Also the tie-break order of markers at the same instant.
+export const CHART_MARKER_KINDS: readonly ChartMarkerKind[] = ['age-up', 'economy', 'unit-tier', 'blacksmith', 'other'];
+
+export const AGE_NAMES: Readonly<Record<2 | 3 | 4, string>> = { 2: 'Feudal', 3: 'Castle', 4: 'Imperial' };
+
+// label is an age name for age-up, else the researched tech's baseId.
+export interface ChartMarker {
+  kind: ChartMarkerKind;
+  label: string;
+  at: number;
+}
+
 export interface SimulationResult {
   civ: CivId;
   durationSeconds: number;
@@ -145,6 +159,8 @@ export interface SimulationResult {
   // One per run ref, in FINITE_NODE_REFS order.
   depletions: NodeDepletion[];
   warnings: SimWarning[];
+  // One per age reached after the start age and per completed research, sorted by at, kind, label.
+  markers: ChartMarker[];
 }
 
 // amount is the starting stock, null when infinite; depletedAt is null while the ref is still stocked.
