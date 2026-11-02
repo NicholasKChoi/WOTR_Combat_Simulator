@@ -1,0 +1,439 @@
+{
+  "civ": "english",
+  "name": "ENG Knight/Longbow (King's Palace)",
+  "source": "hand-authored for this simulator",
+  "start": {
+    "rally": "gold"
+  },
+  "steps": [
+    {
+      "action": "produce",
+      "producer": "capital-town-center",
+      "unit": "villager"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 20
+      },
+      "action": "build",
+      "building": "house",
+      "from": "gold",
+      "then": "gold"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 40
+      },
+      "action": "build",
+      "building": "mining-camp",
+      "from": "gold",
+      "then": "gold"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 60
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "sheep"
+    },
+    {
+      "trigger": {
+        "kind": "villagers",
+        "count": 9
+      },
+      "action": "build",
+      "building": "abbey-of-kings",
+      "from": "sheep",
+      "builders": 3,
+      "then": "sheep"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 140
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "wood"
+    },
+    {
+      "action": "build",
+      "building": "lumber-camp",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 230
+      },
+      "action": "build",
+      "building": "house",
+      "from": "sheep",
+      "then": "sheep"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 240
+      },
+      "action": "build",
+      "building": "mill",
+      "from": "sheep",
+      "builders": 3,
+      "then": "sheep"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 300
+      },
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "research",
+      "tech": "horticulture"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 315
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 330
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "gold"
+    },
+    {
+      "action": "build",
+      "building": "stable",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "longbowman"
+    },
+    {
+      "action": "build",
+      "building": "blacksmith",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "house",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "house",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "house",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "longbowman"
+    },
+    {
+      "action": "build",
+      "building": "stable",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "rally",
+      "producer": "kings-palace",
+      "to": "wood"
+    },
+    {
+      "action": "build",
+      "building": "kings-palace",
+      "from": "farm",
+      "then": "farm"
+    },
+    {
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "farm"
+    },
+    {
+      "action": "research",
+      "tech": "steeled-arrow"
+    },
+    {
+      "action": "research",
+      "tech": "fitted-leatherwork"
+    },
+    {
+      "action": "research",
+      "tech": "bloomery"
+    },
+    {
+      "action": "research",
+      "tech": "iron-undermesh"
+    },
+    {
+      "action": "build",
+      "building": "stable",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 600
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 720
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "wood"
+    },
+    {
+      "action": "produce",
+      "producer": "stable",
+      "unit": "knight"
+    },
+    {
+      "action": "research",
+      "tech": "veteran-longbowmen"
+    },
+    {
+      "action": "research",
+      "tech": "balanced-projectiles"
+    },
+    {
+      "action": "research",
+      "tech": "wedge-rivets"
+    },
+    {
+      "action": "research",
+      "tech": "decarbonization"
+    },
+    {
+      "action": "research",
+      "tech": "insulated-helm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 840
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 960
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 1080
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold",
+      "to": "gold#2"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold#2"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold#2",
+      "to": "gold#3"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold#3"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold#3",
+      "to": "gold#4"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold#4"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold#4",
+      "to": "gold#5"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold#5"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold#5",
+      "to": "wood"
+    }
+  ]
+}

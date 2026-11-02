@@ -93,6 +93,23 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         expect(second?.depletedAt).toBeNull()
         expect(result.steps[reactionIndex].startedAt).toBe(gold?.depletedAt)
     })
+
+    it.runIf(build.name.includes('King'))('researches its blacksmith techs after the King\'s Palace starts', () => {
+        const techs = ['steeled-arrow', 'fitted-leatherwork', 'bloomery', 'iron-undermesh']
+        const palace = build.steps.findIndex((step) => step.action === 'build' && step.building === 'kings-palace')
+        const researches = techs.map((tech) => build.steps.findIndex((step) => step.action === 'research' && step.tech === tech))
+        const result = simulateTo(3600)
+        expect(palace).toBeGreaterThanOrEqual(0)
+        for (const index of researches) {
+            expect(index).toBeGreaterThan(palace)
+            expect(result.steps[index].startedAt).toBeGreaterThanOrEqual(result.steps[palace].startedAt ?? Infinity)
+        }
+    })
+
+    it.runIf(build.name.includes('King'))('runs several gold deposits dry by 3600 s', () => {
+        const dry = simulateTo(3600).depletions.filter((d) => nodeKindOf(d.node) === 'gold' && d.depletedAt !== null)
+        expect(dry.length).toBeGreaterThan(1)
+    })
 })
 
 describe('ENG Spear/Longbow into MAA/Crossbow', () => {
