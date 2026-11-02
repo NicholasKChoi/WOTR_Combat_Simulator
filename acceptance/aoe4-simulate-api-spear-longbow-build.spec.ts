@@ -42,7 +42,7 @@ test.describe('the spear/longbow into men-at-arms/crossbow build through the sim
 
   test('at 1200 s only the first gold deposit has run out and its info node-depleted warning is the only warning', async ({ request }) => {
     const { depletions, warnings } = await simulate(request, 1200)
-    // The house lead-time rule lets the build run ahead (higher population, population 200 at 1366.43 s instead of 1373.04 s), so gold runs out earlier and the first deposit empties inside the window.
+    // The house lead-time rule builds houses sooner, so population rises faster and the first gold deposit empties inside the window.
     expect(depletions.filter((d) => GOLD_NODES.includes(d.node)).map((d) => d.depletedAt)).toEqual([FIRST_GOLD_DEPLETED_SECONDS, null, null])
     expect(warnings.map((w) => [w.code, w.severity, w.node])).toEqual([['node-depleted', 'info', 'gold']])
   })
