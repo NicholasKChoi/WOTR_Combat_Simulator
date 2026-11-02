@@ -103,6 +103,29 @@ test.describe('AoE4 build order live issues', () => {
     await expect(gutterItem(page, 1)).not.toHaveAttribute('data-error', /.*/)
   })
 
+  test('a check issue with no near match shows no suggestion', async ({ page }) => {
+    await openPage(page)
+    await textarea(page).fill(['start -> sheep', 'produce zzzzzzzzzz from stable'].join('\n'))
+    await runRejected(page)
+    await expect(issues(page)).toHaveCount(1)
+    await expect(issues(page)).toHaveAttribute('data-code', 'unknown-id')
+    await expect(page.getByTestId('build-order-issue-suggestion')).toHaveCount(0)
+  })
+
+  test('the gutter marks exactly the lines that have an issue', async ({ page }) => {
+    await openPage(page)
+    await textarea(page).fill(
+      ['start -> sheep', 'produce knigt from stable', 'produce villager from capital-town-center x3 -> sheep', 'produce spearmn from barracks', 'produce villager from capital-town-center x3 -> sheep'].join('\n')
+    )
+    await runRejected(page)
+    await expect(issues(page)).toHaveCount(2)
+    const marked = () =>
+      page.evaluate(() =>
+        Array.from(document.querySelectorAll('[data-testid="build-order-line-number"][data-error="true"]')).map((el) => el.getAttribute('data-line'))
+      )
+    await expect.poll(marked).toEqual(['2', '4'])
+  })
+
   test('a rejected Run scrolls the first issue line under the run bar', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 })
     await openPage(page)
