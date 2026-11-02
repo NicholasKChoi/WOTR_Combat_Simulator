@@ -2069,6 +2069,10 @@
             "type": "integer",
             "minimum": 1,
             "description": "1-based line of the pasted text; present only for issues on text."
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "The nearest valid id; present only on unknown-id and unknown-trigger-kind issues."
           }
         }
       },

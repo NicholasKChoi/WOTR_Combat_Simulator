@@ -119,7 +119,7 @@ test.describe('spec structure', () => {
   })
 
   test('response-side schemas are closed and require every property the type does not mark optional', () => {
-    const optional: Record<string, string[]> = { BuildOrderIssue: ['line', 'step'], SimulateError: ['omittedIssues'] }
+    const optional: Record<string, string[]> = { BuildOrderIssue: ['line', 'step', 'suggestion'], SimulateError: ['omittedIssues'] }
     for (const name of RESPONSE_SCHEMAS) {
       const schema = schemas[name]
       expect(schema.additionalProperties, name).toBe(false)
@@ -487,7 +487,7 @@ test.describe('exported types match the spec', () => {
   ]
   const unitSeries: Record<keyof UnitSeries, true> = { unitId: true, baseId: true, name: true, tier: true, counts: true }
   const stepTiming: Record<keyof StepTiming, true> = { step: true, status: true, armedAt: true, startedAt: true, completedAt: true, waitSeconds: true, waitingOn: true, waitBreakdown: true }
-  const buildOrderIssue: Record<keyof BuildOrderIssue, true> = { code: true, message: true, step: true, line: true }
+  const buildOrderIssue: Record<keyof BuildOrderIssue, true> = { code: true, message: true, step: true, line: true, suggestion: true }
   const buildOrderNote: Record<keyof BuildOrderNote, true> = { code: true, severity: true, message: true, step: true, tech: true, properties: true }
 
   const typeKeys: Record<string, object> = {

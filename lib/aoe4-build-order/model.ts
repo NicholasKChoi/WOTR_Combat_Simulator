@@ -187,6 +187,7 @@ export interface BuildOrderIssue {
   message: string;
   step?: number;
   line?: number;
+  suggestion?: string;
 }
 
 export interface BuildOrderNote {

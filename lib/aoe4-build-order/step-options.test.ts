@@ -59,6 +59,25 @@ describe('stepOptions from game data', () => {
     })
 })
 
+describe('stepOptions names', () => {
+    const youngest = (baseId: string, types: readonly string[]) => {
+        const entries = ENGLISH.byBaseId.get(baseId)!.filter((entry) => types.includes(entry.type))
+        return entries.reduce((best, entry) => (entry.age < best.age ? entry : best)).name
+    }
+
+    it('names every listed id after its lowest-age entry of the matching type', () => {
+        const units = [...new Set(Object.values(options.unitsByProducer).flat())]
+        const listed: [string, readonly string[]][] = [
+            ...options.buildings.map((id): [string, string[]] => [id, ['building']]),
+            ...units.map((id): [string, string[]] => [id, ['unit']]),
+            ...options.techs.map((id): [string, string[]] => [id, ['technology', 'upgrade']]),
+        ]
+        expect(Object.keys(options.names).sort()).toEqual([...new Set(listed.map(([id]) => id))].sort())
+        for (const [id, types] of listed) expect(options.names[id], id).toBe(youngest(id, types))
+        expect(options.names.knight).toBe(youngest('knight', ['unit']))
+    })
+})
+
 describe('stepOptions ordering and serialization', () => {
     it('sorts each id list by lowest age then baseId', () => {
         const lists = [options.buildings, options.producers, options.villagerProducers, options.techs]

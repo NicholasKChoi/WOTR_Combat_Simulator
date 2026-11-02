@@ -24,6 +24,7 @@ export interface StepOptions {
   unitsByProducer: Readonly<Record<string, readonly string[]>>;
   techs: readonly string[];
   techSites: Readonly<Record<string, readonly string[]>>;
+  names: Readonly<Record<string, string>>;
 }
 
 const ACTIONS: readonly BuildStep['action'][] = ['produce', 'pause', 'build', 'research', 'move', 'rally'];
@@ -69,6 +70,16 @@ export function stepOptions(data: GameData): StepOptions {
 
   const buildings = sortedByAge(buildingGroups);
   const producers = byAge([...unitsByProducer.keys()].filter((id) => buildings.includes(id)));
+  const techs = sortedByAge(techGroups);
+  const producedUnits = new Set(producers.flatMap((producer) => [...(unitsByProducer.get(producer) ?? [])]));
+  // byBaseId lists each baseId's entries by age, so the first entry of a type is its lowest-age name.
+  const nameOf = (types: readonly SnapshotEntry['type'][]) => (baseId: string) =>
+    [baseId, ageOf(baseId).find((entry) => types.includes(entry.type))?.name ?? baseId] as const;
+  const names = Object.fromEntries([
+    ...buildings.map(nameOf(['building'])),
+    ...[...producedUnits].map(nameOf(['unit'])),
+    ...techs.map(nameOf(['technology', 'upgrade'])),
+  ]);
   return {
     actions: ACTIONS,
     triggerKinds: TRIGGER_KINDS,
@@ -79,9 +90,10 @@ export function stepOptions(data: GameData): StepOptions {
     producers,
     villagerProducers: byAge(unionOf(ageOf(VILLAGER_ID), (entry) => entry.producedBy)),
     unitsByProducer: Object.fromEntries(producers.map((producer) => [producer, byAge(unitsByProducer.get(producer) ?? [])])),
-    techs: sortedByAge(techGroups),
+    techs,
     techSites: Object.fromEntries(
       techGroups.map(([tech, entries]) => [tech, byAge(unionOf(entries, (entry) => entry.producedBy))]),
     ),
+    names,
   };
 }
