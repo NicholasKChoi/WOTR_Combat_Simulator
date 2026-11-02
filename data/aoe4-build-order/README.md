@@ -55,6 +55,16 @@ with its reason.
   wood; the abbey builders return to sheep and, at 4:00, build the mill and the three farms from there;
   the 5:00 builders and the 6:00 blacksmith builder come from wood; the 5:15 military production is
   continuous because the guide gives no count.
+- `english-knight-longbow` "ENG Knight/Longbow (King's Palace)", `hand-authored for this simulator` (English).
+  The opening is the ENG 1TC economy, with Feudal reached through `abbey-of-kings` (the same landmark as
+  ENG 1TC, so the first five minutes are the already-tuned opening) and Castle through `build kings-palace`.
+  Three stables and two archery ranges, 12 villagers moved to gold before the King's Palace, the King's
+  Palace rallied to wood, and farms added at 14, 16 and 18 minutes. The four blacksmith techs
+  (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after `build kings-palace` in
+  the list, so they queue behind the landmark instead of taking its gold first; `veteran-longbowmen` follows
+  `produce knight`. Gold: 5 deposits (`gold` to `gold#5`) run out by 3600 s, at 17:31 (`gold`), 25:19
+  (`gold#2`), 33:07 (`gold#3`), 40:56 (`gold#4`) and 48:44 (`gold#5`); each has a
+  `whenever <ref> runs out move all <ref> to <next>` reaction, and `gold#5` moves to `wood`. Omitted: none.
 
 - `english-spear-longbow-maa-crossbow` "ENG Spear/Longbow into MAA/Crossbow", hand-authored for this
   simulator (no guide). Feudal through the Council Hall, spearmen and longbowmen from the barracks and
