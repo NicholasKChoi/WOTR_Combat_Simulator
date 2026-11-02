@@ -634,8 +634,8 @@ stateDiagram-v2
   [*] --> Unarmed
   Unarmed --> Armed: trigger holds and every earlier step started (armedAt)
   Armed --> Waiting: a check fails (prerequisite, villagers, population or resources)
-  Waiting --> Started: affordable and supply allows (startedAt)
-  Armed --> Started: affordable and supply allows (startedAt)
+  Waiting --> Started: every check passes (startedAt)
+  Armed --> Started: every check passes (startedAt)
   Started --> Completed: work done (completedAt)
   Completed --> [*]
 ```

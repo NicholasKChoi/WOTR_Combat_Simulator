@@ -507,15 +507,11 @@ describe('handler seam', () => {
             { action: 'research', tech: 'wheelbarrow' },
             { action: 'rally', producer: 'capital-town-center', to: 'wood' },
         ]
-        const handlers = stepHandlers as Record<string, unknown>
-        const saved = handlers.research
-        delete handlers.research
-        try {
-            expect(run(steps, { game: withMill }).steps.map((s) => s.status)).toEqual(['waiting', 'not-reached'])
-        } finally {
-            handlers.research = saved
-        }
-        expect(stepHandlers.research).toBe(saved)
+        withHandler('research', undefined as never, () => {
+            const result = run(steps, { game: withMill })
+            expect(result.steps.map((s) => s.status)).toEqual(['waiting', 'not-reached'])
+            expect(result.warnings.map((w) => w.code)).toContain('step-stuck')
+        })
         expect(run(steps, { game: withMill }).steps[1].status).toBe('completed')
     })
 
@@ -841,6 +837,7 @@ describe('why steps wait', () => {
             at: 0,
         })
         expect(run(stuckOrder).warnings).toEqual(run(stuckOrder).warnings)
+        expect(run(stuckOrder).steps.map((s) => s.waitBreakdown)).toEqual(run(stuckOrder).steps.map((s) => s.waitBreakdown))
     })
 
     it('has no step-stuck when every step started', () => {
