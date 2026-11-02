@@ -79,3 +79,30 @@ Confirmed by the owner 2026-11-01 (editor shape, tinkering tools, depletion beha
 | M3.11 | A build can name more than one gold deposit (numbered, e.g. a second gold mine), each with its own starting amount (4000 by default); villagers can be sent to a specific deposit, and the shipped builds move their gold villagers to a new deposit when one runs out instead of idling | code | SGS-037, SGS-038, SGS-039, SGS-040, SGS-050, SGS-051 | done |
 | M3.12 | Every result message has a severity (info, warning or error); warnings show in their own list, and info messages are collapsed by default behind a toggle | code | SGS-037, SGS-041, SGS-042, SGS-045 | done |
 | M3.13 | The AoE4 engine's cost, payment and tolerance logic lives in one shared module used by simulate, research and houses, shared test helpers replace the copied ones, and a jscpd duplication check runs as part of lint and passes on main | code | SGS-035 | done |
+
+## M4: AoE4 build order workbench polish (results first, schema validation, veterancy)
+
+**Outcome:** The page puts results first and is easy to use on any screen; builds are validated by one
+shared schema; veterancy upgrades convert units already on the field; auto-houses no longer stall a build.
+
+### Exit criteria
+
+Confirmed by the owner 2026-11-02 (from the Castle build walkthrough and the UI/UX review in chat; the
+small code-cleanup backlog bullets stay in the backlog).
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M4.1 | One shared zod schema defines the build; the front end converts the pasted text into a schema-checked build before POSTing and the API validates requests with the same schema; the hand-rolled validator is removed and its tests shrink to the text-to-build conversion; the rules and aoe4world data files are checked by a schema instead of per-field assertions | code | | |
+| M4.2 | Completing a unit-tier upgrade (e.g. Veteran Longbowmen) converts the lower-tier units already on the field to the upper tier; the design states how `unitsProduced` and the Units chart show it; docs, OpenAPI, acceptance specs and the build READMEs match | code | | |
+| M4.3 | When the only reaction `build house` step can never fire (so auto-houses stay off), the simulate response carries a warning that no house will ever be built; the gate semantics stay | code | | |
+| M4.4 | Auto-house planning counts supply from a building under construction only if it finishes within the house lead time, so the knight + longbow build no longer sits at 40 population with the King's Palace under construction | code | | |
+| M4.5 | A late explicit `build house` step no longer lets a build stall at the population cap silently: either auto-houses cover the gap or the result warns (the design chooses) | code | | |
+| M4.6 | The knight + longbow build leaves no villager idle through 1800 s (sheep gatherers move when sheep run out); its README and tests check the full 1800 s | code | | |
+| M4.7 | Results first: results are reachable right after a run (tabs or side-by-side, scroll to results on Run, Run stays on screen); text and table are one view with a toggle, not both at once; the text box auto-sizes and shows line numbers | code | | |
+| M4.8 | Errors and notes: a paste or validation error shows inline under the text box, highlights its line, and suggests a near match ("did you mean knight?"); info notes such as gold run-outs show in a collapsed list instead of being dropped | code | | |
+| M4.9 | Step table polish: readable labels (no raw `walkSeconds`/ids), optional fields tucked away, compact reorder and delete controls, the `start ->` line as an editable row | code | | |
+| M4.10 | Timeline and compare polish: one "Blocked by" column replaces "Waited on"/"Stuck on" with long waits highlighted; unfinished steps say "ongoing"; compare deltas show direction, colour and units; rows empty in both runs are hidden | code | | |
+| M4.11 | Chart legends and markers: series and marker legends are labelled and visually separate; pinned series are dashed and grouped with their resource or unit; marker labels do not overlap; the `chart-marker-legend*` test ids stay | code | | |
+| M4.12 | Pin and compare: results show as stale when the build or duration changes after a run; the pin names its build and duration; Pin is disabled when the current run is already pinned; the pin survives a page reload; the pinned run's age-up markers show dashed; a key number past the shorter run's duration says why it is blank | code | | |
+| M4.13 | Mobile: at 390 px wide the page has no horizontal scroll; steps render as cards and wide tables scroll inside their own box | code | | |
+| M4.14 | `docs/aoe4-build-order.md` and `docs/api/openapi.json` cover the changes and pass the contract check; Playwright covers the new layout, the inline error, the info list, pin persistence and the 390 px width | code | | |
