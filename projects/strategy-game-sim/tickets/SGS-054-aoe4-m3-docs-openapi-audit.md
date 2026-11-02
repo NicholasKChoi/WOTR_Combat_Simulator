@@ -119,3 +119,16 @@ Commands run from the repo root under Node 24 (`source ~/.nvm/nvm.sh && nvm use 
 ## Open questions
 
 None.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review at tip 0093867f926a041d9d33b42dbbfcceef2d8f4abc (report `reports/SGS-054-review-1.md`). No other gate has passed yet.
+
+Findings:
+- `docs/aoe4-build-order.md:669`: the diff changed `spawnedPopulation` from "the popcap of" to "the count of villagers and units". The code sums popcap (`simulate.ts:280` adds `entry.costs.popcap`; units have popcap 2, 3, 5, 6); `design/M3.md:596` and the OpenAPI description say summed popcap.
+- `docs/aoe4-build-order.md:488`: "The issue message is `<reason> in <path>`" is stated for every node position including `nodeAmounts` keys, but those go through `inputIssue` (`validate.ts:417-418`, `:474`) and read `inputs.nodeAmounts.iron: unknown node "iron"`.
+
+Required fixes:
+- [ ] (rework 1) Restore wording that says `spawnedPopulation` is the summed popcap.
+- [ ] (rework 1) Limit the `<reason> in <path>` form to step fields, `start` and the trigger, and state the `inputs.nodeAmounts.<ref>: <reason>` form for `nodeAmounts` keys. Re-run the node-ref spot check after the edit.
+- [ ] (rework 1) Fix the non-blocking wording notes in the review report that are cheap (intro "graphs ... population" vs "no graph", "with the markers and warnings", "never read" in Technologies).
