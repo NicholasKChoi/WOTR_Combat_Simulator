@@ -63,9 +63,11 @@ with its reason.
 
   Transcription choices: the `man-at-arms` step carries a `time` trigger of 681 s, the whole second after the
   King's Palace completes (680.3 s), because men-at-arms are a Feudal unit and would otherwise start before
-  Castle; `crossbowman` is a Castle unit and waits on its age. The trigger is hard-coded, so re-check it when
-  an earlier step changes. The King's Palace is a villager producer, so a `rally` step sends its villagers to
-  farms. The Town Center rallies to gold from 560 s to 760 s. Gold runs out at 1218 s (`gold`), 1944 s
+  Castle; `crossbowman` is a Castle unit and waits on its age. Both steps sit before the 12:40 rally so that
+  step order does not hold them back; they start at 681 s and replace the spearman and longbowman orders,
+  which stop there. The trigger is hard-coded, so re-check it when an earlier step changes. The King's Palace
+  is a villager producer, so a `rally` step sends its villagers to farms. The Town Center rallies to gold
+  from 130 s to 200 s and from 560 s to 760 s, so no producer is rallied to gold at a run-out. Gold runs out at 1218 s (`gold`), 1944 s
   (`gold#2`) and 2670 s (`gold#3`) at default inputs, so the build has three reactions: `gold` and `gold#2`
   move all gatherers to the next deposit, and `gold#3` moves them to farms. `gold#4` is never reached by
   3600 s.

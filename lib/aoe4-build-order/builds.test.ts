@@ -6,7 +6,7 @@ import { nodeKindOf } from './model'
 import type { NodeRef } from './model'
 import { formatBuildOrderText, parseBuildOrderText } from './parse-text'
 import { simulateBuildOrder } from './simulate'
-import { countAt } from './test-helpers'
+import { countAt, inputsFor } from './test-helpers'
 import { resolveSimInputs, validateBuildOrder } from './validate'
 
 const BUILDS_DIR = new URL('../../data/aoe4-build-order/builds/', import.meta.url)
@@ -97,13 +97,12 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
 
 describe('ENG Spear/Longbow into MAA/Crossbow', () => {
     const build = listBuilds().find((b) => b.name === 'ENG Spear/Longbow into MAA/Crossbow')
-    const resolved = resolveSimInputs({ durationSeconds: 1200 }, data)
 
     it('reaches Castle, with the opening army before the Castle landmark and the transition after it', () => {
-        if (build === undefined || resolved.ok === false) {
-            throw new Error('build or inputs missing')
+        if (build === undefined) {
+            throw new Error('build missing')
         }
-        const result = simulateBuildOrder(build, data, resolved.inputs)
+        const result = simulateBuildOrder(build, data, inputsFor(data, { durationSeconds: 1200 }))
         const indexOf = (action: string, key: 'building' | 'unit', id: string) =>
             build.steps.findIndex((s) => s.action === action && (s as Record<string, unknown>)[key] === id)
         const palace = indexOf('build', 'building', 'kings-palace')
@@ -124,5 +123,11 @@ describe('ENG Spear/Longbow into MAA/Crossbow', () => {
             expect(step, unit).toBeGreaterThan(palace)
             expect(result.steps[step].startedAt ?? -1, unit).toBeGreaterThanOrEqual(palaceDone ?? Infinity)
         }
+        const menAtArms = indexOf('produce', 'unit', 'man-at-arms')
+        const trigger = build.steps[menAtArms].trigger
+        const castle = result.ages.find((a) => a.age === 3)?.reachedAt ?? Infinity
+        expect(trigger?.kind === 'time' ? trigger.seconds : null).toBeGreaterThanOrEqual(castle)
+        expect(result.steps[menAtArms].armedAt).toBe(trigger?.kind === 'time' ? trigger.seconds : null)
+        expect(result.steps[menAtArms].startedAt ?? -1).toBeGreaterThanOrEqual(castle)
     })
 })

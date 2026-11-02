@@ -179,15 +179,6 @@
     {
       "trigger": {
         "kind": "time",
-        "seconds": 760
-      },
-      "action": "rally",
-      "producer": "capital-town-center",
-      "to": "farm"
-    },
-    {
-      "trigger": {
-        "kind": "time",
         "seconds": 681
       },
       "action": "produce",
@@ -198,6 +189,15 @@
       "action": "produce",
       "producer": "archery-range",
       "unit": "crossbowman"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 760
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "farm"
     },
     {
       "trigger": {
