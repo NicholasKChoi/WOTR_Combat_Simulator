@@ -6,13 +6,13 @@ import { postSimulate } from './helpers'
 const WARM_UP_TIMEOUT_MS = 60_000
 const GOLD_NODES = ['gold', 'gold#2', 'gold#3']
 const MAN_AT_ARMS_STEP = 23
-// The house lead time plans supply only from what lands in time, so the step arms at the landmark but starts after it.
+// The step arms at the landmark and starts after it, once resources allow.
 const CASTLE_LANDMARK_SECONDS = 681
 const MAN_AT_ARMS_START_SECONDS = 687.5475028949656
 const FIRST_GOLD_DEPLETED_SECONDS = 1114.092642631611
 
 type Result = {
-  steps: { step: number; status: string; armedAt: number | null; startedAt: number | null }[]
+  steps: { step: number; status: string; armedAt: number | null; startedAt: number | null; waitBreakdown?: { resources?: number } }[]
   warnings: { code: string; severity: string; node?: string }[]
   depletions: { node: string; depletedAt: number | null }[]
 }
@@ -31,17 +31,18 @@ test.beforeAll(async ({ request }) => {
 
 test.describe('the spear/longbow into men-at-arms/crossbow build through the simulate API', () => {
   for (const durationSeconds of [1200, 3600]) {
-    test(`at ${durationSeconds} s the men-at-arms step arms at the Castle landmark second and starts once the house lead time has supplied the population, with no waiting step`, async ({ request }) => {
+    test(`at ${durationSeconds} s the men-at-arms step arms at the Castle landmark second and starts when resources allow, with no waiting step`, async ({ request }) => {
       const { steps } = await simulate(request, durationSeconds)
       const step = steps.find((s) => s.step === MAN_AT_ARMS_STEP)
       expect(step).toMatchObject({ armedAt: CASTLE_LANDMARK_SECONDS, startedAt: MAN_AT_ARMS_START_SECONDS })
+      expect(step?.waitBreakdown?.resources).toBeCloseTo(MAN_AT_ARMS_START_SECONDS - CASTLE_LANDMARK_SECONDS, 3)
       expect(steps.filter((s) => s.status === 'waiting')).toEqual([])
     })
   }
 
   test('at 1200 s only the first gold deposit has run out and its info node-depleted warning is the only warning', async ({ request }) => {
     const { depletions, warnings } = await simulate(request, 1200)
-    // The lead-time rule shifts the build later, so the first deposit now empties inside the window.
+    // The house lead-time rule lets the build run ahead (higher population, population 200 at 1366.43 s instead of 1373.04 s), so gold runs out earlier and the first deposit empties inside the window.
     expect(depletions.filter((d) => GOLD_NODES.includes(d.node)).map((d) => d.depletedAt)).toEqual([FIRST_GOLD_DEPLETED_SECONDS, null, null])
     expect(warnings.map((w) => [w.code, w.severity, w.node])).toEqual([['node-depleted', 'info', 'gold']])
   })
