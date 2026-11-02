@@ -92,3 +92,16 @@ flowchart LR
 ## Open questions
 
 None.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review at tip 607bccb4bf1abe977b28880873ccb7ab05335d64. No other gate has passed yet.
+
+Findings:
+- `docs/aoe4-build-order.md:458`: the paste prefix table row contains `move N|all <node> to <node> [walk Ns]`. A `|` splits a table cell in GitHub Markdown even inside backticks, so the row gets four cells in a three-column table and the end of the `move` syntax and the whole `rally` syntax are dropped.
+- `parse-text.test.ts` "formatBuildStep > prints %j as one line": `expect(text).not.toContain('\n')` checks the expected string, not the output, so it can never fail.
+
+Required fixes:
+- [ ] (rework 1) Write the `move` row without a bare `|` (`move N\|all ...` or `move <N or all> ...`), and check that the table renders with the same column count on every row.
+- [ ] (rework 1) Delete the dead assertion or point it at the printed output.
+- [ ] (rework 1) Add a unit test for the start-villagers print order with deposits given in another key order: `{ stone: 1, 'gold#3': 1, gold: 2, 'gold#2': 1 }` prints `start 2 gold 1 gold#2 1 gold#3 1 stone`.
