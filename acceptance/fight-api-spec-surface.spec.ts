@@ -19,6 +19,35 @@ const FIGHT_SCHEMA_NAMES = [
   'RoundStats',
   'SurvivorCombination',
 ]
+const AOE4_SCHEMA_NAMES = [
+  'BuildOrder',
+  'BuildOrderIssue',
+  'BuildOrderNote',
+  'BuildStart',
+  'BuildStep',
+  'ChartMarker',
+  'ChartMarkerKind',
+  'CivId',
+  'DepositRef',
+  'FiniteGatherNodeId',
+  'FiniteNodeRef',
+  'GatherNodeId',
+  'NodeDepletion',
+  'NodeRef',
+  'ResourceKind',
+  'Severity',
+  'SimInputOverrides',
+  'SimWarning',
+  'SimulateError',
+  'SimulateRequest',
+  'SimulationResult',
+  'SpendCategory',
+  'StepTiming',
+  'StepWait',
+  'Trigger',
+  'TripInputOverrides',
+  'UnitSeries',
+]
 const fightSchemas = Object.fromEntries(Object.entries<any>(schemas).filter(([name]) => FIGHT_SCHEMA_NAMES.includes(name)))
 const operation = spec.paths['/api/fight'].post
 const errorExamples = operation.responses['400'].content['application/json'].examples
@@ -53,6 +82,26 @@ test.describe('spec file shape', () => {
         'SurvivorCombination',
       ].sort(),
     )
+  })
+
+  test('has exactly the pinned fight and AoE4 schema names and no others', () => {
+    const expected = [...FIGHT_SCHEMA_NAMES.filter((n) => n !== 'ArmyCount'), ...AOE4_SCHEMA_NAMES].sort()
+    expect(Object.keys(schemas).sort()).toEqual(expected)
+  })
+
+  test('references every schema from a path or another schema', () => {
+    const referenced = new Set<string>()
+    const walk = (node: unknown, owner: string | null) => {
+      if (!node || typeof node !== 'object') return
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+        const target = key === '$ref' && typeof value === 'string' ? value.replace('#/components/schemas/', '') : null
+        if (target !== null && target !== owner) referenced.add(target)
+        walk(value, owner)
+      }
+    }
+    walk(spec.paths, null)
+    for (const [name, schema] of Object.entries(schemas)) walk(schema, name)
+    expect(Object.keys(schemas).filter((name) => !referenced.has(name)).sort()).toEqual([])
   })
 
   test('defines no object schema inline under paths', () => {
