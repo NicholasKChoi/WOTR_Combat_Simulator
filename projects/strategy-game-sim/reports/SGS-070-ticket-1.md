@@ -1,0 +1,2 @@
+# SGS-070 ticket report 1
+Ticket: tickets/SGS-070-aoe4-chart-legends-markers.md. Component aoe4-build-order, M4.11, standard, ~120 LOC, depends on SGS-056. No diagram (single-component, outside control loop). Open questions (all designer): placeMarkers measured-width parameter; legend component props; solid current markers. Overlap: pinned-marker ticket (outline O) shares line-chart.tsx and MarkerLegend; M3 acceptance specs and docs lines ~786-820 are edited here.

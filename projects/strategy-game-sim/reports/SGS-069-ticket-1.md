@@ -1,0 +1,2 @@
+# SGS-069 ticket report 1
+File: tickets/SGS-069-aoe4-timeline-blocked-by-compare.md (see final summary in the handback message). Paths verified on origin/main d5c2549: compare.ts, compare-panel.tsx, step-timeline-rows.ts, step-timeline.tsx are in components/apps/aoe4-build-order/. Open questions: two `designer` (ComparePanel prop types; unused props until the pin ticket). SGS-056 has no ticket file or graph row yet.
