@@ -187,22 +187,22 @@ flowchart LR
 
 ## Acceptance criteria
 
-- [ ] After pinning the default build at 1200 s and reloading, with no Run, `tab-results` is enabled, `unpin-run` is enabled, `pinned-label` reads `Pinned: <first prebuilt name>, 20:00`, and the page sent one POST whose body has `buildOrder` and `inputs.durationSeconds` 1200 (spec 1).
-- [ ] `localStorage['aoe4-build-order.pinned-run']` after a pin is JSON `{ version: 1, name, text, durationSeconds }` with no result field; pinning a different run replaces it; Unpin removes it, and a reload then shows no pin (spec 5).
-- [ ] `pinName` returns the exact-match prebuilt name (the first when two builds share the text), `<selected> (edited)` otherwise (also for a text matching no build or empty text), and `Custom build` when `builds` is empty (unit rows). In the browser an unchanged default at 1200 s gives `Pinned: <name>, 20:00` and one edited line gives `Pinned: <name> (edited), 20:00` (spec 2).
-- [ ] The pin's name is fixed at Run: changing the select or the text after pinning, or after a Run, never changes `pinned-label` or the name stored; a restored pin shows the stored name (stored `name: "My name"` shows `Pinned: My name, ...`) (spec 2).
-- [ ] `build-input.tsx` takes `selected` and `onSelectedChange` and holds no select state: `git grep -n "setSelected\|useState" -- components/apps/aoe4-build-order/build-input.tsx` finds 3 lines on `origin/main` (the import, the state, and the call in `selectBuild`) and none after the change. `git grep -n "PIN_STORAGE_KEY = 'aoe4-build-order.pinned-run'" -- components` finds exactly 1 line (0 today).
-- [ ] `pin-run` is disabled while the shown run's text and duration equal the pin's; editing the text after a Run does not enable it; a rerun of the same inputs keeps it disabled; a different duration enables it; a failed Run (no result) disables it; after Unpin with a shown result it is enabled (spec 3).
-- [ ] `results-stale` shows with the text "These results are from an earlier build or duration. Run again to update." when the text or duration differs from the shown run's, the charts stay, reverting the edit hides it, a Run hides it, and it is absent after a Run with unchanged inputs (spec 4).
-- [ ] A stored value that is invalid JSON, has `version !== 1`, a wrong field type or a missing field, a text that does not convert, or whose restore POST returns 400, leaves no pin, `tab-results` disabled, no `simulation-error`, and the key removed; a mocked 500 or a failed request keeps the key and shows no pin and no error (spec 6 and unit rows).
-- [ ] With the `localStorage` getter throwing, Run and Pin still work and show the label, no error appears, and a reload has no pin (spec 7); `pin-storage` functions never throw on a throwing `Storage` (unit rows).
-- [ ] (respec 1) `ComparePanel` accepts exactly `{ current, pinned, pinnedName, alreadyPinned, onPin, onUnpin }`, with `pinnedName: string | null` and `alreadyPinned: boolean` added by this ticket; `npx tsc --noEmit` passes. If the user clicks Pin or Unpin before the delayed restore lands, the restore response is dropped and the stored value is the user's (spec 8).
-- [ ] A Run that finishes while the restore POST is delayed keeps its result; when the restore lands only the pin appears (spec 8).
-- [ ] No pin or storage code runs during the static render: `npx next build` succeeds and the page's first client render equals the server HTML (no hydration warning in the Playwright console during spec 1).
-- [ ] `results.tsx` keeps the `pinnedMarkers` prop lines of SGS-071 and the legend changes of SGS-070 (rebase check: `git grep -n "pinnedMarkers" -- components/apps/aoe4-build-order/results.tsx` still finds the three `SeriesChart` lines).
-- [ ] `docs/aoe4-build-order.md` describes persistence, the label, Pin disabled and the stale notice; `git grep -n "survives later runs" -- docs` prints nothing after the change (one hit, line 816 on `origin/main`, today).
+- [x] After pinning the default build at 1200 s and reloading, with no Run, `tab-results` is enabled, `unpin-run` is enabled, `pinned-label` reads `Pinned: <first prebuilt name>, 20:00`, and the page sent one POST whose body has `buildOrder` and `inputs.durationSeconds` 1200 (spec 1).
+- [x] `localStorage['aoe4-build-order.pinned-run']` after a pin is JSON `{ version: 1, name, text, durationSeconds }` with no result field; pinning a different run replaces it; Unpin removes it, and a reload then shows no pin (spec 5).
+- [x] `pinName` returns the exact-match prebuilt name (the first when two builds share the text), `<selected> (edited)` otherwise (also for a text matching no build or empty text), and `Custom build` when `builds` is empty (unit rows). In the browser an unchanged default at 1200 s gives `Pinned: <name>, 20:00` and one edited line gives `Pinned: <name> (edited), 20:00` (spec 2).
+- [x] The pin's name is fixed at Run: changing the select or the text after pinning, or after a Run, never changes `pinned-label` or the name stored; a restored pin shows the stored name (stored `name: "My name"` shows `Pinned: My name, ...`) (spec 2).
+- [x] `build-input.tsx` takes `selected` and `onSelectedChange` and holds no select state: `git grep -n "setSelected\|useState" -- components/apps/aoe4-build-order/build-input.tsx` finds 3 lines on `origin/main` (the import, the state, and the call in `selectBuild`) and none after the change. `git grep -n "PIN_STORAGE_KEY = 'aoe4-build-order.pinned-run'" -- components` finds exactly 1 line (0 today).
+- [x] `pin-run` is disabled while the shown run's text and duration equal the pin's; editing the text after a Run does not enable it; a rerun of the same inputs keeps it disabled; a different duration enables it; a failed Run (no result) disables it; after Unpin with a shown result it is enabled (spec 3).
+- [x] `results-stale` shows with the text "These results are from an earlier build or duration. Run again to update." when the text or duration differs from the shown run's, the charts stay, reverting the edit hides it, a Run hides it, and it is absent after a Run with unchanged inputs (spec 4).
+- [x] A stored value that is invalid JSON, has `version !== 1`, a wrong field type or a missing field, a text that does not convert, or whose restore POST returns 400, leaves no pin, `tab-results` disabled, no `simulation-error`, and the key removed; a mocked 500 or a failed request keeps the key and shows no pin and no error (spec 6 and unit rows).
+- [x] With the `localStorage` getter throwing, Run and Pin still work and show the label, no error appears, and a reload has no pin (spec 7); `pin-storage` functions never throw on a throwing `Storage` (unit rows).
+- [x] (respec 1) `ComparePanel` accepts exactly `{ current, pinned, pinnedName, alreadyPinned, onPin, onUnpin }`, with `pinnedName: string | null` and `alreadyPinned: boolean` added by this ticket; `npx tsc --noEmit` passes. If the user clicks Pin or Unpin before the delayed restore lands, the restore response is dropped and the stored value is the user's (spec 8).
+- [x] A Run that finishes while the restore POST is delayed keeps its result; when the restore lands only the pin appears (spec 8).
+- [x] No pin or storage code runs during the static render: `npx next build` succeeds and the page's first client render equals the server HTML (no hydration warning in the Playwright console during spec 1).
+- [x] `results.tsx` keeps the `pinnedMarkers` prop lines of SGS-071 and the legend changes of SGS-070 (rebase check: `git grep -n "pinnedMarkers" -- components/apps/aoe4-build-order/results.tsx` still finds the three `SeriesChart` lines).
+- [x] `docs/aoe4-build-order.md` describes persistence, the label, Pin disabled and the stale notice; `git grep -n "survives later runs" -- docs` prints nothing after the change (one hit, line 816 on `origin/main`, today).
 - [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass; every edited existing test is listed in the PR description.
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -219,3 +219,20 @@ None.
 - Underspecified: SGS-069 no longer declares `pinnedName` and `alreadyPinned`, so this ticket had to add them; four designer questions were open.
 - Changed: SGS-072 adds the two `ComparePanel` props (`string | null`, `boolean`) and uses them; the restore race (user Pin/Unpin wins), `readStoredPin` removing invalid values, no name cap and the `components/apps/aoe4-build-order/` location are now settled and the open questions removed.
 - Stands: all other scope, criteria and the diagram are unchanged; no branch work exists.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review (reports/SGS-072-review-1.md). Tip reviewed: 9e4c4e05f279ae287baae07ff0f4723a26a795fe, base origin/main c7ca461. The production code meets the contract and design (storage never throws and removes invalid values; pinName rules; page wiring; the restore reads storage only after mount, never changes the shown result, text or tab, and a Pin or Unpin made first wins even when the restore answers 400). Findings are tests and one doc sentence.
+
+Findings:
+- `acceptance/aoe4-build-order-pin-compare.spec.ts:~542`: the title says "a Pin or Unpin before the restore lands wins" but the test only clicks Pin. The only way to Unpin before the restore lands is Run, Pin, Unpin, then release the restore; the reviewer's probe of exactly this passes against the code.
+- `acceptance/aoe4-build-order-pin-compare.spec.ts:~342`: nothing checks that the pin label stays the same after a later Run with a different name (criterion 4, "or after a Run"): changing the page to `pinnedName={pin ? (run?.name ?? pin.name) : null}` left all 32 pin-compare tests passing.
+- `docs/aoe4-build-order.md:~887-888` says Pin is "enabled while a result is shown whose text and duration differ from the pin's", which reads as both must differ; the code enables Pin when either differs or when there is no pin.
+
+Required fixes:
+- [x] (rework 1) Add the Unpin-before-restore case (Run, Pin, Unpin, then release the held restore): assert no `pinned-label` and no stored key. Mutation: dropping the restore's cancel/ref guard must fail it (report which guard mutation you used).
+- [x] (rework 1) After pinning the `<BUILDS[1].name> (edited)` run, run `DEFAULT_PASTE` and assert the label is unchanged. Mutation: the reviewer's `pinnedName={pin ? (run?.name ?? pin.name) : null}` must fail it.
+- [x] (rework 1) Fix the docs sentence: "enabled while a result is shown, unless its text and duration both equal the pinned run's".
+- [x] (rework 1, cheap, do it) In the restore spec (~315) assert the Build tab is still selected after the restore (catches a restore that switches to Results); mutation: make the restore select the Results tab, the spec must fail.
+- [x] (optional) The last step of the spec near :381 (Unpin, then Pin enabled) cannot fail because Pin is already enabled: either strengthen or delete that step. Optional: one small post helper in the page shared by Run and the restore so URL and headers live in one place.
+- [x] No other change.

@@ -159,23 +159,23 @@ flowchart LR
 
 ## Acceptance criteria
 
-- [ ] Typing `start -> sheep` then `at 8 vils fly capital-town-center` shows, without a Run, one `build-order-issue` with `data-line="2"`, `data-code="syntax"` and `fly` in its text, gutter line 2 has `data-error="true"` and line 1 has no `data-error` attribute; replacing it with valid text removes the list and every `data-error`.
-- [ ] A paste that parses but fails the check (`produce knigt from stable`) shows no issue before the first Run; after `runRejected` it shows one `unknown-id` issue at line 2 containing `knigt` and a `build-order-issue-suggestion` with text `did you mean knight?`, gutter line 2 has `data-error`, and `simulation-error` has count 0. Editing it to `knight` hides the list at once; editing it back shows the issue at once, without a Run.
-- [ ] An issue with no `suggestion` renders no `build-order-issue-suggestion` element.
-- [ ] After a Run is rejected with an issue on line 62 of a 62-line text, at 1280x720 the gutter item with `data-line="62"` is in the viewport and not under `run-bar`; a rejection whose first issue has no line (20001 characters) leaves `build-order-issues` in the viewport.
-- [ ] A text edit never removes the shown charts, timeline or messages (spec: run the default build, edit to an invalid paste, return to Results, charts still drawn).
-- [ ] The first Run of any outcome sets `checked`: after a valid 200 Run, typing `produce knigt from stable` shows its `unknown-id` issue and gutter `data-error` at once, with no further Run (respec 1).
-- [ ] In table view a rejection scrolls `build-order-issues` into view (not the gutter) and leaves the table view open (respec 1).
-- [ ] `BuildTextEditor` takes `errorLines` and sets `data-error="true"` on exactly the gutter items whose `data-line` is listed (respec 1).
-- [ ] A server 400 (mocked) still shows its issues in `simulation-error`, never in `build-order-issues`, and sets no `data-error`.
-- [ ] `issueLines` unit rows pass: `[]` for none, `[2, 5]` for lines `[5, 2, 5]`, line-less issues skipped. `git grep -nE "issueLines\([^)]*,"  -- components pages` prints nothing (the function takes one argument).
-- [ ] `git grep -n "errorLines={\[\]}" -- components pages` prints nothing (SGS-066 ships no `errorLines`, so none today and none in the end state); `git grep -n "errorLines" -- pages` prints one line containing `issueLines(issues)`; `git grep -n "errorLines" -- components/apps/aoe4-build-order/build-text-editor.tsx` finds the prop and its use (respec 1).
-- [ ] `git grep -c "build-order-issue-suggestion" -- components/apps/aoe4-build-order/issue-list.tsx` prints 1 (0 today); `git grep -n "build-order-issue-suggestion" -- acceptance` finds the new specs.
-- [ ] Info list coverage: with the knight + longbow build at 1800 s, the collapsed `simulation-notes-list` shows exactly the response's gold run-out info messages (at least `gold` and `gold#2`) once expanded, none are in `simulation-warnings`, and the list is absent from the DOM while collapsed. Run the new test against the current `Results` code first; it passes there unless a gap exists.
-- [ ] Mutation: pass `errorLines={[]}` from the page; the gutter `data-error` specs fail. Make the editor ignore `errorLines`; the same specs fail. Set `checked` only on rejection; the "valid Run sets checked" spec fails. Remove the suggestion element from `issue-list.tsx`; the `did you mean knight?` spec fails. Make the check issues show before the first Run; the "no issue before the first Run" spec fails. Confirm each by applying it before handing over.
-- [ ] `docs/aoe4-build-order.md` describes live issues, suggestions, gutter marks and scroll: `git grep -nE "last client rejection|issues of the last" -- docs` prints nothing.
-- [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
-- [ ] No INVARIANTS.md regressions
+- [x] Typing `start -> sheep` then `at 8 vils fly capital-town-center` shows, without a Run, one `build-order-issue` with `data-line="2"`, `data-code="syntax"` and `fly` in its text, gutter line 2 has `data-error="true"` and line 1 has no `data-error` attribute; replacing it with valid text removes the list and every `data-error`.
+- [x] A paste that parses but fails the check (`produce knigt from stable`) shows no issue before the first Run; after `runRejected` it shows one `unknown-id` issue at line 2 containing `knigt` and a `build-order-issue-suggestion` with text `did you mean knight?`, gutter line 2 has `data-error`, and `simulation-error` has count 0. Editing it to `knight` hides the list at once; editing it back shows the issue at once, without a Run.
+- [x] An issue with no `suggestion` renders no `build-order-issue-suggestion` element.
+- [x] After a Run is rejected with an issue on line 62 of a 62-line text, at 1280x720 the gutter item with `data-line="62"` is in the viewport and not under `run-bar`; a rejection whose first issue has no line (20001 characters) leaves `build-order-issues` in the viewport.
+- [x] A text edit never removes the shown charts, timeline or messages (spec: run the default build, edit to an invalid paste, return to Results, charts still drawn).
+- [x] The first Run of any outcome sets `checked`: after a valid 200 Run, typing `produce knigt from stable` shows its `unknown-id` issue and gutter `data-error` at once, with no further Run (respec 1).
+- [x] In table view a rejection scrolls `build-order-issues` into view (not the gutter) and leaves the table view open (respec 1).
+- [x] `BuildTextEditor` takes `errorLines` and sets `data-error="true"` on exactly the gutter items whose `data-line` is listed (respec 1).
+- [x] A server 400 (mocked) still shows its issues in `simulation-error`, never in `build-order-issues`, and sets no `data-error`.
+- [x] `issueLines` unit rows pass: `[]` for none, `[2, 5]` for lines `[5, 2, 5]`, line-less issues skipped. `git grep -nE "issueLines\([^)]*,"  -- components pages` prints nothing (the function takes one argument).
+- [x] `git grep -n "errorLines={\[\]}" -- components pages` prints nothing (SGS-066 ships no `errorLines`, so none today and none in the end state); `git grep -n "errorLines" -- pages` prints one line containing `issueLines(issues)`; `git grep -n "errorLines" -- components/apps/aoe4-build-order/build-text-editor.tsx` finds the prop and its use (respec 1).
+- [x] `git grep -c "build-order-issue-suggestion" -- components/apps/aoe4-build-order/issue-list.tsx` prints 1 (0 today); `git grep -n "build-order-issue-suggestion" -- acceptance` finds the new specs.
+- [x] Info list coverage: with the knight + longbow build at 1800 s, the collapsed `simulation-notes-list` shows exactly the response's gold run-out info messages (at least `gold` and `gold#2`) once expanded, none are in `simulation-warnings`, and the list is absent from the DOM while collapsed. Run the new test against the current `Results` code first; it passes there unless a gap exists.
+- [x] Mutation: pass `errorLines={[]}` from the page; the gutter `data-error` specs fail. Make the editor ignore `errorLines`; the same specs fail. Set `checked` only on rejection; the "valid Run sets checked" spec fails. Remove the suggestion element from `issue-list.tsx`; the `did you mean knight?` spec fails. Make the check issues show before the first Run; the "no issue before the first Run" spec fails. Confirm each by applying it before handing over.
+- [x] `docs/aoe4-build-order.md` describes live issues, suggestions, gutter marks and scroll: `git grep -nE "last client rejection|issues of the last" -- docs` prints nothing.
+- [x] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -186,3 +186,19 @@ None.
 - Underspecified: `errorLines` and `data-error` were assumed shipped by SGS-066 (page passing `[]`); `checked` was set only on a rejection; table-view scroll was a one-line note.
 - Changed: item 1b adds the editor prop and attribute here; `checked` set at every Run click; table-view spec and criteria added; placeholder grep criterion rewritten; judgment-call open question removed (design fixed it).
 - Still stands: `issueLines`, `IssueList` suggestion, derived issues, `block: 'center'` scroll, info-list coverage and docs scope.
+
+## Rework 1 - 2026-11-02 (review)
+
+Gate that bounced: review (reports/SGS-067-review-1.md). Tip reviewed: 7db4db5fc2a5a840a509a06f3ebdbe84dfd5c161. The production code meets the ticket and design (C8, M4.8); the scoped `querySelector` inside the editor wrapper may stay; the inline `scrollMarginTop`, the new spec file and both edited existing tests are justified. `issueLines(clientIssues)` in the page (the page's `issues` is already the server-error list) satisfies the criterion's intent.
+
+Findings:
+- `acceptance/aoe4-build-order-inline-issues.spec.ts:106-112` "a rejected Run whose issue has no line scrolls to the list" cannot fail: the 20001-character single line leaves the list on screen before Run; with `scrollIntoView` removed it still passes while the line-62 test, the table-view test and the reviewer's probe fail.
+- No test protects the effect being keyed on a fresh per-Run value: keying on the memoized issue itself (`setRejection(converted.issues[0])`) leaves all ten branch specs passing; only a probe that rejects the same text twice catches it.
+- (Optional) The line-62 layout cannot detect dropping the run-bar offset (`block: 'start'` without the offset passes because line 62 is the last line); a probe with the error mid-text (line 81 of 151) catches it.
+
+Required fixes:
+- [x] (rework 1) Replace the weak no-line scroll spec with one that fails without the scroll: fill 201 lines of 99 `x` characters (20099 characters; the length issue has no line), wait for the live issue, `window.scrollTo({top: 0, behavior: 'instant'})`, assert the list is below the fold, then `runRejected` and poll (expect.poll / one atomic evaluate) that the list is in view below the run bar. The reviewer's working probe is at /tmp/claude-1000/-home-choin-git-WOTR-Combat-Simulator/d25428ed-0c81-4238-ac7f-4830d6e9a031/scratchpad/zz-review-probe.spec.ts. Mutation check: removing `scrollIntoView` must fail it.
+- [x] (rework 1) Add a repeat-rejection spec: reject the same text twice (scroll away between runs) and assert the second rejection scrolls again. Mutation check: keying the effect on the memoized issue (`setRejection(converted.issues[0])`) must fail it.
+- [x] (rework 1, optional if cheap) Add a mid-text error case (error on line 81 of 151) asserting the gutter line lands below the run bar after the scroll; mutation: `block: 'start'` without the offset must fail it.
+- [x] (rework 1, optional) Add the `build-order-line-number` test id to the gutter selector in the page.
+- [x] No other change.

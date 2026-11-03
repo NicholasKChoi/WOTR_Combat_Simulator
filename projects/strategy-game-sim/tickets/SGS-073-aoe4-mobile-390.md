@@ -88,17 +88,17 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] At 390x844, `document.documentElement.scrollWidth <= 390` on the Build tab text view, the Build tab table view (knight + longbow build), and the Results tab with a result and a pinned run (new spec, three tests).
-- [ ] At 390 px `step-timeline-scroll` and `compare-scroll` have `overflow-x: auto` and `scrollWidth > clientWidth`; at 1280 px both have `scrollWidth <= clientWidth`.
-- [ ] (respec 3) A rejected paste whose one `unknown-id` `build-order-issue` text contains the 3000-character id leaves `scrollWidth <= 390` on the Build tab.
-- [ ] `ls components/apps/aoe4-build-order/*.module.css` lists `step-table.module.css`, `workbench.module.css` and `results.module.css` (today it lists none).
-- [ ] `git grep -nE "overflow-x: ?hidden" -- components pages styles` prints nothing for `html`, `body`, `main` or the page section (review check).
-- [ ] No `data-testid`, `id`, `aria-*` or `data-*` attribute is added, removed or renamed (`git diff origin/main -- components pages | grep -E "^[-+].*(data-testid|data-[a-z-]+=|aria-[a-z]+=|id=)"` shows only lines that moved with their element).
-- [ ] The full existing acceptance and unit suites pass; every existing test edited is listed in the PR.
-- [ ] `docs/aoe4-build-order.md` describes the narrow layout.
-- [ ] (respec 1) Mutation, run in a throwaway worktree after the dependencies are merged (`git worktree add --detach "$FACTORY_DIR/worktrees/ticket-SGS-073"`): add `min-width: 600px` to a workbench box (the run bar or the step-card container) and the new spec's 390 px test fails; remove the worktree.
+- [x] At 390x844, `document.documentElement.scrollWidth <= 390` on the Build tab text view, the Build tab table view (knight + longbow build), and the Results tab with a result and a pinned run (new spec, three tests).
+- [x] At 390 px `step-timeline-scroll` and `compare-scroll` have `overflow-x: auto` and `scrollWidth > clientWidth`; at 1280 px both have `scrollWidth <= clientWidth`.
+- [x] (respec 3) A rejected paste whose one `unknown-id` `build-order-issue` text contains the 3000-character id leaves `scrollWidth <= 390` on the Build tab.
+- [x] `ls components/apps/aoe4-build-order/*.module.css` lists `step-table.module.css`, `workbench.module.css` and `results.module.css` (today it lists none).
+- [x] `git grep -nE "overflow-x: ?hidden" -- components pages styles` prints nothing for `html`, `body`, `main` or the page section (review check).
+- [x] No `data-testid`, `id`, `aria-*` or `data-*` attribute is added, removed or renamed (`git diff origin/main -- components pages | grep -E "^[-+].*(data-testid|data-[a-z-]+=|aria-[a-z]+=|id=)"` shows only lines that moved with their element).
+- [x] The full existing acceptance and unit suites pass; every existing test edited is listed in the PR.
+- [x] `docs/aoe4-build-order.md` describes the narrow layout.
+- [x] (respec 1) Mutation, run in a throwaway worktree after the dependencies are merged (`git worktree add --detach "$FACTORY_DIR/worktrees/ticket-SGS-073"`): add `min-width: 600px` to a workbench box (the run bar or the step-card container) and the new spec's 390 px test fails; remove the worktree.
 - [ ] (respec 1) Only narrow-layout rules moved to the modules; the PR lists what moved and what stayed in Bootstrap classes.
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

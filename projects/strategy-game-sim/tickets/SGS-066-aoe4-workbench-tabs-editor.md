@@ -203,21 +203,21 @@ flowchart LR
 
 ## Acceptance criteria
 
-- [ ] On load `tab-build` is selected, `panel-build` is visible, `panel-results` has the `hidden` attribute, `tab-results` is disabled, `editor-view-text` is pressed and `build-order-text` is visible with `step-table` absent (new spec 1).
-- [ ] After a 200 run the Results tab is selected, `panel-results` is visible and `panel-build` is hidden, and the top of `panel-results` is inside the viewport and below the `run-bar` bottom edge; both panels stay mounted (switching to Build and back keeps the text and the charts) (new spec 2).
-- [ ] A client rejection, a mocked 400 and a mocked 500 each select Build; the client rejection shows `build-order-issues` (visible) with `simulation-error` count 0, the other two show `simulation-error`; each clears the shown result and keeps the pin; `tab-results` stays enabled with a pin and is disabled without one (new spec 3).
-- [ ] Unpinning while on Results with no current result selects Build and disables `tab-results` (new spec 4).
-- [ ] `run-bar` stays at the viewport top (`top` 0 within 1 px) after scrolling the page to the bottom, in both tabs, and holds `build-order-select`, `duration-seconds`, `run-simulation`, `editor-view-text` and `editor-view-table` (new spec 5).
-- [ ] The gutter has one `build-order-line-number` per line: first `data-line="1"`, last `lineCount(text)`; `''` shows 1; `a\nb\n` shows 3; line numbers sit level with their lines; the gutter items carry no `data-error` attribute and `BuildTextEditor` takes only `text` and `onChange` (new spec 6 and 7). `rows` is `max(8, lineCount)` and the textarea has no inner vertical scroll at 30 lines (new spec 7).
-- [ ] The toggle shows exactly one of `build-order-text` and `step-table`; `step-table-unavailable` with the first parse issue shows in table view for unparseable text and the toggle still works; switching views leaves the text unchanged; the view survives a run and a tab switch (new spec 8).
-- [ ] `lineCount('')` is 1, `lineCount('a\nb')` 2, `lineCount('a\n')` 2, `lineCount('a\n\nb')` 3 (`text-lines.test.ts`).
-- [ ] Mutation: change `lineCount` to ignore the final empty line (`'a\n'` gives 1); `text-lines.test.ts` fails and the line-number spec fails. Confirm by applying it before handing over (the files are new, so this check runs after they exist).
-- [ ] `git grep -n "rows={16}" -- components pages` prints nothing (1 hit today, in `build-input.tsx`), and `git grep -n 'data-testid="build-order-text"' -- components pages` prints exactly one hit, in `build-text-editor.tsx` (1 hit today, in `build-input.tsx`).
-- [ ] `git grep -n "IssueList" -- components/apps/aoe4-build-order/build-input.tsx` prints nothing; `IssueList` renders only from the page, under the editor or table view.
-- [ ] Every spec that ran before still passes under rules A to D; `git grep -c "tab-build" -- acceptance` is greater than 0 in `aoe4-build-order.spec.ts`, `aoe4-build-order-pin-compare.spec.ts` and `aoe4-build-order-m3-flow.spec.ts`, and `git grep -c "editor-view-table" -- acceptance/aoe4-step-table.spec.ts` is greater than 0. The ticket lists every test it edited.
-- [ ] `docs/aoe4-build-order.md` describes the tabs, run bar, toggle and editor, and no longer says the textarea, step table and results are on the page at once: `git grep -nE "a build order textarea, a$|step table, a .durationSeconds" -- docs` prints nothing (the paragraph is rewritten).
-- [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
-- [ ] No INVARIANTS.md regressions
+- [x] On load `tab-build` is selected, `panel-build` is visible, `panel-results` has the `hidden` attribute, `tab-results` is disabled, `editor-view-text` is pressed and `build-order-text` is visible with `step-table` absent (new spec 1).
+- [x] After a 200 run the Results tab is selected, `panel-results` is visible and `panel-build` is hidden, and the top of `panel-results` is inside the viewport and below the `run-bar` bottom edge; both panels stay mounted (switching to Build and back keeps the text and the charts) (new spec 2).
+- [x] A client rejection, a mocked 400 and a mocked 500 each select Build; the client rejection shows `build-order-issues` (visible) with `simulation-error` count 0, the other two show `simulation-error`; each clears the shown result and keeps the pin; `tab-results` stays enabled with a pin and is disabled without one (new spec 3).
+- [x] Unpinning while on Results with no current result selects Build and disables `tab-results` (new spec 4).
+- [x] `run-bar` stays at the viewport top (`top` 0 within 1 px) after scrolling the page to the bottom, in both tabs, and holds `build-order-select`, `duration-seconds`, `run-simulation`, `editor-view-text` and `editor-view-table` (new spec 5).
+- [x] The gutter has one `build-order-line-number` per line: first `data-line="1"`, last `lineCount(text)`; `''` shows 1; `a\nb\n` shows 3; line numbers sit level with their lines; the gutter items carry no `data-error` attribute and `BuildTextEditor` takes only `text` and `onChange` (new spec 6 and 7). `rows` is `max(8, lineCount)` and the textarea has no inner vertical scroll at 30 lines (new spec 7).
+- [x] The toggle shows exactly one of `build-order-text` and `step-table`; `step-table-unavailable` with the first parse issue shows in table view for unparseable text and the toggle still works; switching views leaves the text unchanged; the view survives a run and a tab switch (new spec 8).
+- [x] `lineCount('')` is 1, `lineCount('a\nb')` 2, `lineCount('a\n')` 2, `lineCount('a\n\nb')` 3 (`text-lines.test.ts`).
+- [x] Mutation: change `lineCount` to ignore the final empty line (`'a\n'` gives 1); `text-lines.test.ts` fails and the line-number spec fails. Confirm by applying it before handing over (the files are new, so this check runs after they exist).
+- [x] `git grep -n "rows={16}" -- components pages` prints nothing (1 hit today, in `build-input.tsx`), and `git grep -n 'data-testid="build-order-text"' -- components pages` prints exactly one hit, in `build-text-editor.tsx` (1 hit today, in `build-input.tsx`).
+- [x] `git grep -n "IssueList" -- components/apps/aoe4-build-order/build-input.tsx` prints nothing; `IssueList` renders only from the page, under the editor or table view.
+- [x] Every spec that ran before still passes under rules A to D; `git grep -c "tab-build" -- acceptance` is greater than 0 in `aoe4-build-order.spec.ts`, `aoe4-build-order-pin-compare.spec.ts` and `aoe4-build-order-m3-flow.spec.ts`, and `git grep -c "editor-view-table" -- acceptance/aoe4-step-table.spec.ts` is greater than 0. The ticket lists every test it edited.
+- [x] `docs/aoe4-build-order.md` describes the tabs, run bar, toggle and editor, and no longer says the textarea, step table and results are on the page at once: `git grep -nE "a build order textarea, a$|step table, a .durationSeconds" -- docs` prints nothing (the paragraph is rewritten).
+- [x] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` (Node 24) pass.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -240,8 +240,22 @@ Findings:
 - `components/apps/aoe4-build-order/workbench-tabs.tsx:24,36`: class names built with template literals; ARCHITECTURE.md:14 says to combine with `cn` (as sibling build-input.tsx does).
 
 Required fixes:
-- [ ] (rework 1) Scroll to Results by the run bar's measured height (e.g. set `scrollMargin`/scroll offset from the bar's `getBoundingClientRect().height` or a CSS variable updated on resize), not a fixed 8rem; extend new spec 2 to assert the Results heading is fully below the bar at 1280, 768 and 390 px (wrapped bar).
-- [ ] (rework 1) In `runThenFail`, pin the run after the 200, then assert after the 400 and after the 500 that Build is the selected tab AND `tab-results` is still enabled (pin kept). Mutation check: removing `setTab('build')` from both paths must fail these specs; report it.
-- [ ] (rework 1) Fix the docs sentence to say the textarea never scrolls vertically (it scrolls sideways when a line is long); also make the "Results is disabled until a run succeeds" wording precise (disabled until there is a result or a pin).
-- [ ] (rework 1) Use `cn(...)` for class names in workbench-tabs.tsx.
-- [ ] No other change. (Non-blocking, optional only if trivial: use the showTab/showView helpers consistently; trailing whitespace in aoe4-step-table.spec.ts lines you touched.)
+- [x] (rework 1) Scroll to Results by the run bar's measured height (e.g. set `scrollMargin`/scroll offset from the bar's `getBoundingClientRect().height` or a CSS variable updated on resize), not a fixed 8rem; extend new spec 2 to assert the Results heading is fully below the bar at 1280, 768 and 390 px (wrapped bar).
+- [x] (rework 1) In `runThenFail`, pin the run after the 200, then assert after the 400 and after the 500 that Build is the selected tab AND `tab-results` is still enabled (pin kept). Mutation check: removing `setTab('build')` from both paths must fail these specs; report it.
+- [x] (rework 1) Fix the docs sentence to say the textarea never scrolls vertically (it scrolls sideways when a line is long); also make the "Results is disabled until a run succeeds" wording precise (disabled until there is a result or a pin).
+- [x] (rework 1) Use `cn(...)` for class names in workbench-tabs.tsx.
+- [x] No other change. (Non-blocking, optional only if trivial: use the showTab/showView helpers consistently; trailing whitespace in aoe4-step-table.spec.ts lines you touched.)
+
+## Rework 2 - 2026-11-02 (review)
+
+Gate that bounced: review (reports/SGS-066-review-2.md). Tip reviewed: fb4ca86b9fc8452b883e52993828e6c994c40f16. All four rework-1 findings are fixed and verified (scroll offset at 1280/768/390 px within 0.5 px; pin and Build assertions mutation-checked; docs; cn).
+
+Findings:
+- `acceptance/aoe4-build-order-client-check.spec.ts:72-78` ("the issue list sits under the textarea"): the test calls `boundingBox()` twice (textarea, then issue list). On this branch the page is still smooth-scrolling between the calls (Bootstrap sets `scroll-behavior: smooth`), so the boxes come from different scroll offsets: the scroll position changed between reads in 31 of 60 probe runs on fb4ca86 and never in 60 on 41e648d, so the diff caused it. Full acceptance on port 3971: 630 passed, 1 failed (this test); the file run 10 times failed once; alone it passes 60 of 60, it fails only under parallel load.
+- Non-blocking: `pages/apps/aoe4-build-order.tsx:76` finds the run bar with `closest('section')?.querySelector('form')`; no other component uses a DOM query like this and if the markup changes the offset silently drops to 0. The edited docs line (~812) is about 170 characters while the section wraps at ~110.
+
+Required fixes:
+- [x] (rework 2) Make the client-check test stable: read both rects in one `page.evaluate` and compare positions relative to the document (or use `expect.poll`); keep the assertion that the list sits under the textarea. Confirm with the file run `--repeat-each=20` under parallel load (run another spec file at the same time) and report the pass count. This client-check spec file is an allowed exception to the rework's earlier "no other change" rule.
+- [x] (rework 2) Replace the DOM query at `pages/apps/aoe4-build-order.tsx:76` with a ref to the run bar's form (pass a ref through `BuildInput`, or place the ref on a wrapper the page owns), so the offset cannot silently become 0; keep the measured-height behavior and all test ids.
+- [x] (rework 2) Rewrap the edited docs line to the section's ~110 width without changing words.
+- [x] No other change.
