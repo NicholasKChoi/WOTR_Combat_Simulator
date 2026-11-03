@@ -98,6 +98,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [resultsShownCount, setResultsShownCount] = useState(0)
     const pinTouched = useRef(false)
     const resultsTop = useRef<HTMLDivElement>(null)
+    const pageSection = useRef<HTMLElement>(null)
     const runBar = useRef<HTMLFormElement>(null)
     const editorBox = useRef<HTMLDivElement>(null)
     const issuesBox = useRef<HTMLDivElement>(null)
@@ -130,6 +131,17 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         return () => {
             cancelled = true
         }
+    }, [])
+
+    useEffect(() => {
+        const bar = runBar.current
+        const section = pageSection.current
+        if (!bar || !section) return
+        const observer = new ResizeObserver(() => {
+            section.style.setProperty('--run-bar-height', `${bar.getBoundingClientRect().height}px`)
+        })
+        observer.observe(bar)
+        return () => observer.disconnect()
     }, [])
 
     useEffect(() => {
@@ -209,7 +221,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
             <Head>
                 <title>{pageTitle}</title>
             </Head>
-            <section className={cn(utilStyles.headingMd, 'container')}>
+            <section ref={pageSection} className={cn(utilStyles.headingMd, 'container')}>
                 <h1>{pageTitle}</h1>
                 <BuildInput
                     builds={builds}

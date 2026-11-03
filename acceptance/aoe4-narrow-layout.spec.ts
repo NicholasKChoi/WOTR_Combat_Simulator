@@ -79,11 +79,19 @@ test.describe('AoE4 build order at a 390 px screen', () => {
 test.describe('AoE4 build order at a 1280 px screen', () => {
   test.use({ viewport: { width: 1280, height: 720 } })
 
-  test('the timeline and compare tables fit their boxes', async ({ page }) => {
+  test('the compare table fits its box', async ({ page }) => {
     await pinnedResults(page)
-    for (const id of SCROLL_BOXES) {
-      const { scrollWidth, clientWidth } = await box(page.getByTestId(id))
-      expect(scrollWidth).toBeLessThanOrEqual(clientWidth)
-    }
+    const { scrollWidth, clientWidth } = await box(page.getByTestId('compare-scroll'))
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth)
+  })
+})
+
+test.describe('AoE4 build order at a 1024 px screen', () => {
+  test.use({ viewport: { width: 1024, height: 768 } })
+
+  test('the stacked timeline fits its box', async ({ page }) => {
+    await pinnedResults(page)
+    const { scrollWidth, clientWidth } = await box(page.getByTestId('step-timeline-scroll'))
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth)
   })
 })

@@ -5,6 +5,26 @@
     background: var(--bs-body-bg, #fff);
 }
 
+@media (min-width: 1200px) {
+    .resultsSplit {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+        gap: 1rem;
+    }
+
+    .timelineColumn {
+        position: sticky;
+        top: var(--run-bar-height, 0px);
+        align-self: start;
+        max-height: calc(100vh - var(--run-bar-height, 0px));
+        overflow-y: auto;
+    }
+
+    .chartsColumn {
+        min-width: 0;
+    }
+}
+
 .editor {
     display: flex;
     align-items: flex-start;
