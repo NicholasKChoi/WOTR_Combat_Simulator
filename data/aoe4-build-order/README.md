@@ -77,7 +77,7 @@ is tuned, and the page shows them for any run.
   to wood.
 
   Farms: the mill builder and the three farm builders at the mill are four farmers, so a fourth `build farm`
-  step (from sheep, returning to sheep) gives the mill builder a farm; it feeds food. The three farms at
+  step (from sheep, returning to sheep) gives the mill builder a farm. The three farms at
   210 s are built by wood gatherers who farm them. Every villager sent to farm beyond those would need a
   built farm of its own, and the farms' wood would delay Castle and the 1200 s all-started bar, so the
   Town Center rallies at 200 s, 380 s and 760 s, the King's Palace rally and the `gold#3` reaction send
@@ -96,8 +96,9 @@ is tuned, and the page shows them for any run.
   returns one `auto-houses-held` warning: production is held at the supply limit until the third house
   starts. Farms are added
   in blocks of four at 10:00, 14:00, 16:00 and 18:00 (`time` 600, 840, 960 and 1080), each built by
-  wood gatherers who farm them, and in smaller groups of wood-and-return farms at `time` 563 (four), 634
-  (two), 722 (one) and 942 (four). Every farm step feeds food. The groups are placed ahead of the
+  wood gatherers who farm them; the 10:00 block sits after the third stable and the 10:34 pair in the
+  list, so it waits for both of them to start. Smaller groups of wood-and-return farms come at `time`
+  563 (four), 634 (two), 722 (one) and 942 (four). The groups are placed ahead of the
   villagers sent to farm by the Town Center rally to farm and by the sheep reaction, so each of them
   finds a built farm. The four blacksmith techs
   (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after `build kings-palace` in
