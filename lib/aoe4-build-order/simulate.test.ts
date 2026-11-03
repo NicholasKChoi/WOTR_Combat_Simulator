@@ -559,7 +559,7 @@ describe('sampling', () => {
         expect(result.times.slice(0, 3)).toEqual([0, 5, 10])
         expect(result.times.slice(-2)).toEqual([60, 62])
         expect(result.times).toHaveLength(14)
-        const arrays = [...Object.values(result.gatherRates), ...Object.values(result.floating), ...result.unitsProduced.map((u) => u.counts)]
+        const arrays = [...Object.values(result.gatherRates), ...Object.values(result.floating), ...Object.values(result.gathered), ...result.unitsProduced.map((u) => u.counts)]
         arrays.forEach((values) => expect(values).toHaveLength(result.times.length))
         expect(run([], { inputs: { durationSeconds: 60 } }).times.slice(-2)).toEqual([55, 60])
     })

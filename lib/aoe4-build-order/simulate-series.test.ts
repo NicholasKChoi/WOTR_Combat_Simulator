@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { listBuilds } from './builds'
 import type { CivRules } from './civ-rules'
 import { RESOURCE_KINDS } from './model'
 import type { BuildStep, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
-import { ENGLISH, at, buildOrder, editGameData, inputsFor, run, sampleIndex } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, inputsFor, run, sampleIndex } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const noHouses = { autoHouses: false }
@@ -175,5 +176,46 @@ describe('populationCapReachedAt', () => {
     it('is 0 when the start population is at or over the cap', () => {
         expect(run(produce(1), { game: capped(start()), inputs: noHouses }).populationCapReachedAt).toBe(0)
         expect(run(produce(1), { game: capped(1), inputs: noHouses }).populationCapReachedAt).toBe(0)
+    })
+})
+
+describe('gathered', () => {
+    const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0)
+
+    it('grows at the sampled gather rate from 0 while rates hold and nothing is paid', () => {
+        const result = run([pauseTownCenter], { inputs: { autoHouses: false, nodeAmounts: INFINITE_NODES, durationSeconds: 300 } })
+        expect(result.depletions.every((d) => d.depletedAt === null)).toBe(true)
+        expect(Object.values(result.spent).flat().every((value) => value === 0)).toBe(true)
+        for (const kind of RESOURCE_KINDS) {
+            const gathered = result.gathered[kind]
+            expect(gathered[0]).toBe(0)
+            for (let i = 0; i + 1 < result.times.length; i += 1) {
+                const expected = (result.gatherRates[kind][i] / 60) * (result.times[i + 1] - result.times[i])
+                expect(Math.abs(gathered[i + 1] - gathered[i] - expected)).toBeLessThan(1e-6)
+            }
+            gathered.forEach((value, i) => {
+                expect(Math.abs(value - (result.floating[kind][i] - result.floating[kind][0]))).toBeLessThan(1e-6)
+            })
+        }
+    })
+
+    it.each(listBuilds().map((build) => [build.name, build] as const))('balances floating and spent on the prebuilt build %s', (_, build) => {
+        const result = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 600 }))
+        const start = ENGLISH.civData.startingState.resources.value
+        for (const kind of RESOURCE_KINDS) {
+            const gathered = result.gathered[kind]
+            expect(gathered).toHaveLength(result.times.length)
+            expect(gathered[0]).toBe(0)
+            gathered.forEach((value, i) => {
+                expect(value).toBeGreaterThanOrEqual(gathered[i - 1] ?? 0)
+                expect(value).toBeGreaterThanOrEqual(result.floating[kind][i] - start[kind] - 1e-6)
+            })
+        }
+        result.times.forEach((_t, i) => {
+            const gathered = sum(RESOURCE_KINDS.map((kind) => result.gathered[kind][i]))
+            const banked = sum(RESOURCE_KINDS.map((kind) => result.floating[kind][i] - start[kind]))
+            const paid = sum(Object.values(result.spent).map((series) => series[i]))
+            expect(Math.abs(gathered - (banked + paid))).toBeLessThan(1e-6)
+        })
     })
 })

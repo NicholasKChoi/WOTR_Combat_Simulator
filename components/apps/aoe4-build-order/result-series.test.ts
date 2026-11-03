@@ -15,6 +15,7 @@ function result(): SimulationResult {
         ],
         gatherRates: { food: [1, 2, 3], wood: [4, 5, 6], gold: [7, 8, 9], stone: [10, 11, 12] },
         floating: { stone: [0, 0, 1], gold: [0, 2, 0], wood: [3, 0, 0], food: [5, 6, 7] },
+        gathered: { food: [0, 1, 2], wood: [0, 1, 2], gold: [0, 1, 2], stone: [0, 1, 2] },
         spent: { villagers: [0, 0, 0], military: [0, 0, 0], buildings: [0, 0, 0], research: [0, 0, 0] },
         spawnedPopulation: [0, 0, 0],
         populationCapReachedAt: null,

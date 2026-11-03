@@ -467,6 +467,7 @@ test.describe('exported types match the spec', () => {
     unitsProduced: true,
     gatherRates: true,
     floating: true,
+    gathered: true,
     spent: true,
     spawnedPopulation: true,
     populationCapReachedAt: true,

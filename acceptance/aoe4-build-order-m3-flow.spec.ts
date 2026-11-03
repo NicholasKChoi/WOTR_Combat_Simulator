@@ -7,7 +7,7 @@ const FLOW_PASTE = [
   'produce villager from capital-town-center x3 -> sheep',
   '@25:00 produce villager from capital-town-center x1 -> sheep',
 ].join('\n')
-const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
+const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 
 test.describe('AoE4 build order M3 flow', () => {
   test('edit a step in the table, run, see the depletion warning and timeline, pin and compare', async ({ page }) => {

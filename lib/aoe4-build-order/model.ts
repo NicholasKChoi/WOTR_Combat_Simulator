@@ -121,6 +121,8 @@ export interface SimulationResult {
   // Per minute.
   gatherRates: Record<ResourceKind, number[]>;
   floating: Record<ResourceKind, number[]>;
+  // Cumulative resources gathered; starting resources excluded.
+  gathered: Record<ResourceKind, number[]>;
   // Cumulative resources paid, summed over the four kinds.
   spent: Record<SpendCategory, number[]>;
   // Popcap of spawned units and villagers; paid units still in production are not counted.

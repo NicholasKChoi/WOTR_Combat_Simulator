@@ -9,7 +9,7 @@ import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { INVALID_PASTE, expectFlySyntaxIssue, buildOrderFrom, hexToRgb, openPage, runRejected, runSimulation, showTab, showView, SIMULATE_PATH } from './helpers'
 
 const TITLE = 'AoE4 Build Order Simulator'
-const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
+const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 const RESOURCES = ['food', 'wood', 'gold', 'stone'] as const
 
 const RALLY_PASTE = [
@@ -63,7 +63,7 @@ test.describe('AoE4 build order page', () => {
     for (const { unitId } of result.unitsProduced) {
       await expect(units.locator(`path[data-series="${unitId}"]`)).toHaveCount(1)
     }
-    for (const chart of ['chart-gather-rates', 'chart-floating-resources']) {
+    for (const chart of ['chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources']) {
       for (const kind of RESOURCES) {
         await expect(page.getByTestId(chart).locator(`path[data-series="${kind}"]`)).toHaveCount(1)
       }
@@ -362,7 +362,7 @@ test.describe('AoE4 build order page', () => {
     expect((await runSimulation(page)).status()).toBe(200)
     await expectChartsDrawn(page)
 
-    const yLabels = { 'chart-units-produced': 'Units', 'chart-gather-rates': 'Per minute', 'chart-floating-resources': 'Resources' }
+    const yLabels = { 'chart-units-produced': 'Units', 'chart-gather-rates': 'Per minute', 'chart-gathered-resources': 'Resources', 'chart-floating-resources': 'Resources' }
     for (const chart of CHARTS) {
       const root = page.getByTestId(chart)
       await expect(root.locator('.recharts-label')).toHaveText(yLabels[chart])
