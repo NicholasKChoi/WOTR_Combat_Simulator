@@ -836,6 +836,9 @@ empty or non-numeric entry is sent as 0, and the route rejects any value outside
 Narrow layout: under 768 px the step rows are cards, the run bar wraps onto several rows with the select and
 duration input at full width, and the step timeline and compare tables scroll sideways inside their own boxes. The
 page itself does not scroll sideways at 390 px on either tab, even with a long unbroken token in an issue message.
+At 1200 px and wider the step timeline sits in a column to the left of the charts and stays on screen just below the run
+bar while the charts scroll; it scrolls vertically inside that column, and sideways inside its own box when the table is
+wider than the column.
 
 The page keeps one `text` state, and the step table is a view of it. The table renders
 `parseBuildOrderText(text)`: one row per step with a trigger kind select and its fields, an action select and
@@ -885,7 +888,7 @@ Those of severity `warning` appear in a warnings list. Those of severity `info` 
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
 message shows its `message` text only. With no message of a severity there is no list for it.
 
-A step timeline sits above the charts and below the message lists: one row per `steps` entry in step order, with
+A step timeline sits above the charts (beside them at 1200 px and wider) and below the message lists: one row per `steps` entry in step order, with
 the step's text, `startedAt` as `m:ss` (an en dash when null), `completedAt` as `m:ss` (`ongoing` for an
 `in-progress` step, an en dash for a `waiting` or `not-reached` step) and `waitSeconds` as `m:ss`. The columns are
 Started, Finished, Step, Waited and Blocked by, so reading down Started is the timeline. Each row has a step kind, shown

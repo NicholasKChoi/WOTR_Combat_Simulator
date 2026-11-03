@@ -29,37 +29,43 @@ export function Results({ result, pinned, text, landmarks, stale, infoExpanded, 
             ) : null}
             <WarningMessages messages={messages.warning} />
             <InfoMessages messages={messages.info} expanded={infoExpanded} onToggle={onInfoToggle} />
-            <StepTimeline steps={result.steps} text={text} landmarks={landmarks} />
-            <SeriesChart
-                testId="chart-units-produced"
-                title="Units produced"
-                yLabel="Units"
-                times={result.times}
-                markers={result.markers}
-                series={unitSeries(result)}
-                pinnedMarkers={pinned?.markers}
-                pinned={pinned ? { times: pinned.times, series: unitSeries(pinned) } : undefined}
-            />
-            <SeriesChart
-                testId="chart-gather-rates"
-                title="Gather rates"
-                yLabel="Per minute"
-                times={result.times}
-                markers={result.markers}
-                series={resourceSeries(result.gatherRates)}
-                pinnedMarkers={pinned?.markers}
-                pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.gatherRates) } : undefined}
-            />
-            <SeriesChart
-                testId="chart-floating-resources"
-                title="Floating resources"
-                yLabel="Resources"
-                times={result.times}
-                markers={result.markers}
-                series={resourceSeries(result.floating)}
-                pinnedMarkers={pinned?.markers}
-                pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.floating) } : undefined}
-            />
+            <div data-testid="results-split" className={styles.resultsSplit}>
+                <div className={styles.timelineColumn}>
+                    <StepTimeline steps={result.steps} text={text} landmarks={landmarks} />
+                </div>
+                <div className={styles.chartsColumn}>
+                    <SeriesChart
+                        testId="chart-units-produced"
+                        title="Units produced"
+                        yLabel="Units"
+                        times={result.times}
+                        markers={result.markers}
+                        series={unitSeries(result)}
+                        pinnedMarkers={pinned?.markers}
+                        pinned={pinned ? { times: pinned.times, series: unitSeries(pinned) } : undefined}
+                    />
+                    <SeriesChart
+                        testId="chart-gather-rates"
+                        title="Gather rates"
+                        yLabel="Per minute"
+                        times={result.times}
+                        markers={result.markers}
+                        series={resourceSeries(result.gatherRates)}
+                        pinnedMarkers={pinned?.markers}
+                        pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.gatherRates) } : undefined}
+                    />
+                    <SeriesChart
+                        testId="chart-floating-resources"
+                        title="Floating resources"
+                        yLabel="Resources"
+                        times={result.times}
+                        markers={result.markers}
+                        series={resourceSeries(result.floating)}
+                        pinnedMarkers={pinned?.markers}
+                        pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.floating) } : undefined}
+                    />
+                </div>
+            </div>
         </div>
     )
 }
