@@ -1,0 +1,1 @@
+Rework 4 applied as 7eb1d10 (was 70aa21a): README.md only, both Required fixes; npm test 1346 passed, 10 skipped. (Manager-written from the agent's returned text; the agent could not write its report.)

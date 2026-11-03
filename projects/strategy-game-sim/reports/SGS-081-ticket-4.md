@@ -1,0 +1,2 @@
+# SGS-081 ticket author 4 (re-spec)
+Ticket rewritten: added branch-state note (resume branch sgs-081-aoe4-retune-prebuilt-farms; knight/longbow done with 11 farm steps; 1TC needs no change), Scope 1b (option A: change/cap spear/longbow farm rallies and gold#3 target, surplus to an existing resource, all bars kept), relaxed the no-action-change rule for that build's farm rallies only, new criterion (respec 3), Out of scope updated, Re-spec (3) bullets. No open questions.
