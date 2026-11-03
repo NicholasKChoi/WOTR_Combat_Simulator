@@ -56,6 +56,15 @@ function browserStorage(): Storage | null {
     }
 }
 
+function postSimulation(buildOrder: SimulateRequest['buildOrder'], durationSeconds: number): Promise<Response> {
+    const request: SimulateRequest = { buildOrder, inputs: { durationSeconds } }
+    return fetch('/api/aoe4-build-order/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(request),
+    })
+}
+
 async function errorMessages(response: Response): Promise<string[]> {
     if (response.status === 400) {
         try {
@@ -108,12 +117,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
             clearStoredPin(storage)
             return
         }
-        const request: SimulateRequest = { buildOrder: restored.order, inputs: { durationSeconds: stored.durationSeconds } }
-        fetch('/api/aoe4-build-order/simulate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(request),
-        })
+        postSimulation(restored.order, stored.durationSeconds)
             .then(async (response) => {
                 if (cancelled || pinTouched.current) return
                 if (response.status === 400) clearStoredPin(storage)
@@ -158,13 +162,8 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
             return
         }
         setRunning(true)
-        const request: SimulateRequest = { buildOrder: converted.order, inputs: { durationSeconds: Number(duration) } }
         try {
-            const response = await fetch('/api/aoe4-build-order/simulate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-                body: JSON.stringify(request),
-            })
+            const response = await postSimulation(converted.order, Number(duration))
             if (!response.ok) {
                 setResult(null)
                 setRun(null)
