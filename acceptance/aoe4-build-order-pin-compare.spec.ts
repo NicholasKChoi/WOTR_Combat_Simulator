@@ -581,4 +581,44 @@ test.describe('AoE4 build order pin persistence and label', () => {
     await expect(page.getByTestId('unpin-run')).toBeDisabled()
     expect(await storedPin(page)).toBeNull()
   })
+
+  for (const [name, stored, requests] of [
+    ['a numeric name', { ...validStored, name: 7 }, 0],
+    ['a null duration', { ...validStored, durationSeconds: null }, 0],
+    ['a text over the length cap', { ...validStored, text: 'start -> sheep\n'.repeat(2000) }, 0],
+    ['a duration the route rejects', { ...validStored, durationSeconds: 99_999_999 }, 1],
+  ] as const) {
+    test(`a stored pin with ${name} is dropped and shows no pin`, async ({ page }) => {
+      await openPage(page)
+      await storePin(page, stored)
+      const posts = trackPosts(page)
+      await page.reload()
+      await expectNoPin(page)
+      await expect.poll(() => storedPin(page)).toBeNull()
+      expect(posts).toHaveLength(requests)
+    })
+  }
+
+  test('with every localStorage method throwing, Run and Pin still work and nothing persists', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (e) => errors.push(e.message))
+    await page.addInitScript(() => {
+      for (const method of ['getItem', 'setItem', 'removeItem'] as const) {
+        Storage.prototype[method] = () => {
+          throw new Error('quota')
+        }
+      }
+    })
+    await openPage(page)
+    await runOk(page)
+    await pin(page)
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+    await page.getByTestId('unpin-run').click()
+    await expect(label(page)).toHaveCount(0)
+    await expect(page.getByTestId('simulation-error')).toHaveCount(0)
+
+    await page.reload()
+    await expectNoPin(page)
+    expect(errors).toEqual([])
+  })
 })
