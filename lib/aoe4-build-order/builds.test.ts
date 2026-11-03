@@ -73,6 +73,10 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         expect(result.steps.filter((s) => s.status === 'not-reached' && s.waitingOn !== 'trigger')).toEqual([])
     })
 
+    it.each([1200, 1800, 3600])('leaves no villager waiting for a farm by %i s', (horizon) => {
+        expect(simulateTo(horizon).warnings.filter((w) => w.code === 'farm-idle')).toEqual([])
+    })
+
     it.each([1200, 3600])('moves every gatherer off a gold deposit at its run-out by %i s, with no gold warning', (horizon) => {
         const result = simulateTo(horizon)
         const gold = (node: string) => nodeKindOf(node as NodeRef) === 'gold'

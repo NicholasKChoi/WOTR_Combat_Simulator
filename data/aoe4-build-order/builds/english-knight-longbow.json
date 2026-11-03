@@ -221,6 +221,34 @@
       "tech": "fitted-leatherwork"
     },
     {
+      "trigger": {
+        "kind": "time",
+        "seconds": 563
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
       "action": "research",
       "tech": "bloomery"
     },
@@ -231,6 +259,22 @@
     {
       "action": "build",
       "building": "stable",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 634
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
       "from": "wood",
       "then": "wood"
     },
@@ -270,6 +314,16 @@
       "action": "rally",
       "producer": "capital-town-center",
       "to": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 722
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
     },
     {
       "action": "produce",
@@ -323,6 +377,34 @@
       "building": "farm",
       "from": "wood",
       "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 942
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
     },
     {
       "trigger": {
