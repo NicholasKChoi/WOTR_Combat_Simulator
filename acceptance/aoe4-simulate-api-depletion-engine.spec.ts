@@ -209,7 +209,8 @@ test.describe('numbered gold deposits', () => {
 
 test.describe('infinite nodes', () => {
   test('farm and wood never run out over an hour', async ({ request }) => {
-    const result = await simulate(request, order({ villagers: { farm: 3, wood: 3 }, rally: 'wood' }, [PAUSE], { durationSeconds: 3600 }))
+    const farm = { action: 'build', building: 'farm', from: 'wood', then: 'farm' }
+    const result = await simulate(request, order({ villagers: { wood: 6 }, rally: 'wood' }, [PAUSE, farm, farm, farm], { durationSeconds: 3600 }))
 
     expect(result.depletions.map((d) => d.node)).not.toContain('farm')
     expect(result.depletions.map((d) => d.node)).not.toContain('wood')

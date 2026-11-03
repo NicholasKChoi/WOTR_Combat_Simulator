@@ -400,7 +400,7 @@ t=0. Run-outs apply first in the instant, before any step: the ref's gatherers b
 out at most once and never refills.
 
 **Idle villagers.** Idle villagers are alive: they count in `at N vils` and in population, and gather
-nothing. Nothing moves them on its own; `move` and `build` take them from their node like gatherers. Every
+nothing. Nothing moves them on its own, except that a farm that completes takes villagers waiting idle at `farm` (below); `move` and `build` take them from their node like gatherers. Every
 arrival at a node that has run out (a spawn walking to its rally, a `move`, `build` builders at `then`, an
 auto-house builder returning) leaves the villagers idle there. Likewise, an arrival at `farm` with every built
 farm taken, or a starting farmer beyond the starting farms, waits idle at the farm (see Farms and mill
