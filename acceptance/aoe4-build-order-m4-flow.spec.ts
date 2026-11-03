@@ -1,0 +1,77 @@
+import { test, expect } from '@playwright/test'
+import type { SimulationResult } from '../lib/aoe4-build-order/model'
+import { listBuilds } from '../lib/aoe4-build-order/builds'
+import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
+import { SIMULATE_PATH, openPage, runSimulation, showTab } from './helpers'
+
+test.describe.configure({ timeout: 90_000 })
+
+const KNIGHT_LONGBOW = "ENG Knight/Longbow (King's Palace)"
+const OTHER_BUILD = 'ENG 1TC'
+const textOf = (name: string) => {
+  const build = listBuilds().find((b) => b.name === name)
+  if (build === undefined) throw new Error(`no build named ${name}`)
+  return formatBuildOrderText(build)
+}
+
+test.describe('AoE4 build order M4 flow', () => {
+  test('tabs, info list, inline error with suggestion, and a pin that survives a reload', async ({ page }) => {
+    await openPage(page)
+    await expect(page.getByTestId('workbench-tabs')).toBeVisible()
+    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('panel-results')).toHaveAttribute('hidden', '')
+    await expect(page.getByTestId('tab-results')).toBeDisabled()
+
+    await page.getByTestId('build-order-select').selectOption({ label: KNIGHT_LONGBOW })
+    await page.getByTestId('duration-seconds').fill('1800')
+    const result = (await (await runSimulation(page)).json()) as SimulationResult
+    await expect(page.getByTestId('tab-results')).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByTestId('panel-results')).toBeVisible()
+
+    const goldRunOuts = [...result.warnings, ...result.notes]
+      .filter((m) => m.severity === 'info' && m.code === 'node-depleted' && /^gold(#2)? ran out/.test(m.message))
+      .map((m) => m.message)
+    expect(goldRunOuts.length).toBeGreaterThanOrEqual(2)
+    await expect(page.getByTestId('simulation-notes-list')).toHaveCount(0)
+    await page.getByTestId('simulation-notes-toggle').click()
+    const depleted = page
+      .getByTestId('simulation-notes-list')
+      .locator('[data-testid="simulation-message"][data-code="node-depleted"]')
+      .filter({ hasText: /^gold(#2)? ran out/ })
+    await expect(depleted).toHaveText(goldRunOuts)
+    await expect(page.getByTestId('simulation-warnings').getByTestId('simulation-message').filter({ hasText: /^gold/ })).toHaveCount(0)
+
+    await showTab(page, 'build')
+    const posted: string[] = []
+    page.on('request', (r) => {
+      if (r.url().endsWith(SIMULATE_PATH) && r.method() === 'POST') posted.push(r.url())
+    })
+    await page.getByTestId('build-order-text').fill('start -> sheep\nproduce knigt from stable')
+    const issue = page.getByTestId('build-order-issue')
+    await expect(page.getByTestId('build-order-issues')).toBeVisible()
+    await expect(issue).toHaveCount(1)
+    await expect(issue).toContainText('knigt')
+    await expect(issue.getByTestId('build-order-issue-suggestion')).toHaveText('did you mean knight?')
+    await expect(page.locator('[data-testid="build-order-line-number"][data-line="2"]')).toHaveAttribute('data-error', 'true')
+    await showTab(page, 'results')
+    await expect(page.getByTestId('chart-units-produced')).toBeVisible()
+    await expect(page.getByTestId('results-stale')).toBeVisible()
+    await showTab(page, 'build')
+    expect(posted).toEqual([])
+
+    await page.getByTestId('build-order-select').selectOption({ label: OTHER_BUILD })
+    await page.getByTestId('build-order-select').selectOption({ label: KNIGHT_LONGBOW })
+    await expect(page.getByTestId('build-order-text')).toHaveValue(textOf(KNIGHT_LONGBOW))
+    await runSimulation(page)
+    await page.getByTestId('pin-run').click()
+    await page.reload()
+    await expect(page.getByTestId('tab-results')).toBeEnabled()
+    await expect(page.getByTestId('unpin-run')).toBeEnabled()
+    await showTab(page, 'results')
+    await expect(page.getByTestId('pinned-label')).toHaveText(`Pinned: ${KNIGHT_LONGBOW}, 30:00`)
+
+    await page.getByTestId('unpin-run').click()
+    await page.reload()
+    await expect(page.getByTestId('tab-results')).toBeDisabled()
+  })
+})

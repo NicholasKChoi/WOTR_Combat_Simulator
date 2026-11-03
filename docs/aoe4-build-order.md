@@ -842,7 +842,11 @@ the fields of that action under readable labels (Building, Rally to, Walk time (
 while the trigger is `depleted`, and icon buttons to move the row up or down or delete it, plus an add
 button that appends `produce villager from <first villager producer>`. A field the step may omit (`instance`,
 `count`, `rally`, `walkSeconds`, `builders`, `then`, `at`, depending on the action) sits behind a per-row More
-control that starts open when the step sets one. The first row edits `start`: the rally node, one villager
+control. Whether a row's control is open is kept per row index: it starts open where the step sets one of those
+fields, is recomputed the same way when the number of rows changes, and closes when an edit changes that row's
+action. The table is mounted only in Table view and only while the text parses, so switching between Text and
+Table, or the text going unparseable and back, mounts it afresh and rows that set one of those fields open again;
+switching the Build and Results tabs does not. The first row edits `start`: the rally node, one villager
 count and node per pair (a node used by another pair is not offered), add and delete for pairs, and a
 Customize button that inserts the civ's default `start` while the order has none; the table does not check
 that the counts sum to the civ's total, and Run reports that. Under 768 px each row, the start row included,
