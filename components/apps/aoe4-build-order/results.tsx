@@ -9,14 +9,20 @@ interface ResultsProps {
     result: SimulationResult
     pinned: SimulationResult | null
     text: string
+    stale: boolean
     infoExpanded: boolean
     onInfoToggle: () => void
 }
 
-export function Results({ result, pinned, text, infoExpanded, onInfoToggle }: ResultsProps) {
+export function Results({ result, pinned, text, stale, infoExpanded, onInfoToggle }: ResultsProps) {
     const messages = resultMessages(result)
     return (
         <div>
+            {stale ? (
+                <div data-testid="results-stale" role="status" className="alert alert-warning">
+                    These results are from an earlier build or duration. Run again to update.
+                </div>
+            ) : null}
             <WarningMessages messages={messages.warning} />
             <InfoMessages messages={messages.info} expanded={infoExpanded} onToggle={onInfoToggle} />
             <StepTimeline steps={result.steps} text={text} />

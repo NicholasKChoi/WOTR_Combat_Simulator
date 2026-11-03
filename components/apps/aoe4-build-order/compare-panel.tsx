@@ -5,6 +5,8 @@ import { type CompareRow, type KeyValue, compareRows, keyNumbers } from './compa
 interface ComparePanelProps {
     current: SimulationResult | null
     pinned: SimulationResult | null
+    pinnedName: string | null
+    alreadyPinned: boolean
     onPin: () => void
     onUnpin: () => void
 }
@@ -29,15 +31,20 @@ function formatDelta(row: CompareRow): string {
 
 const DIRECTION_CLASS = { better: 'text-success', worse: 'text-danger', same: undefined } as const
 
-export function ComparePanel({ current, pinned, onPin, onUnpin }: ComparePanelProps) {
+export function ComparePanel({ current, pinned, pinnedName, alreadyPinned, onPin, onUnpin }: ComparePanelProps) {
     return (
         <div className="mb-3">
-            <button type="button" data-testid="pin-run" className="btn btn-outline-secondary me-2" disabled={current === null} onClick={onPin}>
+            <button type="button" data-testid="pin-run" className="btn btn-outline-secondary me-2" disabled={current === null || alreadyPinned} onClick={onPin}>
                 Pin this run
             </button>
             <button type="button" data-testid="unpin-run" className="btn btn-outline-secondary" disabled={pinned === null} onClick={onUnpin}>
                 Unpin
             </button>
+            {pinned !== null && pinnedName !== null ? (
+                <span data-testid="pinned-label" className="ms-3">
+                    Pinned: {pinnedName}, {formatMinSec(pinned.durationSeconds)}
+                </span>
+            ) : null}
             {current !== null && pinned !== null ? <CompareTable current={current} pinned={pinned} /> : null}
         </div>
     )

@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page, type Request } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
@@ -285,5 +285,281 @@ test.describe('AoE4 build order pin and compare', () => {
         expect(disjoint).toBe(true)
       }
     }
+  })
+})
+
+const PIN_KEY = 'aoe4-build-order.pinned-run'
+const BUILDS = listBuilds().map((b) => ({ name: b.name, text: formatBuildOrderText(b) }))
+const STALE_TEXT = 'These results are from an earlier build or duration. Run again to update.'
+const label = (page: Page) => page.getByTestId('pinned-label')
+const storedPin = (page: Page) => page.evaluate((key) => window.localStorage.getItem(key), PIN_KEY)
+const storePin = (page: Page, value: unknown) =>
+  page.evaluate(([key, raw]) => window.localStorage.setItem(key, raw), [PIN_KEY, typeof value === 'string' ? value : JSON.stringify(value)])
+const validStored = { version: 1, name: BUILDS[0].name, text: DEFAULT_PASTE, durationSeconds: 1200 }
+
+function trackPosts(page: Page): Request[] {
+  const posts: Request[] = []
+  page.on('request', (r) => {
+    if (r.url().endsWith(SIMULATE_PATH) && r.method() === 'POST') posts.push(r)
+  })
+  return posts
+}
+
+async function expectNoPin(page: Page) {
+  await expect(page.getByTestId('tab-results')).toBeDisabled()
+  await expect(label(page)).toHaveCount(0)
+  await expect(page.getByTestId('simulation-error')).toHaveCount(0)
+}
+
+test.describe('AoE4 build order pin persistence and label', () => {
+  test('a reload keeps the pin and re-runs it without a Run', async ({ page }) => {
+    const warnings: string[] = []
+    page.on('console', (m) => {
+      if (/hydrat|did not match/i.test(m.text())) warnings.push(m.text())
+    })
+    await openPage(page)
+    await runOk(page, { duration: 1200 })
+    await pin(page)
+
+    const posts = trackPosts(page)
+    await page.reload()
+    await expect(page.getByTestId('tab-results')).toBeEnabled()
+    await expect(page.getByTestId('unpin-run')).toBeEnabled()
+    await showTab(page, 'results')
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+    await expect(page.getByTestId('build-order-text')).toHaveValue(DEFAULT_PASTE)
+    expect(posts).toHaveLength(1)
+    const body = posts[0].postDataJSON()
+    expect(body.buildOrder).toBeDefined()
+    expect(body.inputs.durationSeconds).toBe(1200)
+    expect(warnings).toEqual([])
+
+    await runOk(page, { duration: 600 })
+    await expect(page.getByTestId('pin-run')).toBeEnabled()
+    await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
+  })
+
+  test('the label names the prebuilt, marks an edit, and is fixed when pinned', async ({ page }) => {
+    expect(BUILDS.length).toBeGreaterThan(1)
+    await openPage(page)
+    await runOk(page, { duration: 1200 })
+    await pin(page)
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+
+    await page.getByTestId('unpin-run').click()
+    await runOk(page, { text: NO_MILITARY_PASTE })
+    await pin(page)
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name} (edited), 20:00`)
+
+    await page.getByTestId('unpin-run').click()
+    await showTab(page, 'build')
+    await page.getByTestId('build-order-select').selectOption({ index: 1 })
+    await runOk(page, { text: DEFAULT_PASTE })
+    await pin(page)
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+
+    await page.getByTestId('unpin-run').click()
+    await runOk(page, { text: NO_MILITARY_PASTE })
+    await pin(page)
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[1].name} (edited), 20:00`)
+
+    await showTab(page, 'build')
+    await page.getByTestId('build-order-select').selectOption({ index: 0 })
+    await showTab(page, 'results')
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[1].name} (edited), 20:00`)
+    expect(JSON.parse((await storedPin(page)) ?? '{}').name).toBe(`${BUILDS[1].name} (edited)`)
+  })
+
+  test('a restored pin shows its stored name', async ({ page }) => {
+    await openPage(page)
+    await storePin(page, { ...validStored, name: 'My name' })
+    await page.reload()
+    await showTab(page, 'results')
+    await expect(label(page)).toHaveText('Pinned: My name, 20:00')
+  })
+
+  test('pin is disabled while the shown run equals the pin', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, { duration: 1200 })
+    await pin(page)
+    await expect(page.getByTestId('pin-run')).toBeDisabled()
+
+    await showTab(page, 'build')
+    await page.getByTestId('build-order-text').fill(NO_MILITARY_PASTE)
+    await showTab(page, 'results')
+    await expect(page.getByTestId('pin-run')).toBeDisabled()
+
+    await runOk(page, { text: DEFAULT_PASTE })
+    await expect(page.getByTestId('pin-run')).toBeDisabled()
+
+    await runOk(page, { duration: 600 })
+    await expect(page.getByTestId('pin-run')).toBeEnabled()
+    await pin(page)
+    await expect(page.getByTestId('pin-run')).toBeDisabled()
+
+    await runOk(page, { duration: 1200 })
+    await expect(page.getByTestId('pin-run')).toBeEnabled()
+
+    await page.getByTestId('unpin-run').click()
+    await expect(page.getByTestId('pin-run')).toBeEnabled()
+  })
+
+  test('results are marked stale when the text or duration changes, and a Run clears it', async ({ page }) => {
+    const stale = page.getByTestId('results-stale')
+    await openPage(page)
+    await runOk(page)
+    await expect(stale).toHaveCount(0)
+
+    await showTab(page, 'build')
+    await page.getByTestId('build-order-text').fill(NO_MILITARY_PASTE)
+    await showTab(page, 'results')
+    await expect(stale).toBeVisible()
+    await expect(stale).toHaveText(STALE_TEXT)
+    await expect(page.getByTestId('chart-gather-rates')).toBeVisible()
+
+    await showTab(page, 'build')
+    await page.getByTestId('build-order-text').fill(DEFAULT_PASTE)
+    await showTab(page, 'results')
+    await expect(stale).toHaveCount(0)
+
+    await page.getByTestId('duration-seconds').fill('600')
+    await expect(stale).toBeVisible()
+    await runOk(page)
+    await expect(stale).toHaveCount(0)
+  })
+
+  test('pin and unpin write through to localStorage', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, { duration: 300 })
+    await pin(page)
+    await runOk(page, { duration: 600, text: NO_MILITARY_PASTE })
+    await pin(page)
+    expect(JSON.parse((await storedPin(page)) ?? 'null')).toEqual({
+      version: 1,
+      name: `${BUILDS[0].name} (edited)`,
+      text: NO_MILITARY_PASTE,
+      durationSeconds: 600,
+    })
+
+    await page.getByTestId('unpin-run').click()
+    expect(await storedPin(page)).toBeNull()
+    await page.reload()
+    await expectNoPin(page)
+  })
+
+  for (const [name, stored] of [
+    ['invalid JSON', '{nope'],
+    ['version 2', { ...validStored, version: 2 }],
+    ['a missing field', { version: 1, name: 'x', text: DEFAULT_PASTE }],
+  ] as const) {
+    test(`a stored pin with ${name} is dropped`, async ({ page }) => {
+      await openPage(page)
+      await storePin(page, stored)
+      const posts = trackPosts(page)
+      await page.reload()
+      await expectNoPin(page)
+      await expect.poll(() => storedPin(page)).toBeNull()
+      expect(posts).toHaveLength(0)
+    })
+  }
+
+  test('a stored text that does not convert is dropped without a request', async ({ page }) => {
+    await openPage(page)
+    await storePin(page, { ...validStored, text: INVALID_PASTE })
+    const posts = trackPosts(page)
+    await page.reload()
+    await expectNoPin(page)
+    await expect.poll(() => storedPin(page)).toBeNull()
+    expect(posts).toHaveLength(0)
+  })
+
+  for (const [status, kept] of [[400, false], [500, true]] as const) {
+    test(`a restore answered with ${status} ${kept ? 'keeps' : 'drops'} the stored pin and shows no pin`, async ({ page }) => {
+      await openPage(page)
+      await storePin(page, validStored)
+      await page.route(`**${SIMULATE_PATH}`, (route) =>
+        route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ issues: [{ message: 'bad' }] }) })
+      )
+      const answered = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH))
+      await page.reload()
+      await answered
+      await expectNoPin(page)
+      if (kept) expect(await storedPin(page)).not.toBeNull()
+      else await expect.poll(() => storedPin(page)).toBeNull()
+    })
+  }
+
+  test('with localStorage unavailable, Run and Pin still work and nothing persists', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (e) => errors.push(e.message))
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'localStorage', {
+        get() {
+          throw new Error('blocked')
+        },
+      })
+    })
+    await openPage(page)
+    await runOk(page)
+    await pin(page)
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+    await expect(page.getByTestId('simulation-error')).toHaveCount(0)
+
+    await page.reload()
+    await expectNoPin(page)
+    expect(errors).toEqual([])
+  })
+
+  test('a Run that finishes before the restore lands keeps its result; then only the pin appears', async ({ page }) => {
+    await openPage(page)
+    await storePin(page, validStored)
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let first = true
+    await page.route(`**${SIMULATE_PATH}`, async (route) => {
+      if (first) {
+        first = false
+        await gate
+      }
+      await route.continue()
+    })
+    await page.reload()
+    const result = await runOk(page, { duration: 600 })
+    await expect(page.getByTestId('chart-units-produced')).toBeVisible()
+    await expect(label(page)).toHaveCount(0)
+
+    release()
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+    await expect(page.getByTestId('chart-units-produced')).toBeVisible()
+    await expect(page.getByTestId('results-stale')).toHaveCount(0)
+    await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
+    expect(result.durationSeconds).toBe(600)
+    await expect(page.getByTestId('pin-run')).toBeEnabled()
+    const deltas = await page.getByTestId('compare-row').evaluateAll((rows) => rows.map((row) => row.querySelectorAll('td')[3].textContent))
+    expect(deltas.some((delta) => delta !== 'same')).toBe(true)
+  })
+
+  test('a Pin or Unpin before the restore lands wins over the restore', async ({ page }) => {
+    await openPage(page)
+    await storePin(page, validStored)
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let first = true
+    await page.route(`**${SIMULATE_PATH}`, async (route) => {
+      if (first) {
+        first = false
+        await gate
+      }
+      await route.continue()
+    })
+    await page.reload()
+    await runOk(page, { duration: 600 })
+    await pin(page)
+    const landed = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH))
+    release()
+    await landed
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)))
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 10:00`)
+    expect(JSON.parse((await storedPin(page)) ?? 'null').durationSeconds).toBe(600)
   })
 })

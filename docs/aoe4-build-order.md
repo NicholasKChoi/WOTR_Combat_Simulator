@@ -884,10 +884,19 @@ step text is the pasted text as it was when Run was clicked, so editing the text
 the labels until the next run. A result with empty `steps` (a `start`-only paste) shows no timeline, and a 400
 shows none.
 
-Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown) keeps the shown
-result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is pinned) drops it. The pin
-survives later runs, text and build edits, and failed runs (a failed run clears the shown result but not the
-pin). With a pinned run, each chart also draws the pinned run's series dashed, in the same color as the
+Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown whose text and duration
+differ from the pin's) keeps the shown result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is
+pinned) drops it. The pin stays through later runs, text and build edits, and failed runs (a failed run clears the shown
+result but not the pin) and a reload: the pin is kept in `localStorage` under
+`aoe4-build-order.pinned-run` as the build text, duration and name (not the result), and the page re-runs it on
+load. A stored value that is not valid, a text that no longer converts, or a 400 from the re-run drops it; a
+network or server failure keeps it and shows no pin. A Pin or Unpin made before the re-run finishes wins. The label
+`pinned-label` reads `Pinned: <name>, <m:ss>`. The name is fixed when the run is made: the prebuilt build's name
+when the run's text equals one exactly, `<name> (edited)` (the build selected at the Run) otherwise, and `Custom
+build` when there are no prebuilt builds. A shown result whose text or duration was edited since its Run is marked
+stale (`results-stale`) until the edit is reverted or the next Run.
+
+With a pinned run, each chart also draws the pinned run's series dashed, in the same color as the
 current series with that key, with the name `<name> (pinned)` and the key `pinned:<key>`. The x axis covers
 the union of both runs' sample times; a series has a gap at times outside its own run. Each pinned line
 toggles from the series legend like any series.
