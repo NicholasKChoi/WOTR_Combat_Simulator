@@ -312,9 +312,10 @@ them reaches 200.
 `houseBuilderSource` is the preferred node (`gold` is deposit 1). When it has fewer than `houseBuilders`
 villagers gathering, builders come from the node ref with the most gatherers (ties: the first in node order,
 `sheep, berry, deer, boar, farm, wood, gold, gold#2..gold#8, stone`, counting only the deposits the order
-names). Builders are taken from gatherers only, never from idle villagers. They walk
+names). The source is chosen by its gatherers only, so idle villagers alone never make a node the source; at a
+farm, the builders are taken from the villagers waiting idle there first, then from its gatherers. They walk
 `inputs.walkSeconds / moveSpeedMultiplier` each way and return to the node they came from; returning to a
-node that ran out meanwhile leaves them idle there. A house pays its whole cost (all four resources) when it starts. A house waits only when no node
+node that ran out meanwhile, or to a farm with every farm taken, leaves them idle there. A house pays its whole cost (all four resources) when it starts. A house waits only when no node
 has enough gatherers or a resource of its cost is short; supply may block production meanwhile. Auto-houses
 are not order payments: they ignore a waiting step's resource reservation, and never take a resource below
 zero.
@@ -334,7 +335,12 @@ run. The gate is not relaxed for either case; instead, with `autoHouses` on, the
 The warnings change no timing. With `autoHouses: false` production blocks at supply until a `build house`
 step adds more, and neither warning is emitted.
 
-**Farms and mill coverage.** A farm costs its snapshot cost and holds one villager. `influenceCoverage`
+**Farms and mill coverage.** A farm costs its snapshot cost. The simulation lets one villager gather per
+built farm (one per instance of `gatherNodes.farm.createdBy`, starting farms included), with no input to turn
+this off. As a simulation rule, a villager that arrives, or starts, at `farm` with every farm taken waits idle
+there and is put on the next farm built, the instant it completes; this is how the simulator models extra
+farmers, not a claim about how AoE4 handles them. Such villagers give a `farm-idle` warning (see Idle
+villagers). `influenceCoverage`
 gives, per building `baseId`, the share of gatherers inside that building's influence once one exists;
 the default is `{ mill: 1 }`.
 
@@ -360,7 +366,7 @@ The English farm bonus near a mill is four rows, one per age, with the wiki valu
 - villager production (town center, King's Palace +10%);
 - gathering sheep, berries, hunt (deer and boar), farms, wood, gold and stone;
 - mill, lumber camp and mining camp drop-offs;
-- farms (cost, one villager per farm, mill coverage as an input, English farm bonus near a mill, wiki
+- farms (cost, one villager per built farm, extra farmers idle until a farm is built, mill coverage as an input, English farm bonus near a mill, wiki
   values +20/25/30/30% by age);
 - generic military production: any production building queues any unit from the data, with continuous,
   pause and switch orders, and no combat;
@@ -396,7 +402,11 @@ out at most once and never refills.
 **Idle villagers.** Idle villagers are alive: they count in `at N vils` and in population, and gather
 nothing. Nothing moves them on its own; `move` and `build` take them from their node like gatherers. Every
 arrival at a node that has run out (a spawn walking to its rally, a `move`, `build` builders at `then`, an
-auto-house builder returning) leaves the villagers idle there.
+auto-house builder returning) leaves the villagers idle there. Likewise, an arrival at `farm` with every built
+farm taken, or a starting farmer beyond the starting farms, waits idle at the farm (see Farms and mill
+coverage); a farm that completes takes the waiting villagers at once, up to one per free farm. At a farm, `move`,
+`build` and auto-house builders take the waiting idle villagers before the gatherers, so villagers idle there
+only while every farm is taken.
 
 **Results.** `depletions` has one entry per run ref in node-ref order: `amount` (the starting stock, `null`
 when infinite) and `depletedAt` (`null` when the ref is still stocked at the horizon). `warnings` gets:
@@ -405,10 +415,11 @@ when infinite) and `depletedAt` (`null` when the ref is still stocked at the hor
 |---|---|---|
 | `node-depleted` | `warning` with villagers idle there, else `info` | once per run-out; `idleVillagers` is the idle count at the end of the run-out instant, so a step that moves them away at that instant leaves `info` |
 | `idle-arrival` | `warning` | at most once per ref, at the first arrival at the depleted ref; `idleVillagers` adds up every villager that arrived idle there. The run-out's own gatherers do not count; an arrival at the run-out instant counts here and in `node-depleted` |
+| `farm-idle` | `warning` | at most once per run, at the first instant a villager arrives, or starts, at `farm` with no free farm (0 for starting farmers); `idleVillagers` adds up every such villager, including those a farm takes later. Message: `3 villagers arrived at farm from 0:50 on with no free farm and wait idle until one is built.` |
 
 Warnings are sorted by `at`; at one instant node warnings come first in node-ref order, with `node-depleted`
-before `idle-arrival` for the same ref, then `step-stuck` by step, then `auto-houses-never-start` and
-`auto-houses-held` (see Houses and supply), never-start first.
+before `idle-arrival` for the same ref, then `farm-idle`, then `step-stuck` by step, then
+`auto-houses-never-start` and `auto-houses-held` (see Houses and supply), never-start first.
 
 ## Severity
 
@@ -419,6 +430,7 @@ Every message the simulator returns has a severity level: `error`, `warning` or 
 | request issues (`BuildOrderIssue`, in a 400) | `error`, and they have no `severity` field |
 | `node-depleted` | `warning` when `idleVillagers > 0`, else `info` |
 | `idle-arrival` | `warning` |
+| `farm-idle` | `warning` |
 | `step-stuck` | `warning` |
 | `auto-houses-never-start` | `warning` |
 | `auto-houses-held` | `warning` |
@@ -748,9 +760,12 @@ A `SimulationResult` holds:
   infinite) and `depletedAt` when it ran out (`null` if it still had stock at the horizon). With no
   `nodeAmounts` the six start at their `rules/base.json` amounts, so a default run can emit `node-depleted`
   and `idle-arrival` warnings.
-- `warnings`: non-fatal `SimWarning`s, each with a `code` (`node-depleted`, `idle-arrival`, `step-stuck`,
-  `auto-houses-never-start` or `auto-houses-held`), a `severity` (one of `error`, `warning`, `info`), a
-  `message` and an `at` time. They hold the node warnings when a finite node runs out and one `step-stuck`
+- `warnings`: non-fatal `SimWarning`s, each with a `code` (`node-depleted`, `idle-arrival`, `farm-idle`,
+  `step-stuck`, `auto-houses-never-start` or `auto-houses-held`), a `severity` (one of `error`, `warning`,
+  `info`), a `message` and an `at` time. They hold the node warnings when a finite node runs out, at most one
+  `farm-idle` warning (severity `warning`, with `idleVillagers`) when villagers wait idle at `farm` for lack of a
+  built farm, message `1 villager arrived at farm from 0:50 on with no free farm and waits idle until one is
+  built.`, and one `step-stuck`
   warning (severity `warning`) for each step still `waiting` at the horizon, whose message reads `step 12
   (build) was still waiting on resources at 60:00, from 11:40.` (1-based step number; `at` is the step's
   `armedAt`). With `autoHouses` on they also hold at most one of each house-gate warning (severity
@@ -760,7 +775,7 @@ A `SimulationResult` holds:
   with `at` the first held instant and `seconds` the total held time, message `production was held at the
   supply limit for 0:21 from 7:42 while auto-houses waited for step 24 (build house) to start.` They are
   sorted by `at`; at the same `at`, node warnings come first in node-ref order with `node-depleted` before
-  `idle-arrival` for one node, then `step-stuck` by step index, then `auto-houses-never-start` and
+  `idle-arrival` for one node, then `farm-idle`, then `step-stuck` by step index, then `auto-houses-never-start` and
   `auto-houses-held` by step, never-start first. See Severity.
 
 The page draws four graphs over time from it, with the chart markers (see Page; the warnings are lists beside them): units produced (by

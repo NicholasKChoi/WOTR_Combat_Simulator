@@ -6,7 +6,7 @@ import { FINITE_GATHER_NODES, NODE_REFS } from './model'
 import type { BuildStart, BuildStep, NodeRef, SimulationResult, SimWarning } from './model'
 import { stepHandlers } from './simulate'
 import type { EngineState } from './simulate'
-import { ENGLISH, at, countAt, run, sampleIndex, withHandler } from './test-helpers'
+import { ENGLISH, at, countAt, run, sampleIndex, withHandler, withStartFarms } from './test-helpers'
 
 const PAUSE: BuildStep = { action: 'pause', producer: 'capital-town-center' }
 const noHouses = { autoHouses: false }
@@ -215,7 +215,7 @@ describe('taking villagers from a ref', () => {
         const { seen, probe } = snapshots()
         let result!: SimulationResult
         probingMoves(probe, () => {
-            result = run([PAUSE, move(6, 'berry', 'farm', { trigger: at(100) }), move(2, 'farm', 'berry'), move(50, 'wood', 'sheep')], { start, inputs })
+            result = run([PAUSE, move(6, 'berry', 'farm', { trigger: at(100) }), move(2, 'farm', 'berry'), move(50, 'wood', 'sheep')], { game: withStartFarms(6), start, inputs })
         })
         expect(depletion(result, 'berry').depletedAt).toBeLessThan(100)
         expect(result.steps[1]).toMatchObject({ startedAt: 100, completedAt: 105 })
@@ -274,7 +274,7 @@ describe('auto-house builders', () => {
                 }
             },
         }
-        run([], { start, inputs: { houseBuilders: 1, ...inputs }, rules })
+        run([], { game: withStartFarms(start.villagers?.farm ?? 0), start, inputs: { houseBuilders: 1, ...inputs }, rules })
         return seen
     }
 

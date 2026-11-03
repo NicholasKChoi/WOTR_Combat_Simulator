@@ -231,6 +231,12 @@ describe('sortWarnings', () => {
         expect(sortWarnings(shuffled)).toEqual(sorted)
     })
 
+    it('puts farm-idle after the node warnings and before step-stuck at one instant', () => {
+        const farmIdle: SimWarning = { code: 'farm-idle', severity: 'warning', message: '', at: 10, idleVillagers: 1 }
+        const given = [stuck(0, 10), farmIdle, node('idle-arrival', 'stone', 10), node('node-depleted', 'sheep', 10)]
+        expect(sortWarnings(given).map((w) => w.code)).toEqual(['node-depleted', 'idle-arrival', 'farm-idle', 'step-stuck'])
+    })
+
     it('returns a new array, leaves its input alone and is idempotent', () => {
         const input = [...shuffled]
         const once = sortWarnings(input)

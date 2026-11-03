@@ -57,7 +57,7 @@ test.describe('auto-houses planned against the house lead time through the simul
   test.describe('shipped builds at 1800 s', () => {
     const shipped = [
       ['english-1tc', english1tc, { cap: 1755.1554493716328, population: 'ff20f5fd6993f85f', spent: '631b1baf519287b2', steps: '6370e5d0b08d64b6', warnings: '43c68fa64f5fedd0' }],
-      ['english-knight-longbow', knightLongbow, { cap: 1302.8748761022916, population: '5e5a4947ab3da41e', spent: 'f449128530e7f3b0', steps: '39bb135f6f23fdc6', warnings: '414bbf8f9ffd6ede' }],
+      ['english-knight-longbow', knightLongbow, { cap: 1369.8607727353049, population: '7b6eb04bae4ffe28', spent: '4a2d0d42e3757825', steps: 'db7191bb9543c39d', warnings: '9f7d6def89a4dfc0' }],
     ] as const
 
     for (const [name, buildOrder, expected] of shipped) {

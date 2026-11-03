@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Strategy Game Simulator API",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "description": "HTTP API of the strategy game simulator site."
   },
   "paths": {
@@ -1961,7 +1961,7 @@
             "items": {
               "$ref": "#/components/schemas/SimWarning"
             },
-            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then step-stuck by step, then auto-houses-never-start and auto-houses-held, never-start first. Holds node-depleted and idle-arrival warnings when a finite node runs out (see nodeAmounts), a step-stuck warning for each step still waiting at durationSeconds, and, with autoHouses on, at most one auto-houses-never-start (the last build house step is a reaction that never fired) and at most one auto-houses-held (production sat at the supply limit while that step had not started)."
+            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then farm-idle, then step-stuck by step, then auto-houses-never-start and auto-houses-held, never-start first. Holds node-depleted and idle-arrival warnings when a finite node runs out (see nodeAmounts), at most one farm-idle warning when villagers wait idle at farm with every built farm taken, a step-stuck warning for each step still waiting at durationSeconds, and, with autoHouses on, at most one auto-houses-never-start (the last build house step is a reaction that never fired) and at most one auto-houses-held (production sat at the supply limit while that step had not started)."
           },
           "markers": {
             "type": "array",
@@ -2334,6 +2334,43 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "Total villagers that arrived idle there by durationSeconds."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Villagers arrived, or started, at farm with one villager per built farm already gathering, and wait idle until a farm is built; at most one per run; severity is warning.",
+            "required": [
+              "code",
+              "severity",
+              "message",
+              "at",
+              "idleVillagers"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "const": "farm-idle",
+                "description": "Warning code: farm-idle."
+              },
+              "severity": {
+                "$ref": "#/components/schemas/Severity",
+                "description": "Severity of this warning."
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Human-readable warning with the villager count and the first time."
+              },
+              "at": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Game time in seconds of the first villager left idle for lack of a farm."
+              },
+              "idleVillagers": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Total villagers that arrived, or started, at farm with no free farm by durationSeconds, including those a farm took later."
               }
             }
           },
