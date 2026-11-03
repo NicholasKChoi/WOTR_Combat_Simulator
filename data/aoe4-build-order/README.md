@@ -81,14 +81,16 @@ is tuned, and the page shows them for any run.
   Castle; `crossbowman` is a Castle unit and waits on its age. Both steps sit before the rally at 700 s
   so that step order does not hold them back, and they replace the spearman and longbowman orders on the
   barracks and range they name. The trigger is hard-coded, so re-check it when an earlier step changes. The King's Palace
-  is a villager producer, so a `rally` step sends its villagers to wood. The Town Center rallies to gold
-  from 130 s to 200 s and from 560 s to 700 s, and to wood otherwise. The build has
+  is a villager producer, so a `rally` step sends its villagers to wood. The Town Center rallies to sheep
+  until 20 s, to gold from 130 s to 200 s and from 560 s to 700 s, and to wood otherwise. The build has
   three gold reactions: `gold` and `gold#2` move all gatherers to the next deposit, and `gold#3` moves them
   to wood.
 
-  Farms: every farmer gets a farm of its own from a `build farm` step that takes a wood gatherer and puts
-  it on the new farm, so no rally sends a villager to `farm` and the Town Center and King's Palace keep
-  sending new villagers to wood (and the Town Center, at the times above, to gold). The farms are paid
+  Farms: every farmer gets a farm of its own from a `build farm` step. The mill builder and the three farm
+  builders at the mill come from sheep, and a fourth `build farm` step from sheep (returning to sheep) gives
+  the mill builder a farm; every later `build farm` step takes a wood gatherer and puts it on the new farm.
+  No rally sends a villager to `farm`, so the Town Center and King's Palace keep sending new villagers to
+  wood (and the Town Center, at the times above, to gold). The farms are paid
   from the wood those gatherers cut: four at the mill, three at 210 s, four at 320 s, four at 380 s (before Castle),
   then groups at 740, 870, 890 and 900 s that grow the food the Castle army needs.
 
@@ -96,9 +98,8 @@ is tuned, and the page shows them for any run.
   run spearmen and longbowmen. At Castle the men-at-arms order replaces the spearman order on both barracks
   and the crossbowman order replaces the longbowman order on the first range only, so the other two ranges
   keep making longbowmen from the wood the economy gathers. At 700 s four more barracks and three more
-  ranges are built from wood, and the `produce` steps at 790 s (a `produce` step orders only buildings that
-  exist when it starts, so they come after the buildings finish) give them men-at-arms and crossbowmen by
-  `instance`. The extra buildings and farms are there so the economy's food, wood and gold are spent on
+  ranges are built from wood, and the `produce` steps at 790 s give them men-at-arms and crossbowmen by
+  `instance` (a step that names an instance waits until that instance is built). The extra buildings and farms are there so the economy's food, wood and gold are spent on
   units instead of floating.
 
 - `english-knight-longbow` "ENG Knight/Longbow (King's Palace)", `hand-authored for this simulator` (English).

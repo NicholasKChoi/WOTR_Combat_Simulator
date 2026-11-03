@@ -442,10 +442,11 @@ test.describe('the default English 1TC build with default amounts', () => {
     const finite = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 3600 } })
     const infinite = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 3600, nodeAmounts: INFINITE_NODES } })
 
-    const ownSteps = (r: typeof finite) => r.steps.slice(0, STARTED_AT.length).map((s) => s.startedAt)
+    const ownSteps = (r: typeof finite) => r.steps.slice(0, -1).map((s) => s.startedAt)
     expect(ownSteps(finite)).toEqual(ownSteps(infinite))
     for (const [index, startedAt] of STARTED_AT.entries()) expect(finite.steps[index].startedAt).toBeCloseTo(startedAt, 9)
-    expect(finite.steps).toHaveLength(english1tc.steps.length)
+    expect(ownSteps(finite)).toHaveLength(40)
+    expect(finite.steps).toHaveLength(41)
     expect(infinite.steps.at(-1)?.startedAt).toBeNull()
   })
 

@@ -180,4 +180,12 @@ describe('ENG Spear/Longbow into MAA/Crossbow', () => {
         expect(result.steps[menAtArms].armedAt).toBe(trigger?.kind === 'time' ? trigger.seconds : null)
         expect(result.steps[menAtArms].startedAt ?? -1).toBeGreaterThanOrEqual(castle)
     })
+
+    it('leaves no villager arriving at an empty resource and no stuck step through 1800 s', () => {
+        if (build === undefined) {
+            throw new Error('build missing')
+        }
+        const result = simulateBuildOrder(build, data, inputsFor(data, { durationSeconds: 1800 }))
+        expect(result.warnings.filter((w) => w.code === 'idle-arrival' || w.code === 'step-stuck')).toEqual([])
+    })
 })
