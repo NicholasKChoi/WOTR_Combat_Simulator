@@ -1,8 +1,11 @@
+import cn from 'classnames'
+
 import type { ResultMessage } from './messages'
+import styles from './results.module.css'
 
 function MessageItems({ messages }: { messages: ResultMessage[] }) {
     return (
-        <ul className="mb-0">
+        <ul className={cn(styles.messages, 'mb-0')}>
             {messages.map((m, i) => (
                 <li key={i} data-testid="simulation-message" data-severity={m.severity} data-code={m.code}>
                     {m.message}

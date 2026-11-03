@@ -832,6 +832,10 @@ error list under the editor view, without lines. Gold run-outs and other info no
 list in Results. The duration is not checked in the browser: an
 empty or non-numeric entry is sent as 0, and the route rejects any value outside its bounds.
 
+Narrow layout: under 768 px the step rows are cards, the run bar wraps onto several rows with the select and
+duration input at full width, and the step timeline and compare tables scroll sideways inside their own boxes. The
+page itself does not scroll sideways at 390 px on either tab, even with a long unbroken token in an issue message.
+
 The page keeps one `text` state, and the step table is a view of it. The table renders
 `parseBuildOrderText(text)`: one row per step with a trigger kind select and its fields, an action select and
 the fields of that action under readable labels (Building, Rally to, Walk time (s), ...), a reaction checkbox
