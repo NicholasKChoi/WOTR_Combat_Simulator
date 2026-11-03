@@ -965,7 +965,8 @@ with a `source`. Every prebuilt build is paste-representable: it re-parses from 
 same `start` and `steps`. At default inputs, with depletion on, every prebuilt build meets this bar: at
 1200 s and at 3600 s no step is `waiting`, every non-reaction step has started, and a `not-reached`
 reaction has `waitingOn: 'trigger'`; at both horizons every gold deposit that has run out has a `move all`
-reaction from it whose `startedAt` is its `depletedAt`, and no gold warning has severity `warning`. ENG 1TC
+reaction from it whose `startedAt` is its `depletedAt`, and no gold warning has severity `warning`; and no `farm-idle` warning appears at 1200 s, 1800 s or 3600 s.
+ENG 1TC
 ends with a `whenever gold runs out move all gold to gold#2` reaction.
 
 The three prebuilt builds are `ENG 1TC`, `ENG Knight/Longbow (King's Palace)` and `ENG Spear/Longbow into

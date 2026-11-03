@@ -40,24 +40,24 @@ test.describe('auto-houses planned against the house lead time through the simul
   test("population keeps rising while the King's Palace builds when the explicit pre-palace houses are removed", async ({ request }) => {
     const result = await simulate(request, withoutPalaceHouses, 800)
     const population = (t: number) => result.spawnedPopulation[result.times.indexOf(t)]
-    expect(population(675)).toBe(40)
-    expect(population(680)).toBe(41)
-    expect(population(765)).toBe(50)
+    expect(population(690)).toBe(40)
+    expect(population(695)).toBe(41)
+    expect(population(765)).toBe(47)
     const window = result.times.flatMap((t, i) => (t >= 680 && t <= 760 ? [result.spawnedPopulation[i]] : []))
     expect(window.slice(1).every((p, i) => p >= window[i])).toBe(true)
     expect(window.at(-1)).toBeGreaterThan(window[0] + 5)
   })
 
-  test('the first house during the palace build lands between 675 s and 680 s, pinning the series from 680 s to 765 s', async ({ request }) => {
+  test('the first house during the palace build lands between 690 s and 695 s, pinning the series from 680 s to 765 s', async ({ request }) => {
     const result = await simulate(request, withoutPalaceHouses, 800)
     const series = result.times.flatMap((t, i) => (t >= 680 && t <= 765 ? [result.spawnedPopulation[i]] : []))
-    expect(series).toEqual([41, 42, 42, 43, 43, 44, 44, 45, 45, 46, 47, 47, 47, 49, 49, 49, 49, 50])
+    expect(series).toEqual([40, 40, 40, 41, 41, 41, 41, 43, 43, 43, 44, 45, 45, 45, 45, 46, 47, 47])
   })
 
   test.describe('shipped builds at 1800 s', () => {
     const shipped = [
       ['english-1tc', english1tc, { cap: 1755.1554493716328, population: 'ff20f5fd6993f85f', spent: '631b1baf519287b2', steps: '6370e5d0b08d64b6', warnings: '43c68fa64f5fedd0' }],
-      ['english-knight-longbow', knightLongbow, { cap: 1369.8607727353049, population: '7b6eb04bae4ffe28', spent: '4a2d0d42e3757825', steps: 'db7191bb9543c39d', warnings: '9f7d6def89a4dfc0' }],
+      ['english-knight-longbow', knightLongbow, { cap: 1316.3859872134028, population: 'af29a7017b7e11ca', spent: '3aa9265132ebbc0f', steps: 'af5cbf5986dc59db', warnings: 'fd0832fe4520e3ef' }],
     ] as const
 
     for (const [name, buildOrder, expected] of shipped) {

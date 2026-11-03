@@ -69,6 +69,12 @@
       "then": "farm"
     },
     {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "sheep"
+    },
+    {
       "trigger": {
         "kind": "time",
         "seconds": 130
@@ -84,7 +90,7 @@
       },
       "action": "rally",
       "producer": "capital-town-center",
-      "to": "farm"
+      "to": "wood"
     },
     {
       "trigger": {
@@ -153,7 +159,7 @@
       },
       "action": "rally",
       "producer": "capital-town-center",
-      "to": "farm"
+      "to": "wood"
     },
     {
       "action": "build",
@@ -165,7 +171,7 @@
     {
       "action": "rally",
       "producer": "kings-palace",
-      "to": "farm"
+      "to": "wood"
     },
     {
       "trigger": {
@@ -179,7 +185,7 @@
     {
       "trigger": {
         "kind": "time",
-        "seconds": 681
+        "seconds": 757
       },
       "action": "produce",
       "producer": "barracks",
@@ -197,7 +203,7 @@
       },
       "action": "rally",
       "producer": "capital-town-center",
-      "to": "farm"
+      "to": "wood"
     },
     {
       "trigger": {
@@ -230,7 +236,7 @@
       "action": "move",
       "count": "all",
       "from": "gold#3",
-      "to": "farm"
+      "to": "wood"
     }
   ]
 }
