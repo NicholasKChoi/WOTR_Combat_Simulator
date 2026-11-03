@@ -1,4 +1,4 @@
-import { type Ref, useState } from 'react'
+import type { Ref } from 'react'
 import cn from 'classnames'
 
 import styles from './workbench.module.css'
@@ -12,6 +12,8 @@ export type EditorView = 'text' | 'table'
 
 interface BuildInputProps {
     builds: PrebuiltBuild[]
+    selected: string
+    onSelectedChange: (name: string) => void
     onTextChange: (text: string) => void
     duration: string
     onDurationChange: (duration: string) => void
@@ -27,11 +29,9 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ builds, onTextChange, duration, onDurationChange, running, onRun, view, onViewChange, formRef }: BuildInputProps) {
-    const [selected, setSelected] = useState(builds[0]?.name ?? '')
-
+export function BuildInput({ builds, selected, onSelectedChange, onTextChange, duration, onDurationChange, running, onRun, view, onViewChange, formRef }: BuildInputProps) {
     function selectBuild(name: string) {
-        setSelected(name)
+        onSelectedChange(name)
         const build = builds.find((b) => b.name === name)
         if (build) onTextChange(build.text)
     }

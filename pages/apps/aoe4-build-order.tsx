@@ -10,6 +10,8 @@ import { BuildInput, type EditorView, type PrebuiltBuild } from '../../component
 import { BuildTextEditor } from '../../components/apps/aoe4-build-order/build-text-editor'
 import { IssueList } from '../../components/apps/aoe4-build-order/issue-list'
 import { issueLines } from '../../components/apps/aoe4-build-order/text-lines'
+import { pinName } from '../../components/apps/aoe4-build-order/pin-name'
+import { clearStoredPin, readStoredPin, writeStoredPin } from '../../components/apps/aoe4-build-order/pin-storage'
 import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
 import { Results } from '../../components/apps/aoe4-build-order/results'
 import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
@@ -36,6 +38,33 @@ export const getStaticProps: GetStaticProps<PageProps> = async () => ({
     },
 })
 
+interface Run {
+    text: string
+    durationSeconds: number
+    name: string
+}
+
+interface Pin extends Run {
+    result: SimulateResponse
+}
+
+function browserStorage(): Storage | null {
+    try {
+        return window.localStorage
+    } catch {
+        return null
+    }
+}
+
+function postSimulation(buildOrder: SimulateRequest['buildOrder'], durationSeconds: number): Promise<Response> {
+    const request: SimulateRequest = { buildOrder, inputs: { durationSeconds } }
+    return fetch('/api/aoe4-build-order/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(request),
+    })
+}
+
 async function errorMessages(response: Response): Promise<string[]> {
     if (response.status === 400) {
         try {
@@ -56,8 +85,9 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [text, setText] = useState(builds[0]?.text ?? '')
     const [duration, setDuration] = useState(String(DEFAULT_DURATION_SECONDS))
     const [result, setResult] = useState<SimulateResponse | null>(null)
-    const [resultText, setResultText] = useState('')
-    const [pinned, setPinned] = useState<SimulateResponse | null>(null)
+    const [run, setRun] = useState<Run | null>(null)
+    const [pin, setPin] = useState<Pin | null>(null)
+    const [selected, setSelected] = useState(builds[0]?.name ?? '')
     const [issues, setIssues] = useState<string[]>([])
     const [checked, setChecked] = useState(false)
     const [rejection, setRejection] = useState<{ line: number | undefined } | null>(null)
@@ -66,15 +96,41 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [tab, setTab] = useState<WorkbenchTab>('build')
     const [view, setView] = useState<EditorView>('text')
     const [resultsShownCount, setResultsShownCount] = useState(0)
+    const pinTouched = useRef(false)
     const resultsTop = useRef<HTMLDivElement>(null)
     const runBar = useRef<HTMLFormElement>(null)
     const editorBox = useRef<HTMLDivElement>(null)
     const issuesBox = useRef<HTMLDivElement>(null)
-    const resultsEnabled = result !== null || pinned !== null
+    const resultsEnabled = result !== null || pin !== null
     const shownTab = resultsEnabled ? tab : 'build'
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
     const converted = useMemo(() => textToBuildOrder(text, catalog), [text, catalog])
     const clientIssues = converted.ok || (converted.lines !== undefined && !checked) ? [] : converted.issues
+
+    useEffect(() => {
+        let cancelled = false
+        const storage = browserStorage()
+        const stored = storage ? readStoredPin(storage) : null
+        if (!storage || !stored) return
+        const restored = textToBuildOrder(stored.text, catalog)
+        if (!restored.ok) {
+            clearStoredPin(storage)
+            return
+        }
+        postSimulation(restored.order, stored.durationSeconds)
+            .then(async (response) => {
+                if (cancelled || pinTouched.current) return
+                if (response.status === 400) clearStoredPin(storage)
+                if (!response.ok) return
+                const result: SimulateResponse = await response.json()
+                if (cancelled || pinTouched.current) return
+                setPin({ result, name: stored.name, text: stored.text, durationSeconds: stored.durationSeconds })
+            })
+            .catch(() => {})
+        return () => {
+            cancelled = true
+        }
+    }, [])
 
     useEffect(() => {
         const panel = resultsTop.current
@@ -100,36 +156,52 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         const runText = text
         if (converted.ok === false) {
             setResult(null)
+            setRun(null)
             setTab('build')
             setRejection({ line: converted.issues[0].line })
             return
         }
         setRunning(true)
-        const request: SimulateRequest = { buildOrder: converted.order, inputs: { durationSeconds: Number(duration) } }
         try {
-            const response = await fetch('/api/aoe4-build-order/simulate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-                body: JSON.stringify(request),
-            })
+            const response = await postSimulation(converted.order, Number(duration))
             if (!response.ok) {
                 setResult(null)
+                setRun(null)
                 setTab('build')
                 setIssues(await errorMessages(response))
                 return
             }
             const body: SimulateResponse = await response.json()
             setResult(body)
-            setResultText(runText)
+            setRun({ text: runText, durationSeconds: Number(duration), name: pinName(builds, runText, selected) })
             setTab('results')
             setResultsShownCount((n) => n + 1)
         } catch {
             setResult(null)
+            setRun(null)
             setTab('build')
             setIssues(['The simulation could not be run. Please try again.'])
         } finally {
             setRunning(false)
         }
+    }
+
+    const alreadyPinned = result !== null && run !== null && pin !== null && pin.text === run.text && pin.durationSeconds === run.durationSeconds
+    const stale = result !== null && run !== null && (text !== run.text || Number(duration) !== run.durationSeconds)
+
+    function pinShownRun() {
+        if (result === null || run === null) return
+        pinTouched.current = true
+        setPin({ result, ...run })
+        const storage = browserStorage()
+        if (storage) writeStoredPin(storage, { version: 1, name: run.name, text: run.text, durationSeconds: run.durationSeconds })
+    }
+
+    function unpin() {
+        pinTouched.current = true
+        setPin(null)
+        const storage = browserStorage()
+        if (storage) clearStoredPin(storage)
     }
 
     return (
@@ -141,6 +213,8 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                 <h1>{pageTitle}</h1>
                 <BuildInput
                     builds={builds}
+                    selected={selected}
+                    onSelectedChange={setSelected}
                     onTextChange={setText}
                     duration={duration}
                     onDurationChange={setDuration}
@@ -184,12 +258,20 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                     results={
                         <div ref={resultsTop}>
                             <h2 className="border-bottom">Results</h2>
-                            <ComparePanel current={result} pinned={pinned} onPin={() => setPinned(result)} onUnpin={() => setPinned(null)} />
+                            <ComparePanel
+                                current={result}
+                                pinned={pin?.result ?? null}
+                                pinnedName={pin?.name ?? null}
+                                alreadyPinned={alreadyPinned}
+                                onPin={pinShownRun}
+                                onUnpin={unpin}
+                            />
                             {result !== null ? (
                                 <Results
                                     result={result}
-                                    pinned={pinned}
-                                    text={resultText}
+                                    pinned={pin?.result ?? null}
+                                    text={run?.text ?? ''}
+                                    stale={stale}
                                     infoExpanded={infoExpanded}
                                     onInfoToggle={() => setInfoExpanded((v) => !v)}
                                 />
