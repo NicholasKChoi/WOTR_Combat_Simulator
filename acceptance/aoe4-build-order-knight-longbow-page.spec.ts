@@ -22,6 +22,14 @@ test.describe('the knight/longbow build on the page', () => {
     await expect(page.locator('[data-testid="step-timeline-row"][data-reaction="true"]')).toHaveCount(REACTION_COUNT)
     await expect(page.getByTestId('step-timeline-row')).toHaveCount(knightLongbow.steps.length)
 
+    const palace = knightLongbow.steps.findIndex((s) => s.action === 'build' && s.building === 'kings-palace')
+    const research = knightLongbow.steps.findIndex((s) => s.action === 'research')
+    expect(palace).toBeGreaterThanOrEqual(0)
+    expect(research).toBeGreaterThanOrEqual(0)
+    await expect(page.locator(`[data-testid="step-timeline-row"][data-step="${palace}"]`)).toHaveAttribute('data-kind', 'age-up')
+    await expect(page.locator(`[data-testid="step-timeline-row"][data-step="${research}"]`)).toHaveAttribute('data-kind', 'research')
+    await expect(page.getByTestId('step-timeline-legend')).toBeVisible()
+
     const warnings = page.locator('[data-testid="simulation-message"][data-severity="warning"]')
     await expect(warnings.filter({ hasText: /idle/i })).toHaveCount(0)
     await expect(page.locator('[data-testid="simulation-message"][data-code="idle-arrival"]')).toHaveCount(0)

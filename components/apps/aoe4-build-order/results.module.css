@@ -18,3 +18,61 @@
 .messages {
     overflow-wrap: anywhere;
 }
+
+.legendRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.badge {
+    display: inline-block;
+    margin-right: 0.5rem;
+    padding: 0 0.4rem;
+    border-radius: 0.25rem;
+    border-left: 4px solid var(--kind-color, transparent);
+    background: var(--bs-light);
+    font-size: 0.75rem;
+}
+
+.legendRow .badge {
+    margin-right: 0;
+}
+
+.timeCell {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.kindBorder {
+    border-left: 4px solid var(--kind-color, transparent);
+}
+
+.kindAgeUp {
+    --kind-color: var(--bs-primary);
+}
+
+.kindResearch {
+    --kind-color: var(--bs-info);
+}
+
+.kindMilitary {
+    --kind-color: var(--bs-danger);
+}
+
+.kindVillager {
+    --kind-color: var(--bs-success);
+}
+
+.kindBuilding {
+    --kind-color: var(--bs-secondary);
+}
+
+.kindEconomy {
+    --kind-color: var(--bs-gray-400);
+}
+
+.kindOther {
+    --kind-color: transparent;
+}

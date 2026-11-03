@@ -12,12 +12,13 @@ interface ResultsProps {
     result: SimulationResult
     pinned: SimulationResult | null
     text: string
+    landmarks: readonly string[]
     stale: boolean
     infoExpanded: boolean
     onInfoToggle: () => void
 }
 
-export function Results({ result, pinned, text, stale, infoExpanded, onInfoToggle }: ResultsProps) {
+export function Results({ result, pinned, text, landmarks, stale, infoExpanded, onInfoToggle }: ResultsProps) {
     const messages = resultMessages(result)
     return (
         <div>
@@ -28,7 +29,7 @@ export function Results({ result, pinned, text, stale, infoExpanded, onInfoToggl
             ) : null}
             <WarningMessages messages={messages.warning} />
             <InfoMessages messages={messages.info} expanded={infoExpanded} onToggle={onInfoToggle} />
-            <StepTimeline steps={result.steps} text={text} />
+            <StepTimeline steps={result.steps} text={text} landmarks={landmarks} />
             <SeriesChart
                 testId="chart-units-produced"
                 title="Units produced"

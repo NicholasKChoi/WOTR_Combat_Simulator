@@ -888,7 +888,12 @@ message shows its `message` text only. With no message of a severity there is no
 A step timeline sits above the charts and below the message lists: one row per `steps` entry in step order, with
 the step's text, `startedAt` as `m:ss` (an en dash when null), `completedAt` as `m:ss` (`ongoing` for an
 `in-progress` step, an en dash for a `waiting` or `not-reached` step) and `waitSeconds` as `m:ss`. The columns are
-Step, Started, Finished, Waited and Blocked by. Blocked by lists the non-zero `waitBreakdown` reasons as
+Started, Finished, Step, Waited and Blocked by, so reading down Started is the timeline. Each row has a step kind, shown
+as a coloured left border on the Started cell and a text badge at the start of the Step cell, with a legend above the
+table: Age up (a `build` of a landmark, bold; blue), Research (cyan), Military (a `produce` of any unit but the villager;
+red), Villager (green), Building (any other `build`; grey), and Economy (`move`, `rally`, `pause`; light grey). The
+kind comes from the step alone, so a landmark of a later age than the current one still reads Age up. A step missing from
+the pasted text has no kind. The kind colour is independent of the flagged and long-wait highlight. Blocked by lists the non-zero `waitBreakdown` reasons as
 `<reason> <m:ss>` in the order resources, villagers, population, prerequisite, joined with `, `. A `waiting` step
 adds `still waiting on <waitingOn>` (alone when the breakdown is empty) and a `not-reached` step reads
 `not reached (<waitingOn>)`. A `waiting` or `not-reached` row is flagged. A row whose `waitSeconds` is 60 or more is

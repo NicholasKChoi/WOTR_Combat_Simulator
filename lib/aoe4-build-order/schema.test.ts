@@ -896,6 +896,10 @@ describe('buildOrderCatalog', () => {
         expect(checkBuildOrder(order([], catalog.defaultStart), catalog).ok).toBe(true)
     })
 
+    it('lists the English landmarks sorted', () => {
+        expect(catalog.landmarks).toEqual(['abbey-of-kings', 'berkshire-palace', 'council-hall', 'kings-palace', 'the-white-tower', 'wynguard-palace'])
+    })
+
     it('classifies the rejected techs', () => {
         const byCode = (code: string) => Object.keys(catalog.rejectedTechs).filter((tech) => catalog.rejectedTechs[tech].code === code).sort()
         expect(byCode('unsupported-tech')).toEqual(['enclosures', 'lightweight-beams', 'military-academy'])

@@ -12,6 +12,7 @@ import { formatMinSec } from './format-time';
 import { effectiveGatherRate } from './gather';
 import { planAutoHouse } from './houses';
 import type { HouseDemand } from './houses';
+import { isLandmark } from './landmarks';
 import { ageMarker, compareMarkers } from './markers';
 import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
 import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, Trigger, UnitSeries } from './model';
@@ -21,8 +22,6 @@ import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 export const SAMPLE_SECONDS = 5;
 
 const SECONDS_PER_MINUTE = 60;
-// A rule on class names: completing a landmark of the current age advances it.
-const LANDMARK_CLASS = /^age[1-3]_landmark\d$/;
 
 export interface RallySource {
   node: NodeRef;
@@ -390,7 +389,7 @@ function completeConstruction(state: EngineState, job: Construction, completesAt
   constructing.splice(constructing.findIndex((item) => item.baseId === entry.baseId && item.completesAt === completesAt), 1);
   const built = addBuildingInstance(state, entry.baseId);
   state.rules.onBuildingComplete?.(state, { ...ruleContext(state), baseId: entry.baseId, instance: built.instance });
-  if (entry.age === state.age && entry.classes.some((name) => LANDMARK_CLASS.test(name))) {
+  if (entry.age === state.age && isLandmark(entry)) {
     state.age += 1;
     ages.push({ age: state.age, reachedAt: state.time });
     state.markers.push(ageMarker(state.age, state.time));
