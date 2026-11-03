@@ -41,7 +41,9 @@ at default inputs with depletion on: at 1200 s and at 3600 s no step is waiting,
 has started, and a reaction that is not reached is only waiting for its trigger; at both horizons every gold
 deposit that has run out has a `move all` reaction from it that starts at the run-out instant, and no gold
 warning is a `warning`. A guide step that would break the bar is left out and listed under its build
-with its reason.
+with its reason. Entries describe what each build file does and why; measured results (run-out times,
+when a step fires, warnings' times) are not listed because they change whenever the engine or the build
+is tuned, and the page shows them for any run.
 
 - `english-1tc` "ENG 1TC", https://aoe4guides.com/builds/reinDv5vkVX6KUny571E (English, Season 13).
   Villager production is continuous from the start, following the guide's villager counts. Omitted:
@@ -62,37 +64,34 @@ with its reason.
   continuous from the start. Nothing is omitted.
 
   Transcription choices: the `man-at-arms` step carries a `time` trigger of 681 s, the whole second after the
-  King's Palace completes (680.3 s), because men-at-arms are a Feudal unit and would otherwise start before
+  King's Palace completes, because men-at-arms are a Feudal unit and would otherwise start before
   Castle; `crossbowman` is a Castle unit and waits on its age. Both steps sit before the 12:40 rally so that
-  step order does not hold them back; at default inputs the `man-at-arms` step arms at 681 s, the two start
-  once they can be paid (687.5 s and 695.2 s), and they replace the spearman and longbowman orders, which stop there. The trigger is hard-coded, so re-check it when an earlier step changes. The King's Palace
+  step order does not hold them back; the `man-at-arms` step must not start before Castle, and the two replace
+  the spearman and longbowman orders, which stop there. The trigger is hard-coded, so re-check it when an
+  earlier step changes. The King's Palace
   is a villager producer, so a `rally` step sends its villagers to farms. The Town Center rallies to gold
-  from 130 s to 200 s and from 560 s to 760 s, so no producer is rallied to gold at a run-out. Gold runs out at 1114 s (`gold`), 1709 s
-  (`gold#2`) and 2303 s (`gold#3`) at default inputs, so the build has three reactions: `gold` and `gold#2`
-  move all gatherers to the next deposit, and `gold#3` moves them to farms. `gold#4` is never reached by
-  3600 s.
+  from 130 s to 200 s and from 560 s to 760 s, so no producer is rallied to gold at a run-out. Three gold deposits run out by 3600 s at
+  default inputs, so the build has three reactions: `gold` and `gold#2` move all gatherers to the next
+  deposit, and `gold#3` moves them to farms.
 
 - `english-knight-longbow` "ENG Knight/Longbow (King's Palace)", `hand-authored for this simulator` (English).
   The opening is the ENG 1TC economy, with Feudal reached through `abbey-of-kings` (the same landmark as
   ENG 1TC, so the first five minutes are the already-tuned opening) and Castle through `build kings-palace`.
-  From 5:47 new villagers go to gold (the 5:30 rally waits behind the 5:15 farms), so the King's Palace's
+  The 5:30 rally to gold waits behind the 5:15 farm block, so it fires after 5:30 and new villagers go to gold then, so the King's Palace's
   600 gold is paid without moving gatherers; once the palace starts they go to farms, and from 12:00 to wood. The King's Palace is rallied to wood.
   Three stables and two archery ranges; the second `produce longbowman` step comes after the second range
   is built, because a `produce` step only orders the producers that exist when it starts. Three explicit
   houses are built before the King's Palace. Auto-houses stay
   off until the third of these (step 24) starts, so at default inputs, and at 1800 s and 3600 s, the run
-  returns one `auto-houses-held` warning: production is held at the supply limit for 0:21 (21.2 s) from
-  7:42 (461.8 s). Farms are added
-  in blocks of four at 10:00, 14:00, 16:00 and 18:00; the 14:00, 16:00 and 18:00 blocks start at their
-  times and the 10:00 block starts about 1.5 s after 10:00 (10:02 as the page shows it). The four blacksmith techs
+  returns one `auto-houses-held` warning: production is held at the supply limit until the third house
+  starts. Farms are added
+  in blocks of four at 10:00, 14:00, 16:00 and 18:00. The four blacksmith techs
   (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after `build kings-palace` in
   the list, so they queue behind the landmark instead of taking its gold first; `veteran-longbowmen` and
   the Castle blacksmith techs (`balanced-projectiles`, `wedge-rivets`, `decarbonization`, `insulated-helm`)
-  follow `produce knight`. Gold: 5 deposits (`gold` to `gold#5`) run out by 3600 s, at 15:32 (`gold`),
-  24:37 (`gold#2`), 33:43 (`gold#3`), 42:48 (`gold#4`) and 51:54 (`gold#5`); each has a
+  follow `produce knight`. Gold: 5 deposits (`gold` to `gold#5`) run out by 3600 s; each has a
   `whenever <ref> runs out move all <ref> to <next>` reaction at the end of the list, and `gold#5` moves to
-  `wood`. The five gold reactions are followed by one for the starting sheep, which run out at 16:38
-  (997.9 s): `whenever sheep runs out move all sheep to farm` moves the sheep gatherers to the farms, so no
+  `wood`. The five gold reactions are followed by one for the starting sheep: `whenever sheep runs out move all sheep to farm` moves the sheep gatherers to the farms, so no
   villager is idle through 1800 s. Omitted: none.
 
 ## Hand-entered values
