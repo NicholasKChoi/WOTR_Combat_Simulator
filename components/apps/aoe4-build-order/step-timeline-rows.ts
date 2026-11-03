@@ -1,4 +1,5 @@
-import type { StepTiming, StepWait } from '../../../lib/aoe4-build-order/model'
+import { VILLAGER_ID } from '../../../lib/aoe4-build-order/engine-common'
+import type { BuildStep, StepTiming, StepWait } from '../../../lib/aoe4-build-order/model'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import { formatBuildStep, parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
 
@@ -13,9 +14,22 @@ export const formatStepTime = (seconds: number | null): string => (seconds === n
 export const formatWaitBreakdown = (breakdown: TimelineRow['waitBreakdown']): string =>
     breakdown.map((w) => `${w.reason} ${formatMinSec(w.seconds)}`).join(', ')
 
+export const STEP_KINDS = {
+    'age-up': 'Age up',
+    research: 'Research',
+    military: 'Military',
+    villager: 'Villager',
+    building: 'Building',
+    economy: 'Economy',
+    other: null,
+} as const
+
+export type StepKind = keyof typeof STEP_KINDS
+
 export interface TimelineRow {
     step: number
     label: string
+    kind: StepKind
     status: StepTiming['status']
     startedAt: number | null
     completedAt: number | null
@@ -36,7 +50,22 @@ function blockedByText(timing: StepTiming, breakdown: TimelineRow['waitBreakdown
     return reasons === '' ? still : `${reasons}, ${still}`
 }
 
-export function timelineRows(steps: StepTiming[], text: string): TimelineRow[] {
+export function stepKind(step: BuildStep | undefined, landmarks: readonly string[]): StepKind {
+    switch (step?.action) {
+        case undefined:
+            return 'other'
+        case 'build':
+            return landmarks.includes(step.building) ? 'age-up' : 'building'
+        case 'research':
+            return 'research'
+        case 'produce':
+            return step.unit === VILLAGER_ID ? 'villager' : 'military'
+        default:
+            return 'economy'
+    }
+}
+
+export function timelineRows(steps: StepTiming[], text: string, landmarks: readonly string[]): TimelineRow[] {
     const parsed = parseBuildOrderText(text)
     const parsedSteps = parsed.ok ? parsed.order.steps : []
     return steps.map((timing) => {
@@ -48,6 +77,7 @@ export function timelineRows(steps: StepTiming[], text: string): TimelineRow[] {
         return {
             step: timing.step,
             label: parsedStep === undefined ? `step ${timing.step + 1}` : formatBuildStep(parsedStep),
+            kind: stepKind(parsedStep, landmarks),
             status: timing.status,
             startedAt: timing.startedAt,
             completedAt: timing.completedAt,

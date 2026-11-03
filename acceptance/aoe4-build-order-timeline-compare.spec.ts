@@ -44,8 +44,8 @@ test.describe('AoE4 build order timeline and compare display', () => {
     const timing = result.steps.find((s) => s.status === 'not-reached')!
     expect(timing).toBeDefined()
     const cells = rows(page).nth(timing.step).locator('td')
+    await expect(cells.nth(0)).toHaveText(EN_DASH)
     await expect(cells.nth(1)).toHaveText(EN_DASH)
-    await expect(cells.nth(2)).toHaveText(EN_DASH)
     await expect(cells.nth(4)).toHaveText(`not reached (${timing.waitingOn})`)
   })
 

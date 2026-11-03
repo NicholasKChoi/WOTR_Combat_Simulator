@@ -640,7 +640,7 @@ test.describe('AoE4 build order page', () => {
       await expect(row).toHaveAttribute('data-long-wait', 'true')
       await expect(row).toHaveClass(/table-warning/)
       await expect(row.locator('td').nth(4)).toContainText('villagers 1:0')
-      await expect(page.getByTestId('step-timeline').locator('th')).toHaveText(['Step', 'Started', 'Finished', 'Waited', 'Blocked by'])
+      await expect(page.getByTestId('step-timeline').locator('th')).toHaveText(['Started', 'Finished', 'Step', 'Waited', 'Blocked by'])
       await expect(page.getByTestId('step-timeline-scroll').getByTestId('step-timeline')).toBeVisible()
     })
 
@@ -649,7 +649,7 @@ test.describe('AoE4 build order page', () => {
       await page.getByTestId('build-order-text').fill(WAITING_PASTE)
       const result = (await (await runSimulation(page)).json()) as SimulationResult
       const row = rows(page).first()
-      await expect(row.locator('td').nth(2)).toHaveText('–')
+      await expect(row.locator('td').nth(1)).toHaveText('–')
       await expect(row.locator('td').nth(4)).toContainText(`still waiting on ${result.steps[0].waitingOn}`)
       await expect(row).not.toHaveAttribute('data-long-wait', 'true')
     })
@@ -661,13 +661,13 @@ test.describe('AoE4 build order page', () => {
       expect(result.steps[0].status).toBe('in-progress')
       const row = rows(page).first()
       await expect(row).toHaveAttribute('data-status', 'in-progress')
-      await expect(row.locator('td').nth(2)).toHaveText('ongoing')
+      await expect(row.locator('td').nth(1)).toHaveText('ongoing')
     })
 
     test('editing the text after a run keeps the labels until the next run', async ({ page }) => {
       await openPage(page)
       await runSimulation(page)
-      const label = rows(page).first().locator('td').first()
+      const label = rows(page).first().locator('td').nth(2)
       const before = await label.innerText()
       await showTab(page, 'build')
       await page.getByTestId('build-order-text').fill(WAITING_PASTE)

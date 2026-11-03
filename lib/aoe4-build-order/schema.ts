@@ -14,6 +14,7 @@ import type {
   SimInputs,
   TripInputs,
 } from './model';
+import { isLandmark } from './landmarks';
 import { stepOptions, type StepOptions } from './step-options';
 
 interface InputBound {
@@ -153,6 +154,8 @@ export interface BuildOrderCatalog extends StepOptions {
   rejectedTechs: Readonly<Record<string, RejectedTech>>;
   // Every unit baseId, producible or not, so an unproducible unit reads "cannot produce" rather than unknown.
   units: readonly string[];
+  // Building baseIds with a landmark class, sorted.
+  landmarks: readonly string[];
   // The inputs defaults that come from the data rather than INPUT_DEFAULTS.
   inputDefaults: Readonly<Pick<SimInputs, 'trips' | 'walkSeconds' | 'nodeAmounts'>>;
 }
@@ -203,6 +206,10 @@ export function buildOrderCatalog(data: GameData): BuildOrderCatalog {
     startVillagerProducers,
     rejectedTechs: rejectedTechsOf(data),
     units: [...data.byBaseId].filter(([, entries]) => entries.some((entry) => entry.type === 'unit')).map(([baseId]) => baseId),
+    landmarks: [...data.byBaseId]
+      .filter(([, entries]) => entries.some((entry) => entry.type === 'building' && isLandmark(entry)))
+      .map(([baseId]) => baseId)
+      .sort(),
     inputDefaults: inputDefaultsOf(data),
   };
 }

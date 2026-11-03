@@ -271,6 +271,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                                     result={result}
                                     pinned={pin?.result ?? null}
                                     text={run?.text ?? ''}
+                                    landmarks={catalog.landmarks}
                                     stale={stale}
                                     infoExpanded={infoExpanded}
                                     onInfoToggle={() => setInfoExpanded((v) => !v)}
