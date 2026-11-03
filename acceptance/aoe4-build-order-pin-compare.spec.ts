@@ -305,6 +305,20 @@ function trackPosts(page: Page): Request[] {
   return posts
 }
 
+async function holdFirstSimulate(page: Page) {
+  let release = () => {}
+  const gate = new Promise<void>((resolve) => (release = resolve))
+  let first = true
+  await page.route(`**${SIMULATE_PATH}`, async (route) => {
+    if (first) {
+      first = false
+      await gate
+    }
+    await route.continue()
+  })
+  return release
+}
+
 async function expectNoPin(page: Page) {
   await expect(page.getByTestId('tab-results')).toBeDisabled()
   await expect(label(page)).toHaveCount(0)
@@ -325,6 +339,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
     await page.reload()
     await expect(page.getByTestId('tab-results')).toBeEnabled()
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
+    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
     await showTab(page, 'results')
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
     await expect(page.getByTestId('build-order-text')).toHaveValue(DEFAULT_PASTE)
@@ -363,6 +378,9 @@ test.describe('AoE4 build order pin persistence and label', () => {
     await pin(page)
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[1].name} (edited), 20:00`)
 
+    await runOk(page, { text: DEFAULT_PASTE })
+    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[1].name} (edited), 20:00`)
+
     await showTab(page, 'build')
     await page.getByTestId('build-order-select').selectOption({ index: 0 })
     await showTab(page, 'results')
@@ -399,6 +417,8 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
     await runOk(page, { duration: 1200 })
     await expect(page.getByTestId('pin-run')).toBeEnabled()
+    await pin(page)
+    await expect(page.getByTestId('pin-run')).toBeDisabled()
 
     await page.getByTestId('unpin-run').click()
     await expect(page.getByTestId('pin-run')).toBeEnabled()
@@ -513,16 +533,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
   test('a Run that finishes before the restore lands keeps its result; then only the pin appears', async ({ page }) => {
     await openPage(page)
     await storePin(page, validStored)
-    let release = () => {}
-    const gate = new Promise<void>((resolve) => (release = resolve))
-    let first = true
-    await page.route(`**${SIMULATE_PATH}`, async (route) => {
-      if (first) {
-        first = false
-        await gate
-      }
-      await route.continue()
-    })
+    const release = await holdFirstSimulate(page)
     await page.reload()
     const result = await runOk(page, { duration: 600 })
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
@@ -539,19 +550,10 @@ test.describe('AoE4 build order pin persistence and label', () => {
     expect(deltas.some((delta) => delta !== 'same')).toBe(true)
   })
 
-  test('a Pin or Unpin before the restore lands wins over the restore', async ({ page }) => {
+  test('a Pin before the restore lands wins over the restore', async ({ page }) => {
     await openPage(page)
     await storePin(page, validStored)
-    let release = () => {}
-    const gate = new Promise<void>((resolve) => (release = resolve))
-    let first = true
-    await page.route(`**${SIMULATE_PATH}`, async (route) => {
-      if (first) {
-        first = false
-        await gate
-      }
-      await route.continue()
-    })
+    const release = await holdFirstSimulate(page)
     await page.reload()
     await runOk(page, { duration: 600 })
     await pin(page)
@@ -561,5 +563,22 @@ test.describe('AoE4 build order pin persistence and label', () => {
     await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)))
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 10:00`)
     expect(JSON.parse((await storedPin(page)) ?? 'null').durationSeconds).toBe(600)
+  })
+
+  test('an Unpin before the restore lands wins over the restore', async ({ page }) => {
+    await openPage(page)
+    await storePin(page, validStored)
+    const release = await holdFirstSimulate(page)
+    await page.reload()
+    await runOk(page, { duration: 600 })
+    await pin(page)
+    await page.getByTestId('unpin-run').click()
+    const landed = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH))
+    release()
+    await landed
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)))
+    await expect(label(page)).toHaveCount(0)
+    await expect(page.getByTestId('unpin-run')).toBeDisabled()
+    expect(await storedPin(page)).toBeNull()
   })
 })

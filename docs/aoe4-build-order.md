@@ -884,8 +884,8 @@ step text is the pasted text as it was when Run was clicked, so editing the text
 the labels until the next run. A result with empty `steps` (a `start`-only paste) shows no timeline, and a 400
 shows none.
 
-Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown whose text and duration
-differ from the pin's) keeps the shown result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is
+Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown, unless its text and
+duration both equal the pinned run's) keeps the shown result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is
 pinned) drops it. The pin stays through later runs, text and build edits, and failed runs (a failed run clears the shown
 result but not the pin) and a reload: the pin is kept in `localStorage` under
 `aoe4-build-order.pinned-run` as the build text, duration and name (not the result), and the page re-runs it on
