@@ -819,7 +819,7 @@ a pinned run; a successful run selects Results and scrolls it into view, and a r
 Build. Switching tabs changes nothing else, and both panels stay mounted. The Build tab shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the
-step table. The view and the tab survive runs but not a reload. Choosing a prebuilt build replaces the text
+step table. The view survives runs and tab switches but not a reload; the selected tab follows each run (see above) and a reload starts on Build. Choosing a prebuilt build replaces the text
 with that build's paste text; editing the text
 leaves the select as it is. Run converts the text with `textToBuildOrder` and the English catalog and posts the
 checked `buildOrder` and `inputs.durationSeconds` to the route. The issues list under the open editor view is
@@ -927,7 +927,7 @@ earlier time is better. A `better` delta is green and a `worse` delta red. When 
 is replaced by `compare-empty` reading "Nothing to compare yet". The table sits in a horizontally scrolling wrapper
 (`compare-scroll`) and is hidden unless both runs exist.
 
-A 400 shows every returned issue's `message` (each names its line or step) and removes any earlier charts and message lists, so only the error list shows.
+A 400 shows every returned issue's `message` (each starts with where it applies: a line, a step, a field path such as `inputs.durationSeconds`, or `request body`) and removes any earlier charts and message lists, so only the error list shows; with a pinned run, Results stays enabled and still shows the compare panel (pin label and Unpin, no compare table without a shown result).
 When the body has `omittedIssues`, the list ends with one more item, "N more issues not shown." Any
 other HTTP failure shows "The simulation could not be run (HTTP <status>)."; a request or response-body
 error shows "The simulation could not be run. Please try again."
