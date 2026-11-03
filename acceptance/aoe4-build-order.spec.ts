@@ -383,31 +383,45 @@ test.describe('AoE4 build order page', () => {
 
   test.describe('chart markers', () => {
     async function expectMarkerLabelsApart(root: Locator, markers: SimulationResult['markers'], chart: string) {
-      const boxes: { x: number; y: number; width: number; height: number }[] = []
-      for (const marker of markers) {
-        const text = root.locator('svg text.recharts-label', { hasText: `${marker.label} ${formatMinSec(marker.at)}` })
-        await expect(text).toHaveCount(1)
-        boxes.push((await text.boundingBox())!)
-      }
-      const plot = (await root.locator('.recharts-cartesian-grid').boundingBox())!
-      const svgBox = (await root.locator('svg.recharts-surface').boundingBox())!
-      const rows = Number(await root.getAttribute('data-label-rows'))
-      expect(rows).toBeGreaterThan(0)
-      expect(Math.abs(plot.y - svgBox.y - (5 + rows * 14))).toBeLessThan(1)
-      for (const [i, box] of boxes.entries()) {
-        expect(box.y + box.height, `label ${i} in ${chart} is not above the plot`).toBeLessThanOrEqual(plot.y + 0.5)
-      }
-      for (const [i, box] of boxes.entries()) {
-        const inside = box.x >= plot.x && box.x + box.width <= plot.x + plot.width
-        expect(inside, `label ${i} in ${chart} leaves the plot`).toBe(true)
-      }
-      for (let a = 0; a < boxes.length; a++) {
-        for (let b = a + 1; b < boxes.length; b++) {
-          const [p, q] = [boxes[a], boxes[b]]
-          const apart = p.x + p.width <= q.x || q.x + q.width <= p.x || p.y + p.height <= q.y || q.y + q.height <= p.y
-          expect(apart, `labels ${a} and ${b} in ${chart} overlap`).toBe(true)
+      const texts = markers.map((marker) => `${marker.label} ${formatMinSec(marker.at)}`)
+      await expect(async () => {
+        const { boxes, plot, svgBox, rows } = await root.evaluate((el, wanted) => {
+          const rect = (node: Element | null) => {
+            const r = node?.getBoundingClientRect()
+            return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null
+          }
+          const labels = [...el.querySelectorAll('svg text.recharts-label')]
+          return {
+            boxes: wanted.map((text) => {
+              const matches = labels.filter((l) => l.textContent?.includes(text))
+              return matches.length === 1 ? rect(matches[0]) : null
+            }),
+            plot: rect(el.querySelector('.recharts-cartesian-grid')),
+            svgBox: rect(el.querySelector('svg.recharts-surface')),
+            rows: Number(el.getAttribute('data-label-rows')),
+          }
+        }, texts)
+        const found = boxes.filter((box): box is NonNullable<typeof box> => box !== null)
+        expect(found).toHaveLength(markers.length)
+        expect(plot).not.toBeNull()
+        expect(svgBox).not.toBeNull()
+        expect(rows).toBeGreaterThan(0)
+        expect(Math.abs(plot!.y - svgBox!.y - (5 + rows * 14))).toBeLessThan(1)
+        for (const [i, box] of found.entries()) {
+          expect(box.y + box.height, `label ${i} in ${chart} is not above the plot`).toBeLessThanOrEqual(plot!.y + 0.5)
         }
-      }
+        for (const [i, box] of found.entries()) {
+          const inside = box.x >= plot!.x && box.x + box.width <= plot!.x + plot!.width
+          expect(inside, `label ${i} in ${chart} leaves the plot`).toBe(true)
+        }
+        for (let a = 0; a < found.length; a++) {
+          for (let b = a + 1; b < found.length; b++) {
+            const [p, q] = [found[a], found[b]]
+            const apart = p.x + p.width <= q.x || q.x + q.width <= p.x || p.y + p.height <= q.y || q.y + q.height <= p.y
+            expect(apart, `labels ${a} and ${b} in ${chart} overlap`).toBe(true)
+          }
+        }
+      }).toPass()
     }
 
     test('the knight and longbow build keeps marker labels apart and above the plot at 1280 px in every chart', async ({ page }) => {
