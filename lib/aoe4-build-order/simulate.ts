@@ -2,8 +2,8 @@ import { civRules } from './civ-rules';
 import type { CivRuleContext, CivRules } from './civ-rules';
 import { constructionSeconds } from './construction';
 import type { GameData, SnapshotEntry } from './data';
-import { createNodeStock, depletionResults, drawDown, isDepleted, nextRunOut, recordIdleArrival, recordRunOut, runRefs, sortWarnings } from './depletion';
-import type { NodeStock } from './depletion';
+import { addIdleArrival, createNodeStock, depletionResults, drawDown, farmIdleWarnings, isDepleted, nextRunOut, recordIdleArrival, recordRunOut, runRefs, sortWarnings } from './depletion';
+import type { IdleArrival, NodeStock } from './depletion';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import type { Resources } from './engine-common';
@@ -85,8 +85,11 @@ export interface EngineState extends EffectState {
   // baseId -> instance k not yet built -> rally.
   readonly heldRallies: Map<string, Map<number, RallySource>>;
   readonly gatherers: Record<NodeRef, number>;
-  // Alive at a depleted ref, gathering nothing; only a step moves them on.
+  // Alive at a depleted ref, or at a building-created node with every slot taken, gathering nothing. A step moves
+  // them on; at a building-created node a newly built slot also takes them.
   readonly idle: Record<NodeRef, number>;
+  // Villagers that arrived, or started, at a building-created node with no free slot.
+  farmIdle: IdleArrival | null;
   readonly stock: NodeStock;
   // Villagers alive and walking, gathering nothing.
   walking: number;
@@ -163,8 +166,25 @@ function isDry(state: EngineState, ref: NodeRef): boolean {
   return isDepleted(state.stock, ref as FiniteNodeRef);
 }
 
+function createdByOf(state: EngineState, ref: NodeRef): string | undefined {
+  return state.data.base.gatherNodes[nodeKindOf(ref)].createdBy;
+}
+
+// One gatherer per built instance of the node's createdBy building; Infinity for a node no building creates.
+function slotsAt(state: EngineState, ref: NodeRef): number {
+  const createdBy = createdByOf(state, ref);
+  return createdBy === undefined ? Infinity : (state.buildings.get(createdBy) ?? 0);
+}
+
 function availableAt(state: EngineState, ref: NodeRef): number {
   return state.gatherers[ref] + state.idle[ref];
+}
+
+function waitForSlot(state: EngineState, ref: NodeRef, count: number): void {
+  if (count > 0) {
+    state.idle[ref] += count;
+    state.farmIdle = addIdleArrival(state.farmIdle, state.time, count);
+  }
 }
 
 // Every arrival at a ref goes through here.
@@ -172,17 +192,39 @@ export function assignGatherers(state: EngineState, ref: NodeRef, count: number)
   if (isDry(state, ref)) {
     state.idle[ref] += count;
     recordIdleArrival(state.stock, ref as FiniteNodeRef, state.time, count);
-  } else {
-    state.gatherers[ref] += count;
+    return;
+  }
+  const fits = Math.min(count, slotsAt(state, ref) - state.gatherers[ref]);
+  state.gatherers[ref] += fits;
+  waitForSlot(state, ref, count - fits);
+}
+
+// Gatherers first, then idle ones; at a building-created node idle ones first, so a villager idles there only while
+// every slot is taken.
+function sendWalking(state: EngineState, ref: NodeRef, count: number): void {
+  const fromIdle = createdByOf(state, ref) === undefined ? count - Math.min(count, state.gatherers[ref]) : Math.min(count, state.idle[ref]);
+  state.idle[ref] -= fromIdle;
+  state.gatherers[ref] -= count - fromIdle;
+  state.walking += count;
+}
+
+function fillSlots(state: EngineState, baseId: string): void {
+  for (const ref of NODE_REFS) {
+    if (createdByOf(state, ref) === baseId) {
+      const promoted = Math.min(state.idle[ref], slotsAt(state, ref) - state.gatherers[ref]);
+      state.idle[ref] -= promoted;
+      state.gatherers[ref] += promoted;
+    }
   }
 }
 
-// Gatherers first, then idle ones.
-function sendWalking(state: EngineState, ref: NodeRef, count: number): void {
-  const gathering = Math.min(count, state.gatherers[ref]);
-  state.gatherers[ref] -= gathering;
-  state.idle[ref] -= count - gathering;
-  state.walking += count;
+// Runs once the starting buildings are added, so the slots are the starting instances.
+function capStartGatherers(state: EngineState): void {
+  for (const ref of NODE_REFS) {
+    const excess = Math.max(0, state.gatherers[ref] - slotsAt(state, ref));
+    state.gatherers[ref] -= excess;
+    waitForSlot(state, ref, excess);
+  }
 }
 
 function isVillagerProducer(state: EngineState, baseId: string): boolean {
@@ -389,6 +431,7 @@ function completeConstruction(state: EngineState, job: Construction, completesAt
   const { entry } = job;
   constructing.splice(constructing.findIndex((item) => item.baseId === entry.baseId && item.completesAt === completesAt), 1);
   const built = addBuildingInstance(state, entry.baseId);
+  fillSlots(state, entry.baseId);
   state.rules.onBuildingComplete?.(state, { ...ruleContext(state), baseId: entry.baseId, instance: built.instance });
   if (entry.age === state.age && isLandmark(entry)) {
     state.age += 1;
@@ -598,7 +641,7 @@ function houseGateOpen(engine: Engine): boolean {
   return last === null || engine.steps[last].startedAt !== null;
 }
 
-// Reads gatherers only: idle villagers never build houses.
+// The source is picked by gatherers only; at a building-created node, startConstruction takes waiting idle villagers first.
 function houseBuilderSource(engine: Engine): NodeRef | undefined {
   const { gatherers, inputs } = engine;
   if (gatherers[inputs.houseBuilderSource] >= inputs.houseBuilders) {
@@ -801,6 +844,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     heldRallies: new Map(),
     gatherers,
     idle,
+    farmIdle: null,
     stock: createNodeStock(runOrderRefs, inputs),
     walking: 0,
     population: 0,
@@ -835,6 +879,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
   engine.spawnedPopulation = aliveVillagers(engine) + startUnitPopulation(data, start.units.value);
   noteCapReached(engine);
   start.buildings.value.forEach((baseId) => addBuildingInstance(engine, baseId));
+  capStartGatherers(engine);
   return engine;
 }
 
@@ -988,7 +1033,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
   });
   const nodeResults = depletionResults(engine.stock);
   const stuck = engine.steps.filter((timing) => timing.status === 'waiting').map((timing) => stepStuckWarning(timing, engine));
-  const warnings = sortWarnings([...nodeResults.warnings, ...stuck, ...houseWarnings(engine)]);
+  const warnings = sortWarnings([...nodeResults.warnings, ...stuck, ...houseWarnings(engine), ...farmIdleWarnings(engine.farmIdle)]);
   const { depletions } = nodeResults;
   return {
     civ: order.civ,

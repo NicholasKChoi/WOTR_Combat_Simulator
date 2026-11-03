@@ -3,6 +3,11 @@ import { formatMinSec } from './format-time';
 import { FINITE_GATHER_NODES, FINITE_NODE_REFS } from './model';
 import type { BuildOrder, FiniteNodeRef, NodeDepletion, NodeRef, SimWarning } from './model';
 
+export interface IdleArrival {
+  at: number;
+  idleVillagers: number;
+}
+
 export interface RefStock {
   // null is infinite.
   amount: number | null;
@@ -10,7 +15,7 @@ export interface RefStock {
   depletedAt: number | null;
   // Idle count at the end of the run-out instant.
   idleAtRunOut: number;
-  idleArrival: { at: number; idleVillagers: number } | null;
+  idleArrival: IdleArrival | null;
 }
 
 export type NodeStock = Map<FiniteNodeRef, RefStock>;
@@ -99,8 +104,12 @@ export function recordIdleArrival(stock: NodeStock, ref: FiniteNodeRef, at: numb
     return;
   }
   const entry = stock.get(ref)!;
-  entry.idleArrival ??= { at, idleVillagers: 0 };
-  entry.idleArrival.idleVillagers += count;
+  entry.idleArrival = addIdleArrival(entry.idleArrival, at, count);
+}
+
+// The first arrival's at is kept; idleVillagers adds up every arrival.
+export function addIdleArrival(record: IdleArrival | null, at: number, count: number): IdleArrival {
+  return { at: record?.at ?? at, idleVillagers: (record?.idleVillagers ?? 0) + count };
 }
 
 function villagers(count: number): string {
@@ -130,6 +139,22 @@ function idleArrivalWarning(ref: FiniteNodeRef, at: number, idle: number): SimWa
   };
 }
 
+export function farmIdleWarnings(record: IdleArrival | null): SimWarning[] {
+  if (record === null) {
+    return [];
+  }
+  const { at, idleVillagers } = record;
+  return [
+    {
+      code: 'farm-idle',
+      severity: 'warning',
+      message: `${villagers(idleVillagers)} arrived at farm from ${formatMinSec(at)} on with no free farm and ${idleVillagers === 1 ? 'waits' : 'wait'} idle until one is built.`,
+      at,
+      idleVillagers,
+    },
+  ];
+}
+
 export function depletionResults(stock: NodeStock): { depletions: NodeDepletion[]; warnings: SimWarning[] } {
   const depletions: NodeDepletion[] = [];
   const warnings: SimWarning[] = [];
@@ -149,9 +174,12 @@ export function depletionResults(stock: NodeStock): { depletions: NodeDepletion[
   return { depletions, warnings: sortWarnings(warnings) };
 }
 
-// At one instant: node warnings by FINITE_NODE_REFS order, node-depleted before idle-arrival, then step-stuck by step,
-// then the auto-house warnings by step, auto-houses-never-start before auto-houses-held.
+// At one instant: node warnings by FINITE_NODE_REFS order, node-depleted before idle-arrival, then farm-idle, then
+// step-stuck by step, then the auto-house warnings by step, auto-houses-never-start before auto-houses-held.
 function tieRank(warning: SimWarning): number[] {
+  if (warning.code === 'farm-idle') {
+    return [0, FINITE_NODE_REFS.length, 0];
+  }
   if (warning.code === 'step-stuck') {
     return [1, warning.step, 0];
   }
