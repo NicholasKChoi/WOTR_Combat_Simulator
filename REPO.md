@@ -122,7 +122,13 @@ active milestone's design.
   or extract it instead (past copies drifted, e.g. two resource tolerances with different values).
 - Check every engine rule change against `docs/aoe4-build-order.md`; a doc sentence the diff leaves
   contradicted by the code is blocking.
-- For chart changes, load the page at 1280px wide and check that axis labels and tick labels do not overlap.
+- For UI changes, screenshot each touched UI state at 360x760, 768 and 1280px wide and look at them. A
+  highlight or error state must change something visible, not just an attribute. Sticky or fixed
+  elements must leave at least 60% of a 360x760 viewport. Messages must read as plain sentences.
+- For layout and chart changes, check the page at 390, 700 and 1280px wide: no horizontal overflow, and
+  no overlapping axis, tick or marker labels.
+- Don't mix Bootstrap `d-*`, `flex-*` or spacing utilities with module CSS on the same element (the
+  utilities are `!important` and override it). Build conditional classNames with `cn`, not template literals.
 
 ### Starcraft helper
 Paths: `pages/apps/starcraft-helper.js`. Design doc: `docs/starcraft-helper.md` (pending ticket).
