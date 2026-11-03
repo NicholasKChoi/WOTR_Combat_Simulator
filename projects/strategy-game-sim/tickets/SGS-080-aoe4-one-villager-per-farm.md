@@ -138,67 +138,67 @@ stateDiagram-v2
 Cases use the unit-test run helper of `lib/aoe4-build-order/simulate.test.ts`, and name `farmRate` as the per-villager
 food rate `gatherRatesOf` gives a farm at the case's data.
 
-- [ ] (respec 2) No request field, option or flag turns the rule off: `git diff --exit-code origin/main --
+- [x] (respec 2) No request field, option or flag turns the rule off: `git diff --exit-code origin/main --
   lib/aoe4-build-order/schema.ts` exits 0, and
   `diff <(git show origin/main:docs/api/openapi.json | jq -S '.components.schemas | {SimulateRequest,BuildOrder,BuildStart,BuildStep,Trigger,SimInputOverrides,TripInputOverrides}') <(jq -S '.components.schemas | {SimulateRequest,BuildOrder,BuildStart,BuildStep,Trigger,SimInputOverrides,TripInputOverrides}' docs/api/openapi.json)`
   prints nothing.
-- [ ] Zero farms: `start -> farm` with no `build farm` step: `gatherRates.food` is 0 at every sample, `result.warnings`
+- [x] Zero farms: `start -> farm` with no `build farm` step: `gatherRates.food` is 0 at every sample, `result.warnings`
   has exactly one `farm-idle` warning with `at` the first arrival and the exact message for its count, e.g.
   `3 villagers arrived at farm from 0:50 on with no free farm and wait idle until one is built.` for three arrivals,
   `1 villager arrived at farm from 0:50 on with no free farm and waits idle until one is built.` for one. Catches: the
   old behavior (full rate, no warning).
-- [ ] One farm, three villagers: after one farm completes, `gatherers.farm` is 1, `idle.farm` is 2 and food income is
+- [x] One farm, three villagers: after one farm completes, `gatherers.farm` is 1, `idle.farm` is 2 and food income is
   `1 * farmRate`, not `3 * farmRate`. When a second farm completes, income steps to `2 * farmRate` at the completion
   instant (the waiting villagers are promoted). Catches: no cap; promotion missing (income stays at 1x forever).
-- [ ] `idleVillagers` adds up arrivals: two separate arrivals of 1 and 2 villagers with no free farm give one warning
+- [x] `idleVillagers` adds up arrivals: two separate arrivals of 1 and 2 villagers with no free farm give one warning
   with `idleVillagers: 3` and `at` the first arrival. Villagers promoted later are still counted. Catches: one warning
   per arrival; counting only the last.
-- [ ] Move order: with 1 farm, `gatherers.farm` 1 and `idle.farm` 1, `move 1 from farm to wood` leaves `gatherers.farm`
+- [x] Move order: with 1 farm, `gatherers.farm` 1 and `idle.farm` 1, `move 1 from farm to wood` leaves `gatherers.farm`
   1 and `idle.farm` 0 and wood gets the arrival; income at the farm is unchanged. Catches: taking the gatherer first,
   which drops income while a villager still idles.
-- [ ] Builders: `build farm from wood then farm` with `builders: 1` and no other farmer: the builder gathers at the farm
+- [x] Builders: `build farm from wood then farm` with `builders: 1` and no other farmer: the builder gathers at the farm
   the instant it completes (`gatherers.farm` 1, no `farm-idle` warning). With `builders: 3` and one farm: 1 gathers,
   2 idle, one warning with `idleVillagers: 2`. Catches: the slots read before `addBuildingInstance`.
-- [ ] (respec 2) Start state: with `withStart` setting `start.buildings` to hold 2 `farm` entries and
+- [x] (respec 2) Start state: with `withStart` setting `start.buildings` to hold 2 `farm` entries and
   `start.villagers.farm = 4` (as `simulate.acceptance.test.ts` overrides the civ starting villagers), the run starts
   with `gatherers.farm` 2 and `idle.farm` 2, population unchanged, and one `farm-idle` warning with `at` 0 and
   `idleVillagers: 2`; with 4 farm entries there is no warning. The same cap applies when the 2 farms come from a
   `rules.startingState` override instead of the civ data. Catches: capping only runtime arrivals; counting
   `state.buildings` before the starting buildings are added (always 0, so all 4 would idle); reading the civ start
   instead of the override's result.
-- [ ] (respec 2) Auto-house builders at a farm (`houseBuilderSource: 'farm'`, `houseBuilders: 2`, auto-houses on):
+- [x] (respec 2) Auto-house builders at a farm (`houseBuilderSource: 'farm'`, `houseBuilders: 2`, auto-houses on):
   with 3 starting farms and 4 starting farmers (`gatherers.farm` 3, `idle.farm` 1), the first auto-house takes its
   builders from `farm`, leaving `gatherers.farm` 2 and `idle.farm` 0 while it builds; when the builders return,
   `gatherers.farm` is 3 and `idle.farm` 1 and the `farm-idle` warning's `idleVillagers` is 2. With 0 starting farms,
   2 idle farmers and no gatherers at any other ref, no auto-house starts while that holds. Catches: builders taken
   gatherers-first (leaves `gatherers.farm` 1, `idle.farm` 1); `houseBuilderSource` counting idle villagers (a house
   starts in the second case).
-- [ ] A farm is the only slotted node: villagers at `wood`, `gold` and `sheep` are unchanged, and a depleted ref still
+- [x] A farm is the only slotted node: villagers at `wood`, `gold` and `sheep` are unchanged, and a depleted ref still
   gives builders gatherers first; `data.acceptance` / `gather.test.ts` rate cases are unchanged.
-- [ ] Population: idle farmers count in `at N vils` triggers and in `spawnedPopulation` (a `villagers` trigger with
+- [x] Population: idle farmers count in `at N vils` triggers and in `spawnedPopulation` (a `villagers` trigger with
   farmers idle fires at the same time as before the change).
-- [ ] The slots come from `gatherNodes.farm.createdBy` in `rules/base.json`: no `'farm'` string literal is added to
+- [x] The slots come from `gatherNodes.farm.createdBy` in `rules/base.json`: no `'farm'` string literal is added to
   `simulate.ts` (`git grep -c "'farm'" lib/aoe4-build-order/simulate.ts` is 0 today and stays 0), and no helper or
   field in the change is named `capacity`. (respec 2)
-- [ ] (respec 2) Warning order: a `sortWarnings` case in `depletion.test.ts` with, at one instant, a `step-stuck`, a
+- [x] (respec 2) Warning order: a `sortWarnings` case in `depletion.test.ts` with, at one instant, a `step-stuck`, a
   `farm-idle`, an `idle-arrival` for `stone` and a `node-depleted` for `sheep` (given in that order) returns
   `node-depleted`, `idle-arrival`, `farm-idle`, `step-stuck`. Catches: `farm-idle` falling through to the node branch
   (`indexOf` of `undefined` is -1, so it would sort first).
-- [ ] `docs/api/openapi.json` has the `farm-idle` variant with fields `code`, `severity`, `message`, `at`,
+- [x] `docs/api/openapi.json` has the `farm-idle` variant with fields `code`, `severity`, `message`, `at`,
   `idleVillagers`, `additionalProperties: false`, `info.version` `2.2.0` (respec 2), and the existing OpenAPI /
   contract acceptance (`acceptance/aoe4-simulate-api-contract.spec.ts`) passes with a run that returns it.
-- [ ] (respec 1) Docs listed in Scope 4 describe the rule and the warning; none still says a farm holds one villager
+- [x] (respec 1) Docs listed in Scope 4 describe the rule and the warning; none still says a farm holds one villager
   without saying it is enforced, and none still says auto-house builders are never taken from idle villagers
   (respec 2); the idle-waiting behavior is worded as a simulation rule, not as AoE4 game behavior (no doc says the
   game makes villagers wait for a farm). A warning-text example in the docs matches the message format above.
-- [ ] Every test edited under Scope 5 is listed in the report with the reason; the 1800 s shipped-build digests are
+- [x] Every test edited under Scope 5 is listed in the report with the reason; the 1800 s shipped-build digests are
   re-pinned and nothing else about those tests changes.
-- [ ] (respec 2) On this branch `npx tsc --noEmit` and `npm run lint:dup` pass, and `npm test` passes except
+- [x] (respec 2) On this branch `npx tsc --noEmit` and `npm run lint:dup` pass, and `npm test` passes except
   shipped-build assertions that fail only because the shipped builds still have idle farmers. Each such failure is
   listed in the report by file and test name with its reason, and is not loosened, skipped or re-pinned; the manager
   folds the list into SGS-081. Every other test passes. At the top of the SGS-080 + SGS-081 stack, `npm test` passes
   in full.
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
