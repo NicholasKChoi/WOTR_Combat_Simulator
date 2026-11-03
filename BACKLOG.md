@@ -61,3 +61,9 @@ pull from here; triage moves an item into a milestone or deletes it.
 - Run with an invalid build: Run simulation stays enabled while the text has issues, and clicking it does nothing (no POST, no message). Disable it with a reason, or focus the issue list on click. Reported by the post-M4 end-to-end pass.
 - Workbench tabs (`workbench-tabs.tsx`): no arrow-key navigation (WAI-ARIA tabs pattern expects Left/Right and roving tabindex). Reported by the post-M4 end-to-end pass.
 - Chart marker labels: on the Knight/Longbow build the research labels between 10:00 and 17:00 stack into a tall dense column above the plot (legible but crowded); consider collapsing same-category markers or labelling on hover. Reported by the post-M4 end-to-end pass.
+- **One farm per farmer (AoE4 sim).** The engine does not tie farmers to farms: any number of villagers rallied, moved or
+  reacted to `farm` gather at full rate with no farm built (checked 2026-11-02 with `start -> farm` and zero farms, no
+  warning). A `build farm` step only costs 37 wood and 6 s of one villager. Model one villager per farm (farmers beyond
+  the farms built wait or go idle, with a warning), so delaying farms with longer hunting (sheep, deer, boar, berries)
+  saves real wood and can be measured. Every prebuilt build rallies to `farm` without one farm per farmer, so all four
+  need re-tuning and their pinned digests re-pinning. (owner, 2026-11-02)
