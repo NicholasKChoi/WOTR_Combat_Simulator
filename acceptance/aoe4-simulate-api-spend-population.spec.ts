@@ -67,7 +67,7 @@ test.describe('spent on the prebuilt English build', () => {
   })
 
   test('ends at the snapshot costs of the research and buildings it started, whole auto-houses, and each continuous producer paid one unit ahead', async ({ request }) => {
-    const body = await simulate(request, { buildOrder: english1tc, inputs: { nodeAmounts: INFINITE_NODES } })
+    const body = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 1000, nodeAmounts: INFINITE_NODES } })
     const started = english1tc.steps.filter((_, i) => body.steps[i].startedAt !== null)
     const sumOf = (action: string, key: 'building' | 'tech') =>
       started.filter((s) => s.action === action).reduce((sum, s) => sum + costOf((s as unknown as Record<string, string>)[key]), 0)
@@ -81,7 +81,10 @@ test.describe('spent on the prebuilt English build', () => {
     // The continuous orders pay one unit ahead of the spawned count, so the end is within one queued unit.
     const produced = (baseId: string) => finalCount(body, baseId) * costOf(baseId)
     expect(last(body.spent.villagers)).toBe(produced('villager') + costOf('villager'))
-    expect(last(body.spent.military)).toBe(produced('spearman') + produced('longbowman') + costOf('spearman') + costOf('longbowman'))
+    const producers = (building: string) => started.filter((s) => s.action === 'build' && (s as unknown as Record<string, string>).building === building).length
+    expect(last(body.spent.military)).toBe(
+      produced('spearman') + produced('longbowman') + costOf('spearman') * producers('barracks') + costOf('longbowman') * producers('archery-range'),
+    )
   })
 
   test('counts a payment made at exactly a sample time in that sample and a paid, unspawned villager only in spent', async ({ request }) => {
@@ -139,7 +142,7 @@ test.describe('spawnedPopulation and populationCapReachedAt', () => {
   })
 
   test('is null while the population cap is never reached', async ({ request }) => {
-    const body = await simulate(request, { buildOrder: english1tc })
+    const body = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 1000 } })
     expect(Math.max(...body.spawnedPopulation)).toBeLessThan(200)
     expect(body.populationCapReachedAt).toBeNull()
   })

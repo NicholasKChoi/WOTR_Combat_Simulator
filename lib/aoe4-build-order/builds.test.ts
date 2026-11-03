@@ -5,9 +5,10 @@ import { loadGameData } from './data'
 import { nodeKindOf } from './model'
 import type { NodeRef } from './model'
 import { formatBuildOrderText, parseBuildOrderText } from './parse-text'
+import { MAX_FLOATING_AT_1200, PRODUCTION_FLOORS } from './production-floors'
 import { buildOrderCatalog, checkBuildOrder, resolveSimInputs } from './schema'
 import { simulateBuildOrder } from './simulate'
-import { countAt, ENGLISH, inputsFor } from './test-helpers'
+import { countAt, ENGLISH, inputsFor, sampleIndex } from './test-helpers'
 
 const BUILDS_DIR = new URL('../../data/aoe4-build-order/builds/', import.meta.url)
 const OWNER_BUILD_SOURCE = 'https://aoe4guides.com/builds/reinDv5vkVX6KUny571E'
@@ -71,6 +72,20 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         expect(result.steps.filter((s) => s.status === 'waiting')).toEqual([])
         expect(result.steps.filter((s) => !build.steps[s.step].reaction && s.startedAt === null)).toEqual([])
         expect(result.steps.filter((s) => s.status === 'not-reached' && s.waitingOn !== 'trigger')).toEqual([])
+    })
+
+    it('meets its production floors and keeps its floating resources under the cap at 1200 s', () => {
+        const floors = PRODUCTION_FLOORS[build.name]
+        expect(floors, 'production floors for the build').toBeDefined()
+        const result = simulateTo(1200)
+        const i = sampleIndex(result, 1200)
+        for (const [unit, floor] of [['villager', floors.villager], ...Object.entries(floors.military)] as [string, number][]) {
+            expect(countAt(result, unit, 1200), unit).toBeGreaterThanOrEqual(floor)
+        }
+        expect(result.gatherRates.food[i], 'food per minute').toBeGreaterThanOrEqual(floors.foodPerMinute)
+        for (const resource of ['food', 'wood', 'gold', 'stone'] as const) {
+            expect(result.floating[resource][i], `floating ${resource}`).toBeLessThanOrEqual(MAX_FLOATING_AT_1200)
+        }
     })
 
     it.each([1200, 1800, 3600])('leaves no villager waiting for a farm by %i s', (horizon) => {

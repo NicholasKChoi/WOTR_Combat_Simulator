@@ -278,7 +278,7 @@ describe('default amounts', () => {
     it('keeps every ENG 1TC start time', () => {
         const starts = (inputs: unknown) => runEng({ durationSeconds: 3600, ...(inputs as object) }).steps.map((s) => s.startedAt)
         const shipped = starts({})
-        expect(shipped).toHaveLength(25)
+        expect(shipped).toHaveLength(41)
         expect(shipped.every((t) => t !== null)).toBe(true)
         const infinite = starts({ nodeAmounts: INFINITE_NODES })
         expect(infinite.slice(0, -1)).toEqual(shipped.slice(0, -1))

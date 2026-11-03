@@ -5,10 +5,10 @@ import { postSimulate } from './helpers'
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
 const GOLD_NODES = ['gold', 'gold#2', 'gold#3']
-const MAN_AT_ARMS_STEP = 24
+const MAN_AT_ARMS_STEP = 35
 // The step arms at the landmark and starts after it, once resources allow.
-const CASTLE_LANDMARK_SECONDS = 757
-const MAN_AT_ARMS_START_SECONDS = 767.6367192366768
+const CASTLE_LANDMARK_SECONDS = 681
+const MAN_AT_ARMS_START_SECONDS = 696.4094792663907
 
 type Result = {
   steps: { step: number; status: string; armedAt: number | null; startedAt: number | null; waitBreakdown?: { resources?: number } }[]

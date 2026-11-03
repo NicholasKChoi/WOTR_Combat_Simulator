@@ -41,7 +41,7 @@ test.describe('pinned timelines', () => {
     expectTiming(body.steps[2], { startedAt: 45, completedAt: 70, waitSeconds: 5 })
     expectTiming(body.steps[4], { startedAt: 143.56666666666663, completedAt: 262.5666666666666, waitSeconds: 83.56666666666663 })
     expect(body.ages).toEqual([{ age: 1, reachedAt: 0 }, { age: 2, reachedAt: expect.closeTo(262.5666666666666, 6) }])
-    expect(['villager', 'spearman', 'longbowman'].map((id) => finalCount(body, id))).toEqual([57, 51, 50])
+    expect(['villager', 'spearman', 'longbowman'].map((id) => finalCount(body, id))).toEqual([50, 77, 66])
   })
 
   test('researches that wait on resources start at the pinned instants and the floating bank ends at the pinned values', async ({ request }) => {
@@ -60,12 +60,12 @@ test.describe('pinned timelines', () => {
     expectTiming(body.steps[22], { startedAt: 461.01536958786636, completedAt: 521.0153695878664, waitSeconds: 24.075222661396595 })
     expectTiming(body.steps[23], { startedAt: 508.3666666666666, completedAt: 581.0153695878664, waitSeconds: 47.35129707880026 })
     const appended = english1tc.steps.length
-    expectTiming(body.steps[appended], { startedAt: 589.4333333333333, completedAt: 621.8190476190476, waitSeconds: 81.06666666666666 })
-    expectTiming(body.steps[appended + 1], { startedAt: 711.0333333333333, completedAt: 801.0333333333333, waitSeconds: 121.60000000000002 })
+    expectTiming(body.steps[appended], { startedAt: 663.79070191445, completedAt: 689.4337376804352, waitSeconds: 0 })
+    expectTiming(body.steps[appended + 1], { startedAt: 711.0333333333334, completedAt: 801.0333333333334, waitSeconds: 47.242631418883434 })
     expect(body.steps[appended + 2]).toMatchObject({ status: 'waiting', startedAt: null })
     const last = <T,>(series: T[]) => series[series.length - 1]
-    expect(last<number>(body.floating.food)).toBeCloseTo(618.3789316586852, 6)
-    expect(last<number>(body.floating.wood)).toBeCloseTo(3269.775976995086, 6)
+    expect(last<number>(body.floating.food)).toBeCloseTo(2265.5487109294777, 6)
+    expect(last<number>(body.floating.wood)).toBeCloseTo(32.0282953026499, 6)
     expect(last<number>(body.floating.gold)).toBeCloseTo(242.9497986659074, 6)
     expect(last<number>(body.floating.stone)).toBe(0)
   })

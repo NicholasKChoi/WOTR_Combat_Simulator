@@ -258,10 +258,10 @@ test.describe('the prebuilt English build against the pre-depletion engine', () 
     const result = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 1200, nodeAmounts: INFINITE_NODES } })
     noDepletion(result)
 
-    expect(last(result.floating.food)).toBeCloseTo(400.1852203506393, 6)
+    expect(last(result.floating.food)).toBeCloseTo(3362.1519434319575, 6)
     expect(result.gatherRates.food[52]).toBeCloseTo(116.59414409921604, 6)
-    expect(last(result.gatherRates.food)).toBeCloseTo(523.6100713570142, 6)
-    expect(last(result.floating.wood)).toBeCloseTo(8506.4628655923, 6)
+    expect(last(result.gatherRates.food)).toBeCloseTo(995.7918852029113, 6)
+    expect(last(result.floating.wood)).toBeCloseTo(1744.3669834624384, 6)
     expect(last(result.floating.gold)).toBeCloseTo(853.1661184210515, 6)
   })
 

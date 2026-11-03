@@ -445,8 +445,8 @@ test.describe('the default English 1TC build with default amounts', () => {
     const ownSteps = (r: typeof finite) => r.steps.slice(0, STARTED_AT.length).map((s) => s.startedAt)
     expect(ownSteps(finite)).toEqual(ownSteps(infinite))
     for (const [index, startedAt] of STARTED_AT.entries()) expect(finite.steps[index].startedAt).toBeCloseTo(startedAt, 9)
-    expect(finite.steps).toHaveLength(STARTED_AT.length + 1)
-    expect(infinite.steps[STARTED_AT.length].startedAt).toBeNull()
+    expect(finite.steps).toHaveLength(english1tc.steps.length)
+    expect(infinite.steps.at(-1)?.startedAt).toBeNull()
   })
 
   test('runs the sheep out at 782.85 s with six villagers idle and never touches berry, deer, boar or stone', async ({ request }) => {

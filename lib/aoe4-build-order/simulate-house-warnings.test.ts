@@ -159,9 +159,9 @@ describe('timing with the auto-house warnings', () => {
     })
 
     it.each([
-        ['ENG 1TC', 'e7f2436b024f722f', null],
+        ['ENG 1TC', 'c1b3ee597d0a715f', null],
         // Re-pinned for the house lead-time rule: the King's Palace supply lands after the lead time, so it no longer counts toward headroom.
-        ['ENG Spear/Longbow into MAA/Crossbow', 'ff99aa3c294f415f', null],
+        ['ENG Spear/Longbow into MAA/Crossbow', '813cdb5546b36b2a', null],
         ["ENG Knight/Longbow (King's Palace)", 'afa35f19e9a258a6', { step: 23, at: 461.81904761904764, seconds: 21.236012345678944 }],
     ])('leaves every field of %s at 1800 s but warnings and gathered as it was', (name, pinned, held) => {
         const build = listBuilds().find((b) => b.name === name)!
