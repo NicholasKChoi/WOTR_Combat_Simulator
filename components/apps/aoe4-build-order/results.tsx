@@ -1,9 +1,12 @@
+import cn from 'classnames'
+
 import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
 import { resultMessages } from './messages'
 import { InfoMessages, WarningMessages } from './message-lists'
 import { StepTimeline } from './step-timeline'
 import { SeriesChart } from './line-chart'
 import { resourceSeries, unitSeries } from './result-series'
+import styles from './workbench.module.css'
 
 interface ResultsProps {
     result: SimulationResult
@@ -19,7 +22,7 @@ export function Results({ result, pinned, text, stale, infoExpanded, onInfoToggl
     return (
         <div>
             {stale ? (
-                <div data-testid="results-stale" role="status" className="alert alert-warning">
+                <div data-testid="results-stale" role="status" className={cn(styles.stale, 'alert alert-warning')}>
                     These results are from an earlier build or duration. Run again to update.
                 </div>
             ) : null}

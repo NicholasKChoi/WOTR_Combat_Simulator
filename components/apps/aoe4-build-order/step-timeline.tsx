@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
+import cn from 'classnames'
+
 import type { StepTiming } from '../../../lib/aoe4-build-order/model'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
+import styles from './results.module.css'
 import { formatStepTime, timelineRows, type TimelineRow } from './step-timeline-rows'
 
 const finishedText = (row: TimelineRow): string => (row.status === 'in-progress' ? 'ongoing' : formatStepTime(row.completedAt))
@@ -14,8 +17,8 @@ export function StepTimeline({ steps, text }: StepTimelineProps) {
     const rows = useMemo(() => timelineRows(steps, text), [steps, text])
     if (rows.length === 0) return null
     return (
-        <div data-testid="step-timeline-scroll" className="mb-3 overflow-x-auto">
-            <table data-testid="step-timeline" className="table table-sm">
+        <div data-testid="step-timeline-scroll" className={cn(styles.scrollBox, 'mb-3')}>
+            <table data-testid="step-timeline" className={cn(styles.scrolledTable, 'table table-sm')}>
                 <caption className="caption-top">Step timeline</caption>
                 <thead>
                     <tr>

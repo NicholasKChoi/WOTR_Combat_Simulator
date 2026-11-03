@@ -1,5 +1,8 @@
+import cn from 'classnames'
+
 import { CHART_MARKER_KINDS, type ChartMarker } from '../../../lib/aoe4-build-order/model'
 import { type ChartSeries, MARKER_COLORS, MARKER_KIND_LABELS, type PinnedSeries, legendItems } from './chart-rows'
+import styles from './results.module.css'
 
 interface SeriesLegendProps {
     series: readonly ChartSeries[]
@@ -10,7 +13,7 @@ interface SeriesLegendProps {
 
 export function SeriesLegend({ series, pinned, hidden, onToggle }: SeriesLegendProps) {
     return (
-        <div className="small mb-2" data-testid="chart-series-legend">
+        <div className={cn(styles.legend, 'small mb-2')} data-testid="chart-series-legend">
             <h4 className="h6 mb-1">Series</h4>
             <div className="d-flex flex-wrap gap-2">
                 {legendItems(series, pinned).map((item) => (
@@ -40,7 +43,7 @@ export function MarkerLegend({ markers, pinnedAgeUps = false }: { markers: reado
     const kinds = CHART_MARKER_KINDS.filter((kind) => markers.some((m) => m.kind === kind))
     if (kinds.length === 0 && !pinnedAgeUps) return null
     return (
-        <div className="small mb-3 pt-2 border-top" data-testid="chart-marker-legend">
+        <div className={cn(styles.legend, 'small mb-3 pt-2 border-top')} data-testid="chart-marker-legend">
             <h4 className="h6 mb-1">Markers</h4>
             <ul className="list-inline mb-0">
                 {kinds.map((kind) => (

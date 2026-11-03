@@ -47,7 +47,7 @@ export function BuildInput({ builds, selected, onSelectedChange, onTextChange, d
                 onRun()
             }}
         >
-            <div>
+            <div className={styles.runField}>
                 <label htmlFor="build-order-select">Prebuilt build</label>
                 <select
                     id="build-order-select"
@@ -61,7 +61,7 @@ export function BuildInput({ builds, selected, onSelectedChange, onTextChange, d
                     ))}
                 </select>
             </div>
-            <div>
+            <div className={styles.runField}>
                 <label htmlFor="duration-seconds">Duration (seconds)</label>
                 <input
                     type="number"

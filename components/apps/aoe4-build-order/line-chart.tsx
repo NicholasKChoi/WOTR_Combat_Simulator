@@ -14,6 +14,7 @@ import {
     toggleHidden,
 } from './chart-rows'
 import { MarkerLegend, SeriesLegend } from './chart-legend'
+import styles from './results.module.css'
 
 const LABEL_LINE_HEIGHT = 14
 const LABEL_CHAR_PX = 8
@@ -93,7 +94,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const rows = placed.reduce((max, p) => Math.max(max, p.row + 1), 0)
 
     return (
-        <div data-testid={testId} data-label-rows={rows}>
+        <div data-testid={testId} data-label-rows={rows} className={styles.chart}>
             <h3 className="h5">{title}</h3>
             <ResponsiveContainer width="100%" height={360} onResize={(width) => setChartWidth(width)}>
                 <LineChart

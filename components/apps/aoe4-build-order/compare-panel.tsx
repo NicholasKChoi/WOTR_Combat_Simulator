@@ -1,6 +1,10 @@
+import cn from 'classnames'
+
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
 import { type CompareRow, type KeyValue, compareRows, keyNumbers } from './compare'
+import results from './results.module.css'
+import workbench from './workbench.module.css'
 
 interface ComparePanelProps {
     current: SimulationResult | null
@@ -41,7 +45,7 @@ export function ComparePanel({ current, pinned, pinnedName, alreadyPinned, onPin
                 Unpin
             </button>
             {pinned !== null && pinnedName !== null ? (
-                <span data-testid="pinned-label" className="ms-3">
+                <span data-testid="pinned-label" className={cn(workbench.pinnedLabel, 'ms-3')}>
                     Pinned: {pinnedName}, {formatMinSec(pinned.durationSeconds)}
                 </span>
             ) : null}
@@ -54,8 +58,8 @@ function CompareTable({ current, pinned }: { current: SimulationResult; pinned: 
     const rows = compareRows(keyNumbers(current), keyNumbers(pinned))
     if (rows.length === 0) return <p data-testid="compare-empty" className="mt-3">Nothing to compare yet</p>
     return (
-        <div data-testid="compare-scroll" className="mt-3 overflow-x-auto">
-            <table data-testid="compare-key-numbers" className="table table-sm">
+        <div data-testid="compare-scroll" className={cn(results.scrollBox, 'mt-3')}>
+            <table data-testid="compare-key-numbers" className={cn(results.scrolledTable, 'table table-sm')}>
                 <thead>
                     <tr>
                         <th>Key number</th>

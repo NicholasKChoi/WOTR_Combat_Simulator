@@ -41,3 +41,24 @@
     resize: none;
     white-space: pre;
 }
+
+.runField {
+    min-width: 0;
+}
+
+@media (max-width: 767.98px) {
+    .runField {
+        flex: 1 1 100%;
+    }
+
+    .runField select,
+    .runField input {
+        width: 100%;
+    }
+}
+
+.issues,
+.stale,
+.pinnedLabel {
+    overflow-wrap: anywhere;
+}

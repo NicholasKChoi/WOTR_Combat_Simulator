@@ -1,0 +1,20 @@
+.scrollBox {
+    overflow-x: auto;
+}
+
+.scrolledTable {
+    min-width: 30rem;
+}
+
+.chart {
+    min-width: 0;
+}
+
+.legend {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.messages {
+    overflow-wrap: anywhere;
+}
