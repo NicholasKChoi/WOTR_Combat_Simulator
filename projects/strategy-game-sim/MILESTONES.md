@@ -106,3 +106,14 @@ small code-cleanup backlog bullets stay in the backlog).
 | M4.12 | Pin and compare: results show as stale when the build or duration changes after a run; the pin names its build and duration; Pin is disabled when the current run is already pinned; the pin survives a page reload; the pinned run's age-up markers show dashed; a key number past the shorter run's duration says why it is blank | code | SGS-069, 070, 071, 072 | done |
 | M4.13 | Mobile: at 390 px wide the page has no horizontal scroll; steps render as cards and wide tables scroll inside their own box | code | SGS-073 | done |
 | M4.14 | `docs/aoe4-build-order.md` and `docs/api/openapi.json` cover the changes and pass the contract check; Playwright covers the new layout, the inline error, the info list, pin persistence and the 390 px width | code | SGS-074 | done |
+
+## M5 (proposed; exit criteria not yet confirmed)
+
+Scope the owner chose in the 2026-11-02 plan, for `milestone M5` to turn into exit criteria:
+
+- Drafts SGS-076 (timeline beside charts), SGS-077 (gathered resources chart), SGS-078 (timeline in time
+  order, coloured by step type), SGS-079 (prebuilt build docs state choices, not results).
+- Doc cleanup: docs state behavior only, no measured values (owner, 2026-11-02; SGS-079 covers only
+  `data/aoe4-build-order/README.md` today, so confirm whether it widens to every doc).
+- Backlog clusters, as planner required outlines: post-M4 UX fixes, flaky acceptance specs, one farm per
+  farmer, engine code cleanups.

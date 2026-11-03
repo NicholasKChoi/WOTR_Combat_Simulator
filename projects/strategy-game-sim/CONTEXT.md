@@ -51,32 +51,7 @@ None.
 
 ## Decisions
 
-- AoE4 interface (owner, 2026-10-30): a web page in v1, backed by `POST /api/aoe4-build-order/simulate`
-  (chosen in the M2 design, owner-approved 2026-10-30; documented in `docs/api/openapi.json`).
-- WOTR N: default 1000 battles, maximum 100,000 (owner, 2026-10-28).
-- WOTR rules: the published game's combat-dice cap (5) and leadership-reroll cap are genuine rules and
-  must be implemented. The fixed casualty order is intentional: it stands in for the human player's
-  choice of losses.
-- WOTR inputs: an army is capped at 10 units in total. A side starting with 0 units is invalid.
-- WOTR caps: regulars + elites <= 10 per side; leaders do not count toward it and are capped at 5.
-  Leader rerolls = min(misses, leaders, 5), so a side scores at most 5 hits per round.
-- WOTR casualties: with more than 5 units and 0 regulars, a hit downgrades an elite to a regular.
-- WOTR outcomes: attacker win / defender win / tie (both eliminated) frequencies; rounds mean, median,
-  p10, p90; surviving units as the winning side's distribution of (regulars, elites) combinations, kept
-  separate; hits per round as each side's distribution of hit counts 0-5 (share of all rounds with each count).
-- `/api/fight` response carries results only, not the submitted armies; the page shows its own form values.
-- JSON field names for the response are set by the Monte Carlo ticket; the design doc describes the
-  statistics' meaning without naming fields, and the OpenAPI spec copies the names from the code.
-- Malformed JSON keeps Next's plain-text 400 for now; the OpenAPI spec notes the exception.
-- WOTR departures confirmed (owner, 2026-10-28): fight to elimination, no combat cards, no sieges or
-  sorties, attacker labeled Shadow and defender Free.
-- WOTR survivor shares: each (regulars, elites) combination's frequency is out of that side's wins
-  (owner, 2026-10-28).
-- Testing: WOTR battle logic moves to `lib/combat-simulator/` (per ARCHITECTURE.md) and is unit-tested
-  directly with a new unit test runner. The runner is its own ticket; tickets that unit-test logic depend on it.
-- WOTR time budget: N = 100,000 completes within 10 seconds.
-- Error responses: `{ error: string }` with 400 or 405, accepted for now.
-- API documentation: an OpenAPI (Swagger) JSON spec in the repo that agents can read with `jq`.
+None.
 
 ## Out of scope
 
