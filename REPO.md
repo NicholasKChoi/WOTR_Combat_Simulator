@@ -61,6 +61,7 @@ staging:
 questionResearch: medium          # none | low | medium | high: how much research the manager runs on
                                   #   each owner decision question before asking it (manage.md
                                   #   "Owner questions")
+schemaLibrary: zod                # validation library (added with the AoE4 build schema)
 humanReviewSignal: undraft
 prAuthor: "@me"
 ---
