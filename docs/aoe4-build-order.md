@@ -9,7 +9,7 @@ states the rule; the code and its tests implement it.
 The simulator plays an *Age of Empires IV* build order step by step for the English civilization: villager
 production, gathering, construction, research and age-ups. It returns one deterministic result per build
 order and data set: when each step started and finished and why it waited, series over time of units
-produced, gather rates, floating resources, spending and population, chart markers for age-ups and research,
+produced, gather rates, resources gathered, floating resources, spending and population, chart markers for age-ups and research,
 and warnings and notes. English is the only civilization; other civilizations are a later extension
 through the seams in Extension points.
 
@@ -660,6 +660,7 @@ flowchart LR
   simulate --> result["SimulationResult"]
   result --> units["graph: units produced"]
   result --> rates["graph: gather rates"]
+  result --> gathered["graph: gathered resources"]
   result --> floating["graph: floating resources"]
 ```
 
@@ -708,6 +709,8 @@ A `SimulationResult` holds:
   series starts at 0.
 - `gatherRates`: per `ResourceKind` (`food`, `wood`, `gold`, `stone`), the income rate per minute.
 - `floating`: per `ResourceKind`, the banked, unspent amount.
+- `gathered`: per `ResourceKind`, the cumulative amount gathered since t=0; starting resources are not counted,
+  and it never decreases.
 - `spent`: per spend category (`villagers`, `military`, `buildings`, `research`), the cumulative resources
   paid, food, wood, gold and stone summed. `villagers` is villager production, `military` any other unit,
   `buildings` every construction including auto-houses, `research` every technology.
@@ -760,8 +763,8 @@ A `SimulationResult` holds:
   `idle-arrival` for one node, then `step-stuck` by step index, then `auto-houses-never-start` and
   `auto-houses-held` by step, never-start first. See Severity.
 
-The page draws three graphs over time from it, with the chart markers (see Page; the warnings are lists beside them): units produced (by
-unit and tier), gather rates, and floating resources. `spent` and `populationCapReachedAt` feed the compare
+The page draws four graphs over time from it, with the chart markers (see Page; the warnings are lists beside them): units produced (by
+unit and tier), gather rates, gathered resources, and floating resources. `spent` and `populationCapReachedAt` feed the compare
 table, and `spawnedPopulation` has no graph.
 
 The life of one non-reaction step is shown below. The diagram is conceptual: its states are not values in
@@ -866,12 +869,13 @@ whole seconds); clearing an optional number field omits it, while an empty or in
 field leaves the step as it was. Bounds are checked on Run, not in the table. Editing while a run is in flight
 does not change the result shown.
 
-A 200 draws three line charts, each with a series legend titled "Series" (one toggle button per series):
+A 200 draws four line charts, each with a series legend titled "Series" (one toggle button per series):
 
 | chart | series keys | series names |
 |---|---|---|
 | Units produced | each `unitsProduced` `unitId`, in result order | `<name> (tier <tier>)` |
 | Gather rates (per minute) | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
+| Gathered resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking

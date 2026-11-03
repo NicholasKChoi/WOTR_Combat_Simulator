@@ -7,6 +7,7 @@ import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
 const CATEGORIES = ['villagers', 'military', 'buildings', 'research'] as const
+const RESOURCE_KINDS = ['food', 'wood', 'gold', 'stone'] as const
 
 test.describe.configure({ timeout: 60_000 })
 
@@ -15,6 +16,7 @@ type Step = { startedAt: number | null }
 type Body = {
   times: number[]
   spent: Record<(typeof CATEGORIES)[number], number[]>
+  gathered: Record<(typeof RESOURCE_KINDS)[number], number[]>
   spawnedPopulation: number[]
   populationCapReachedAt: number | null
   unitsProduced: Series[]
@@ -108,6 +110,19 @@ test.describe('spent on the prebuilt English build', () => {
     expect(last(body.spent.buildings) % costOf('house')).toBe(0)
     expect(last(body.spent.military)).toBe(0)
     expect(last(body.spent.research)).toBe(0)
+  })
+})
+
+test.describe('gathered on the prebuilt English build', () => {
+  test('has the four resource kinds, aligned to times, starting at 0 and never decreasing', async ({ request }) => {
+    const body = await simulate(request, { buildOrder: english1tc })
+    expect(Object.keys(body.gathered).sort()).toEqual([...RESOURCE_KINDS].sort())
+    for (const kind of RESOURCE_KINDS) {
+      const series = body.gathered[kind]
+      expect(series, kind).toHaveLength(body.times.length)
+      expect(series[0], kind).toBe(0)
+      series.forEach((value, i) => expect(value, `${kind}[${i}]`).toBeGreaterThanOrEqual(series[i - 1] ?? 0))
+    }
   })
 })
 

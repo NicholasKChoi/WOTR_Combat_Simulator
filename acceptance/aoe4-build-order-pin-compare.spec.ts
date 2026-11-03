@@ -7,8 +7,8 @@ import { INVALID_PASTE, SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys
 const DASH = '—'
 const MINUS = '−'
 const NOT_REACHED = 'not reached'
-const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-floating-resources'] as const
-const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-floating-resources'] as const
+const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
+const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
 
@@ -53,7 +53,7 @@ test.describe('AoE4 build order pin and compare', () => {
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
   })
 
-  test('pinned lines are dashed in the current series colour while current lines are solid, in all three charts', async ({ page }) => {
+  test('pinned lines are dashed in the current series colour while current lines are solid, in every chart', async ({ page }) => {
     await openPage(page)
     const first = await runOk(page, { duration: 300 })
     await pin(page)

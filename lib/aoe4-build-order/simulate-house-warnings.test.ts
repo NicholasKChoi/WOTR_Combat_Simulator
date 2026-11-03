@@ -152,7 +152,7 @@ describe('auto-house warnings together', () => {
 })
 
 describe('timing with the auto-house warnings', () => {
-    // Digests of every field but warnings; the warnings must leave them unchanged.
+    // Digests of every field but warnings and gathered; the warnings must leave them unchanged.
     it('leaves the late-house run as it was before the warnings', () => {
         const { spawnedPopulation, spent, steps, populationCapReachedAt, depletions, markers } = lateHouse()
         expect(digest({ spawnedPopulation, spent, steps, populationCapReachedAt, depletions, markers })).toBe('67af1a20a5434d6f')
@@ -163,9 +163,9 @@ describe('timing with the auto-house warnings', () => {
         // Re-pinned for the house lead-time rule: the King's Palace supply lands after the lead time, so it no longer counts toward headroom.
         ['ENG Spear/Longbow into MAA/Crossbow', 'a0105e4a512765a0', null],
         ["ENG Knight/Longbow (King's Palace)", '46f521f50e92ca03', { step: 23, at: 461.81904761904764, seconds: 21.236012345678944 }],
-    ])('leaves every field of %s at 1800 s but warnings as it was', (name, pinned, held) => {
+    ])('leaves every field of %s at 1800 s but warnings and gathered as it was', (name, pinned, held) => {
         const build = listBuilds().find((b) => b.name === name)!
-        const { warnings, ...rest } = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1800 }))
+        const { warnings, gathered, ...rest } = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1800 }))
         expect(digest(rest)).toBe(pinned)
         const auto = warnings.filter((w) => w.code.startsWith('auto-houses'))
         expect(auto).toEqual(held ? [expect.objectContaining({ code: 'auto-houses-held', ...held })] : [])

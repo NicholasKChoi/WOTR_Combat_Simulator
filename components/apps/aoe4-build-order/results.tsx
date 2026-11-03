@@ -55,6 +55,16 @@ export function Results({ result, pinned, text, landmarks, stale, infoExpanded, 
                         pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.gatherRates) } : undefined}
                     />
                     <SeriesChart
+                        testId="chart-gathered-resources"
+                        title="Gathered resources"
+                        yLabel="Resources"
+                        times={result.times}
+                        markers={result.markers}
+                        series={resourceSeries(result.gathered)}
+                        pinnedMarkers={pinned?.markers}
+                        pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.gathered) } : undefined}
+                    />
+                    <SeriesChart
                         testId="chart-floating-resources"
                         title="Floating resources"
                         yLabel="Resources"

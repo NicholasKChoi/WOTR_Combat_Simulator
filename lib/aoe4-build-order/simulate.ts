@@ -123,6 +123,7 @@ interface ScheduledEvent {
 }
 
 interface Engine extends EngineState {
+  readonly gathered: Resources;
   // Instant spawnedPopulation first reached data.base.maxPopCap.
   populationCapReachedAt: number | null;
   // Sorted by time; ties keep schedule order.
@@ -706,10 +707,13 @@ function creditIncome(engine: Engine, rateOf: RefRate, seconds: number): void {
   const unstocked = incomePerSecond(engine, rateOf, (ref) => !hasStock(engine, ref));
   for (const kind of RESOURCE_KINDS) {
     engine.resources[kind] += unstocked[kind] * seconds;
+    engine.gathered[kind] += unstocked[kind] * seconds;
   }
   const drawn = drawDown(engine.stock, engine.gatherers, rateOf, seconds);
   for (const ref of engine.stock.keys()) {
-    engine.resources[engine.data.base.gatherNodes[nodeKindOf(ref)].resource] += drawn[ref] ?? 0;
+    const kind = engine.data.base.gatherNodes[nodeKindOf(ref)].resource;
+    engine.resources[kind] += drawn[ref] ?? 0;
+    engine.gathered[kind] += drawn[ref] ?? 0;
   }
 }
 
@@ -787,6 +791,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     time: 0,
     age: start.age.value,
     resources: { ...start.resources.value },
+    gathered: { food: 0, wood: 0, gold: 0, stone: 0 },
     buildings: new Map(),
     researched: new Set(),
     researchedIds: new Set(),
@@ -943,6 +948,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
   const times = sampleTimes(inputs.durationSeconds);
   const gatherRates = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
   const floating = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
+  const gathered = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
   const spent: Record<SpendCategory, number[]> = { villagers: [], military: [], buildings: [], research: [] };
   const spawnedPopulation: number[] = [];
   let sample = 0;
@@ -958,6 +964,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
       for (const kind of RESOURCE_KINDS) {
         gatherRates[kind].push(income[kind] * SECONDS_PER_MINUTE);
         floating[kind].push(engine.resources[kind]);
+        gathered[kind].push(engine.gathered[kind]);
       }
       for (const category of Object.keys(spent) as SpendCategory[]) {
         spent[category].push(engine.spent[category]);
@@ -991,6 +998,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     unitsProduced: unitSeries(engine, times),
     gatherRates,
     floating,
+    gathered,
     spent,
     spawnedPopulation,
     populationCapReachedAt: engine.populationCapReachedAt,

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Strategy Game Simulator API",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "description": "HTTP API of the strategy game simulator site."
   },
   "paths": {
@@ -393,6 +393,68 @@
                       100,
                       100,
                       100
+                    ],
+                    "stone": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ]
+                  },
+                  "gathered": {
+                    "food": [
+                      0,
+                      18.526142445450798,
+                      37.052284890901596,
+                      55.57842733635239,
+                      74.10456978180319,
+                      92.630712227254,
+                      114.24454508027992,
+                      135.85837793330586,
+                      157.4722107863318,
+                      179.08604363935774,
+                      200.69987649238368,
+                      222.31370934540962,
+                      243.92754219843556
+                    ],
+                    "wood": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      2.5835342748880468,
+                      5.1670685497760935,
+                      7.75060282466414
+                    ],
+                    "gold": [
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
                     ],
                     "stone": [
                       0,
@@ -1633,6 +1695,7 @@
           "unitsProduced",
           "gatherRates",
           "floating",
+          "gathered",
           "steps",
           "ages",
           "notes",
@@ -1763,6 +1826,51 @@
                   "minimum": 0
                 },
                 "description": "Banked amount of this resource at each sample."
+              }
+            }
+          },
+          "gathered": {
+            "type": "object",
+            "description": "Cumulative amount of each resource gathered up to each sample; starting resources are excluded.",
+            "required": [
+              "food",
+              "wood",
+              "gold",
+              "stone"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "food": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Cumulative amount of this resource gathered up to each sample."
+              },
+              "wood": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Cumulative amount of this resource gathered up to each sample."
+              },
+              "gold": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Cumulative amount of this resource gathered up to each sample."
+              },
+              "stone": {
+                "type": "array",
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "description": "Cumulative amount of this resource gathered up to each sample."
               }
             }
           },
