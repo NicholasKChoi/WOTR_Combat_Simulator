@@ -47,6 +47,9 @@ rule (SGS-073) holds. Started and Finished cells get `white-space: nowrap` and t
 | `economy` | `action: 'move'`, `'rally'`, `'pause'` | Economy |
 | `other` | the parsed step is missing (the label is `step N`) | none |
 
+The row builder takes no age argument: a landmark from a later age than the current one still gets `age-up`, though the
+engine would not advance (its `entry.age === state.age` check). This is accepted; do not add an age argument.
+
 Use the same villager id the engine and catalog already use; do not hard-code a new string if one is exported.
 `timelineRows` takes the catalog (or just `landmarks` and the villager id) as a new argument; `Results` already has
 no catalog, so the page passes `catalog` to `Results` and `Results` passes what `StepTimeline` needs.
@@ -54,8 +57,9 @@ no catalog, so the page passes `catalog` to `Results` and `Results` passes what 
 **3. Catalog `landmarks`.** Move `LANDMARK_CLASS` out of `lib/aoe4-build-order/simulate.ts` into a module both the
 engine and `schema.ts` can import (e.g. `lib/aoe4-build-order/landmarks.ts`, exporting `LANDMARK_CLASS` and
 `isLandmark(entry)`); the engine keeps its behavior. `BuildOrderCatalog` gains `landmarks: string[]`: the base ids of
-building entries whose `classes` match `LANDMARK_CLASS`, sorted. For English this includes `abbey-of-kings`,
-`council-hall` and `kings-palace` (confirm the full list from the data and name it in the unit test).
+building entries whose `classes` match `LANDMARK_CLASS`, sorted. For English this is exactly
+`abbey-of-kings`, `berkshire-palace`, `council-hall`, `kings-palace`, `the-white-tower`, `wynguard-palace` (sorted);
+the catalog unit test pins all six.
 
 **4. Colours.** Each row gets `data-kind="<kind>"` and a CSS module class for its kind: a 4 px coloured left border on
 the first cell plus a small text badge with the kind label at the start of the Step cell (so the type is not shown by
@@ -63,7 +67,9 @@ colour alone). Suggested palette, with Bootstrap 5 variables so it works on the 
 age-up `--bs-primary` (also bold Step text), research `--bs-info`, military `--bs-danger`, villager `--bs-success`,
 building `--bs-secondary`, economy `--bs-gray-400`, other none. The existing yellow `table-warning` background for
 flagged and long-wait rows stays and is independent of the kind colour (border and badge still show on a yellow row).
-Add a one-line legend under the caption listing the kinds and their colours, `data-testid="step-timeline-legend"`.
+Add a legend listing the kinds and their colours as a `div` above the table (a table cannot hold it between caption and
+thead), `data-testid="step-timeline-legend"`. It uses `flex-wrap: wrap` so six items fit at 390 px without horizontal
+overflow. Its acceptance check is visibility, not two sequential `boundingBox` reads.
 
 **5. Tests.**
 - Unit (`step-timeline-rows.test.ts`): one case per kind, including a landmark build → `age-up`, a non-landmark build
@@ -73,7 +79,9 @@ Add a one-line legend under the caption listing the kinds and their colours, `da
   `['Started', 'Finished', 'Step', 'Waited', 'Blocked by']`. Every spec that reads timeline cells by position
   (`acceptance/aoe4-build-order-timeline-compare.spec.ts` lines 46–57 and any other `step-timeline-row` … `td.nth(n)`
   found with `git grep -n "step-timeline" acceptance`) is repointed to the new positions (Started 0, Finished 1, Step
-  2, Waited 3, Blocked by 4); the expected values do not change. The PR lists each edited line. Compare-panel rows
+  2, Waited 3, Blocked by 4); the expected values do not change. Known edits: in
+  `acceptance/aoe4-build-order-timeline-compare.spec.ts`, `td.nth(1)` and `td.nth(2)` at lines 47-48 become `nth(0)`
+  and `nth(1)`; the `nth(4)` calls at lines 49 and 57 stay, and so does `nth(4)` at `aoe4-build-order.spec.ts:637`. The PR lists each edited line. Compare-panel rows
   (`compare-*`, lines 68–91) are a different table and do not change.
 - New acceptance check (in the timeline-compare spec): for the knight + longbow prebuilt, the row for the
   `kings-palace` build step has `data-kind="age-up"`, a `research` row has `data-kind="research"`, and
@@ -91,14 +99,15 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] The timeline header reads Started | Finished | Step | Waited | Blocked by, and cell values are unchanged.
-- [ ] Every row has a `data-kind` from the table above; unit tests cover each kind.
-- [ ] `catalog.landmarks` is derived from the data via the shared `LANDMARK_CLASS`; the engine's age-up behavior and tests are unchanged.
-- [ ] Each kind shows a coloured left border and a text badge; `table-warning` still applies to flagged and long-wait rows.
-- [ ] `step-timeline-legend` lists the kinds.
+- [x] The timeline header reads Started | Finished | Step | Waited | Blocked by, and cell values are unchanged.
+- [x] Every row has a `data-kind` from the table above; unit tests cover each kind.
+- [x] `catalog.landmarks` is derived from the data via the shared `LANDMARK_CLASS`; the engine's age-up behavior and tests are unchanged.
+- [x] Each kind shows a coloured left border and a text badge; `table-warning` still applies to flagged and long-wait rows.
+- [x] `step-timeline-legend` is a div above the table, lists the kinds, wraps, and is visible; the 390 px spec passes unchanged.
+- [x] Catalog unit test: English `landmarks` equals the six ids above; a later-age landmark build maps to `age-up` in the row builder.
 - [ ] Existing specs that read cells by position are repointed with unchanged expected values, listed in the PR; the full unit and acceptance suites pass, including the 390 px spec.
-- [ ] `docs/aoe4-build-order.md` describes the column order and kinds.
-- [ ] No INVARIANTS.md regressions
+- [x] `docs/aoe4-build-order.md` describes the column order and kinds.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 

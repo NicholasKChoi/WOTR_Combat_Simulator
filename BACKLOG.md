@@ -67,3 +67,7 @@ pull from here; triage moves an item into a milestone or deletes it.
   the farms built wait or go idle, with a warning), so delaying farms with longer hunting (sheep, deer, boar, berries)
   saves real wood and can be measured. Every prebuilt build rallies to `farm` without one farm per farmer, so all four
   need re-tuning and their pinned digests re-pinning. (owner, 2026-11-02)
+- data/aoe4-build-order/README.md Prebuilt builds (knight entry): says "Three explicit houses are built before the King's Palace ... the third of these (step 24)", but english-knight-longbow.json has explicit houses at steps 2, 8, 22, 23, 24. Wording predates SGS-079; found by SGS-079 review.
+- **Whole-result digest pins break on every new result field** (AoE4 sim): `lib/aoe4-build-order/simulate-house-warnings.test.ts` hashes the whole simulate result minus named keys, so any additive field (SGS-077 `gathered`) changes all three pins and needs an exclusion or a re-pin. Consider digesting named fields only, as `acceptance/aoe4-simulate-api-house-lead-time.spec.ts` does. Reported by SGS-077 implementer and spec-gate 3.
+- No acceptance case covers SGS-076 criterion 1, that both results-split columns render when `steps` is empty. The markup is unconditional today (components/apps/aoe4-build-order/results.tsx). From the SGS-076 review.
+- Chart tooltips show raw floats such as "Food : 92.630712227254" in the Floating resources and Gathered resources charts. The cause is the shared chart component under components/apps/aoe4-build-order/, not one chart. From the SGS-077 review.
