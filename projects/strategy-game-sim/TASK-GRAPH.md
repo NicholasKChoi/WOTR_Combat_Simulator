@@ -61,3 +61,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-075 | Re-point importers, delete the hand-rolled validator and swap the route to the zod checks | M4 | M4.1 | | high | SGS-057 | | sgs-075-aoe4-delete-validate-route-check | 7037d48 | integrated | | 71 | tickets/SGS-075-aoe4-delete-validate-route-check.md |
 | SGS-076 | Show the step timeline beside the charts on wide screens | | | | low | | SGS-077 | sgs-076-aoe4-timeline-beside-charts | | draft | | | tickets/SGS-076-aoe4-timeline-beside-charts.md |
 | SGS-077 | Add a cumulative gathered resources series and chart | | | | standard | | SGS-076 | sgs-077-aoe4-gathered-resources-chart | | draft | | | tickets/SGS-077-aoe4-gathered-resources-chart.md |
+| SGS-078 | Step timeline reads in time order and colour-codes rows by step type | | | | low | | SGS-076 | sgs-078-aoe4-timeline-started-first-type-colors | | draft | | | tickets/SGS-078-aoe4-timeline-started-first-type-colors.md |
