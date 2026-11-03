@@ -63,6 +63,11 @@ questionResearch: medium          # none | low | medium | high: how much researc
                                   #   "Owner questions")
 schemaLibrary: zod                # validation library (added with the AoE4 build schema)
 humanReviewSignal: undraft
+autoMerge:
+  maxMergeRisk: high              # owner 2026-11-03: auto-merge every PR that clears the gates, any merge risk
+  requireChecks: true             # wait for the Vercel preview check
+  method: squash
+  admin: true                     # solo repo; main requires a review the owner can't give themselves
 prAuthor: "@me"
 ---
 
