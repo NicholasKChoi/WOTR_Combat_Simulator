@@ -8,7 +8,7 @@ import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult, StepTiming } from './model'
 import { FINITE_GATHER_NODES } from './model'
 import { SAMPLE_SECONDS, accrueWait, addBuildingInstance, simulateBuildOrder, stepHandlers } from './simulate'
-import type { BuildingInstance, EngineState, RallySource } from './simulate'
+import type { BuildingInstance, EngineState, RallySource, StepStart } from './simulate'
 import { ENGLISH, INFINITE_NODES, at, buildOrder, countAt, editGameData, inputsFor, run, sampleIndex, series, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
@@ -489,9 +489,26 @@ describe('produce waits', () => {
     })
 
     it('waits while the population would pass supply, without a reserve', () => {
-        const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(45) }], { inputs: { autoHouses: false } })
+        const produce = stepHandlers.produce!
+        const outcomes: StepStart[] = []
+        let result!: SimulationResult
+        withHandler(
+            'produce',
+            (step, index, s) => {
+                const outcome = produce(step, index, s)
+                outcomes.push(outcome)
+                return outcome
+            },
+            () => {
+                result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(45) }], { inputs: { autoHouses: false } })
+            },
+        )
         expect(result.steps[0].status).toBe('waiting')
-        expect(result.floating.food[sampleIndex(result, 50)]).toBeGreaterThan(65)
+        const blocked = outcomes.filter((o) => o.started === false && o.waitingOn === 'population')
+        expect(blocked).not.toHaveLength(0)
+        for (const outcome of blocked) {
+            expect(outcome).not.toHaveProperty('reserve')
+        }
     })
 })
 
@@ -658,6 +675,62 @@ describe('game data drives the run', () => {
             parts.base.gatherNodes.sheep.rate.value = 0.5
         })
         expect(run([], { game: slow }).gatherRates.food[0]).toBeCloseTo(6 * (10 / (10 / 0.5 + 2.86)) * 60, 9)
+    })
+})
+
+describe('invalid engine input', () => {
+    type VillagerCosts = { food: number; gold: number; popcap: number; time: number }
+    const withVillagerCosts = (costs: Partial<VillagerCosts>, edit: (parts: Parts) => void = () => {}) =>
+        editGameData((parts) => {
+            const villager = (parts.snapshot.units as unknown as { id: string; costs: VillagerCosts }[]).find((u) => u.id === 'villager-1')
+            Object.assign(villager!.costs, costs)
+            edit(parts)
+        })
+    const zeroSpeed = editGameData((parts) => {
+        parts.civData.effects.push({ property: 'productionSpeed', select: { id: ['villager'] }, effect: 'multiply', value: 0, type: 'passive', grantedBy: 'civ', source: 'test', unverified: true })
+    })
+    const timeMessage = (got: string) => `production time for "villager" at "capital-town-center" must be a positive finite number, got ${got}`
+
+    it.each([
+        ['time 0, auto houses', { game: withVillagerCosts({ time: 0 }), inputs: { autoHouses: true } }, '0'],
+        ['time 0, no auto houses', { game: withVillagerCosts({ time: 0 }), inputs: { autoHouses: false } }, '0'],
+        ['free instant villager, auto houses', { game: withVillagerCosts({ time: 0, food: 0, gold: 0, popcap: 0 }), inputs: { autoHouses: true } }, '0'],
+        ['free instant villager, no auto houses', { game: withVillagerCosts({ time: 0, food: 0, gold: 0, popcap: 0 }), inputs: { autoHouses: false } }, '0'],
+        ['productionModifier 0', { rules: { productionModifier: () => 0 } }, '0'],
+        ['productionModifier -5', { rules: { productionModifier: () => -5 } }, '-5'],
+        ['productionModifier NaN', { rules: { productionModifier: () => NaN } }, 'NaN'],
+        ['productionSpeed multiply 0', { game: zeroSpeed }, 'Infinity'],
+    ])('rejects a unit production time that is not a positive finite number: %s', (_, options, got) => {
+        expect(() => run([], options)).toThrow(new Error(timeMessage(got)))
+    })
+
+    it('checks the production time of an ordered villager that is never paid while auto houses plan supply', () => {
+        const game = withVillagerCosts({ time: 0 }, (parts) =>
+            withStart(parts, (start) => {
+                start.resources.value.food = 0
+            }),
+        )
+        const start: BuildStart = { rally: 'sheep', villagers: {} }
+        expect(() => run([], { game, start, inputs: { autoHouses: true } })).toThrow(new Error(timeMessage('0')))
+        expect(run([], { game, start, inputs: { autoHouses: false } }).unitsProduced).toEqual([])
+    })
+
+    it.each([
+        ['the town center with no start rally', {}, 'capital-town-center'],
+        [
+            'a villagerProducer hook with no start rally',
+            {
+                game: editGameData((parts) =>
+                    withStart(parts, (start) => {
+                        start.buildings.value = ['capital-town-center', 'mill']
+                    }),
+                ),
+                rules: { villagerProducer: (_: boolean, ctx: { baseId: string }) => ctx.baseId === 'mill' },
+            },
+            'mill',
+        ],
+    ])('rejects a villager spawn with no rally: %s', (_, options, building) => {
+        expect(() => run([], { ...options, start: {} as BuildStart })).toThrow(new Error(`building "${building}" instance 1 spawned a villager but has no rally`))
     })
 })
 

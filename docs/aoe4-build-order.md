@@ -273,7 +273,9 @@ cycle, not task switches.
   status is `completed`. Its `walkSeconds` applies to the walk of every villager it routes.
 - Same-instant order is in Ordering and triggers.
 - The validation rules in Issues guarantee a rally is in effect whenever a villager spawns, so the engine
-  reports no rally error.
+  reports no rally error. If a villager spawns at a building instance with no rally anyway (an order that
+  skipped validation, or a `villagerProducer` hook that makes a building a producer when there is no
+  `start.rally`), the engine throws an `Error` naming the building and instance.
 
 **Construction.** Build time with N builders = base build time x 3 / (N + 2), the `builderScaling`
 numerator 3 and offset 2 in `rules/base.json`:
@@ -1000,6 +1002,12 @@ every hook as `rules.hook?.(...) ?? default`, so an absent hook leaves the defau
 after a landmark moves the age, in the order given in Ages and landmarks. English needs
 none: `civRules('english')` returns `NO_CIV_RULES`, a frozen `{}`. English bonuses that the data can
 express, such as the farm bonus and the King's Palace bonus, are `OverlayEffect` rows, not hooks.
+
+`productionModifier` must return a positive finite number for a unit. When a unit's production time
+(`costs.time`, divided by `productionSpeed`, then passed through `productionModifier`) is not a positive
+finite number, the engine throws an `Error` naming the unit and the producer. The check runs when the
+unit's production starts and when auto houses estimate supply demand, which covers every unit an instance
+holds an unfinished order for, even one not yet paid. Technology and upgrade times are not checked.
 
 ## Extension points
 
