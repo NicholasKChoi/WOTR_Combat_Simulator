@@ -20,7 +20,6 @@ import {
     firstUnusedStartNode,
     hasOptionalField,
     insertStep,
-    moveFlag,
     moveStep,
     offersEmptyChoice,
     openFlags,
@@ -340,13 +339,13 @@ export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange
                                             </option>
                                         ))}
                                     </select>
-                                    <ActionFields step={step} options={catalog} expanded={open[index] ?? false} onToggle={() => setOpen(index, !open[index])} onEdit={edit} />
+                                    <ActionFields step={step} options={catalog} expanded={open[index]} onToggle={() => setOpen(index, !open[index])} onEdit={edit} />
                                 </td>
                                 <td className="text-nowrap">
-                                    <button type="button" data-testid="step-move-up" aria-label="Move up" className="btn btn-sm btn-outline-secondary me-1" disabled={index === 0} onClick={() => commit(moveStep(steps, index, -1), moveFlag(open, index, -1))}>
+                                    <button type="button" data-testid="step-move-up" aria-label="Move up" className="btn btn-sm btn-outline-secondary me-1" disabled={index === 0} onClick={() => commit(moveStep(steps, index, -1), moveStep(open, index, -1))}>
                                         {'\u25B2'}
                                     </button>
-                                    <button type="button" data-testid="step-move-down" aria-label="Move down" className="btn btn-sm btn-outline-secondary me-1" disabled={index === steps.length - 1} onClick={() => commit(moveStep(steps, index, 1), moveFlag(open, index, 1))}>
+                                    <button type="button" data-testid="step-move-down" aria-label="Move down" className="btn btn-sm btn-outline-secondary me-1" disabled={index === steps.length - 1} onClick={() => commit(moveStep(steps, index, 1), moveStep(open, index, 1))}>
                                         {'\u25BC'}
                                     </button>
                                     <button type="button" data-testid="step-delete" aria-label="Delete step" className="btn btn-sm btn-outline-danger" onClick={() => commit(deleteStep(steps, index), deleteFlag(open, index))}>

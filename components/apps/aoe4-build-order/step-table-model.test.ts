@@ -18,7 +18,6 @@ import {
     hasOptionalField,
     insertStep,
     mergeExternalEdit,
-    moveFlag,
     moveStep,
     nodeLabel,
     offersEmptyChoice,
@@ -417,13 +416,13 @@ describe('open flags', () => {
     const withRally: BuildStep = { ...plain, rally: 'sheep' }
 
     it('moves a flag with its row', () => {
-        expect(moveFlag([true, false, false], 0, 1)).toEqual([false, true, false])
-        expect(moveFlag([false, false, true], 2, -1)).toEqual([false, true, false])
+        expect(moveStep([true, false, false], 0, 1)).toEqual([false, true, false])
+        expect(moveStep([false, false, true], 2, -1)).toEqual([false, true, false])
     })
 
     it('leaves the flags when the move is out of range', () => {
-        expect(moveFlag([true, false], 0, -1)).toEqual([true, false])
-        expect(moveFlag([true, false], 1, 1)).toEqual([true, false])
+        expect(moveStep([true, false], 0, -1)).toEqual([true, false])
+        expect(moveStep([true, false], 1, 1)).toEqual([true, false])
     })
 
     it('deletes only the removed row flag', () => {
