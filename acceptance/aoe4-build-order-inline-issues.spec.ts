@@ -9,6 +9,9 @@ const issues = (page: Page) => page.getByTestId('build-order-issue')
 const UNKNOWN_ID_PASTE = ['start -> sheep', 'produce knigt from stable'].join('\n')
 const VALID_PASTE = ['start -> sheep', 'produce knight from stable'].join('\n')
 const TWO_UNKNOWN_IDS = ['start -> sheep', 'produce knigt from stable', 'produce spearmn from barracks'].join('\n')
+const SYNTAX_AND_UNKNOWN_ID_PASTE = ['start -> sheep', 'produce knigt from stable', 'build hous'].join('\n')
+const FIXED_LINE_THREE_PASTE = ['start -> sheep', 'produce knigt from stable', 'produce villager from capital-town-center x3 -> sheep'].join('\n')
+const summary = (page: Page) => page.getByTestId('build-order-issues-summary')
 const LONG_PASTE = [
   'start -> sheep',
   ...Array.from({ length: 60 }, () => 'produce villager from capital-town-center x3 -> sheep'),
@@ -79,6 +82,68 @@ test.describe('AoE4 build order live issues', () => {
     await textarea(page).fill(UNKNOWN_ID_PASTE)
     await expect(issues(page)).toHaveCount(1)
     await expect(gutterItem(page, 2)).toHaveAttribute('data-error', 'true')
+  })
+
+  test('the gutter number of an error line is bold and a different colour from a normal line', async ({ page }) => {
+    await openPage(page)
+    await textarea(page).fill(INVALID_PASTE)
+    await expect(gutterItem(page, 2)).toHaveAttribute('data-error', 'true')
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const style = (line: number) => getComputedStyle(document.querySelector(`[data-testid="build-order-line-number"][data-line="${line}"]`)!)
+          const [error, normal] = [style(2), style(1)]
+          return { errorWeight: error.fontWeight, errorDiffers: error.color !== normal.color, normalWeight: normal.fontWeight }
+        })
+      )
+      .toEqual({ errorWeight: '700', errorDiffers: true, normalWeight: '400' })
+  })
+
+  test('a syntax error lists the other lines unknown-id issues without a Run until the line parses', async ({ page }) => {
+    await openPage(page)
+    await textarea(page).fill(SYNTAX_AND_UNKNOWN_ID_PASTE)
+    await expect(issues(page)).toHaveCount(2)
+    await expect(issues(page).nth(0)).toHaveAttribute('data-code', 'unknown-id')
+    await expect(issues(page).nth(0)).toHaveAttribute('data-line', '2')
+    await expect(issues(page).nth(1)).toHaveAttribute('data-code', 'syntax')
+    await expect(issues(page).nth(1)).toHaveAttribute('data-line', '3')
+    await expect(gutterItem(page, 2)).toHaveAttribute('data-error', 'true')
+    await expect(gutterItem(page, 3)).toHaveAttribute('data-error', 'true')
+
+    await textarea(page).fill(FIXED_LINE_THREE_PASTE)
+    await expect(issues(page)).toHaveCount(0)
+    await expectNoErrorMarks(page)
+
+    await runRejected(page)
+    await expect(issues(page)).toHaveCount(1)
+    await expect(issues(page)).toHaveAttribute('data-code', 'unknown-id')
+  })
+
+  test('a rejected Run summarises the issue count, tracks edits and goes away when the Run converts', async ({ page }) => {
+    await openPage(page)
+    await textarea(page).fill(UNKNOWN_ID_PASTE)
+    await expect(summary(page)).toHaveCount(0)
+    await runRejected(page)
+    await expect(summary(page)).toHaveText('Fix 1 issue to run the simulation.')
+
+    await textarea(page).fill(TWO_UNKNOWN_IDS)
+    await expect(issues(page)).toHaveCount(2)
+    await expect(summary(page)).toHaveText('Fix 2 issues to run the simulation.')
+    await runRejected(page)
+    await expect(summary(page)).toHaveText('Fix 2 issues to run the simulation.')
+
+    await textarea(page).fill(UNKNOWN_ID_PASTE)
+    await expect(issues(page)).toHaveCount(1)
+    await expect(summary(page)).toHaveText('Fix 1 issue to run the simulation.')
+
+    await textarea(page).fill(VALID_PASTE)
+    await expect(issues(page)).toHaveCount(0)
+    await expect(summary(page)).toHaveCount(0)
+    expect((await runSimulation(page)).status()).toBe(200)
+    await showTab(page, 'build')
+    await textarea(page).fill(UNKNOWN_ID_PASTE)
+    await expect(issues(page)).toHaveCount(1)
+    await expect(summary(page)).toHaveCount(0)
   })
 
   test('a valid Run also starts the live check issues', async ({ page }) => {
