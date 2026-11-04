@@ -61,6 +61,9 @@ Paths are relative to the repo root.
    - (respec 1) Check issues returned on a parse failure have no `step` member: the index would point into
      `partial.order.steps`, which `textToBuildOrder` does not return. They keep `line`. A text that parses still
      returns `step` and `line` as today.
+     (respec 2) Decided by the owner: when a pasted line fails to parse, the check issues for the other lines drop the
+     step index, so no issue indexes into a partial order the user cannot see. This holds for every check issue
+     returned on a parse failure, whatever its rule (field, unknown id, per-step cross-field).
    - A text with no syntax error behaves as today: check issues stay hidden until the first Run (`checked` in the page).
    - Update the design doc's page paragraph ("parse issues (and the length cap) show at once, and check issues show from
      the first Run on", and "It lists every issue in check order") to say that, while any line fails to parse, the
@@ -109,33 +112,34 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] On the page, the gutter number of a line with an issue has computed `font-weight` 700 and a computed `color` different
       from a non-error line's number (case in `acceptance/aoe4-build-order-inline-issues.spec.ts`: paste `start -> sheep` and
       `at 8 vils fly capital-town-center` (INVALID_PASTE), assert both computed values on line 2 and line 1; fails if the CSS rule is absent).
-- [ ] `textToBuildOrder('start -> sheep\nproduce knigt from stable', catalog)` returns the issue message
+- [x] `textToBuildOrder('start -> sheep\nproduce knigt from stable', catalog)` returns the issue message
       `line 2: unknown unit "knigt"` with `suggestion: 'knight'`; `build hous from wood` gives `line N: unknown building "hous"`;
       `produce villager from capital-town-center -> wod` gives `line N: unknown node "wod"`.
-- [ ] `checkBuildOrder` on a JSON order (no `lines`) still returns `steps[0]: unknown unit "knigt" in unit` and
+- [x] `checkBuildOrder` on a JSON order (no `lines`) still returns `steps[0]: unknown unit "knigt" in unit` and
       `steps[2]: unknown building "nowhere" in producer`; the route's 400 messages are unchanged (unit test in `schema.test.ts`).
-- [ ] An issue with a suggestion renders as the exact `li` text `line 2: unknown unit "knigt". Did you mean knight?` and the
+- [x] An issue with a suggestion renders as the exact `li` text `line 2: unknown unit "knigt". Did you mean knight?` and the
       suggestion span's text is `Did you mean knight?`; an issue without a suggestion has no `.` appended and no suggestion span.
       (respec 1) A suggestion issue whose message already ends in punctuation is still joined by `. ` (component test row
       with a message ending in `)` and suggestion `knight`: text is `<message>. Did you mean knight?`).
-- [ ] Test case (text-to-build.test.ts): `start -> sheep\nproduce knigt from stable\nbuild hous` (line 3 fails to parse) returns
+- [x] Test case (text-to-build.test.ts): `start -> sheep\nproduce knigt from stable\nbuild hous` (line 3 fails to parse) returns
       `ok: false` with two issues in line order: `line 2: unknown unit "knigt"` (`unknown-id`, line 2, suggestion `knight`) then the
       line 3 syntax issue. It catches a regression to "parse failure hides check issues". A second row: `start -> sheep\nfly\nproduce knigt from stable\nbuild house from wod\nbuild`
       (lines 2 and 5 fail to parse, lines 3 and 4 hold unknown ids) returns all four issues, ordered by line 2, 3, 4, 5.
-      No returned check issue has a `step` member (respec 1).
-- [ ] (respec 1) Test case (text-to-build.test.ts), line-less ordering: `start -> sheep`, then 201 lines of
+      No returned check issue has a `step` member, whichever line it is on or rule raised it (respec 1, respec 2).
+- [x] (respec 1) Test case (text-to-build.test.ts), line-less ordering: `start -> sheep`, then 201 lines of
       `pause capital-town-center`, then `fly` (the last line fails to parse; the text stays under the 20,000-character cap)
       returns `ok: false` whose first issue is the step-count cap issue (`out-of-range`, no `line`, message ends
       `more than 200`) and whose next issue is the `fly` line's `syntax` issue with that line's number. It catches a merge
       that sorts line-less issues last or treats a missing line as 0 inconsistently (unstable order), and a limited
       check that drops the step-count cap.
-- [ ] Test case (text-to-build.test.ts): a text whose `start` line fails to parse and whose other lines are valid
+- [x] Test case (text-to-build.test.ts): a text whose `start` line fails to parse and whose other lines are valid
       (`start nonsense\npause capital-town-center`) returns only the `start` syntax issue; no `start: no start.rally ...` issue
       and no cross-step issue (for example a repeated `research`) appears for a text with any syntax error. Catches the limited
       check running the `start` or cross-step rules on a partial order.
-- [ ] Test case (text-to-build.test.ts): a text with a syntax error on one line and `produce longbowman from stable` on another
-      still reports `line N: stable cannot produce longbowman` (a per-step cross-field rule runs on the lines that parsed).
-- [ ] `parseBuildOrderText` on a failing text returns the same `issues` as before, plus `partial` holding only the lines that
+- [x] Test case (text-to-build.test.ts): a text with a syntax error on one line and `produce longbowman from stable` on another
+      still reports `line N: stable cannot produce longbowman` (a per-step cross-field rule runs on the lines that parsed),
+      and that issue has `line` set and no `step` member (respec 2).
+- [x] `parseBuildOrderText` on a failing text returns the same `issues` as before, plus `partial` holding only the lines that
       parsed, with `partial.lines.steps[i]` the paste line of `partial.order.steps[i]` (parse-text.test.ts, a text where the first
       step line fails so the indexes shift).
 - [ ] In the browser, pasting `start -> sheep\nproduce knigt from stable\nbuild hous` shows, without clicking Run, two issues
@@ -147,15 +151,15 @@ Single-component change outside the core control loop; no diagram required.
       (acceptance case in `acceptance/aoe4-build-order-client-check.spec.ts` or `-inline-issues.spec.ts`, using `runRejected`).
       (respec 1) After the two-issue rejected Run, an edit that fixes one issue shows exactly
       `Fix 1 issue to run the simulation.` without another Run.
-- [ ] `docs/aoe4-build-order.md` describes the new live-issue rule and its line order, the `Did you mean <id>?` text, the
+- [x] `docs/aoe4-build-order.md` describes the new live-issue rule and its line order, the `Did you mean <id>?` text, the
       omitted field name in paste messages (Node references paragraph: ` in <path>` only without a paste line), the `line`-only
       check issues on a parse failure (Issues paragraph), the limited check in the `t2b` flowchart node, and the summary line
       (respec 1); `git grep -n "did you mean <id>" docs README.md ARCHITECTURE.md` finds no match (the doc names
       `Did you mean <id>?`); `git grep -n "checkBuildOrder with lines\"\]" docs/aoe4-build-order.md` finds no match (the
       `t2b` node names both paths).
-- [ ] `npx tsc --noEmit`, `npm run lint:dup` and `npm test` pass; `npm run acceptance` passes with no test added to or edited in
+- [x] `npx tsc --noEmit`, `npm run lint:dup` and `npm test` pass; `npm run acceptance` passes with no test added to or edited in
       `acceptance/aoe4-build-order.spec.ts`.
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -167,3 +171,20 @@ disabled, because check issues only appear after the first Run, so a Run disable
 - Underspecified: where line-less issues go in the parse-failure merge, the existing-test rule for syntax-error texts that now list check issues, and three doc passages (Node references ` in <path>`, Issues paragraph, `t2b` flowchart node) that Scope 2/4 make untrue.
 - Changed: Scope 2, 3, 4, 5, 6 and criteria tagged `(respec 1)`: stable sort with line-less issues first plus a 201-step test row; check issues on a parse failure carry `line` without `step`; general test-edit rules replace the named examples; `. ` join regardless of punctuation; summary N tracks edits.
 - No branch exists yet; nothing to keep or discard.
+
+## Re-spec 2026-11-04 (2)
+
+- Underspecified: whether check issues on a parse failure keep a step index (owner answer Q11: they drop it).
+- Changed: Scope 4 states the owner decision; the step-less criterion covers every rule, and the cross-field case also asserts no `step`. The matching open question was already absent from Open questions (re-spec 1 had resolved it as step-less), so nothing to delete.
+- No branch exists yet; nothing to keep or discard.
+
+## Rework 1 - 2026-11-04 (review)
+
+Gates passed earlier: none (review-1 bounced at tip cd0493a, base fad1e41). Review report: reports/SGS-085-review-1.md.
+
+### Findings
+- `lib/aoe4-build-order/schema.ts:534,617` (also `:532`, `text-to-build.ts:25`, `schema.test.ts:248`): the exported `checkBuildOrder` option `fieldRulesOnly` still runs each step's cross-field rules; it skips only the `start` and cross-step (whole-order) rules. The docs (`docs/aoe4-build-order.md:645-649`) treat field checks and cross-field rules as separate tiers, so the name misleads.
+
+### Required fixes
+- [x] Rename the option to `skipWholeOrderRules` (or equivalent that says it skips the start and cross-step rules) everywhere it appears; rename `fieldSchemasByCatalog` to match, and retitle the `schema.test.ts` case. No behavior change.
+- [x] Rebase the branch onto current main (2a36296) and re-run tsc, lint:dup, npm test.

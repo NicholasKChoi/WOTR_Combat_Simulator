@@ -1,0 +1,1 @@
+SGS-084 rebased onto origin/main (fad1e41) in the sgs-084-aoe4-gather-rate-per-villager worktree. New tip: 94a0c7b6cfab642aba3165113a7be6aa9f8031c6 (3 commits replayed). No conflicts, including lib/aoe4-build-order/simulate.ts. `npx tsc --noEmit` is clean. `npm test` passed 47 of 47 files, 1470 tests passed and 10 skipped. Not pushed.

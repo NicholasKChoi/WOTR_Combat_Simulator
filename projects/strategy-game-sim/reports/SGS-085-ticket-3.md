@@ -1,0 +1,2 @@
+# SGS-085 ticket re-spec 3
+Folded owner answer Q11 into tickets/SGS-085-aoe4-text-editor-issue-ux.md: on a parse failure, check issues for other lines drop `step` and keep `line`. Scope 4 states the decision; the "no step member" criterion now covers every rule; the per-step cross-field criterion also asserts no `step`. No Q11 open question existed in the file (Open questions already "None blocking"), so none was deleted. Appended a Re-spec section. No runnable-command criteria were added or changed.
