@@ -8,9 +8,17 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 
 | id | title | milestone | criteria | component | risk | dependsOn | relatesTo | branch | branchTip | status | reworkCount | pr | ticket |
 |----|-------|-----------|----------|-----------|------|-----------|-----------|--------|-----------|--------|-------------|----|--------|
-| SGS-076 | Show the step timeline beside the charts on wide screens | | | | low | | SGS-077 | sgs-076-aoe4-timeline-beside-charts | cda1497 | integrated | | 86 | tickets/SGS-076-aoe4-timeline-beside-charts.md |
-| SGS-077 | Add a cumulative gathered resources series and chart | | | | high | | SGS-076 | sgs-077-aoe4-gathered-resources-chart | e9a428d | integrated | | 87 | tickets/SGS-077-aoe4-gathered-resources-chart.md |
-| SGS-078 | Step timeline reads in time order and colour-codes rows by step type | | | | low | | SGS-076 | sgs-078-aoe4-timeline-started-first-type-colors | b6daa13 | integrated | | 84 | tickets/SGS-078-aoe4-timeline-started-first-type-colors.md |
-| SGS-079 | Make the prebuilt build entries state choices and rules, not measured results | | | | low | | | sgs-079-aoe4-prebuilt-docs-no-measured-results | 7e6a085 | integrated | | 85 | tickets/SGS-079-aoe4-prebuilt-docs-no-measured-results.md |
-| SGS-080 | Hold one villager per farm in the engine | | | | high | | SGS-077 | sgs-080-aoe4-one-villager-per-farm | c8cca5f | in_review | 1 | 88 | tickets/SGS-080-aoe4-one-villager-per-farm.md |
-| SGS-081 | Re-time the farm steps of the prebuilt AoE4 builds for one villager per farm | | | | standard | SGS-080 | | sgs-081-aoe4-retune-prebuilt-farms | 0af3967 | in_review | 3 | 89 | tickets/SGS-081-aoe4-retune-prebuilt-farms.md |
+| SGS-080 | Hold one villager per farm in the engine | | | | high | | SGS-077 | sgs-080-aoe4-one-villager-per-farm | c8cca5f | integrated | 1 | 88 | tickets/SGS-080-aoe4-one-villager-per-farm.md |
+| SGS-081 | Re-time the farm steps of the prebuilt AoE4 builds for one villager per farm | | | | standard | SGS-080 | | sgs-081-aoe4-retune-prebuilt-farms | 9fd49d6 | in_review | 3 | 89 | tickets/SGS-081-aoe4-retune-prebuilt-farms.md |
+| SGS-082 | Remove the AoE4 build order UI acceptance spec | | | | low | SGS-081 | | | | draft | | | tickets/SGS-082-aoe4-remove-build-order-ui-spec.md |
+| SGS-083 | Highlight a hovered step's time span as a band on the charts | | | | low | | | | | draft | | | tickets/SGS-083-aoe4-highlight-step-span-on-charts.md |
+| SGS-084 | Add a gatherers series and a per-villager view of the Gather rates chart | | | | high | | | | | draft | | | tickets/SGS-084-aoe4-gather-rate-per-villager.md |
+| SGS-085 | Polish text editor issue reporting | | | | standard | | | | | draft | | | tickets/SGS-085-aoe4-text-editor-issue-ux.md |
+| SGS-086 | Fit the AoE4 workbench to phone screens and make its tabs keyboard-navigable | | | | low | | | | | draft | | | tickets/SGS-086-aoe4-small-screen-tabs-keyboard.md |
+| SGS-087 | Uncrowd chart marker labels and round tooltip values | | | | low | SGS-082 | | | | draft | | | tickets/SGS-087-aoe4-chart-readability.md |
+| SGS-088 | Keep step-table row state and let a failing stored pin be dropped | | | | standard | | | | | draft | | | tickets/SGS-088-aoe4-workbench-ui-state-kept.md |
+| SGS-090 | Research at the entry's own producer and resolve units to the highest researched tier | | | | high | | | | | draft | | | tickets/SGS-090-aoe4-multi-tier-research-site-and-unit-tier.md |
+| SGS-091 | Behavior-preserving AoE4 engine cleanups | | | | standard | | | | | draft | | | tickets/SGS-091-aoe4-engine-cleanups.md |
+| SGS-092 | Fix AoE4 test hygiene | | | | low | SGS-081 | | | | draft | | | tickets/SGS-092-aoe4-test-hygiene.md |
+| SGS-093 | Tidy AoE4 docs, prebuilt build data and OpenAPI examples | | | | standard | SGS-081 | | | | draft | | | tickets/SGS-093-aoe4-docs-prebuilt-cleanups.md |
+| SGS-089 | Guard simulate against zero-time production and a missing rally | | | | high | | | | | draft | | | tickets/SGS-089-aoe4-engine-guard-crashes-hangs.md |

@@ -1,0 +1,116 @@
+# SGS-089: Make the simulate engine fail loudly instead of hanging or throwing a TypeError
+
+- **Type**: Bug
+- **Component**: aoe4-build-order
+- **Milestone / criteria**: none (owner-chosen backlog triage 2026-11-03: engine cleanups)
+- **Priority**: low
+- **Risk**: high
+  <!-- Rated high on the owner's instruction: the edits sit in `lib/aoe4-build-order/simulate.ts`, the
+       REPO.md criticalPaths file (event loop, A3). No listed symbol (`simulateBuildOrder`, `runInstant`,
+       `offerSteps`, `applyDueEvents`, `nextWake`, `affordableAt`) changes its behavior or signature; the
+       edits are in `productionSeconds`, which feeds the times the event loop schedules, and `spawnUnit`. -->
+- **Invariants**: A3 (same inputs, same timings: the new checks must not change any result that completes today), A2 (no payment path changes), A1 (a production time of zero comes from data or a hook, not from code)
+- **LOC estimate**: 25 (two guards in `lib/aoe4-build-order/simulate.ts`; doc sentences; tests excluded)
+- **Depends on**: none
+- **On merge**: none
+- **Source**: BACKLOG.md bullets on `simulate.ts` villager-producer hook (SGS-030 review), zero-time unit loop (SGS-030 tech-lead), `spawnUnit` assuming a rally (SGS-056 implementer), all verified against main `cc9bb04`.
+
+## Context
+
+Two engine paths fail badly on input that validation normally keeps out but a direct engine call, a
+`CivRules` hook, or edited data can reach. A unit whose production time comes out as 0 never advances
+simulated time (the run does not return), and a villager spawned by a producer with no rally throws
+`TypeError: Cannot read properties of undefined (reading 'walkSeconds')`. Both should fail with a clear
+`Error`, the way `createEngine` already does for a bad `startingState.units` id.
+
+Checked on main (verified by running them, not only by reading):
+
+- Hang: a villager entry edited to cost nothing, take 0 s and use 0 population makes
+  `simulateBuildOrder` run forever (the vitest process had to be killed). `productionModifier: () => 0`
+  and `() => -5` return, but with an instant or past completion time (`NaN` returns with no unit ever
+  completing). No unit in `data/aoe4-build-order/aoe4world/english.json` has a time of 0, a cost of 0
+  or a population of 0; the only zero-time entries are `capital-town-center-1`, `upgrade-king-3` and
+  `upgrade-king-4`, which are not produced through `productionSeconds`. The data schema allows any
+  `costs.time` number.
+- TypeError: `simulateBuildOrder` with `start: {}` (no rally) throws the `walkSeconds` TypeError at the
+  first villager spawn, because `addBuildingInstance` leaves `rally` undefined when there is no held
+  rally, default or `start.rally`, and `spawnUnit` reads `at.rally!`. The same happens when a
+  `villagerProducer` hook turns a building into a producer that has no rally to inherit. Through the
+  API this cannot occur, since an English order needs `start.rally` (`docs/aoe4-build-order.md`, Rally
+  rules).
+
+Dropped from the backlog bullets as no longer holding: the "redundant condition at `simulate.ts:301`"
+(`'reserve' in outcome || outcome.started !== true` no longer exists in `simulate.ts`; `offerStep` and
+`offerReactions` now narrow on `started === false`). The "villager-producer hook returns false for a
+producer" TypeError also does not occur: a false hook leaves the instance with no villager order, so
+nothing spawns; the live case is the hook returning true (covered above).
+
+## Scope
+
+All in `lib/aoe4-build-order/`:
+
+- `simulate.ts` `productionSeconds`: after the `productionSpeed` division and the `productionModifier`
+  hook, throw an `Error` with the message `production time for "<entry.baseId>" at "<producer>" must be a positive finite number, got <seconds>`
+  when the result is not finite or is not greater than 0. Covers a `costs.time` of 0, a hook returning
+  0, a negative or `NaN`, and a `productionSpeed` multiplier of 0 (infinite time). `startHead` is the only
+  caller, so the check fires when production starts, never for a unit that is merely queued behind a
+  wait. Do not clamp or substitute a minimum time.
+- `simulate.ts` `spawnUnit`: replace `at.rally!` with a check. When the producer instance has no rally,
+  throw an `Error` with the message `building "<at.baseId>" instance <at.instance> spawned a villager but has no rally`.
+- Tests (examples, follow the table style of the nearest tests in `simulate.test.ts`):
+  - production time: one `it.each` over the invalid values (data `time: 0` via `editGameData`,
+    `productionModifier` returning `0`, `-5`, `NaN`, and a `productionSpeed` effect that makes the
+    divisor 0 if a test-helper way to build one exists, otherwise omit that row), each expecting the
+    message above.
+  - rally: `run([], { start: {} })` (cast as needed, as it bypasses validation) throws the rally message
+    naming `capital-town-center` instance 1. A second row where a `villagerProducer` hook makes a start
+    building a producer with no `start.rally` throws the same message for that building.
+  - The weak assertion: the test `waits while the population would pass supply, without a reserve` in
+    `simulate.test.ts` checks only `floating.food[50] > 65`, which passes even if a supply-blocked step
+    held a reserve (applying `reserve: costOf(entry, targets.length)` to the `waitingOn: 'population'`
+    return in the `produce` handler leaves it green; checked on main). Replace that assertion with one
+    that fails under that mutation: capture the outcome the `produce` handler returns for the
+    supply-blocked step (the `withHandler` seam in `test-helpers.ts`, as the `supplyProvider` test
+    captures `s.supply`) and assert `started === false`, `waitingOn === 'population'` and that the outcome
+    has no `reserve`; also keep `result.steps[0].waitingOn` equal to `'population'`.
+- `docs/aoe4-build-order.md`:
+  - Rally rules, the sentence "The validation rules in Issues guarantee a rally is in effect whenever a
+    villager spawns, so the engine reports no rally error." is kept as the reason the API never hits it,
+    and gains that the engine throws an `Error` naming the building and instance if a villager spawns
+    without a rally (an order that skipped validation, or a `villagerProducer` hook).
+  - CivRules seams, state that `productionModifier` must return a positive finite number and that the
+    engine throws an `Error` for a unit whose production time (data, `productionSpeed` or the hook) is
+    not a positive finite number.
+  - Grep `docs/aoe4-build-order.md`, `docs/api/openapi.json` and comments in `civ-rules.ts` for any other
+    sentence that says the engine never errors on these paths and fix it.
+- No change to `pages/api/aoe4-build-order/simulate.ts`: validated requests cannot reach either guard.
+  If a thrown `Error` there already becomes a 500, leave that as is.
+
+**Out of scope:** tightening `data-schema.ts` (`costs.time` is shared with buildings and techs whose
+time is legitimately 0); changing a `startingState` or a validation rule so that a missing rally is
+rejected earlier; a spawn fallback for a producer with no rally; the other backlog bullets on
+`simulate.ts` or `research.ts`; clamping hook output.
+
+## Diagrams
+
+Changes a core control loop only by adding two throw sites, with no new transition; the state machine
+and its phases are unchanged. No diagram required.
+
+## Acceptance criteria
+
+- [ ] `simulateBuildOrder` throws `Error` with message `production time for "villager" at "capital-town-center" must be a positive finite number, got 0` when the villager entry's `costs.time` is 0 (data edited with `editGameData`), and does not hang. The test runs in the unit suite without a vitest timeout.
+- [ ] The same error (with the received value in the message) is thrown when `productionModifier` returns `0`, `-5` or `NaN`, for a default villager entry.
+- [ ] `run([], { start: {} })` throws `Error` `building "capital-town-center" instance 1 spawned a villager but has no rally`, not a `TypeError`; a `villagerProducer` hook that adds a producer with no rally to inherit throws the same message naming that building.
+- [ ] The supply-wait test pins the property, not a floor: it fails when the `produce` handler returns a `reserve` with `waitingOn: 'population'`. The author of this ticket confirmed the current assertion passes under that mutation; the implementer applies the mutation in a throwaway worktree, confirms the new test fails and the old one would not have, and records it in the report.
+- [ ] No result changes for shipped builds: for each build from `listBuilds()` (`ENG 1TC`, `ENG Knight/Longbow (King's Palace)`, `ENG Spear/Longbow into MAA/Crossbow`) and the default `SimInputs`, `JSON.stringify(simulateBuildOrder(...))` on the branch equals the value produced on `main` before the change (run a throwaway script on both commits, compare the output files with `cmp`, and report the three results; do not commit the script or the outputs). The existing unit suite, including `simulate.acceptance.test.ts`, passes with no expected value edited.
+- [ ] A search for `at.rally!` and `rally!` in `lib/aoe4-build-order/simulate.ts` finds no non-null assertion on a possibly undefined rally.
+- [ ] `docs/aoe4-build-order.md` states both new error rules as described in Scope; no sentence in `docs/` or `civ-rules.ts` still says the engine reports no error for them.
+- [ ] `npx tsc --noEmit`, `npm run lint:dup` and `npm test` pass; every test edited or added is listed in the report.
+- [ ] No INVARIANTS.md regressions
+
+## Open questions
+
+- `designer`: throwing from the engine is chosen over clamping or skipping because the backlog asks to
+  "keep hook-supplied times positive" and the repo already throws on bad `startingState.units`. If the
+  owner prefers the API to answer a bad hook with a 400 or a warning instead of a thrown error, that is a
+  separate decision; current API handling of a thrown `Error` was not changed here.
