@@ -85,7 +85,7 @@ export function BuildInput({ builds, selected, onSelectedChange, onTextChange, d
                         data-testid={`editor-view-${option}`}
                         aria-pressed={view === option}
                         disabled={viewDisabled}
-                        className={cn('btn btn-outline-secondary', view === option && 'active')}
+                        className={cn('btn btn-outline-secondary', view === option && ['active', styles.activeView])}
                         onClick={() => onViewChange(option)}
                     >
                         {label}

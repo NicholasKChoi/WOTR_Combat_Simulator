@@ -678,6 +678,16 @@ test.describe("AoE4 step table", () => {
     await expect(page.getByTestId("tab-results")).toHaveAttribute("aria-selected", "true");
     await expect(page.getByTestId("panel-results")).toBeVisible();
     await expect(page.getByTestId("editor-view-table")).toHaveAttribute("aria-pressed", "true");
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const bg = (view: string) =>
+            getComputedStyle(document.querySelector(`[data-testid="editor-view-${view}"]`)!)
+              .backgroundColor;
+          return bg("table") !== bg("text");
+        }),
+      )
+      .toBe(true);
 
     await showTab(page, "build");
     await showView(page, "text");

@@ -93,3 +93,9 @@
 .pinnedLabel {
     overflow-wrap: anywhere;
 }
+
+button.activeView:disabled {
+    --bs-btn-disabled-bg: var(--bs-btn-active-bg);
+    --bs-btn-disabled-border-color: var(--bs-btn-active-border-color);
+    --bs-btn-disabled-color: var(--bs-btn-active-color);
+}
