@@ -7,7 +7,7 @@ import { InfoMessages, WarningMessages } from './message-lists'
 import { StepTimeline } from './step-timeline'
 import { stepSpan, timelineRows } from './step-timeline-rows'
 import { SeriesChart } from './line-chart'
-import { resourceSeries, unitSeries } from './result-series'
+import { perVillagerSeries, resourceSeries, unitSeries } from './result-series'
 import styles from './workbench.module.css'
 
 interface ResultsProps {
@@ -27,6 +27,8 @@ export function Results({ result, pinned, text, landmarks, stale, infoExpanded, 
     const activeStep = active?.result === result ? active.step : null
     const activeRow = rows.find((row) => row.step === activeStep)
     const highlight = activeRow ? stepSpan(activeRow, result.durationSeconds) : null
+    const [perVillager, setPerVillager] = useState(false)
+    const gatherRateSeries = (run: SimulationResult) => (perVillager ? perVillagerSeries(run.gatherRates, run.gatherers) : resourceSeries(run.gatherRates))
     return (
         <div>
             {stale ? (
@@ -59,13 +61,25 @@ export function Results({ result, pinned, text, landmarks, stale, infoExpanded, 
                     <SeriesChart
                         testId="chart-gather-rates"
                         title="Gather rates"
-                        yLabel="Per minute"
+                        yLabel={perVillager ? 'Per villager per minute' : 'Per minute'}
                         times={result.times}
                         highlight={highlight}
                         markers={result.markers}
-                        series={resourceSeries(result.gatherRates)}
+                        series={gatherRateSeries(result)}
                         pinnedMarkers={pinned?.markers}
-                        pinned={pinned ? { times: pinned.times, series: resourceSeries(pinned.gatherRates) } : undefined}
+                        pinned={pinned ? { times: pinned.times, series: gatherRateSeries(pinned) } : undefined}
+                        headerControls={
+                            <label className="form-check">
+                                <input
+                                    type="checkbox"
+                                    data-testid="gather-rates-per-villager"
+                                    className="form-check-input"
+                                    checked={perVillager}
+                                    onChange={(e) => setPerVillager(e.target.checked)}
+                                />
+                                <span className="form-check-label">Per villager</span>
+                            </label>
+                        }
                     />
                     <SeriesChart
                         testId="chart-gathered-resources"

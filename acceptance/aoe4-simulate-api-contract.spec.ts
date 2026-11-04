@@ -481,6 +481,7 @@ test.describe('exported types match the spec', () => {
     times: true,
     unitsProduced: true,
     gatherRates: true,
+    gatherers: true,
     floating: true,
     gathered: true,
     spent: true,

@@ -16,3 +16,13 @@ export function resourceSeries(byResource: Record<ResourceKind, number[]>): Char
         values: byResource[kind],
     }))
 }
+
+export function perVillagerSeries(rates: Record<ResourceKind, number[]>, gatherers: Record<ResourceKind, number[]>): ChartSeries[] {
+    return resourceSeries(rates).map((s) => ({
+        ...s,
+        values: s.values.map((rate, i) => {
+            const count = gatherers[s.key as ResourceKind][i]
+            return count > 0 ? rate / count : 0
+        }),
+    }))
+}

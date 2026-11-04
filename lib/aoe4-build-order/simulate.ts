@@ -752,6 +752,16 @@ function incomePerSecond(engine: Engine, rateOf: RefRate, include: (ref: NodeRef
   return income;
 }
 
+function gathererCounts(engine: Engine): Resources {
+  const counts = { food: 0, wood: 0, gold: 0, stone: 0 };
+  for (const ref of NODE_REFS) {
+    if (engine.gatherers[ref] > 0) {
+      counts[engine.data.base.gatherNodes[nodeKindOf(ref)].resource] += engine.gatherers[ref];
+    }
+  }
+  return counts;
+}
+
 // A stocked ref pays only what it still holds.
 function creditIncome(engine: Engine, rateOf: RefRate, seconds: number): void {
   const unstocked = incomePerSecond(engine, rateOf, (ref) => !hasStock(engine, ref));
@@ -999,6 +1009,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
   const engine = createEngine(order, data, inputs, rules);
   const times = sampleTimes(inputs.durationSeconds);
   const gatherRates = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
+  const gatherers = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
   const floating = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
   const gathered = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
   const spent: Record<SpendCategory, number[]> = { villagers: [], military: [], buildings: [], research: [] };
@@ -1012,9 +1023,11 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     recordRunOuts(engine);
     const rateOf = gatherRatesOf(engine);
     const income = incomePerSecond(engine, rateOf);
+    const counts = gathererCounts(engine);
     for (; sample < times.length && times[sample] <= engine.time; sample += 1) {
       for (const kind of RESOURCE_KINDS) {
         gatherRates[kind].push(income[kind] * SECONDS_PER_MINUTE);
+        gatherers[kind].push(counts[kind]);
         floating[kind].push(engine.resources[kind]);
         gathered[kind].push(engine.gathered[kind]);
       }
@@ -1049,6 +1062,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     times,
     unitsProduced: unitSeries(engine, times),
     gatherRates,
+    gatherers,
     floating,
     gathered,
     spent,

@@ -722,6 +722,8 @@ A `SimulationResult` holds:
   sum to its cumulative produced units. Starting units are not produced and never appear in it, so every
   series starts at 0.
 - `gatherRates`: per `ResourceKind` (`food`, `wood`, `gold`, `stone`), the income rate per minute.
+- `gatherers`: per `ResourceKind`, the number of villagers gathering that resource at each sample (those counted in
+  `gatherRates`; walking, building and idle villagers are not).
 - `floating`: per `ResourceKind`, the banked, unspent amount.
 - `gathered`: per `ResourceKind`, the cumulative amount gathered since t=0; starting resources are not counted,
   and it never decreases.
@@ -894,6 +896,10 @@ A 200 draws four line charts, each with a series legend titled "Series" (one tog
 | Gather rates (per minute) | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Gathered resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
+
+The Gather rates chart has a `Per villager` checkbox, off by default. On, each series shows `gatherRates` divided by
+`gatherers` at the same sample (0 where `gatherers` is 0) and the y axis label reads `Per villager per minute`; a pinned
+run is drawn the same way.
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
 it again restores it; a pinned series' item follows its current series' item. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. Only `age-up` markers carry a
