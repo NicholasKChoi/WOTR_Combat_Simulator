@@ -103,3 +103,8 @@ export const MARKER_KIND_LABELS: Readonly<Record<ChartMarkerKind, string>> = {
 }
 
 export const markerLabel = (marker: ChartMarker): string => `${marker.label} ${formatMinSec(marker.at)}`
+
+// Rounds to at most 1 decimal without a trailing zero; a non-number (a missing value) passes through.
+export function formatChartValue<T>(value: T): T | string {
+    return typeof value === 'number' ? String(Math.round(value * 10) / 10) : value
+}

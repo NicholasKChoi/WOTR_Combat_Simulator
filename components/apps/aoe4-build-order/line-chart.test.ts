@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
-import { type PlacedMarker, SeriesChart, pinnedAgeUpMarkers, placeMarkers } from './line-chart'
+import { type PlacedMarker, SeriesChart, ageUpMarkers, placeMarkers } from './line-chart'
 import { markerLabel } from './chart-rows'
 
 const render = (series: Parameters<typeof SeriesChart>[0]['series'], markers?: ChartMarker[], pinnedMarkers?: ChartMarker[]) =>
@@ -39,7 +39,7 @@ describe('SeriesChart server render', () => {
     })
 })
 
-describe('pinned age-up markers', () => {
+describe('age-up markers', () => {
     const pinnedMarkers: ChartMarker[] = [
         { kind: 'age-up', label: 'Feudal', at: 2 },
         { kind: 'economy', label: 'Wheelbarrow', at: 3 },
@@ -48,7 +48,7 @@ describe('pinned age-up markers', () => {
     ]
 
     it('keeps only age-up markers, in order', () => {
-        expect(pinnedAgeUpMarkers(pinnedMarkers).map((m) => m.label)).toEqual(['Feudal', 'Castle'])
+        expect(ageUpMarkers(pinnedMarkers).map((m) => m.label)).toEqual(['Feudal', 'Castle'])
     })
 
     it('puts the pinned age-up legend item last, with only that item when the current run has no markers', () => {

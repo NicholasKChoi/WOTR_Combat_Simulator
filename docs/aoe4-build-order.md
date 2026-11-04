@@ -894,9 +894,10 @@ A 200 draws four line charts, each with a series legend titled "Series" (one tog
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
-it again restores it; a pinned series' item follows its current series' item. Each chart also draws the result's `markers` as solid vertical lines labeled
-`<label> <m:ss>` (for example `Castle 13:24`); the labels sit above the plot and are stacked in rows by their measured width so
-each stays readable. A marker legend titled "Markers", in its own row below the series legend, lists one entry per
+it again restores it; a pinned series' item follows its current series' item. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. Only `age-up` markers carry a
+text label `<label> <m:ss>` (for example `Castle 13:24`) above the plot, stacked in rows by their measured width so each stays
+readable; the other kinds have no text label and show `<label> <m:ss>` as a hover title. Tooltip values are shown rounded to
+at most 1 decimal place. A marker legend titled "Markers", in its own row below the series legend, lists one entry per
 kind present: `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
 and `Other` (`#6b6bd6`). A run with no markers draws neither lines nor the marker legend. Clicking a series
 legend item does not hide markers. The pinned run's `age-up` markers (no other kind) are drawn as dashed `6 4`
