@@ -536,8 +536,8 @@ function orderSchema(catalog: BuildOrderCatalog | undefined, skipWholeOrderRules
   const cache = skipWholeOrderRules ? stepRulesSchemasByCatalog : schemasByCatalog;
   const cached = cache.get(catalog);
   if (cached !== undefined) return cached;
-  const fields = orderObject(catalog);
-  const built = skipWholeOrderRules ? fields : withCrossChecks(fields, catalog);
+  const perStep = orderObject(catalog);
+  const built = skipWholeOrderRules ? perStep : withCrossChecks(perStep, catalog);
   cache.set(catalog, built);
   return built;
 }
