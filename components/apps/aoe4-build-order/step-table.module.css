@@ -21,4 +21,11 @@
     .table td {
         border: 0;
     }
+
+    .table label,
+    .table select,
+    .table input {
+        max-width: 100%;
+        min-width: 0;
+    }
 }

@@ -5,6 +5,12 @@
     background: var(--bs-body-bg, #fff);
 }
 
+@media (max-width: 767.98px) {
+    .runBar {
+        position: static;
+    }
+}
+
 @media (min-width: 1200px) {
     .resultsSplit {
         display: grid;
