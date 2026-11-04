@@ -9,7 +9,7 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | id | title | milestone | criteria | component | risk | dependsOn | relatesTo | branch | branchTip | status | reworkCount | pr | ticket |
 |----|-------|-----------|----------|-----------|------|-----------|-----------|--------|-----------|--------|-------------|----|--------|
 | SGS-080 | Hold one villager per farm in the engine | | | | high | | SGS-077 | sgs-080-aoe4-one-villager-per-farm | c8cca5f | integrated | 1 | 88 | tickets/SGS-080-aoe4-one-villager-per-farm.md |
-| SGS-081 | Re-time the farm steps of the prebuilt AoE4 builds for one villager per farm | | | | standard | SGS-080 | | sgs-081-aoe4-retune-prebuilt-farms | 9fd49d6 | in_review | 3 | 89 | tickets/SGS-081-aoe4-retune-prebuilt-farms.md |
+| SGS-081 | Re-time the farm steps of the prebuilt AoE4 builds for one villager per farm | | | | standard | SGS-080 | | sgs-081-aoe4-retune-prebuilt-farms | 9fd49d6 | integrated | 3 | 89 | tickets/SGS-081-aoe4-retune-prebuilt-farms.md |
 | SGS-082 | Remove the AoE4 build order UI acceptance spec | | | | low | SGS-081 | | | | draft | | | tickets/SGS-082-aoe4-remove-build-order-ui-spec.md |
 | SGS-083 | Highlight a hovered step's time span as a band on the charts | | | | low | | | | | draft | | | tickets/SGS-083-aoe4-highlight-step-span-on-charts.md |
 | SGS-084 | Add a gatherers series and a per-villager view of the Gather rates chart | | | | high | | | | | draft | | | tickets/SGS-084-aoe4-gather-rate-per-villager.md |
