@@ -53,6 +53,7 @@ test.describe('result shape', () => {
         'floating',
         'gatherRates',
         'gathered',
+        'gatherers',
         'markers',
         'notes',
         'populationCapReachedAt',

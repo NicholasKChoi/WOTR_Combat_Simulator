@@ -128,6 +128,8 @@ export interface SimulationResult {
   unitsProduced: UnitSeries[];
   // Per minute.
   gatherRates: Record<ResourceKind, number[]>;
+  // Villagers gathering each resource; the divisor of gatherRates.
+  gatherers: Record<ResourceKind, number[]>;
   floating: Record<ResourceKind, number[]>;
   // Cumulative resources gathered; starting resources excluded.
   gathered: Record<ResourceKind, number[]>;

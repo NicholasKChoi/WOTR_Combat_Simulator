@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
 import { toChartRows } from './chart-rows'
-import { resourceSeries, unitSeries } from './result-series'
+import { perVillagerSeries, resourceSeries, unitSeries } from './result-series'
 
 function result(): SimulationResult {
     return {
@@ -14,6 +14,7 @@ function result(): SimulationResult {
             { unitId: 'spearman-3', baseId: 'spearman', name: 'Spearman', tier: 3, counts: [0, 0, 4] },
         ],
         gatherRates: { food: [1, 2, 3], wood: [4, 5, 6], gold: [7, 8, 9], stone: [10, 11, 12] },
+        gatherers: { food: [1, 1, 1], wood: [2, 2, 2], gold: [0, 1, 0], stone: [0, 0, 0] },
         floating: { stone: [0, 0, 1], gold: [0, 2, 0], wood: [3, 0, 0], food: [5, 6, 7] },
         gathered: { food: [0, 1, 2], wood: [0, 1, 2], gold: [0, 1, 2], stone: [0, 1, 2] },
         spent: { villagers: [0, 0, 0], military: [0, 0, 0], buildings: [0, 0, 0], research: [0, 0, 0] },
@@ -74,6 +75,35 @@ describe('resourceSeries', () => {
         const input = result().gatherRates
         const before = structuredClone(input)
         resourceSeries(input)
+        expect(input).toEqual(before)
+    })
+})
+
+describe('perVillagerSeries', () => {
+    const zeros = [0, 0, 0]
+
+    it.each([
+        ['divides each rate by its count', [120, 60, 0], [4, 2, 0], [30, 30, 0]],
+        ['gives 0, not Infinity, for a positive rate with no villagers', [90, 45, 30], [3, 0, 1], [30, 0, 30]],
+        ['gives 0, not NaN, for a zero rate with no villagers', [0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    ])('%s', (_, food, gatherers, expected) => {
+        const rates = { food, wood: zeros, gold: zeros, stone: zeros }
+        const counts = { food: gatherers, wood: zeros, gold: zeros, stone: zeros }
+        expect(perVillagerSeries(rates, counts)[0].values).toEqual(expected)
+    })
+
+    it('keeps the keys, names and order of resourceSeries and divides each resource by its own count', () => {
+        const input = result()
+        const series = perVillagerSeries(input.gatherRates, input.gatherers)
+        const raw = resourceSeries(input.gatherRates)
+        expect(series.map((s) => [s.key, s.name])).toEqual(raw.map((s) => [s.key, s.name]))
+        expect(series.map((s) => s.values)).toEqual([[1, 2, 3], [2, 2.5, 3], [0, 8, 0], [0, 0, 0]])
+    })
+
+    it('does not mutate its inputs', () => {
+        const input = result()
+        const before = structuredClone(input)
+        perVillagerSeries(input.gatherRates, input.gatherers)
         expect(input).toEqual(before)
     })
 })

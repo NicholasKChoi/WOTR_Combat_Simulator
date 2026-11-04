@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
@@ -71,9 +71,10 @@ interface SeriesChartProps {
     markers?: readonly ChartMarker[]
     pinnedMarkers?: readonly ChartMarker[]
     highlight?: StepSpan | null
+    headerControls?: ReactNode
 }
 
-export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null }: SeriesChartProps) {
+export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
     const [chartWidth, setChartWidth] = useState<number | null>(null)
     const end = Math.max(1, ...times, ...(pinned?.times ?? []))
@@ -100,7 +101,14 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
 
     return (
         <div data-testid={testId} data-label-rows={rows} className={styles.chart}>
-            <h3 className="h5">{title}</h3>
+            {headerControls ? (
+                <div className="d-flex flex-wrap align-items-baseline column-gap-3">
+                    <h3 className="h5">{title}</h3>
+                    {headerControls}
+                </div>
+            ) : (
+                <h3 className="h5">{title}</h3>
+            )}
             <ResponsiveContainer width="100%" height={360} onResize={(width) => setChartWidth(width)}>
                 <LineChart
                     data={toChartRows(times, series, pinned)}
@@ -108,7 +116,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                 >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} />
-                    <YAxis width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
+                    <YAxis width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft', textAnchor: 'middle' }} />
                     <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} formatter={formatChartValue} />
                     {series.map((s, i) => (
                         <Line

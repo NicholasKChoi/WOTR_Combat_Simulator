@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { listBuilds } from './builds'
 import type { CivRules } from './civ-rules'
+import { effectiveGatherRate } from './gather'
 import { RESOURCE_KINDS } from './model'
-import type { BuildStep, SimulationResult } from './model'
+import type { BuildStart, BuildStep, GatherNodeId, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
 import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, inputsFor, run, sampleIndex } from './test-helpers'
 import type { Parts } from './test-helpers'
@@ -217,5 +218,63 @@ describe('gathered', () => {
             const paid = sum(Object.values(result.spent).map((series) => series[i]))
             expect(Math.abs(gathered - (banked + paid))).toBeLessThan(1e-6)
         })
+    })
+})
+
+describe('gatherers', () => {
+    const defaults = inputsFor(ENGLISH)
+    const rateOf = (node: GatherNodeId): number => {
+        const state = { data: ENGLISH, age: 1, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: defaults.influenceCoverage }
+        return effectiveGatherRate(node, state, defaults)
+    }
+
+    it.each([
+        ['4 sheep 2 wood', { sheep: 4, wood: 2 }, { food: 4, wood: 2, gold: 0, stone: 0 }, (4 * rateOf('sheep')) / 4],
+        ['3 sheep 3 berry', { sheep: 3, berry: 3 }, { food: 6, wood: 0, gold: 0, stone: 0 }, (3 * rateOf('sheep') + 3 * rateOf('berry')) / 6],
+    ])('counts the start split %s at t=0, and food rate / food gatherers is the villager-weighted node rate', (_, villagers, expected, foodRate) => {
+        const result = run([], { start: { rally: 'sheep', villagers } })
+        for (const kind of RESOURCE_KINDS) {
+            expect(result.gatherers[kind][0]).toBe(expected[kind])
+        }
+        expect(result.gatherRates.food[0] / result.gatherers.food[0]).toBeCloseTo(foodRate * 60, 9)
+    })
+
+    it('leaves builders out from when they leave the node until they walk back after completion', () => {
+        const start: BuildStart = { rally: 'sheep', villagers: { sheep: 2, wood: 4 } }
+        const house: BuildStep = { trigger: at(30), action: 'build', building: 'house', builders: 2, from: 'wood', then: 'wood' }
+        const result = run([house], { start })
+        const [step] = result.steps
+        const i = result.times.findIndex((t) => t >= step.startedAt!)
+        const r = result.gatherRates.wood[i - 1] / result.gatherers.wood[i - 1] / 60
+        expect(result.gatherers.wood[i - 1]).toBe(4)
+        expect(result.gatherers.wood[i]).toBe(2)
+        expect(result.gatherRates.wood[i - 1] - result.gatherRates.wood[i]).toBeCloseTo(2 * r * 60, 9)
+
+        const back = step.completedAt! + defaults.walkSeconds
+        const after = result.times.findIndex((t) => t > step.completedAt!)
+        expect(result.times[after]).toBeLessThan(back)
+        expect(result.gatherers.wood[after]).toBe(2)
+        expect(result.gatherers.wood[result.times.findIndex((t) => t >= back)]).toBe(4)
+    })
+
+    it('drops at the same sample as the gather rate when a stocked node runs out', () => {
+        const result = run([pauseTownCenter], { start: { rally: 'wood', villagers: { berry: 3, wood: 3 } }, inputs: { ...noHouses, nodeAmounts: { berry: 601 } } })
+        const runOut = result.depletions.find((d) => d.node === 'berry')!.depletedAt!
+        const after = result.times.findIndex((t) => t > runOut)
+        expect(result.gatherers.food[after - 1]).toBe(3)
+        expect(result.gatherers.food.slice(after).every((n) => n === 0)).toBe(true)
+        expect(result.gatherers.wood.every((n) => n === 3)).toBe(true)
+    })
+
+    it.each(listBuilds().map((build) => [build.name, build] as const))('is a non-negative integer per sample, 0 exactly where the rate is 0, on the prebuilt build %s', (_, build) => {
+        const result = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1200 }))
+        for (const kind of RESOURCE_KINDS) {
+            const counts = result.gatherers[kind]
+            expect(counts).toHaveLength(result.times.length)
+            counts.forEach((n, i) => {
+                expect(Number.isInteger(n) && n >= 0).toBe(true)
+                expect(n === 0).toBe(result.gatherRates[kind][i] === 0)
+            })
+        }
     })
 })
