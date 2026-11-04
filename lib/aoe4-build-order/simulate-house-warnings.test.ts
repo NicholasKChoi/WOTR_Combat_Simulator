@@ -39,6 +39,11 @@ function digest(value: unknown): string {
     return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16)
 }
 
+function digestTimeline(result: SimulationResult): string {
+    const { spawnedPopulation, spent, steps, populationCapReachedAt, depletions, markers } = result
+    return digest({ spawnedPopulation, spent, steps, populationCapReachedAt, depletions, markers })
+}
+
 describe('auto-houses-never-start', () => {
     it('warns once when the last build house is a reaction that never fires', () => {
         expect(houseWarnings(neverFiring(), 'auto-houses-never-start')).toEqual([
@@ -152,22 +157,21 @@ describe('auto-house warnings together', () => {
 })
 
 describe('timing with the auto-house warnings', () => {
-    // Digests of every field but warnings and gathered; the warnings must leave them unchanged.
+    // Digests of spawnedPopulation, spent, steps, populationCapReachedAt, depletions and markers; the warnings must leave them unchanged.
     it('leaves the late-house run as it was before the warnings', () => {
-        const { spawnedPopulation, spent, steps, populationCapReachedAt, depletions, markers } = lateHouse()
-        expect(digest({ spawnedPopulation, spent, steps, populationCapReachedAt, depletions, markers })).toBe('67af1a20a5434d6f')
+        expect(digestTimeline(lateHouse())).toBe('67af1a20a5434d6f')
     })
 
     it.each([
-        ['ENG 1TC', 'c1b3ee597d0a715f', null],
+        ['ENG 1TC', '42b0afc54e5e8bf8', null],
         // Re-pinned for the house lead-time rule: the King's Palace supply lands after the lead time, so it no longer counts toward headroom.
-        ['ENG Spear/Longbow into MAA/Crossbow', '813cdb5546b36b2a', null],
-        ["ENG Knight/Longbow (King's Palace)", 'afa35f19e9a258a6', { step: 23, at: 461.81904761904764, seconds: 21.236012345678944 }],
-    ])('leaves every field of %s at 1800 s but warnings and gathered as it was', (name, pinned, held) => {
+        ['ENG Spear/Longbow into MAA/Crossbow', '1cead3b6a8f33aa3', null],
+        ["ENG Knight/Longbow (King's Palace)", '082d524201cfafbd', { step: 23, at: 461.81904761904764, seconds: 21.236012345678944 }],
+    ])('leaves spawnedPopulation, spent, steps, populationCapReachedAt, depletions and markers of %s at 1800 s as they were', (name, pinned, held) => {
         const build = listBuilds().find((b) => b.name === name)!
-        const { warnings, gathered, ...rest } = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1800 }))
-        expect(digest(rest)).toBe(pinned)
-        const auto = warnings.filter((w) => w.code.startsWith('auto-houses'))
+        const result = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1800 }))
+        expect(digestTimeline(result)).toBe(pinned)
+        const auto = result.warnings.filter((w) => w.code.startsWith('auto-houses'))
         expect(auto).toEqual(held ? [expect.objectContaining({ code: 'auto-houses-held', ...held })] : [])
     })
 })

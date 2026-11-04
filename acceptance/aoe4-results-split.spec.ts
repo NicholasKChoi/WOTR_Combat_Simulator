@@ -48,6 +48,21 @@ test.describe('AoE4 results split at 1280 px', () => {
       .toBe(true)
   })
 
+  test('a build with no steps keeps both columns, empty timeline first, and draws no timeline', async ({ page }) => {
+    await openPage(page)
+    await showTab(page, 'build')
+    await page.getByTestId('build-order-text').fill('start -> sheep')
+    const response = await runSimulation(page)
+    expect(response.status()).toBe(200)
+    await showTab(page, 'results')
+    const columns = page.getByTestId('results-split').locator('> *')
+    await expect(columns).toHaveCount(2)
+    await expect(columns.nth(0)).not.toHaveAttribute('data-testid', /.*/)
+    await expect(columns.nth(1)).not.toHaveAttribute('data-testid', /.*/)
+    await expect(columns.nth(1).getByTestId('chart-units-produced')).toBeVisible()
+    await expect(page.getByTestId('step-timeline-scroll')).toHaveCount(0)
+  })
+
   test('the timeline stays just below the run bar while the charts scroll', async ({ page }) => {
     await openResults(page)
     await page.getByTestId('chart-floating-resources').evaluate((el) => el.scrollIntoView({ block: 'end', behavior: 'instant' }))

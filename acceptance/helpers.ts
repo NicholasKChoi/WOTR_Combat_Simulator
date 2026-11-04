@@ -82,6 +82,14 @@ export function buildOrderFrom(text: string): BuildOrder {
   return converted.order
 }
 
+export const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
+export const CHART_IDS = ['chart-units-produced', ...RESOURCE_CHARTS] as const
+
+// A veterancy upgrade moves units to a higher-tier series of the same base unit, so sum every series.
+export function finalCount(body: { unitsProduced: { baseId: string; counts: number[] }[] }, baseId: string): number {
+  return body.unitsProduced.filter((s) => s.baseId === baseId).reduce((sum, s) => sum + (s.counts.at(-1) ?? 0), 0)
+}
+
 export const AOE4_PAGE = '/apps/aoe4-build-order'
 
 export async function openPage(page: Page) {

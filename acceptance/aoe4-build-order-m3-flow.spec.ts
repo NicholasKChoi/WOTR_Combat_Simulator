@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult, SimWarning } from '../lib/aoe4-build-order/model'
-import { INVALID_PASTE, expectedCompareKeys, openPage, runSimulation, showView, showTab } from './helpers'
+import { INVALID_PASTE, RESOURCE_CHARTS, expectedCompareKeys, openPage, runSimulation, showView, showTab } from './helpers'
 
 const FLOW_PASTE = [
   'start 6 sheep -> sheep',
   'produce villager from capital-town-center x3 -> sheep',
   '@25:00 produce villager from capital-town-center x1 -> sheep',
 ].join('\n')
-const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 
 test.describe('AoE4 build order M3 flow', () => {
   test('edit a step in the table, run, see the depletion warning and timeline, pin and compare', async ({ page }) => {

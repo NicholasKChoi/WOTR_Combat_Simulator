@@ -239,11 +239,12 @@ describe('invariants over generated build orders', () => {
                 }
             })
             let villagersAndScouts = 0
-            for (const unit of result.unitsProduced) {
-                expect(unit.counts).toHaveLength(result.times.length)
-                unit.counts.forEach((c, i) => expect(c).toBeGreaterThanOrEqual(unit.counts[i - 1] ?? 0))
-                if (unit.baseId === 'villager' || unit.baseId === 'scout') {
-                    villagersAndScouts += unit.counts[unit.counts.length - 1]
+            result.unitsProduced.forEach((unit) => expect(unit.counts).toHaveLength(result.times.length))
+            for (const baseId of new Set(result.unitsProduced.map((unit) => unit.baseId))) {
+                const counts = series(result, baseId)
+                counts.forEach((c, i) => expect(c).toBeGreaterThanOrEqual(counts[i - 1] ?? 0))
+                if (baseId === 'villager' || baseId === 'scout') {
+                    villagersAndScouts += counts[counts.length - 1]
                 }
             }
             // starting population is six villagers and a scout against supply ten, plus man-at-arms at barracks

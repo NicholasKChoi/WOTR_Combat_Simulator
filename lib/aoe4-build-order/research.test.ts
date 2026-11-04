@@ -467,6 +467,7 @@ describe('technology effects apply from completion', () => {
 
     it('changes neither population nor units produced', () => {
         expect(result.unitsProduced).toEqual(plain.unitsProduced)
+        expect(result.spawnedPopulation).toEqual(plain.spawnedPopulation)
     })
 
     it('follows the research time and cost in the game data', () => {

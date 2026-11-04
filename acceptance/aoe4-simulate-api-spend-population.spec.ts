@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
 import rules from '../data/aoe4-build-order/rules/english.json'
 import snapshot from '../data/aoe4-build-order/aoe4world/english.json'
-import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
+import { INFINITE_NODES, buildOrderFrom, finalCount, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -45,7 +45,6 @@ async function simulate(request: Parameters<typeof postSimulate>[0], body: unkno
   return response.json()
 }
 
-const finalCount = (body: Body, baseId: string) => body.unitsProduced.find((s) => s.baseId === baseId)?.counts.at(-1) ?? 0
 const last = <T,>(series: T[]) => series[series.length - 1]
 
 test.beforeAll(async ({ request }) => {

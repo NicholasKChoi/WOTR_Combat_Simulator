@@ -3,14 +3,13 @@ import { join } from 'path'
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import Ajv2020 from 'ajv/dist/2020'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
-import { INFINITE_NODES, buildOrderFrom, openPage, postSimulate, runSimulation, showTab } from './helpers'
+import { CHART_IDS, INFINITE_NODES, buildOrderFrom, openPage, postSimulate, runSimulation, showTab } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
 const RESOURCE_KINDS = ['food', 'wood', 'gold', 'stone'] as const
 const PAUSE = { action: 'pause', producer: 'capital-town-center' }
 const BERRY_STOCK = 601
-const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources']
 
 test.describe.configure({ timeout: 60_000 })
 
@@ -97,8 +96,8 @@ test.describe('Gathered resources chart', () => {
     await runSimulation(page)
     await showTab(page, 'results')
 
-    const ids = await page.locator(CHARTS.map((id) => `[data-testid="${id}"]`).join(', ')).evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
-    expect(ids).toEqual(CHARTS)
+    const ids = await page.locator(CHART_IDS.map((id) => `[data-testid="${id}"]`).join(', ')).evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
+    expect(ids).toEqual(CHART_IDS)
 
     const chart = page.getByTestId('chart-gathered-resources')
     await expect(chart.locator('text.recharts-label[transform^="rotate(-90"]')).toHaveText('Resources')
