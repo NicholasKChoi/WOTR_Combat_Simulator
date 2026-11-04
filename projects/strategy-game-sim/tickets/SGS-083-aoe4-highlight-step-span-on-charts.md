@@ -131,7 +131,7 @@ Single-component change outside the core control loop; no diagram required.
       the same with and without hover.
 - [x] `docs/aoe4-build-order.md` describes the highlight per Scope 5, and no sentence in it still says or implies the
       timeline has no interaction.
-- [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` pass; the new acceptance spec passes via `npm run acceptance`.
+- [x] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` pass; the new acceptance spec passes via `npm run acceptance`.
 - [x] No INVARIANTS.md regressions
 
 ## Open questions
