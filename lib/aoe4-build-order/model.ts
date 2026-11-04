@@ -18,6 +18,14 @@ export const GATHER_NODES: readonly GatherNodeId[] = Object.keys({
 } satisfies Record<GatherNodeId, 0>) as GatherNodeId[];
 export const RESOURCE_KINDS: readonly ResourceKind[] = ['food', 'wood', 'gold', 'stone'];
 
+const MAX_QUOTED_LENGTH = 40;
+
+// Bounds a user-supplied string quoted in a message to its first 40 characters plus `...`.
+export function shortText(value: unknown): string {
+  const text = String(value);
+  return text.length <= MAX_QUOTED_LENGTH ? text : `${text.slice(0, MAX_QUOTED_LENGTH)}...`;
+}
+
 // farm and wood never run out.
 export type FiniteGatherNodeId = Exclude<GatherNodeId, 'farm' | 'wood'>;
 export const FINITE_GATHER_NODES: readonly FiniteGatherNodeId[] = GATHER_NODES.filter(

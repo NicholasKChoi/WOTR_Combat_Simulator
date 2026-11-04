@@ -340,6 +340,7 @@ describe('repository constraints', () => {
         expect([...src.matchAll(/^export (?:const|function|class|enum) (\w+)/gm)].map((m) => m[1])).toEqual([
             'GATHER_NODES',
             'RESOURCE_KINDS',
+            'shortText',
             'FINITE_GATHER_NODES',
             'MAX_DEPOSITS',
             'NODE_REFS',

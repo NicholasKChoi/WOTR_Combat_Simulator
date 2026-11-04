@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { GameData, SnapshotEntry } from './data';
 import { classifyTech } from './effects';
 import { VILLAGER_ID } from './engine-common';
-import { FINITE_NODE_REFS, GATHER_NODES, MAX_DEPOSITS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
+import { FINITE_NODE_REFS, GATHER_NODES, MAX_DEPOSITS, NODE_REFS, RESOURCE_KINDS, nodeKindOf, shortText } from './model';
 import type {
   BuildOrderIssue,
   BuildOrderLines,
@@ -120,19 +120,11 @@ function isGatherNode(id: string): id is GatherNodeId {
   return (GATHER_NODES as readonly string[]).includes(id);
 }
 
-const ID_QUOTE_CHARS = 40;
-
-// Bounds an issue message that quotes a user-supplied id.
-function shortId(value: unknown): string {
-  const text = String(value);
-  return text.length <= ID_QUOTE_CHARS ? text : `${text.slice(0, ID_QUOTE_CHARS)}...`;
-}
-
 // Returns null for a valid ref. finiteOnly also rejects farm and wood, which never run dry.
 export function nodeRefIssue(value: unknown, finiteOnly: boolean): NodeRefProblem | null {
   if (typeof value !== 'string') return { code: 'syntax', reason: 'node must be a string' };
   const [node, ...suffix] = value.split('#');
-  const quoted = shortId(value);
+  const quoted = shortText(value);
   if (!isGatherNode(node)) return { code: 'unknown-id', reason: `unknown node "${quoted}"` };
   if (suffix.length === 0) {
     const infinite = finiteOnly && (node === 'farm' || node === 'wood');
@@ -317,7 +309,7 @@ function knownId(name: string, kind: CatalogKind, catalog: BuildOrderCatalog | u
     }
     const ids = { building: catalog.buildings, unit: catalog.units, tech: catalog.techs }[kind];
     if (ids.includes(id)) return undefined;
-    return { code: 'unknown-id', text: `unknown ${kind} "${shortId(id)}" in ${name}`, suggestion: nearestId(id, ids) };
+    return { code: 'unknown-id', text: `unknown ${kind} "${shortText(id)}" in ${name}`, suggestion: nearestId(id, ids) };
   };
 }
 
@@ -326,7 +318,7 @@ const TRIGGER_KINDS = ['time', 'villagers', 'depleted', 'bank'] as const;
 const triggerNumber = (name: string, key: BoundKey) => field<number>(typed(`trigger.${name}`, 'number', inRange(`trigger.${name}`, key), { missing: false }));
 
 const knownResource: Check = (value) =>
-  RESOURCE_KINDS.includes(value as ResourceKind) ? undefined : { code: 'unknown-id', text: `unknown resource "${shortId(value)}" in trigger.resource` };
+  RESOURCE_KINDS.includes(value as ResourceKind) ? undefined : { code: 'unknown-id', text: `unknown resource "${shortText(value)}" in trigger.resource` };
 
 const triggerKindCheck: Check = (trigger) => {
   if (!isRecord(trigger)) return syntax('trigger must be an object');
@@ -335,7 +327,7 @@ const triggerKindCheck: Check = (trigger) => {
   if ((TRIGGER_KINDS as readonly string[]).includes(kind)) return undefined;
   return {
     code: 'unknown-trigger-kind',
-    text: `unknown trigger kind "${shortId(kind)}"; the kinds are ${TRIGGER_KINDS.join(', ')}`,
+    text: `unknown trigger kind "${shortText(kind)}"; the kinds are ${TRIGGER_KINDS.join(', ')}`,
     suggestion: nearestId(kind, TRIGGER_KINDS),
   };
 };
@@ -367,7 +359,7 @@ function stepProblem(step: unknown): string {
   if (!isRecord(step)) return 'is not an object';
   const { action } = step;
   if (action === undefined) return 'missing action';
-  return typeof action === 'string' ? `unknown action "${shortId(action)}"` : 'action must be a string';
+  return typeof action === 'string' ? `unknown action "${shortText(action)}"` : 'action must be a string';
 }
 
 function crossFieldProblems(step: BuildStep, catalog: BuildOrderCatalog): string[] {
@@ -522,7 +514,7 @@ function crossStepProblems(order: Fields, steps: readonly BuildStep[], catalog: 
 function orderObject(catalog: BuildOrderCatalog | undefined) {
   return z.object(
     {
-      civ: text<CivId>((civ) => (catalog === undefined || civ === catalog.civ ? undefined : { code: 'unknown-id', text: `unknown civ "${shortId(civ)}"` })),
+      civ: text<CivId>((civ) => (catalog === undefined || civ === catalog.civ ? undefined : { code: 'unknown-id', text: `unknown civ "${shortText(civ)}"` })),
       name: text(),
       source: text().optional(),
       start: startSchema.optional(),
@@ -650,7 +642,7 @@ function keyedRecord<T>(keyProblem: (key: string) => Problem | undefined, item: 
 
 export function simInputsSchema(catalog: BuildOrderCatalog) {
   const nodes = Object.keys(catalog.inputDefaults.trips);
-  const unknownNode = (node: string): Problem | undefined => (nodes.includes(node) ? undefined : { code: 'unknown-id', text: `unknown node "${shortId(node)}"` });
+  const unknownNode = (node: string): Problem | undefined => (nodes.includes(node) ? undefined : { code: 'unknown-id', text: `unknown node "${shortText(node)}"` });
   const number = (key: BoundKey) => field<number>(inputNumber(key)).optional();
   const trip = z.object(
     { walkSecondsCamp: number('walkSecondsCamp'), walkSecondsTownCenter: number('walkSecondsTownCenter'), dropOffSeconds: number('dropOffSeconds') },
@@ -665,7 +657,7 @@ export function simInputsSchema(catalog: BuildOrderCatalog) {
       houseBuilders: number('houseBuilders'),
       houseBuilderSource: field<GatherNodeId>((value) => (typeof value === 'string' ? unknownNode(value) : syntax('must be a string'))).optional(),
       influenceCoverage: keyedRecord(
-        (building) => (catalog.buildings.includes(building) ? undefined : { code: 'unknown-id', text: `unknown building "${shortId(building)}"` }),
+        (building) => (catalog.buildings.includes(building) ? undefined : { code: 'unknown-id', text: `unknown building "${shortText(building)}"` }),
         field<number>(inputNumber('influenceCoverage')),
       ).optional(),
       nodeAmounts: keyedRecord(
