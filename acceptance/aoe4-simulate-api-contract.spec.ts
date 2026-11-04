@@ -271,6 +271,15 @@ test.describe('examples', () => {
     expect(keys(requestExamples)).toEqual(keys(okExamples))
   })
 
+  test('the 200 examples show a warning, a marker and a run-out numbered deposit between them', () => {
+    const bodies = Object.values<{ value: any }>(okExamples).map((e) => e.value)
+    expect(bodies.some((b) => b.warnings.length > 0)).toBe(true)
+    expect(bodies.some((b) => b.markers.length > 0)).toBe(true)
+    expect(
+      bodies.some((b) => b.depletions.some((d: any) => /#\d+$/.test(d.node) && typeof d.depletedAt === 'number')),
+    ).toBe(true)
+  })
+
   for (const name of Object.keys(requestExamples)) {
     test(`the ${name} request example returns the documented 200 body`, async ({ request }) => {
       expect(await expect200(request, requestExamples[name].value)).toEqual(okExamples[name].value)
