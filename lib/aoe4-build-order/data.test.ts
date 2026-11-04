@@ -111,7 +111,7 @@ describe('node amounts', () => {
     const shipped = {
         sheep: [3000, `${owner}: 15 sheep x 200 food`],
         berry: [1500, owner],
-        deer: [1750, `${owner}: 7 deer x 250 food`],
+        deer: [2450, 'owner-supplied starting total (2026-11-04): deer pack, 2450 food'],
         boar: [2000, owner],
         gold: [4000, 'owner-supplied amount per gold deposit (2026-11-01)'],
         stone: [1200, owner],

@@ -898,7 +898,7 @@ describe('checkSimInputs fields', () => {
     it('defaults every finite ref to its base amount and every deposit to the gold amount', () => {
         const deposits = Object.fromEntries(FINITE_NODE_REFS.filter((ref) => ref.startsWith('gold#')).map((ref) => [ref, 4000]))
         expect(Object.keys(resolved().nodeAmounts)).toEqual(FINITE_NODE_REFS)
-        expect(resolved().nodeAmounts).toEqual({ sheep: 3000, berry: 1500, deer: 1750, boar: 2000, gold: 4000, ...deposits, stone: 1200 })
+        expect(resolved().nodeAmounts).toEqual({ sheep: 3000, berry: 1500, deer: 2450, boar: 2000, gold: 4000, ...deposits, stone: 1200 })
         const merged = checkSimInputs({ nodeAmounts: { gold: null, 'gold#3': 2500, berry: 0 } }, catalog)
         expect(merged.ok && merged.inputs.nodeAmounts).toMatchObject({ gold: null, 'gold#2': 4000, 'gold#3': 2500, 'gold#8': 4000, berry: 0, sheep: 3000 })
     })

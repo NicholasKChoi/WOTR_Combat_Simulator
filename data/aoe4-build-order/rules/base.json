@@ -92,8 +92,8 @@
     "deer": {
       "resource": "food",
       "amount": {
-        "value": 1750,
-        "source": "owner-supplied starting total (2026-11-01): 7 deer x 250 food",
+        "value": 2450,
+        "source": "owner-supplied starting total (2026-11-04): deer pack, 2450 food",
         "unverified": true
       },
       "rate": {
