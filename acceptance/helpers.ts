@@ -57,6 +57,12 @@ export function postSimulate(request: APIRequestContext, body: unknown, timeout 
   return request.post(SIMULATE_PATH, { data: body, timeout })
 }
 
+export async function simulateOk<T>(request: APIRequestContext, buildOrder: unknown, durationSeconds: number, timeout?: number): Promise<T> {
+  const response = await postSimulate(request, { buildOrder, inputs: { durationSeconds } }, timeout)
+  expect(response.status(), await response.text()).toBe(200)
+  return response.json()
+}
+
 // Playwright JSON-encodes a string `data`, so a raw body (a bare JSON value, malformed JSON) goes as a Buffer.
 export function postSimulateRaw(request: APIRequestContext, raw: string, timeout = 10_000) {
   return request.post(SIMULATE_PATH, {

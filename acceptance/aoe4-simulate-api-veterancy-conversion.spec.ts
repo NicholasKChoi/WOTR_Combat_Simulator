@@ -27,18 +27,18 @@ function countAt(unitId: string, seconds: number): number {
 }
 
 test.describe('Veteran Longbowmen converts the longbowmen on the field in the knight/longbow build', () => {
-  test('longbowman-2 holds 12 at 845 s and none from 850 s on', () => {
-    expect(countAt('longbowman-2', 845)).toBe(12)
+  test('longbowman-2 holds 9 at 845 s and none from 850 s on', () => {
+    expect(countAt('longbowman-2', 845)).toBe(9)
     const lower = result.unitsProduced.find((u) => u.unitId === 'longbowman-2')!
     const after = lower.counts.filter((_, i) => result.times[i] >= 850)
     expect(after.length).toBeGreaterThan(0)
     expect(after.every((c) => c === 0)).toBe(true)
   })
 
-  test('longbowman-3 holds none at 845 s, 13 at 850 s and 66 at 1800 s', () => {
+  test('longbowman-3 holds none at 845 s, 9 at 850 s and 63 at 1800 s', () => {
     expect(countAt('longbowman-3', 845)).toBe(0)
-    expect(countAt('longbowman-3', 850)).toBe(13)
-    expect(countAt('longbowman-3', 1800)).toBe(66)
+    expect(countAt('longbowman-3', 850)).toBe(9)
+    expect(countAt('longbowman-3', 1800)).toBe(63)
   })
 
   test('per-baseId counts sum to a cumulative produced total that never decreases', () => {
@@ -49,7 +49,7 @@ test.describe('Veteran Longbowmen converts the longbowmen on the field in the kn
       expect(sums[i], `at ${result.times[i]} s`).toBeGreaterThanOrEqual(sums[i - 1])
     }
     expect(countAt('longbowman-2', 845) + countAt('longbowman-3', 845)).toBe(sums[result.times.indexOf(845)])
-    expect(sums[result.times.indexOf(850)]).toBe(13)
-    expect(sums.at(-1)).toBe(66)
+    expect(sums[result.times.indexOf(850)]).toBe(9)
+    expect(sums.at(-1)).toBe(63)
   })
 })

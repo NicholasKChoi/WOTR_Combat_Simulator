@@ -69,6 +69,12 @@
       "then": "farm"
     },
     {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "sheep"
+    },
+    {
       "trigger": {
         "kind": "time",
         "seconds": 130
@@ -84,7 +90,7 @@
       },
       "action": "rally",
       "producer": "capital-town-center",
-      "to": "farm"
+      "to": "wood"
     },
     {
       "trigger": {
@@ -131,6 +137,56 @@
       "then": "wood"
     },
     {
+      "trigger": {
+        "kind": "time",
+        "seconds": 270
+      },
+      "action": "build",
+      "building": "barracks",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 320
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
       "action": "build",
       "building": "archery-range",
       "from": "wood",
@@ -151,9 +207,37 @@
         "kind": "time",
         "seconds": 380
       },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 380
+      },
       "action": "rally",
       "producer": "capital-town-center",
-      "to": "farm"
+      "to": "wood"
     },
     {
       "action": "build",
@@ -165,7 +249,7 @@
     {
       "action": "rally",
       "producer": "kings-palace",
-      "to": "farm"
+      "to": "wood"
     },
     {
       "trigger": {
@@ -188,16 +272,227 @@
     {
       "action": "produce",
       "producer": "archery-range",
-      "unit": "crossbowman"
+      "unit": "crossbowman",
+      "instance": 1
     },
     {
       "trigger": {
         "kind": "time",
-        "seconds": 760
+        "seconds": 700
       },
       "action": "rally",
       "producer": "capital-town-center",
-      "to": "farm"
+      "to": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 700
+      },
+      "action": "build",
+      "building": "barracks",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "barracks",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "barracks",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "barracks",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 740
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 790
+      },
+      "action": "produce",
+      "producer": "barracks",
+      "unit": "man-at-arms",
+      "instance": 3
+    },
+    {
+      "action": "produce",
+      "producer": "barracks",
+      "unit": "man-at-arms",
+      "instance": 4
+    },
+    {
+      "action": "produce",
+      "producer": "barracks",
+      "unit": "man-at-arms",
+      "instance": 5
+    },
+    {
+      "action": "produce",
+      "producer": "barracks",
+      "unit": "man-at-arms",
+      "instance": 6
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "crossbowman",
+      "instance": 4
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "crossbowman",
+      "instance": 5
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "crossbowman",
+      "instance": 6
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 870
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 890
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 900
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
     },
     {
       "trigger": {
@@ -230,7 +525,7 @@
       "action": "move",
       "count": "all",
       "from": "gold#3",
-      "to": "farm"
+      "to": "wood"
     }
   ]
 }

@@ -5,11 +5,10 @@ import { postSimulate } from './helpers'
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
 const GOLD_NODES = ['gold', 'gold#2', 'gold#3']
-const MAN_AT_ARMS_STEP = 23
+const MAN_AT_ARMS_STEP = 35
 // The step arms at the landmark and starts after it, once resources allow.
 const CASTLE_LANDMARK_SECONDS = 681
-const MAN_AT_ARMS_START_SECONDS = 687.5475028949656
-const FIRST_GOLD_DEPLETED_SECONDS = 1114.092642631611
+const MAN_AT_ARMS_START_SECONDS = 696.4094792663907
 
 type Result = {
   steps: { step: number; status: string; armedAt: number | null; startedAt: number | null; waitBreakdown?: { resources?: number } }[]
@@ -40,11 +39,10 @@ test.describe('the spear/longbow into men-at-arms/crossbow build through the sim
     })
   }
 
-  test('at 1200 s only the first gold deposit has run out and its info node-depleted warning is the only warning', async ({ request }) => {
+  test('at 1200 s no gold deposit has run out and the run has no warning', async ({ request }) => {
     const { depletions, warnings } = await simulate(request, 1200)
-    // The house lead-time rule builds houses sooner, so population rises faster and the first gold deposit empties inside the window.
-    expect(depletions.filter((d) => GOLD_NODES.includes(d.node)).map((d) => d.depletedAt)).toEqual([FIRST_GOLD_DEPLETED_SECONDS, null, null])
-    expect(warnings.map((w) => [w.code, w.severity, w.node])).toEqual([['node-depleted', 'info', 'gold']])
+    expect(depletions.filter((d) => GOLD_NODES.includes(d.node)).map((d) => d.depletedAt)).toEqual([null, null, null])
+    expect(warnings).toEqual([])
   })
 
   test('at 3600 s each of the three gold deposits runs out with an info node-depleted warning and no warning-severity gold issue', async ({ request }) => {

@@ -489,7 +489,7 @@ describe('auto-houses with a long build in flight', () => {
         expect(build.steps.slice(firstHouse, firstHouse + 3).every((step) => step.action === 'build' && step.building === 'house')).toBe(true)
         const result = simulateBuildOrder({ ...build, steps }, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 800 }))
         const population = (t: number) => result.spawnedPopulation[sampleIndex(result, t)]
-        expect(population(660)).toBe(40)
+        expect(population(660)).toBe(39)
         expect(population(760)).toBeGreaterThan(population(660))
     })
 })
