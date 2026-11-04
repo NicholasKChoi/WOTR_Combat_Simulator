@@ -105,26 +105,26 @@ Single-component change outside the core control loop; no diagram required.
       (fails if the helper reads `completedAt`, which is null); `waiting` and `not-reached` with `startedAt: null` give
       `null`; completed with `startedAt === completedAt === 30` gives `{ from: 30, to: 30 }`; in-progress start 600
       gives `{ from: 600, to: 600 }`.
-- [ ] (respec 1) Hovering a `step-timeline-row` whose step has `from < to` shows exactly one `chart-step-band` in each of
+- [x] (respec 1) Hovering a `step-timeline-row` whose step has `from < to` shows exactly one `chart-step-band` in each of
       the four charts, and its `data-from` and `data-to` equal that step's `startedAt` and `completedAt` (or
       `durationSeconds` when `in-progress`) from the `/api/aoe4-build-order/simulate` response the page received, not
       hand-computed values.
-- [ ] (respec 1) Zero-length step: hovering the row of a step the simulate response reports with
+- [x] (respec 1) Zero-length step: hovering the row of a step the simulate response reports with
       `completedAt === startedAt` shows exactly one `chart-step-band` in each chart, its `data-from` equals its
       `data-to`, and its rendered rect has non-zero height and is visible (fails with a bare `ReferenceArea`, which
       renders nothing at zero width).
-- [ ] (respec 1) Geometry, one `page.evaluate`: hover the row of an Age up step whose `completedAt` equals an `age-up`
+- [x] (respec 1) Geometry, one `page.evaluate`: hover the row of an Age up step whose `completedAt` equals an `age-up`
       marker's `at` in the simulate response; in each chart the band's right edge is within 1 px of that
       `chart-marker`'s x, and the band's left and right edges lie within the chart's `.recharts-cartesian-grid`
       horizontal extent. Catches a band scaled in pixels or the wrong unit.
-- [ ] Moving the pointer off the row removes every `chart-step-band`; focusing a row by keyboard (Tab) shows the band
+- [x] Moving the pointer off the row removes every `chart-step-band`; focusing a row by keyboard (Tab) shows the band
       and blurring removes it.
-- [ ] Hovering a row with no start (a `waiting` or `not-reached` row) shows no `chart-step-band`. If no shipped build
+- [x] Hovering a row with no start (a `waiting` or `not-reached` row) shows no `chart-step-band`. If no shipped build
       yields such a row, use a pasted build the simulate API reports as `waiting` or `not-reached`.
-- [ ] (respec 1) Active row style: the hovered row carries `data-active="true"`, and the computed `box-shadow` of its
+- [x] (respec 1) Active row style: the hovered row carries `data-active="true"`, and the computed `box-shadow` of its
       first `td` differs from the same cell's value before hover. Checked on an unflagged row and on a flagged
       (`data-flagged="true"`) or long-wait row, so a highlight that `table-warning` hides fails.
-- [ ] (respec 1) After a new Run, no `chart-step-band` is shown and no row has `data-active`, even though the pointer
+- [x] (respec 1) After a new Run, no `chart-step-band` is shown and no row has `data-active`, even though the pointer
       stayed over a row (Run triggered without moving the pointer off the row, for example by keyboard, so no
       `pointerleave` fires). Fails if the active step is held in plain `useState<number | null>` with no tie to the result.
 - [x] Existing step-timeline tests (row order, columns, flags, kind badges) pass unchanged; the cell text of every row is

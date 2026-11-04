@@ -160,5 +160,5 @@ Findings:
 - `lib/aoe4-build-order/simulate-house-warnings.test.ts`: SGS-092 (now on main) re-pinned the spear digest to `1cead3b6a8f33aa3` over an explicit hashed field set. This branch pins `affa5ac15c88b132` under the old hashing, so the branch no longer applies cleanly on main.
 
 Required fixes:
-- [ ] Rebase `sgs-093-aoe4-docs-prebuilt-cleanups` onto origin/main fcfbaf1. Resolve the conflict by re-pinning the spear digest to the value the field-set hash from main gives for this branch's rebuilt prebuilt builds. Keep every other SGS-092 change on main as it is.
+- [x] Rebase `sgs-093-aoe4-docs-prebuilt-cleanups` onto origin/main fcfbaf1. Resolve the conflict by re-pinning the spear digest to the value the field-set hash from main gives for this branch's rebuilt prebuilt builds. Keep every other SGS-092 change on main as it is.
 - [ ] Re-pin any other digest or snapshot that main's helpers now compute differently for this branch's builds. Unit tests, tsc and lint:dup are clean, and the acceptance specs this ticket touched still pass.
