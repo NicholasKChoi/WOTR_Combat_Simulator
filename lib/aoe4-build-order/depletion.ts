@@ -171,7 +171,7 @@ export function depletionResults(stock: NodeStock): { depletions: NodeDepletion[
       warnings.push(idleArrivalWarning(ref, entry.idleArrival.at, entry.idleArrival.idleVillagers));
     }
   }
-  return { depletions, warnings: sortWarnings(warnings) };
+  return { depletions, warnings };
 }
 
 // At one instant: node warnings by FINITE_NODE_REFS order, node-depleted before idle-arrival, then farm-idle, then

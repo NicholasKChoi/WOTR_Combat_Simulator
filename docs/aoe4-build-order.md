@@ -521,7 +521,7 @@ form (`town-center#2`). A node ref is accepted in every node field of every step
 
 The reason quotes a string value; a value that is not a string gets the reason `node must be a string`. For a step field, `start` and the `depleted` trigger the message reads
 `<reason> in <path>`, as in `unknown node "iron" in start.rally`; for a `nodeAmounts` key it reads
-`inputs.nodeAmounts.<ref>: <reason>`, as in `inputs.nodeAmounts.iron: unknown node "iron"`. In paste, any token shaped `<id>` or `<id>#<chars>` in a node position reaches validation
+`inputs.nodeAmounts.<ref>: <reason>`, as in `inputs.nodeAmounts.iron: unknown node "iron"`. A quoted id longer than 40 characters is cut to its first 40 characters followed by `...` in every issue message that quotes it. In paste, any token shaped `<id>` or `<id>#<chars>` in a node position reaches validation
 unchanged; the paste parser reports no node issue of its own.
 
 `inputs.trips` and `inputs.houseBuilderSource` are checked against the gather node ids only:

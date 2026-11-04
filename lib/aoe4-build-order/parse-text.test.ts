@@ -514,6 +514,9 @@ describe('formatBuildStep', () => {
         [{ trigger: { kind: 'depleted', node: 'berry' }, action: 'move', count: 6, from: 'berry', to: 'farm' }, 'when berry runs out move 6 berry to farm'],
         [{ trigger: { kind: 'bank', resource: 'wood', atLeast: 400 }, action: 'pause', producer: 'tc' }, 'when wood >= 400 pause tc'],
         [{ trigger: { kind: 'time', seconds: 65 }, action: 'pause', producer: 'tc' }, '@1:05 pause tc'],
+        [{ trigger: { kind: 'time', seconds: 65.4 }, action: 'pause', producer: 'tc' }, '@1:05 pause tc'],
+        [{ trigger: { kind: 'time', seconds: 65.5 }, action: 'pause', producer: 'tc' }, '@1:06 pause tc'],
+        [{ trigger: { kind: 'time', seconds: 59.6 }, action: 'pause', producer: 'tc' }, '@1:00 pause tc'],
         [{ trigger: { kind: 'villagers', count: 9 }, action: 'pause', producer: 'tc' }, 'at 9 vils pause tc'],
         [{ action: 'move', count: 3, from: 'sheep', to: 'wood' }, 'move 3 sheep to wood'],
     ])('prints %j as one line', (input, text) => {

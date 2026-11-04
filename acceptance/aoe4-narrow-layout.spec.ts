@@ -71,7 +71,7 @@ test.describe('AoE4 build order at a 390 px screen', () => {
     const issues = page.getByTestId('build-order-issue')
     await expect(issues).toHaveCount(1)
     await expect(issues.first()).toHaveAttribute('data-code', 'unknown-id')
-    await expect(issues.first()).toContainText(id)
+    await expect(issues.first()).toContainText(`unknown unit "${'a'.repeat(40)}..."`)
     await expectNoSidewaysScroll(page)
   })
 })

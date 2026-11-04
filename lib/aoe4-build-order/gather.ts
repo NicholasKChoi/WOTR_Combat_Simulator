@@ -1,9 +1,10 @@
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState, ModifierTarget } from './effects';
+import { VILLAGER_ID } from './engine-common';
 import type { GatherNodeId, SimInputs } from './model';
 
 function villagerTarget(state: EffectState): ModifierTarget {
-  const villager = state.data.byBaseId.get('villager')?.[0];
+  const villager = state.data.byBaseId.get(VILLAGER_ID)?.[0];
   if (!villager) {
     throw new Error(`effectiveGatherRate: no villager entry in the ${state.data.civ} snapshot`);
   }

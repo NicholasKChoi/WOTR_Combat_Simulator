@@ -120,23 +120,32 @@ function isGatherNode(id: string): id is GatherNodeId {
   return (GATHER_NODES as readonly string[]).includes(id);
 }
 
+const ID_QUOTE_CHARS = 40;
+
+// Bounds an issue message that quotes a user-supplied id.
+function shortId(value: unknown): string {
+  const text = String(value);
+  return text.length <= ID_QUOTE_CHARS ? text : `${text.slice(0, ID_QUOTE_CHARS)}...`;
+}
+
 // Returns null for a valid ref. finiteOnly also rejects farm and wood, which never run dry.
 export function nodeRefIssue(value: unknown, finiteOnly: boolean): NodeRefProblem | null {
   if (typeof value !== 'string') return { code: 'syntax', reason: 'node must be a string' };
   const [node, ...suffix] = value.split('#');
-  if (!isGatherNode(node)) return { code: 'unknown-id', reason: `unknown node "${value}"` };
+  const quoted = shortId(value);
+  if (!isGatherNode(node)) return { code: 'unknown-id', reason: `unknown node "${quoted}"` };
   if (suffix.length === 0) {
     const infinite = finiteOnly && (node === 'farm' || node === 'wood');
-    return infinite ? { code: 'invalid', reason: `node "${value}" never runs out` } : null;
+    return infinite ? { code: 'invalid', reason: `node "${quoted}" never runs out` } : null;
   }
   if (suffix.length > 1 || !DEPOSIT_NUMBER.test(suffix[0])) {
-    return { code: 'syntax', reason: `node "${value}" is not a node or a numbered deposit such as gold#2` };
+    return { code: 'syntax', reason: `node "${quoted}" is not a node or a numbered deposit such as gold#2` };
   }
-  if (node !== 'gold') return { code: 'invalid', reason: `node "${value}": only gold has numbered deposits` };
+  if (node !== 'gold') return { code: 'invalid', reason: `node "${quoted}": only gold has numbered deposits` };
   const deposit = Number(suffix[0]);
-  if (deposit === 1) return { code: 'invalid', reason: `node "${value}": deposit 1 is written gold` };
+  if (deposit === 1) return { code: 'invalid', reason: `node "${quoted}": deposit 1 is written gold` };
   if (deposit < 1 || deposit > MAX_DEPOSITS) {
-    return { code: 'out-of-range', reason: `node "${value}": deposit number is outside 2..${MAX_DEPOSITS}` };
+    return { code: 'out-of-range', reason: `node "${quoted}": deposit number is outside 2..${MAX_DEPOSITS}` };
   }
   return null;
 }
@@ -308,7 +317,7 @@ function knownId(name: string, kind: CatalogKind, catalog: BuildOrderCatalog | u
     }
     const ids = { building: catalog.buildings, unit: catalog.units, tech: catalog.techs }[kind];
     if (ids.includes(id)) return undefined;
-    return { code: 'unknown-id', text: `unknown ${kind} "${id}" in ${name}`, suggestion: nearestId(id, ids) };
+    return { code: 'unknown-id', text: `unknown ${kind} "${shortId(id)}" in ${name}`, suggestion: nearestId(id, ids) };
   };
 }
 
@@ -317,7 +326,7 @@ const TRIGGER_KINDS = ['time', 'villagers', 'depleted', 'bank'] as const;
 const triggerNumber = (name: string, key: BoundKey) => field<number>(typed(`trigger.${name}`, 'number', inRange(`trigger.${name}`, key), { missing: false }));
 
 const knownResource: Check = (value) =>
-  RESOURCE_KINDS.includes(value as ResourceKind) ? undefined : { code: 'unknown-id', text: `unknown resource "${value}" in trigger.resource` };
+  RESOURCE_KINDS.includes(value as ResourceKind) ? undefined : { code: 'unknown-id', text: `unknown resource "${shortId(value)}" in trigger.resource` };
 
 const triggerKindCheck: Check = (trigger) => {
   if (!isRecord(trigger)) return syntax('trigger must be an object');
@@ -326,7 +335,7 @@ const triggerKindCheck: Check = (trigger) => {
   if ((TRIGGER_KINDS as readonly string[]).includes(kind)) return undefined;
   return {
     code: 'unknown-trigger-kind',
-    text: `unknown trigger kind "${kind}"; the kinds are ${TRIGGER_KINDS.join(', ')}`,
+    text: `unknown trigger kind "${shortId(kind)}"; the kinds are ${TRIGGER_KINDS.join(', ')}`,
     suggestion: nearestId(kind, TRIGGER_KINDS),
   };
 };
@@ -358,7 +367,7 @@ function stepProblem(step: unknown): string {
   if (!isRecord(step)) return 'is not an object';
   const { action } = step;
   if (action === undefined) return 'missing action';
-  return typeof action === 'string' ? `unknown action "${action}"` : 'action must be a string';
+  return typeof action === 'string' ? `unknown action "${shortId(action)}"` : 'action must be a string';
 }
 
 function crossFieldProblems(step: BuildStep, catalog: BuildOrderCatalog): string[] {
@@ -513,7 +522,7 @@ function crossStepProblems(order: Fields, steps: readonly BuildStep[], catalog: 
 function orderObject(catalog: BuildOrderCatalog | undefined) {
   return z.object(
     {
-      civ: text<CivId>((civ) => (catalog === undefined || civ === catalog.civ ? undefined : { code: 'unknown-id', text: `unknown civ "${civ}"` })),
+      civ: text<CivId>((civ) => (catalog === undefined || civ === catalog.civ ? undefined : { code: 'unknown-id', text: `unknown civ "${shortId(civ)}"` })),
       name: text(),
       source: text().optional(),
       start: startSchema.optional(),
@@ -525,9 +534,19 @@ function orderObject(catalog: BuildOrderCatalog | undefined) {
 
 export type BuildOrder = z.output<ReturnType<typeof orderObject>>;
 
+// A catalog is treated as immutable, so its schema is built once.
+const schemasByCatalog = new WeakMap<BuildOrderCatalog, z.ZodType<BuildOrder>>();
+
 function orderSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildOrder> {
-  const order = orderObject(catalog);
-  if (catalog === undefined) return order;
+  if (catalog === undefined) return orderObject(undefined);
+  const cached = schemasByCatalog.get(catalog);
+  if (cached !== undefined) return cached;
+  const built = withCrossChecks(orderObject(catalog), catalog);
+  schemasByCatalog.set(catalog, built);
+  return built;
+}
+
+function withCrossChecks(order: ReturnType<typeof orderObject>, catalog: BuildOrderCatalog): z.ZodType<BuildOrder> {
   return order.superRefine(
     (value, payload) => {
       if (!isRecord(value)) return;
@@ -631,7 +650,7 @@ function keyedRecord<T>(keyProblem: (key: string) => Problem | undefined, item: 
 
 export function simInputsSchema(catalog: BuildOrderCatalog) {
   const nodes = Object.keys(catalog.inputDefaults.trips);
-  const unknownNode = (node: string): Problem | undefined => (nodes.includes(node) ? undefined : { code: 'unknown-id', text: `unknown node "${node}"` });
+  const unknownNode = (node: string): Problem | undefined => (nodes.includes(node) ? undefined : { code: 'unknown-id', text: `unknown node "${shortId(node)}"` });
   const number = (key: BoundKey) => field<number>(inputNumber(key)).optional();
   const trip = z.object(
     { walkSecondsCamp: number('walkSecondsCamp'), walkSecondsTownCenter: number('walkSecondsTownCenter'), dropOffSeconds: number('dropOffSeconds') },
@@ -646,7 +665,7 @@ export function simInputsSchema(catalog: BuildOrderCatalog) {
       houseBuilders: number('houseBuilders'),
       houseBuilderSource: field<GatherNodeId>((value) => (typeof value === 'string' ? unknownNode(value) : syntax('must be a string'))).optional(),
       influenceCoverage: keyedRecord(
-        (building) => (catalog.buildings.includes(building) ? undefined : { code: 'unknown-id', text: `unknown building "${building}"` }),
+        (building) => (catalog.buildings.includes(building) ? undefined : { code: 'unknown-id', text: `unknown building "${shortId(building)}"` }),
         field<number>(inputNumber('influenceCoverage')),
       ).optional(),
       nodeAmounts: keyedRecord(

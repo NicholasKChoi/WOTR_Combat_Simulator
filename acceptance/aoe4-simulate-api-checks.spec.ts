@@ -131,6 +131,7 @@ test.describe('oversized input bounds', () => {
     expect(Date.now() - started).toBeLessThan(1000)
     expect(issues).toHaveLength(1)
     expect(issues[0].code).toBe('unknown-id')
+    expect(issues[0].message.length).toBeLessThan(200)
     expect('suggestion' in issues[0]).toBe(false)
   })
 
