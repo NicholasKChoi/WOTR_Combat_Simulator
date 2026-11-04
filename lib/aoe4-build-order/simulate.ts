@@ -340,7 +340,10 @@ function spawnUnit(state: EngineState, entry: SnapshotEntry, at: BuildingInstanc
   if (entry.baseId !== VILLAGER_ID) {
     return;
   }
-  const rally = at.rally!;
+  const rally = at.rally;
+  if (!rally) {
+    throw new Error(`building "${at.baseId}" instance ${at.instance} spawned a villager but has no rally`);
+  }
   const moveSpeedMultiplier = modifiedValue(1, 'moveSpeed', { baseId: entry.baseId, classes: entry.classes }, state);
   state.walking += 1;
   state.schedule(state.time + (rally.walkSeconds ?? state.inputs.walkSeconds) / moveSpeedMultiplier, (s) => {
@@ -584,8 +587,12 @@ function payOrder(engine: Engine, instance: BuildingInstance): void {
 
 function productionSeconds(state: EngineState, entry: SnapshotEntry, producer: string): number {
   const speed = modifiedValue(1, 'productionSpeed', { baseId: entry.baseId, classes: entry.classes, producer }, state);
-  const seconds = entry.costs.time / speed;
-  return state.rules.productionModifier?.(seconds, { ...ruleContext(state), entry, producer }) ?? seconds;
+  const base = entry.costs.time / speed;
+  const seconds = state.rules.productionModifier?.(base, { ...ruleContext(state), entry, producer }) ?? base;
+  if (entry.type === 'unit' && !(Number.isFinite(seconds) && seconds > 0)) {
+    throw new Error(`production time for "${entry.baseId}" at "${producer}" must be a positive finite number, got ${seconds}`);
+  }
+  return seconds;
 }
 
 function startHead(engine: Engine, instance: BuildingInstance): void {
