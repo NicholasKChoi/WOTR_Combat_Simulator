@@ -1,0 +1,150 @@
+import { test, expect, type Page } from '@playwright/test'
+import { openPage, runSimulation, showTab, showView } from './helpers'
+
+const KNIGHT_LONGBOW = "ENG Knight/Longbow (King's Palace)"
+
+const barPosition = (page: Page) => page.getByTestId('run-bar').evaluate((el) => getComputedStyle(el).position)
+
+async function runOk(page: Page) {
+  const response = await runSimulation(page)
+  expect(response.status()).toBe(200)
+}
+
+for (const viewport of [
+  { width: 320, height: 700 },
+  { width: 360, height: 760 },
+]) {
+  test.describe(`step table cards at ${viewport.width} px`, () => {
+    test.use({ viewport })
+
+    test('no select or input leaves the screen', async ({ page }) => {
+      await openPage(page)
+      await page.getByTestId('build-order-select').selectOption({ label: KNIGHT_LONGBOW })
+      await showView(page, 'table')
+      await expect(page.getByTestId('step-start-row')).toBeVisible()
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const rights = [...document.querySelectorAll('[data-testid="step-table"] select, [data-testid="step-table"] input')].map(
+              (el) => el.getBoundingClientRect().right,
+            )
+            return Math.max(document.documentElement.scrollWidth, ...rights) - window.innerWidth
+          }),
+        )
+        .toBeLessThanOrEqual(0)
+    })
+  })
+}
+
+test.describe('run bar at 360x760', () => {
+  test.use({ viewport: { width: 360, height: 760 } })
+
+  test('scrolls away with the page and a run scrolls the results heading into view', async ({ page }) => {
+    await openPage(page)
+    expect(await barPosition(page)).toBe('static')
+    await runOk(page)
+    await expect(page.getByTestId('panel-results')).toBeVisible()
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const heading = document.querySelector('[data-testid="panel-results"] > div')!
+          return { top: heading.getBoundingClientRect().top, margin: getComputedStyle(heading).scrollMarginTop }
+        }),
+      )
+      .toMatchObject({ margin: '0px' })
+    const heading = await page.evaluate(() => document.querySelector('[data-testid="panel-results"] > div')!.getBoundingClientRect().top)
+    expect(heading).toBeGreaterThanOrEqual(0)
+    expect(heading).toBeLessThan(760)
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          window.scrollTo(0, 400)
+          const bar = document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect()
+          return { barTop: bar.top, scrolled: window.scrollY > 0 }
+        }),
+      )
+      .toMatchObject({ barTop: expect.any(Number), scrolled: true })
+    const covered = await page.evaluate(() => {
+      const bar = document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect()
+      const titles = [...document.querySelectorAll('[data-testid="panel-results"] h2, [data-testid="panel-results"] h3, [data-testid="panel-results"] h4, [data-testid="panel-results"] h5')]
+      return { barTop: bar.top, overlaps: titles.filter((t) => t.getBoundingClientRect().bottom > bar.top && t.getBoundingClientRect().top < bar.bottom).length }
+    })
+    expect(covered.barTop).toBeLessThan(0)
+    expect(covered.overlaps).toBe(0)
+  })
+})
+
+for (const viewport of [
+  { width: 768, height: 1024 },
+  { width: 1280, height: 720 },
+]) {
+  test.describe(`run bar at ${viewport.width} px`, () => {
+    test.use({ viewport })
+
+    test('stays sticky at the top and offsets the results scroll by its height', async ({ page }) => {
+      await openPage(page)
+      expect(await barPosition(page)).toBe('sticky')
+      await runOk(page)
+      await expect(page.getByTestId('panel-results')).toBeVisible()
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            window.scrollTo(0, 300)
+            const bar = document.querySelector('[data-testid="run-bar"]')!
+            const heading = document.querySelector('[data-testid="panel-results"] > div')!
+            return {
+              top: bar.getBoundingClientRect().top,
+              marginMatchesBar: Math.abs(parseFloat(getComputedStyle(heading).scrollMarginTop) - bar.getBoundingClientRect().height) < 0.5,
+            }
+          }),
+        )
+        .toEqual({ top: 0, marginMatchesBar: true })
+    })
+  })
+}
+
+test.describe('workbench tabs keyboard model', () => {
+  test('arrow keys, Home and End move between tabs and focus follows', async ({ page }) => {
+    await openPage(page)
+    await runOk(page)
+    await showTab(page, 'build')
+    const select = async (key: string, tab: 'build' | 'results') => {
+      await page.keyboard.press(key)
+      await expect(page.getByTestId(`tab-${tab}`)).toHaveAttribute('aria-selected', 'true')
+      await expect(page.getByTestId(`tab-${tab}`)).toBeFocused()
+      await expect(page.getByTestId(`panel-${tab}`)).toBeVisible()
+    }
+    await page.getByTestId('tab-build').focus()
+    await select('ArrowRight', 'results')
+    await select('ArrowLeft', 'build')
+    await select('ArrowLeft', 'results')
+    await select('ArrowRight', 'build')
+    await select('End', 'results')
+    await select('Home', 'build')
+    await select('ArrowRight', 'results')
+    await select('Home', 'build')
+  })
+
+  test('one tab stop: the selected tab has tabindex 0 and Tab leaves the tab list', async ({ page }) => {
+    await openPage(page)
+    await runOk(page)
+    await expect(page.getByTestId('tab-results')).toHaveAttribute('tabindex', '0')
+    await expect(page.getByTestId('tab-build')).toHaveAttribute('tabindex', '-1')
+    await page.getByTestId('tab-results').focus()
+    await page.keyboard.press('Tab')
+    const inTablist = await page.evaluate(() => !!document.activeElement?.closest('[role="tablist"]'))
+    expect(inTablist).toBe(false)
+  })
+
+  test('with Results disabled every navigation key leaves Build selected and focused', async ({ page }) => {
+    await openPage(page)
+    await expect(page.getByTestId('tab-results')).toBeDisabled()
+    await page.getByTestId('tab-build').focus()
+    for (const key of ['ArrowRight', 'ArrowLeft', 'Home', 'End']) {
+      await page.keyboard.press(key)
+      await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
+      await expect(page.getByTestId('tab-build')).toBeFocused()
+    }
+  })
+})

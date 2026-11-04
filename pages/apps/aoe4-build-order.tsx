@@ -48,6 +48,11 @@ interface Pin extends Run {
     result: SimulateResponse
 }
 
+function stickyBarHeight(bar: HTMLElement | null): string {
+    if (!bar || getComputedStyle(bar).position !== 'sticky') return '0px'
+    return `${bar.getBoundingClientRect().height}px`
+}
+
 function browserStorage(): Storage | null {
     try {
         return window.localStorage
@@ -147,13 +152,13 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     useEffect(() => {
         const panel = resultsTop.current
         if (resultsShownCount === 0 || !panel) return
-        panel.style.scrollMarginTop = `${runBar.current?.getBoundingClientRect().height ?? 0}px`
+        panel.style.scrollMarginTop = stickyBarHeight(runBar.current)
         panel.scrollIntoView()
     }, [resultsShownCount])
 
     useEffect(() => {
         if (rejection === null) return
-        const marginTop = `${runBar.current?.getBoundingClientRect().height ?? 0}px`
+        const marginTop = stickyBarHeight(runBar.current)
         const { line } = rejection
         const item = view === 'text' && line !== undefined ? editorBox.current?.querySelector(`[data-testid="build-order-line-number"][data-line="${line}"]`) : null
         const target = item ?? issuesBox.current

@@ -830,11 +830,11 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 
 ### Page
 
-The page is `/apps/aoe4-build-order`. A run bar stays at the top of the viewport while the page scrolls. It
+The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls; below that it scrolls with the page. It
 holds the prebuilt build select, the `durationSeconds` number input (default 1200), the run button and a
 text/table toggle. Below it are two tabs, Build and Results. Results is enabled while there is a shown result or
 a pinned run; a successful run selects Results and scrolls it into view, and a rejected or failed run selects
-Build. Switching tabs changes nothing else, and both panels stay mounted. The Build tab shows one editor view
+Build. Switching tabs changes nothing else, and both panels stay mounted. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The Build tab shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the
 step table. The view survives runs and tab switches but not a reload; the selected tab follows each run
@@ -851,7 +851,7 @@ error list under the editor view, without lines. Gold run-outs and other info no
 list in Results. The duration is not checked in the browser: an
 empty or non-numeric entry is sent as 0, and the route rejects any value outside its bounds.
 
-Narrow layout: under 768 px the step rows are cards, the run bar wraps onto several rows with the select and
+Narrow layout: under 768 px the step rows are cards (their selects and inputs shrink to the card), the run bar scrolls with the page and wraps onto several rows with the select and
 duration input at full width, and the step timeline and compare tables scroll sideways inside their own boxes. The
 page itself does not scroll sideways at 390 px on either tab, even with a long unbroken token in an issue message.
 At 1200 px and wider the step timeline sits in a column to the left of the charts and stays on screen just below the run
