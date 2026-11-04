@@ -76,3 +76,4 @@ Retired task-graph rows. The ready-set scan ignores this file.
 | SGS-077 | Add a cumulative gathered resources series and chart | | | | high | | SGS-076 | sgs-077-aoe4-gathered-resources-chart | e9a428d | integrated | | 87 | tickets/SGS-077-aoe4-gathered-resources-chart.md |
 | SGS-078 | Step timeline reads in time order and colour-codes rows by step type | | | | low | | SGS-076 | sgs-078-aoe4-timeline-started-first-type-colors | b6daa13 | integrated | | 84 | tickets/SGS-078-aoe4-timeline-started-first-type-colors.md |
 | SGS-079 | Make the prebuilt build entries state choices and rules, not measured results | | | | low | | | sgs-079-aoe4-prebuilt-docs-no-measured-results | 7e6a085 | integrated | | 85 | tickets/SGS-079-aoe4-prebuilt-docs-no-measured-results.md |
+| SGS-090 | Research at the entry's own producer and resolve units to the highest researched tier | | | | high | | | | | discarded | | | tickets/SGS-090-aoe4-multi-tier-research-site-and-unit-tier.md |

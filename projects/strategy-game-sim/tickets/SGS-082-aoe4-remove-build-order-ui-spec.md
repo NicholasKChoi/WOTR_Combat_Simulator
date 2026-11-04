@@ -58,16 +58,16 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `acceptance/aoe4-build-order.spec.ts` does not exist.
-- [ ] `git grep -n "aoe4-build-order.spec"` finds no match outside `.claude/` state files.
-- [ ] `npx tsc --noEmit` and `npm run lint:dup` pass (no dangling import; no helper left with zero users).
-- [ ] No export of `acceptance/helpers.ts` is unused by every other file and by `helpers.ts` itself.
+- [x] `acceptance/aoe4-build-order.spec.ts` does not exist.
+- [x] `git grep -n "aoe4-build-order.spec"` finds no match outside `.claude/` state files.
+- [x] `npx tsc --noEmit` and `npm run lint:dup` pass (no dangling import; no helper left with zero users).
+- [x] No export of `acceptance/helpers.ts` is unused by every other file and by `helpers.ts` itself.
 - [ ] `npm test` passes unchanged.
 - [ ] `npm run acceptance` passes, and its test count is the pre-change count minus the deleted file's tests; no
       other spec is edited except to remove a now-dead helper import.
-- [ ] (respec 1) No other file under `acceptance/` is deleted or renamed; the diff deletes only
+- [x] (respec 1) No other file under `acceptance/` is deleted or renamed; the diff deletes only
       `acceptance/aoe4-build-order.spec.ts` (plus any dead helper export removed from `helpers.ts`).
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Re-spec 2026-11-03
 

@@ -1,0 +1,3 @@
+# SGS-090 spec-gate 1 (written by manager from agent's returned text)
+Verdict: READY, pending owner keep/discard (Open question 1). Risk high confirmed (changes what a run computes; fix the HTML comment justification).
+Notes for re-spec if kept: Test A needs a town-center instance (startingWith) or assert the producedBy filter directly; criterion 6 grep is vacuous, replace with doc-paragraph check and update the researchEntry comment; rephrase "no criterion changes meaning" to "existing researchEntry, a research step, resolveUnitEntry tests pass unmodified"; name the three shipped builds and producedBy[0] for the at variant; docs may note unvalidated `at` returns prerequisite.

@@ -114,40 +114,51 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] The intro sentence in `docs/aoe4-build-order.md` no longer lists "idle time" among the named inputs, and every
+- [x] The intro sentence in `docs/aoe4-build-order.md` no longer lists "idle time" among the named inputs, and every
   remaining use of "idle" in the doc refers to a villager at a node with nothing to gather (walking villagers are
   "walking"). Check: `git grep -n -i "idle" docs/aoe4-build-order.md` read line by line, listed in the report.
-- [ ] The per-key input-merge sentence names every per-key merged field of `SimInputOverrides`, and the "Ordering and
+- [x] The per-key input-merge sentence names every per-key merged field of `SimInputOverrides`, and the "Ordering and
   triggers" paragraph points at the wait reasons table without a partial list of reasons; the report says whether either
   needed an edit.
-- [ ] `docs/api/openapi.json` has at least two named 200 examples for the simulate operation, request examples with
+- [x] `docs/api/openapi.json` has at least two named 200 examples for the simulate operation, request examples with
   the same keys, and one of the 200 examples has a non-empty `warnings`, a non-empty `markers` and a `depletions` entry
   for a numbered deposit with a non-null `depletedAt`. `npm run acceptance -- acceptance/aoe4-simulate-api-contract.spec.ts`
   passes: every 200 example validates as `SimulationResult` and equals the real response to the request example of
   the same name.
-- [ ] Mutation: change one value inside the new 200 example (a `warnings[0].at`, or the marker `at`); the contract spec's
+- [x] Mutation: change one value inside the new 200 example (a `warnings[0].at`, or the marker `at`); the contract spec's
   "returns the documented 200 body" case for that key fails. Delete the new request example's key; the key-equality
   case fails.
-- [ ] Every Town Center and King's Palace `rally` step left in `english-spear-longbow-maa-crossbow.json` is one whose
+- [x] Every Town Center and King's Palace `rally` step left in `english-spear-longbow-maa-crossbow.json` is one whose
   removal changes the result at 1200 s or 3600 s; the removed rally(s) left every series, warning, depletion and the
   other steps' times unchanged (comparison recorded in the report). The build still re-parses from its paste text to
   the same `start` and `steps`, and the build-quality cases in `builds.test.ts` pass unchanged.
-- [ ] No test or spec locates a step of the spear build by an index that the removal made stale; `npm test` and the
+- [x] No test or spec locates a step of the spear build by an index that the removal made stale; `npm test` and the
   acceptance specs that read the spear build pass. The implementer lists every test edited and why.
-- [ ] A new case in `builds.test.ts` pins the spear build's first gold `depletedAt` at 1800 s with `toBe` and asserts
+- [x] A new case in `builds.test.ts` pins the spear build's first gold `depletedAt` at 1800 s with `toBe` and asserts
   the second gold deposit is not yet run out. Mutation (throwaway worktree): change the 130 s Town Center rally to
   gold in the build file to a different time; that case fails. No doc states the value.
-- [ ] In `docs/aoe4-build-order.md` (the prebuilt-builds paragraph) and `data/aoe4-build-order/README.md` (Prebuilt
+- [x] In `docs/aoe4-build-order.md` (the prebuilt-builds paragraph) and `data/aoe4-build-order/README.md` (Prebuilt
   builds section) no prose line is longer than 110 characters unless it holds one unbreakable token (a URL or code
   span), and `ENG 1TC` is not alone on a line mid-sentence. Check:
   `awk 'length>110{print FILENAME": "FNR": "length}' data/aoe4-build-order/README.md docs/aoe4-build-order.md`
   restricted to those sections prints nothing else.
-- [ ] The knight README entry names no `step N` index and no count of explicit houses; it says auto-houses stay off
+- [x] The knight README entry names no `step N` index and no count of explicit houses; it says auto-houses stay off
   until the last explicit `build house` step starts, and in `english-knight-longbow.json` that step precedes the
   `build kings-palace` step. Check: `git grep -n "step 2" data/aoe4-build-order/README.md` finds nothing in that entry.
-- [ ] No measured value (time, count, rate) is added to any doc or README.
-- [ ] No INVARIANTS.md regressions
+- [x] No measured value (time, count, rate) is added to any doc or README.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
 None.
+
+## Rework 1 - 2026-11-04 (batch merge conflict)
+
+Raised by the manager after SGS-092 merged to main (fcfbaf1). Gates passed: review-1 at 6e7ebd3, acceptance-test-1 at 561b667. Scope and acceptance are unchanged.
+
+Findings:
+- `lib/aoe4-build-order/simulate-house-warnings.test.ts`: SGS-092 (now on main) re-pinned the spear digest to `1cead3b6a8f33aa3` over an explicit hashed field set. This branch pins `affa5ac15c88b132` under the old hashing, so the branch no longer applies cleanly on main.
+
+Required fixes:
+- [ ] Rebase `sgs-093-aoe4-docs-prebuilt-cleanups` onto origin/main fcfbaf1. Resolve the conflict by re-pinning the spear digest to the value the field-set hash from main gives for this branch's rebuilt prebuilt builds. Keep every other SGS-092 change on main as it is.
+- [ ] Re-pin any other digest or snapshot that main's helpers now compute differently for this branch's builds. Unit tests, tsc and lint:dup are clean, and the acceptance specs this ticket touched still pass.
