@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { listBuilds } from './builds'
+import type { BuildOrderIssue } from './model'
 import { formatBuildOrderText, parseBuildOrderText } from './parse-text'
 import { buildOrderCatalog, checkBuildOrder } from './schema'
 import { ENGLISH } from './test-helpers'
@@ -19,7 +20,7 @@ describe('textToBuildOrder', () => {
     it.each([
         [
             'start 6 sheep -> sheep\n# knights\nproduce knigt from stable',
-            { code: 'unknown-id', message: 'line 3: unknown unit "knigt" in unit', step: 0, line: 3, suggestion: 'knight' },
+            { code: 'unknown-id', message: 'line 3: unknown unit "knigt"', step: 0, line: 3, suggestion: 'knight' },
             { start: 1, steps: [3] },
         ],
         [
@@ -46,12 +47,48 @@ describe('textToBuildOrder', () => {
         expect(textToBuildOrder(text, catalog)).toStrictEqual({ ok: false, issues: [found], lines })
     })
 
-    it('returns a parse failure unchanged and without lines', () => {
+    it('returns the syntax issues without lines when every other line is valid', () => {
         const text = 'start -> sheep\nfly'
         const result = textToBuildOrder(text, catalog)
-        expect(result).toStrictEqual(parseBuildOrderText(text))
-        expect(result.ok).toBe(false)
+        const failed = parseBuildOrderText(text)
+        if (failed.ok) throw new Error('expected a syntax issue')
+        expect(result).toStrictEqual({ ok: false, issues: failed.issues })
         expect('lines' in result).toBe(false)
+    })
+
+    it('lists the field issues of the parsed lines with the syntax issues in line order', () => {
+        expect(textToBuildOrder('start -> sheep\nproduce knigt from stable\nbuild hous', catalog)).toStrictEqual({
+            ok: false,
+            issues: [
+                { code: 'unknown-id', message: 'line 2: unknown unit "knigt"', line: 2, suggestion: 'knight' },
+                { code: 'syntax', message: "line 3: expected 'from', got end of line", line: 3 },
+            ],
+        })
+        const linesOf = (text: string) => (textToBuildOrder(text, catalog) as { issues: BuildOrderIssue[] }).issues.map((found) => found.line)
+        expect(linesOf('start -> sheep\nfly\nproduce knigt from stable\nbuild house from wod\nbuild')).toEqual([2, 3, 4, 5])
+    })
+
+    it('puts issues without a line before the first line', () => {
+        const text = ['start -> sheep', ...Array(201).fill('pause capital-town-center'), 'fly'].join('\n')
+        const result = textToBuildOrder(text, catalog)
+        if (result.ok) throw new Error('expected issues')
+        expect(result.issues[0]).toStrictEqual({ code: 'out-of-range', message: 'steps: 201 steps, more than 200' } satisfies BuildOrderIssue)
+        expect(result.issues[1]).toMatchObject({ code: 'syntax', line: 203 })
+    })
+
+    it.each([
+        ['a start line that fails to parse', 'start nonsense\npause capital-town-center'],
+        ['a repeated research', 'research wheelbarrow\nresearch wheelbarrow\nfly'],
+    ])('skips the start and cross-step rules while a line fails to parse: %s', (_name, text) => {
+        const result = textToBuildOrder(text, catalog)
+        if (result.ok) throw new Error('expected issues')
+        expect(result.issues.map((found) => found.code)).toEqual(['syntax'])
+    })
+
+    it('keeps a per-step cross-field issue on a parse failure, with its line and no step', () => {
+        const result = textToBuildOrder('start -> sheep\nproduce longbowman from stable\nfly', catalog)
+        if (result.ok) throw new Error('expected issues')
+        expect(result.issues[0]).toStrictEqual({ code: 'invalid', message: 'line 2: stable cannot produce longbowman', line: 2 })
     })
 
     it('checks the order parsed from empty text', () => {

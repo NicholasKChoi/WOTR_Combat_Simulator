@@ -654,3 +654,14 @@ describe('bounded work on long input', () => {
         expect(elapsed(text)).toBeLessThan(1000)
     })
 })
+
+describe('parseBuildOrderText partial order', () => {
+    it('holds only the lines that parsed, with their paste lines', () => {
+        const result = parseBuildOrderText('start -> sheep\nfly\npause capital-town-center\nbuild')
+        if (result.ok) throw new Error('expected issues')
+        expect(result.issues.map((found) => found.line)).toEqual([2, 4])
+        expect(result.partial.order.steps).toEqual([{ action: 'pause', producer: 'capital-town-center' }])
+        expect(result.partial.order.start).toEqual({ rally: 'sheep' })
+        expect(result.partial.lines).toEqual({ start: 1, steps: [3] })
+    })
+})

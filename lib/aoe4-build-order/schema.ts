@@ -249,6 +249,7 @@ interface Problem {
   code: BuildOrderIssue['code'];
   text: string;
   suggestion?: string;
+  field?: string;
 }
 
 type Check = (value: unknown) => Problem | undefined;
@@ -259,7 +260,7 @@ type Scope = 'cross-field' | 'cross-step';
 const syntax = (text: string): Problem => ({ code: 'syntax', text });
 
 function report(payload: z.core.ParsePayload, problem: Problem, path: PropertyKey[] = [], scope?: Scope): void {
-  const params = { code: problem.code, suggestion: problem.suggestion, scope };
+  const params = { code: problem.code, suggestion: problem.suggestion, field: problem.field, scope };
   payload.issues.push({ code: 'custom', message: problem.text, input: payload.value, path, params });
 }
 
@@ -293,7 +294,7 @@ function nodeAt(name: string, finiteOnly: boolean): Check {
     if (problem === null) return undefined;
     const choices = finiteOnly ? FINITE_NODE_REFS : NODE_REFS;
     const suggestion = problem.code === 'unknown-id' ? nearestId(value as string, choices) : undefined;
-    return { code: problem.code, text: `${problem.reason} in ${name}`, suggestion };
+    return { code: problem.code, text: problem.reason, suggestion, field: name };
   };
 }
 
@@ -309,7 +310,7 @@ function knownId(name: string, kind: CatalogKind, catalog: BuildOrderCatalog | u
     }
     const ids = { building: catalog.buildings, unit: catalog.units, tech: catalog.techs }[kind];
     if (ids.includes(id)) return undefined;
-    return { code: 'unknown-id', text: `unknown ${kind} "${shortText(id)}" in ${name}`, suggestion: nearestId(id, ids) };
+    return { code: 'unknown-id', text: `unknown ${kind} "${shortText(id)}"`, suggestion: nearestId(id, ids), field: name };
   };
 }
 
@@ -528,13 +529,16 @@ export type BuildOrder = z.output<ReturnType<typeof orderObject>>;
 
 // A catalog is treated as immutable, so its schema is built once.
 const schemasByCatalog = new WeakMap<BuildOrderCatalog, z.ZodType<BuildOrder>>();
+const stepRulesSchemasByCatalog = new WeakMap<BuildOrderCatalog, z.ZodType<BuildOrder>>();
 
-function orderSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildOrder> {
+function orderSchema(catalog: BuildOrderCatalog | undefined, skipWholeOrderRules = false): z.ZodType<BuildOrder> {
   if (catalog === undefined) return orderObject(undefined);
-  const cached = schemasByCatalog.get(catalog);
+  const cache = skipWholeOrderRules ? stepRulesSchemasByCatalog : schemasByCatalog;
+  const cached = cache.get(catalog);
   if (cached !== undefined) return cached;
-  const built = withCrossChecks(orderObject(catalog), catalog);
-  schemasByCatalog.set(catalog, built);
+  const perStep = orderObject(catalog);
+  const built = skipWholeOrderRules ? perStep : withCrossChecks(perStep, catalog);
+  cache.set(catalog, built);
   return built;
 }
 
@@ -576,6 +580,7 @@ type ZodIssue = z.core.$ZodIssue;
 interface IssueParams {
   code?: BuildOrderIssue['code'];
   suggestion?: string;
+  field?: string;
   scope?: Scope;
   earlier?: number;
 }
@@ -598,7 +603,8 @@ function toOrderIssue(found: ZodIssue, lines: BuildOrderLines | undefined): Buil
   if (head === 'steps' && typeof index === 'number') where = stepLabel(index);
   else if (head === 'start' && found.path.length > 1) where = located('start', lines?.start);
   else where = { label: found.path.length === 0 ? 'build order' : String(head) };
-  const text = params.earlier === undefined ? found.message : found.message + stepLabel(params.earlier).label;
+  let text = params.earlier === undefined ? found.message : found.message + stepLabel(params.earlier).label;
+  if (params.field !== undefined && where.line === undefined) text += ` in ${params.field}`;
   const result = issue(params.code ?? 'syntax', where, text);
   if (params.suggestion !== undefined) result.suggestion = params.suggestion;
   return result;
@@ -608,8 +614,9 @@ export function checkBuildOrder(
   value: unknown,
   catalog: BuildOrderCatalog,
   lines?: BuildOrderLines,
+  skipWholeOrderRules = false,
 ): { ok: true; order: BuildOrder } | { ok: false; issues: BuildOrderIssue[] } {
-  const result = orderSchema(catalog).safeParse(value);
+  const result = orderSchema(catalog, skipWholeOrderRules).safeParse(value);
   if (result.success) return { ok: true, order: result.data };
   const issues = [...result.error.issues].sort((a, b) => rankOf(a) - rankOf(b));
   return { ok: false, issues: issues.map((found) => toOrderIssue(found, lines)) };

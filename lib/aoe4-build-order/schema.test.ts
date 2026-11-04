@@ -240,9 +240,17 @@ describe('checkBuildOrder ordering and gating', () => {
             ok: false,
             issues: [
                 { code: 'invalid', message: 'line 3: start.villagers sums to 5, the civ starts with 6', line: 3 },
-                { code: 'unknown-id', message: 'line 9: unknown building "nowhere" in producer', step: 1, line: 9, suggestion: undefined },
+                { code: 'unknown-id', message: 'line 9: unknown building "nowhere"', step: 1, line: 9, suggestion: undefined },
             ].map((found) => JSON.parse(JSON.stringify(found))),
         })
+    })
+
+    it('skips the start and cross-step rules when asked to skip the whole-order rules', () => {
+        const value = order([{ action: 'research', tech: 'wheelbarrow' }, { action: 'research', tech: 'wheelbarrow' }], { villagers: { sheep: 5 }, rally: 'sheep' })
+        expect(messages(value)).toEqual(['start: start.villagers sums to 5, the civ starts with 6', 'steps[1]: wheelbarrow is already researched by steps[0]'])
+        expect(checkBuildOrder(value, catalog, undefined, true).ok).toBe(true)
+        const unknown = order([{ action: 'produce', producer: 'stable', unit: 'knigt' }])
+        expect(checkBuildOrder(unknown, catalog, undefined, true)).toMatchObject({ ok: false, issues: [{ message: 'steps[0]: unknown unit "knigt" in unit' }] })
     })
 
     it('gives the same issues for the same value', () => {

@@ -5,7 +5,7 @@ import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStart, BuildSte
 
 export type ParseTextResult =
   | { ok: true; order: BuildOrder; lines: BuildOrderLines }
-  | { ok: false; issues: BuildOrderIssue[] };
+  | { ok: false; issues: BuildOrderIssue[]; partial: { order: BuildOrder; lines: BuildOrderLines } };
 
 type StepOf<A extends BuildStep['action']> = Extract<BuildStep, { action: A }>;
 
@@ -306,12 +306,12 @@ export function parseBuildOrderText(text: string): ParseTextResult {
     sawStart ||= isStart;
   });
 
-  if (issues.length > 0) {
-    return { ok: false, issues };
-  }
   const order: BuildOrder = { civ: 'english', name: PASTED_ORDER_NAME, steps };
   if (start !== undefined) {
     order.start = start;
+  }
+  if (issues.length > 0) {
+    return { ok: false, issues, partial: { order, lines } };
   }
   return { ok: true, order, lines };
 }
