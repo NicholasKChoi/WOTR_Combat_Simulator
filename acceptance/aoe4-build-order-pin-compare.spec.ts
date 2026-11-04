@@ -489,8 +489,8 @@ test.describe('AoE4 build order pin persistence and label', () => {
     expect(posts).toHaveLength(0)
   })
 
-  for (const [status, kept] of [[400, false], [500, true]] as const) {
-    test(`a restore answered with ${status} ${kept ? 'keeps' : 'drops'} the stored pin and shows no pin`, async ({ page }) => {
+  for (const [status] of [[400], [500]] as const) {
+    test(`a restore answered with ${status} drops the stored pin and shows no pin`, async ({ page }) => {
       await openPage(page)
       await storePin(page, validStored)
       await page.route(`**${SIMULATE_PATH}`, (route) =>
@@ -500,10 +500,57 @@ test.describe('AoE4 build order pin persistence and label', () => {
       await page.reload()
       await answered
       await expectNoPin(page)
-      if (kept) expect(await storedPin(page)).not.toBeNull()
-      else await expect.poll(() => storedPin(page)).toBeNull()
+      await expect.poll(() => storedPin(page)).toBeNull()
     })
   }
+
+  test('after a dropped restore the next load makes no restore request', async ({ page }) => {
+    await openPage(page)
+    await storePin(page, validStored)
+    await page.route(`**${SIMULATE_PATH}`, (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }))
+    const answered = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH))
+    await page.reload()
+    await answered
+    await expect.poll(() => storedPin(page)).toBeNull()
+    await page.unroute(`**${SIMULATE_PATH}`)
+    const posts = trackPosts(page)
+    await page.reload()
+    await expectNoPin(page)
+    expect(posts).toHaveLength(0)
+  })
+
+  test('a restore whose request fails keeps the stored pin and shows no pin', async ({ page }) => {
+    await openPage(page)
+    await storePin(page, validStored)
+    await page.route(`**${SIMULATE_PATH}`, (route) => route.abort())
+    const failed = page.waitForEvent('requestfailed', (r) => r.url().endsWith(SIMULATE_PATH))
+    await page.reload()
+    await failed
+    await expectNoPin(page)
+    expect(await storedPin(page)).not.toBeNull()
+  })
+
+  test('a Pin made while the restore is in flight keeps the user pin when the restore fails', async ({ page }) => {
+    await openPage(page)
+    await storePin(page, validStored)
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let restore = true
+    await page.route(`**${SIMULATE_PATH}`, async (route) => {
+      if (!restore) return route.continue()
+      restore = false
+      await gate
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
+    })
+    await page.reload()
+    await runOk(page, { duration: 300 })
+    await pin(page)
+    const stored = await storedPin(page)
+    release()
+    await expect(label(page)).toBeVisible()
+    await page.waitForTimeout(300)
+    expect(await storedPin(page)).toBe(stored)
+  })
 
   test('with localStorage unavailable, Run and Pin still work and nothing persists', async ({ page }) => {
     const errors: string[] = []

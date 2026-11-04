@@ -15,6 +15,7 @@ import { clearStoredPin, readStoredPin, writeStoredPin } from '../../components/
 import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
 import { Results } from '../../components/apps/aoe4-build-order/results'
 import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
+import { mergeExternalEdit } from '../../components/apps/aoe4-build-order/step-table-model'
 import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-build-order/workbench-tabs'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { loadGameData } from '../../lib/aoe4-build-order/data'
@@ -100,6 +101,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [infoExpanded, setInfoExpanded] = useState(false)
     const [tab, setTab] = useState<WorkbenchTab>('build')
     const [view, setView] = useState<EditorView>('text')
+    const [openRows, setOpenRows] = useState<boolean[]>([])
     const [resultsShownCount, setResultsShownCount] = useState(0)
     const pinTouched = useRef(false)
     const resultsTop = useRef<HTMLDivElement>(null)
@@ -126,8 +128,10 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         postSimulation(restored.order, stored.durationSeconds)
             .then(async (response) => {
                 if (cancelled || pinTouched.current) return
-                if (response.status === 400) clearStoredPin(storage)
-                if (!response.ok) return
+                if (!response.ok) {
+                    clearStoredPin(storage)
+                    return
+                }
                 const result: SimulateResponse = await response.json()
                 if (cancelled || pinTouched.current) return
                 setPin({ result, name: stored.name, text: stored.text, durationSeconds: stored.durationSeconds })
@@ -166,6 +170,12 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         target.style.scrollMarginTop = marginTop
         target.scrollIntoView({ block: 'center' })
     }, [rejection])
+
+    function editText(next: string) {
+        const reparsed = parseBuildOrderText(next)
+        if (reparsed.ok === true) setOpenRows((flags) => mergeExternalEdit(flags, reparsed.order.steps))
+        setText(next)
+    }
 
     async function runSimulation() {
         setChecked(true)
@@ -233,13 +243,14 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                     builds={builds}
                     selected={selected}
                     onSelectedChange={setSelected}
-                    onTextChange={setText}
+                    onTextChange={editText}
                     duration={duration}
                     onDurationChange={setDuration}
                     running={running}
                     onRun={runSimulation}
                     view={view}
                     onViewChange={setView}
+                    viewDisabled={shownTab === 'results'}
                     formRef={runBar}
                 />
                 <WorkbenchTabs
@@ -250,10 +261,16 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                         <>
                             {view === 'text' ? (
                                 <div ref={editorBox}>
-                                    <BuildTextEditor text={text} onChange={setText} errorLines={issueLines(clientIssues)} />
+                                    <BuildTextEditor text={text} onChange={editText} errorLines={issueLines(clientIssues)} />
                                 </div>
                             ) : parsed.ok === true ? (
-                                <StepTable order={parsed.order} catalog={catalog} onChange={(order) => setText(formatBuildOrderText(order))} />
+                                <StepTable
+                                    order={parsed.order}
+                                    catalog={catalog}
+                                    onChange={(order) => setText(formatBuildOrderText(order))}
+                                    openRows={openRows}
+                                    onOpenRowsChange={setOpenRows}
+                                />
                             ) : (
                                 <div data-testid="step-table-unavailable" className="alert alert-secondary">
                                     {parsed.issues[0].message}

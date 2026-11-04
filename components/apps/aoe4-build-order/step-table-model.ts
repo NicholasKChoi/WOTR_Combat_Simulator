@@ -188,6 +188,27 @@ export function hasOptionalField(step: BuildStep): boolean {
     return OPTIONAL_STEP_FIELDS[step.action].some((field) => values[field] !== undefined)
 }
 
+export function openFlags(flags: readonly boolean[], steps: readonly BuildStep[]): boolean[] {
+    return steps.map((step, i) => flags[i] ?? hasOptionalField(step))
+}
+
+export function moveFlag(flags: readonly boolean[], index: number, delta: -1 | 1): boolean[] {
+    const target = index + delta
+    if (index < 0 || index >= flags.length || target < 0 || target >= flags.length) return [...flags]
+    const next = [...flags]
+    next[index] = flags[target]
+    next[target] = flags[index]
+    return next
+}
+
+export function deleteFlag(flags: readonly boolean[], index: number): boolean[] {
+    return flags.filter((_, i) => i !== index)
+}
+
+export function mergeExternalEdit(flags: readonly boolean[], steps: readonly BuildStep[]): boolean[] {
+    return steps.map((step, i) => (flags[i] ?? false) || hasOptionalField(step))
+}
+
 type StartPair = [NodeRef, number]
 
 export function startPairs(order: BuildOrder): StartPair[] {

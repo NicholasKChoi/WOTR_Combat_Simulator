@@ -12,13 +12,17 @@ import {
     changeTriggerKind,
     defaultStep,
     defaultTrigger,
+    deleteFlag,
     deleteStartPair,
     deleteStep,
     hasOptionalField,
     insertStep,
+    mergeExternalEdit,
+    moveFlag,
     moveStep,
     nodeLabel,
     offersEmptyChoice,
+    openFlags,
     optionLabel,
     replaceStep,
     selectChoices,
@@ -404,5 +408,36 @@ describe('start edits', () => {
         addStartPair(full, catalog)
         setStartRally(full, '')
         expect(full).toEqual(before)
+    })
+})
+
+describe('open flags', () => {
+    const plain: BuildStep = { action: 'produce', producer: 'capital-town-center', unit: 'villager' }
+    const withCount: BuildStep = { ...plain, count: 3 }
+    const withRally: BuildStep = { ...plain, rally: 'sheep' }
+
+    it('moves a flag with its row', () => {
+        expect(moveFlag([true, false, false], 0, 1)).toEqual([false, true, false])
+        expect(moveFlag([false, false, true], 2, -1)).toEqual([false, true, false])
+    })
+
+    it('leaves the flags when the move is out of range', () => {
+        expect(moveFlag([true, false], 0, -1)).toEqual([true, false])
+        expect(moveFlag([true, false], 1, 1)).toEqual([true, false])
+    })
+
+    it('deletes only the removed row flag', () => {
+        expect(deleteFlag([true, false, true], 1)).toEqual([true, true])
+        expect(deleteFlag([true, false, true], 0)).toEqual([false, true])
+    })
+
+    it('reads a missing flag as whether the step sets an optional field', () => {
+        expect(openFlags([false], [withCount, withCount, plain])).toEqual([false, true, false])
+    })
+
+    it('merges an external edit as old flag or content, one entry per step', () => {
+        expect(mergeExternalEdit([false, true], [withCount, plain])).toEqual([true, true])
+        expect(mergeExternalEdit([true, true, true], [plain, plain])).toEqual([true, true])
+        expect(mergeExternalEdit([true], [plain, withRally, plain])).toEqual([true, true, false])
     })
 })

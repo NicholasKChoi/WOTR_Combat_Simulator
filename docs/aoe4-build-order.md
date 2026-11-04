@@ -838,7 +838,7 @@ The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the
 holds the prebuilt build select, the `durationSeconds` number input (default 1200), the run button and a
 text/table toggle. Below it are two tabs, Build and Results. Results is enabled while there is a shown result or
 a pinned run; a successful run selects Results and scrolls it into view, and a rejected or failed run selects
-Build. Switching tabs changes nothing else, and both panels stay mounted. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The Build tab shows one editor view
+Build. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so the toggle is usable on the Build tab only. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The Build tab shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the
 step table. The view survives runs and tab switches but not a reload; the selected tab follows each run
@@ -872,11 +872,14 @@ the fields of that action under readable labels (Building, Rally to, Walk time (
 while the trigger is `depleted`, and icon buttons to move the row up or down or delete it, plus an add
 button that appends `produce villager from <first villager producer>`. A field the step may omit (`instance`,
 `count`, `rally`, `walkSeconds`, `builders`, `then`, `at`, depending on the action) sits behind a per-row More
-control. Whether a row's control is open is kept per row index: it starts open where the step sets one of those
-fields, is recomputed the same way when the number of rows changes, and closes when an edit changes that row's
-action. The table is mounted only in Table view and only while the text parses, so switching between Text and
-Table, or the text going unparseable and back, mounts it afresh and rows that set one of those fields open again;
-switching the Build and Results tabs does not. The first row edits `start`: the rally node, one villager
+control. The page keeps one open flag per step row, so the flags outlive the table. A row with no flag yet starts
+open where the step sets one of those fields. Moving a row swaps the two rows' flags, deleting a row removes its
+flag, an added row starts closed, and an edit that changes a row's action closes that row; any other table edit
+leaves every flag alone, so a row the user opened stays open while its value is cleared. After an edit made in the
+textarea or by picking a prebuilt build, the page keeps one flag per parsed step: a row stays open if it was open
+or its step now sets one of those fields, and flags past the last step are dropped. Text that does not parse
+leaves the flags unchanged. The table is mounted only in Table view and only while the text parses, but the flags
+survive switching between Text and Table, the text going unparseable and back, and the Build and Results tabs. The first row edits `start`: the rally node, one villager
 count and node per pair (a node used by another pair is not offered), add and delete for pairs, and a
 Customize button that inserts the civ's default `start` while the order has none; the table does not check
 that the counts sum to the civ's total, and Run reports that. Under 768 px each row, the start row included,
@@ -946,8 +949,8 @@ duration both equal the pinned run's) keeps the shown result as the pinned run, 
 pinned) drops it. The pin stays through later runs, text and build edits, and failed runs (a failed run clears the shown
 result but not the pin) and a reload: the pin is kept in `localStorage` under
 `aoe4-build-order.pinned-run` as the build text, duration and name (not the result), and the page re-runs it on
-load. A stored value that is not valid, a text that no longer converts, or a 400 from the re-run drops it; a
-network or server failure keeps it and shows no pin. A Pin or Unpin made before the re-run finishes wins. The label
+load. A stored value that is not valid, a text that no longer converts, or a response that is not ok (400 or 5xx)
+from the re-run drops it; only a failed request (the network) keeps it, and no pin is shown. A Pin or Unpin made before the re-run finishes wins. The label
 `pinned-label` reads `Pinned: <name>, <m:ss>`. The name is fixed when the run is made: the prebuilt build's name
 when the run's text equals one exactly, `<name> (edited)` (the build selected at the Run) otherwise, and `Custom
 build` when there are no prebuilt builds. A shown result whose text or duration was edited since its Run is marked
