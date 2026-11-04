@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MARKER_COLORS, MARKER_KIND_LABELS, PALETTE, legendItems, markerLabel, pinnedKey, seriesColor, toChartRows, toggleHidden } from './chart-rows'
+import { MARKER_COLORS, MARKER_KIND_LABELS, PALETTE, formatChartValue, legendItems, markerLabel, pinnedKey, seriesColor, toChartRows, toggleHidden } from './chart-rows'
 
 describe('toChartRows', () => {
     it('makes one row per time with a value per series', () => {
@@ -137,5 +137,20 @@ describe('legendItems', () => {
     it('names pinned items and marks only them pinned', () => {
         const items = legendItems([s('b')], pinned)
         expect(items.map((i) => [i.name, i.pinned])).toEqual([['B', false], ['B (pinned)', true], ['C (pinned)', true], ['Z (pinned)', true]])
+    })
+})
+
+describe('formatChartValue', () => {
+    it.each([
+        [92.630712227254, '92.6'],
+        [40, '40'],
+        [0.04, '0'],
+        [-0.04, '0'],
+        [1234.56, '1234.6'],
+        [null, null],
+        [undefined, undefined],
+        ['n/a', 'n/a'],
+    ])('formats %s as %s', (value, expected) => {
+        expect(formatChartValue(value)).toBe(expected)
     })
 })

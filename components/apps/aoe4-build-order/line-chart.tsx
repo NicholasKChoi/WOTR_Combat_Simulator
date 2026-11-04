@@ -6,6 +6,7 @@ import {
     type ChartSeries,
     MARKER_COLORS,
     type PinnedSeries,
+    formatChartValue,
     markerLabel,
     pinnedColor,
     pinnedKey,
@@ -56,7 +57,7 @@ export function placeMarkers(
     })
 }
 
-export const pinnedAgeUpMarkers = (markers: readonly ChartMarker[]): ChartMarker[] => markers.filter((m) => m.kind === 'age-up')
+export const ageUpMarkers = (markers: readonly ChartMarker[]): ChartMarker[] => markers.filter((m) => m.kind === 'age-up')
 
 interface SeriesChartProps {
     testId: string
@@ -76,8 +77,9 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const plotWidth = Math.max(1, (chartWidth ?? 0) - Y_AXIS_WIDTH - 2 * CHART_MARGIN_PX)
     const [labelWidths, setLabelWidths] = useState<ReadonlyMap<string, number>>(new Map())
     const measureRef = useRef<SVGTextElement>(null)
-    const pinnedAgeUps = pinnedAgeUpMarkers(pinnedMarkers)
-    const labelKey = markers.map(markerLabel).join('\n')
+    const pinnedAgeUps = ageUpMarkers(pinnedMarkers)
+    const labelled = ageUpMarkers(markers)
+    const labelKey = labelled.map(markerLabel).join('\n')
 
     useEffect(() => {
         const text = measureRef.current
@@ -90,7 +92,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
         setLabelWidths(widths)
     }, [labelKey, chartWidth])
 
-    const placed = chartWidth === null ? [] : placeMarkers(markers, end, plotWidth, (label) => labelWidths.get(label) ?? estimateLabelWidth(label))
+    const placed = chartWidth === null ? [] : placeMarkers(labelled, end, plotWidth, (label) => labelWidths.get(label) ?? estimateLabelWidth(label))
     const rows = placed.reduce((max, p) => Math.max(max, p.row + 1), 0)
 
     return (
@@ -104,7 +106,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} />
                     <YAxis width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft' }} />
-                    <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} />
+                    <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} formatter={formatChartValue} />
                     {series.map((s, i) => (
                         <Line
                             key={s.key}
@@ -151,6 +153,21 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             }}
                         />
                     ))}
+                    {markers
+                        .filter((marker) => marker.kind !== 'age-up')
+                        .map((marker) => (
+                            <ReferenceLine
+                                key={`${marker.kind}:${marker.label}:${marker.at}`}
+                                x={marker.at}
+                                stroke={MARKER_COLORS[marker.kind]}
+                                data-testid="chart-marker"
+                                data-kind={marker.kind}
+                                data-label={marker.label}
+                                data-at={marker.at}
+                            >
+                                <title>{markerLabel(marker)}</title>
+                            </ReferenceLine>
+                        ))}
                     {pinnedAgeUps.map((marker) => (
                         <ReferenceLine
                             key={`pinned:${marker.label}:${marker.at}`}
