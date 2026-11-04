@@ -2,13 +2,11 @@ import { test, expect, type Locator, type Page, type Request } from '@playwright
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { INVALID_PASTE, SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys, hexToRgb, openPage, runRejected, showTab } from './helpers'
+import { CHART_IDS, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys, hexToRgb, openPage, runRejected, runSimulation, showTab } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
 const NOT_REACHED = 'not reached'
-const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
-const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
 
@@ -18,9 +16,7 @@ async function run(page: Page, opts: { duration?: number; text?: string } = {}) 
     await page.getByTestId('build-order-text').fill(opts.text)
   }
   if (opts.duration !== undefined) await page.getByTestId('duration-seconds').fill(String(opts.duration))
-  const response = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH) && r.request().method() === 'POST')
-  await page.getByTestId('run-simulation').click()
-  return await response
+  return await runSimulation(page)
 }
 
 async function runOk(page: Page, opts: { duration?: number; text?: string } = {}) {

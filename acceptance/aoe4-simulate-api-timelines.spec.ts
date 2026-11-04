@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
+import { INFINITE_NODES, buildOrderFrom, finalCount, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -9,16 +9,11 @@ const START = { villagers: { sheep: 6 }, rally: 'sheep' }
 test.describe.configure({ timeout: 60_000 })
 
 type Timing = { step: number; status: string; startedAt: number | null; completedAt: number | null; waitSeconds: number }
-type Series = { baseId: string; counts: number[] }
 
 async function simulate(request: Parameters<typeof postSimulate>[0], body: unknown) {
   const response = await postSimulate(request, body)
   expect(response.status(), await response.text()).toBe(200)
   return response.json()
-}
-
-function finalCount(body: { unitsProduced: Series[] }, baseId: string) {
-  return body.unitsProduced.find((s) => s.baseId === baseId)?.counts.at(-1)
 }
 
 function expectTiming(timing: Timing, expected: { startedAt: number; completedAt: number; waitSeconds: number }) {

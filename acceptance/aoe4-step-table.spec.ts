@@ -226,12 +226,15 @@ test.describe("AoE4 step table", () => {
   test("after a table edit Run posts exactly the textarea text and draws the charts", async ({
     page,
   }) => {
+    const build = listBuilds()[0];
     await openPage(page);
-    await page
-      .getByTestId("build-order-select")
-      .selectOption(listBuilds()[0].name);
+    await page.getByTestId("build-order-select").selectOption(build.name);
     await showView(page, "table");
+    await expect(page.getByTestId("step-row")).toHaveCount(build.steps.length);
     await page.getByTestId("step-add").click();
+    await expect(page.getByTestId("step-row")).toHaveCount(
+      build.steps.length + 1,
+    );
     const request = page.waitForRequest(
       (r) => r.url().endsWith(SIMULATE_PATH) && r.method() === "POST",
     );

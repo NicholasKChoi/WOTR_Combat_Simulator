@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
-import { postSimulate } from './helpers'
+import { finalCount, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -51,5 +51,7 @@ test.describe('Veteran Longbowmen converts the longbowmen on the field in the kn
     expect(countAt('longbowman-2', 845) + countAt('longbowman-3', 845)).toBe(sums[result.times.indexOf(845)])
     expect(sums[result.times.indexOf(850)]).toBe(9)
     expect(sums.at(-1)).toBe(63)
+    expect(finalCount(result, 'longbowman')).toBe(sums.at(-1))
+    expect(finalCount(result, 'longbowman')).toBeGreaterThan(longbowmen[0].counts.at(-1)!)
   })
 })
