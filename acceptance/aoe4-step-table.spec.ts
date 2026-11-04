@@ -665,6 +665,35 @@ test.describe("AoE4 step table", () => {
     await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
   });
 
+  test("an opened row stays open through text that does not parse and back", async ({
+    page,
+  }) => {
+    await openWith(page, OPEN_STATE_BUILD);
+    await more(page, 1).click();
+    await showView(page, "text");
+    await textarea(page).fill("start -> sheep\nat 8 vils fly capital-town-center");
+    await showView(page, "table");
+    await expect(page.getByTestId("step-table-unavailable")).toBeVisible();
+    await showView(page, "text");
+    await textarea(page).fill(OPEN_STATE_BUILD);
+    await showView(page, "table");
+    await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("a row added by a text edit after the text shrank does not inherit a dropped row's open state", async ({
+    page,
+  }) => {
+    await openWith(page, OPEN_STATE_BUILD);
+    await more(page, 2).click();
+    await showView(page, "text");
+    await textarea(page).fill(
+      "start -> sheep\nproduce villager from capital-town-center",
+    );
+    await textarea(page).fill(OPEN_STATE_BUILD);
+    await showView(page, "table");
+    await expect(more(page, 2)).toHaveAttribute("aria-expanded", "false");
+  });
+
   test("the Text and Table buttons are disabled while Results is shown", async ({
     page,
   }) => {
