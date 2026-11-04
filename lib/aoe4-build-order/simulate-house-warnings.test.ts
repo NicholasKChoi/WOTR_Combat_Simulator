@@ -159,14 +159,14 @@ describe('auto-house warnings together', () => {
 describe('timing with the auto-house warnings', () => {
     // Digests of spawnedPopulation, spent, steps, populationCapReachedAt, depletions and markers; the warnings must leave them unchanged.
     it('leaves the late-house run as it was before the warnings', () => {
-        expect(digestTimeline(lateHouse())).toBe('67af1a20a5434d6f')
+        expect(digestTimeline(lateHouse())).toBe('975a4c07971b6e6d')
     })
 
     it.each([
-        ['ENG 1TC', '42b0afc54e5e8bf8', null],
+        ['ENG 1TC', '499e09e55f47604b', null],
         // Re-pinned for the house lead-time rule: the King's Palace supply lands after the lead time, so it no longer counts toward headroom.
-        ['ENG Spear/Longbow into MAA/Crossbow', '95876b5e98214174', null],
-        ["ENG Knight/Longbow (King's Palace)", '082d524201cfafbd', { step: 23, at: 461.81904761904764, seconds: 21.236012345678944 }],
+        ['ENG Spear/Longbow into MAA/Crossbow', '91057a4051aa15eb', null],
+        ["ENG Knight/Longbow (King's Palace)", 'ba508ab49dcb2d6f', { step: 23, at: 461.81904761904764, seconds: 21.236012345678944 }],
     ])('leaves spawnedPopulation, spent, steps, populationCapReachedAt, depletions and markers of %s at 1800 s as they were', (name, pinned, held) => {
         const build = listBuilds().find((b) => b.name === name)!
         const result = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1800 }))

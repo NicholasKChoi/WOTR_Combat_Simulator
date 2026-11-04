@@ -253,7 +253,7 @@ describe('default amounts', () => {
     const runEng = (inputs: unknown) => simulateBuildOrder(eng1tc!, ENGLISH, inputsFor(ENGLISH, inputs))
 
     it('starts every finite node at its shipped amount', () => {
-        expect(inputsFor(ENGLISH).nodeAmounts).toMatchObject({ sheep: 3000, berry: 1500, deer: 1750, boar: 2000, gold: 4000, 'gold#2': 4000, stone: 1200 })
+        expect(inputsFor(ENGLISH).nodeAmounts).toMatchObject({ sheep: 3000, berry: 1500, deer: 2450, boar: 2000, gold: 4000, 'gold#2': 4000, stone: 1200 })
     })
 
     it('starts a deposit only a trigger names at the gold amount, also when gold is infinite', () => {

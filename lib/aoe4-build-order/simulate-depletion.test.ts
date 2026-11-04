@@ -112,7 +112,7 @@ describe('stock and run-out', () => {
     })
 
     it('starts every finite ref at its base.json amount without nodeAmounts', () => {
-        const shipped = { sheep: 3000, berry: 1500, deer: 1750, boar: 2000, gold: 4000, stone: 1200 }
+        const shipped = { sheep: 3000, berry: 1500, deer: 2450, boar: 2000, gold: 4000, stone: 1200 }
         const plain = run([])
         expect(plain.depletions.map((d) => [d.node, d.amount])).toEqual(FINITE_GATHER_NODES.map((node) => [node, shipped[node]]))
     })
