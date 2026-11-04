@@ -529,15 +529,15 @@ export type BuildOrder = z.output<ReturnType<typeof orderObject>>;
 
 // A catalog is treated as immutable, so its schema is built once.
 const schemasByCatalog = new WeakMap<BuildOrderCatalog, z.ZodType<BuildOrder>>();
-const fieldSchemasByCatalog = new WeakMap<BuildOrderCatalog, z.ZodType<BuildOrder>>();
+const stepRulesSchemasByCatalog = new WeakMap<BuildOrderCatalog, z.ZodType<BuildOrder>>();
 
-function orderSchema(catalog: BuildOrderCatalog | undefined, fieldRulesOnly = false): z.ZodType<BuildOrder> {
+function orderSchema(catalog: BuildOrderCatalog | undefined, skipWholeOrderRules = false): z.ZodType<BuildOrder> {
   if (catalog === undefined) return orderObject(undefined);
-  const cache = fieldRulesOnly ? fieldSchemasByCatalog : schemasByCatalog;
+  const cache = skipWholeOrderRules ? stepRulesSchemasByCatalog : schemasByCatalog;
   const cached = cache.get(catalog);
   if (cached !== undefined) return cached;
   const fields = orderObject(catalog);
-  const built = fieldRulesOnly ? fields : withCrossChecks(fields, catalog);
+  const built = skipWholeOrderRules ? fields : withCrossChecks(fields, catalog);
   cache.set(catalog, built);
   return built;
 }
@@ -614,9 +614,9 @@ export function checkBuildOrder(
   value: unknown,
   catalog: BuildOrderCatalog,
   lines?: BuildOrderLines,
-  fieldRulesOnly = false,
+  skipWholeOrderRules = false,
 ): { ok: true; order: BuildOrder } | { ok: false; issues: BuildOrderIssue[] } {
-  const result = orderSchema(catalog, fieldRulesOnly).safeParse(value);
+  const result = orderSchema(catalog, skipWholeOrderRules).safeParse(value);
   if (result.success) return { ok: true, order: result.data };
   const issues = [...result.error.issues].sort((a, b) => rankOf(a) - rankOf(b));
   return { ok: false, issues: issues.map((found) => toOrderIssue(found, lines)) };

@@ -245,7 +245,7 @@ describe('checkBuildOrder ordering and gating', () => {
         })
     })
 
-    it('skips the start and cross-step rules when asked for the field rules only', () => {
+    it('skips the start and cross-step rules when asked to skip the whole-order rules', () => {
         const value = order([{ action: 'research', tech: 'wheelbarrow' }, { action: 'research', tech: 'wheelbarrow' }], { villagers: { sheep: 5 }, rally: 'sheep' })
         expect(messages(value)).toEqual(['start: start.villagers sums to 5, the civ starts with 6', 'steps[1]: wheelbarrow is already researched by steps[0]'])
         expect(checkBuildOrder(value, catalog, undefined, true).ok).toBe(true)
