@@ -45,12 +45,12 @@ export default function handler(req: NextApiRequest, res: NextApiResponse<Simula
   englishCatalog ??= buildOrderCatalog(data);
   const order = checkOrder(body, englishCatalog);
   const inputs = checkSimInputs(body.inputs ?? {}, englishCatalog);
-  if ('order' in order && 'inputs' in inputs) {
+  if (order.ok && inputs.ok) {
     res.status(200).json(simulateBuildOrder(order.order, data, inputs.inputs));
     return;
   }
 
-  const all = [...('issues' in order ? order.issues : []), ...('issues' in inputs ? inputs.issues : [])];
+  const all = [...(order.ok ? [] : order.issues), ...(inputs.ok ? [] : inputs.issues)];
   const issues = all.slice(0, MAX_REPORTED_ISSUES);
   const omittedIssues = all.length - issues.length;
   res.status(400).json({ error: issues[0].message, issues, ...(omittedIssues > 0 ? { omittedIssues } : {}) });

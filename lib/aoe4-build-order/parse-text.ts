@@ -1,6 +1,6 @@
 // Paste text <-> BuildOrder. Grammar only: ids, bounds and cross-field rules are checked by validation.
 import { formatMinSec } from './format-time';
-import { NODE_REFS } from './model';
+import { NODE_REFS, shortText } from './model';
 import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStart, BuildStep, FiniteNodeRef, NodeRef, ResourceKind, Trigger } from './model';
 
 export type ParseTextResult =
@@ -22,7 +22,6 @@ const SECONDS = /^(\d+)s$/;
 // \r is whitespace, so a CRLF break needs no separate split and a stray \r never joins a token.
 // U+00A0 and U+202F (no-break spaces) arrive from copied web text.
 const WHITESPACE = /[ \t\r\u00a0\u202f]+/;
-const MAX_QUOTED_LENGTH = 40;
 
 class LineError extends Error {}
 
@@ -30,7 +29,7 @@ function quote(token: string | undefined): string {
   if (token === undefined) {
     return 'end of line';
   }
-  return token.length > MAX_QUOTED_LENGTH ? `'${token.slice(0, MAX_QUOTED_LENGTH)}...'` : `'${token}'`;
+  return `'${shortText(token)}'`;
 }
 
 class Tokens {

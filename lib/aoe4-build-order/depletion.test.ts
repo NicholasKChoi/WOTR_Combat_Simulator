@@ -188,18 +188,6 @@ describe('depletionResults', () => {
         ])
         expect(warnings.map((w) => w.severity)).not.toContain('error')
     })
-
-    it('returns its warnings sorted by at', () => {
-        const stock = stockOf({ berry: 0, stone: 0 })
-        recordRunOut(stock, 'berry', 500, 0)
-        recordRunOut(stock, 'stone', 100, 0)
-        recordIdleArrival(stock, 'berry', 50, 1)
-        expect(depletionResults(stock).warnings).toMatchObject([
-            { code: 'idle-arrival', node: 'berry', at: 50 },
-            { code: 'node-depleted', node: 'stone', at: 100 },
-            { code: 'node-depleted', node: 'berry', at: 500 },
-        ])
-    })
 })
 
 describe('sortWarnings', () => {

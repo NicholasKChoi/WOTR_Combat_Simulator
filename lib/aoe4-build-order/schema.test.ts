@@ -4,13 +4,14 @@ import baseRules from '../../data/aoe4-build-order/rules/base.json'
 import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import { listBuilds } from './builds'
 import { type BaseRules, type CivData, type Snapshot, buildGameData } from './data'
-import { FINITE_NODE_REFS, nodeKindOf } from './model'
+import { FINITE_NODE_REFS, MAX_DEPOSITS, nodeKindOf } from './model'
 import type { BuildStep } from './model'
 import {
     INPUT_DEFAULTS,
     OPTIONAL_STEP_FIELDS,
     SIM_INPUT_BOUNDS,
     buildOrderCatalog,
+    buildOrderSchema,
     buildOrderShape,
     checkBuildOrder,
     checkSimInputs,
@@ -324,6 +325,64 @@ describe('nearestId cost', () => {
         expect(performance.now() - started).toBeLessThan(500)
         if (result.ok) throw new Error('expected issues')
         expect(result.issues.map(({ code, suggestion }) => [code, suggestion])).toEqual([['unknown-id', undefined]])
+    })
+})
+
+describe('quoted ids in issue messages', () => {
+    const simIssues = (inputs: unknown) => {
+        const result = checkSimInputs(inputs, catalog)
+        return result.ok ? [] : result.issues.map((found) => found.message)
+    }
+    const rally = (value: string) => messages(order([pause], { rally: value }))
+    const kinds = 'the kinds are time, villagers, depleted, bank'
+    // Each row builds a value of a given length that starts with prefix and is padded with fill, and names the message tail it must produce.
+    const sites: [string, string, string, (value: string) => string[], (quoted: string) => string][] = [
+        ['unit', '', 'a', (v) => messages(order([{ action: 'produce', producer: TC, unit: v }])), (q) => `steps[0]: unknown unit "${q}" in unit`],
+        ['building', '', 'a', (v) => messages(order([{ action: 'build', building: v }])), (q) => `steps[0]: unknown building "${q}" in building`],
+        ['technology', '', 'a', (v) => messages(order([{ action: 'research', tech: v }])), (q) => `steps[0]: unknown tech "${q}" in tech`],
+        ['unknown node', '', 'a', rally, (q) => `unknown node "${q}" in start.rally`],
+        ['not a node or deposit', 'gold#', 'a', rally, (q) => `node "${q}" is not a node or a numbered deposit such as gold#2 in start.rally`],
+        ['only gold has deposits', 'stone#', '9', rally, (q) => `node "${q}": only gold has numbered deposits in start.rally`],
+        ['deposit number outside', 'gold#', '9', rally, (q) => `node "${q}": deposit number is outside 2..${MAX_DEPOSITS} in start.rally`],
+        ['resource', '', 'a', (v) => messages(order([{ ...pause, trigger: { kind: 'bank', resource: v, atLeast: 1 } }])), (q) => `steps[0]: unknown resource "${q}" in trigger.resource`],
+        ['trigger kind', '', 'a', (v) => messages(order([{ ...pause, trigger: { kind: v } }])), (q) => `steps[0]: unknown trigger kind "${q}"; ${kinds}`],
+        ['action', '', 'a', (v) => messages(order([{ action: v }])), (q) => `steps[0]: unknown action "${q}"`],
+        ['civ', '', 'a', (v) => messages({ ...order([]), civ: v }), (q) => `civ: unknown civ "${q}"`],
+        ['trips key', '', 'a', (v) => simIssues({ trips: { [v]: {} } }), (q) => `unknown node "${q}"`],
+        ['houseBuilderSource', '', 'a', (v) => simIssues({ houseBuilderSource: v }), (q) => `inputs.houseBuilderSource: unknown node "${q}"`],
+        ['influenceCoverage key', '', 'a', (v) => simIssues({ influenceCoverage: { [v]: 1 } }), (q) => `unknown building "${q}"`],
+    ]
+    const cases = sites.flatMap(([site, prefix, fill, run, expected]) =>
+        [39, 40, 41, 5000].map((length): [string, number, string[], string] => {
+            const value = prefix + fill.repeat(length - prefix.length)
+            return [site, length, run(value), expected(length > 40 ? `${value.slice(0, 40)}...` : value)]
+        }),
+    )
+
+    it.each(cases)('%s: a %i character value is quoted as %#', (_site, _length, got, expected) => {
+        expect(got.filter((message) => message.endsWith(expected))).toHaveLength(1)
+    })
+
+    it.each([
+        ['wood', 'node "wood" never runs out in trigger.node'],
+        ['gold#1', 'node "gold#1": deposit 1 is written gold in trigger.node'],
+    ])('keeps the message for the short value %s', (value, expected) => {
+        const trigger = { kind: 'depleted', node: value }
+        expect(messages(order([{ ...pause, trigger }]))).toEqual([`steps[0]: ${expected}`])
+    })
+})
+
+describe('buildOrderSchema cache', () => {
+    it('returns one schema per catalog object', () => {
+        expect(buildOrderSchema(catalog)).toBe(buildOrderSchema(catalog))
+        expect(buildOrderSchema(buildOrderCatalog(ENGLISH))).not.toBe(buildOrderSchema(catalog))
+    })
+
+    it('gives the same issues from a cached schema as from a fresh catalog', () => {
+        const bad = order([{ action: 'produce', producer: TC, unit: 'knigt' }, { action: 'build', building: 'nope' }])
+        const first = checkBuildOrder(bad, catalog)
+        expect(checkBuildOrder(bad, catalog)).toEqual(first)
+        expect(checkBuildOrder(bad, buildOrderCatalog(ENGLISH))).toEqual(first)
     })
 })
 

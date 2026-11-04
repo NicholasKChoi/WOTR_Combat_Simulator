@@ -102,6 +102,15 @@ describe('stock and run-out', () => {
         expect(result.steps[1].startedAt).toBe(0)
     })
 
+    it('lists node warnings by time, not by node order', () => {
+        const result = run([PAUSE], {
+            start: { villagers: { berry: 1, stone: 3 }, rally: 'wood' },
+            inputs: { autoHouses: false, nodeAmounts: { berry: 300, stone: 10 } },
+        })
+        expect(result.warnings.filter((w) => w.code === 'node-depleted').map((w) => w.node)).toEqual(['stone', 'berry'])
+        expect(result.warnings.map((w) => w.at)).toEqual(result.warnings.map((w) => w.at).sort((x, y) => x - y))
+    })
+
     it('starts every finite ref at its base.json amount without nodeAmounts', () => {
         const shipped = { sheep: 3000, berry: 1500, deer: 1750, boar: 2000, gold: 4000, stone: 1200 }
         const plain = run([])
