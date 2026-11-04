@@ -522,7 +522,7 @@ form (`town-center#2`). A node ref is accepted in every node field of every step
 | a value that is not a string | `syntax` |
 
 The reason quotes a string value; a value that is not a string gets the reason `node must be a string`. For a step field, `start` and the `depleted` trigger the message reads
-`<reason> in <path>`, as in `unknown node "iron" in start.rally`; for a `nodeAmounts` key it reads
+`<reason> in <path>` when it has no paste line, as in `unknown node "iron" in start.rally`; a paste message reads `line N: <reason>`; for a `nodeAmounts` key it reads
 `inputs.nodeAmounts.<ref>: <reason>`, as in `inputs.nodeAmounts.iron: unknown node "iron"`. A quoted id longer than 40 characters is cut to its first 40 characters followed by `...` in every issue message that quotes it. In paste, any token shaped `<id>` or `<id>#<chars>` in a node position reaches validation
 unchanged; the paste parser reports no node issue of its own.
 
@@ -599,7 +599,7 @@ Grammar details:
 
 **Issues.** Problems with the input are `BuildOrderIssue`s `{ code, message, step?, line?, suggestion? }`. Only the
 page-side paste conversion (`textToBuildOrder`) sets `line`: a validation issue on a parsed paste step carries
-both `step` and the 1-based `line`; a `syntax` issue raised while parsing a paste line carries `line` only, as
+both `step` and the 1-based `line` when the text parses, and `line` only while another line fails to parse; a `syntax` issue raised while parsing a paste line carries `line` only, as
 does a paste `start` issue. The route never sets `line`: a JSON step issue carries `step` only and a JSON
 `start` issue carries neither. The codes are complete and the
 same for JSON and paste. `suggestion` is set only on an `unknown-id` issue for a unit, building, producer,
@@ -662,7 +662,7 @@ kind or property. Any issue stops the request; nothing is simulated.
 ```mermaid
 flowchart LR
   subgraph browser["browser: the page"]
-    text["paste text"] --> t2b["textToBuildOrder: 20,000-char cap, parseBuildOrderText, checkBuildOrder with lines"]
+    text["paste text"] --> t2b["textToBuildOrder: 20,000-char cap, parseBuildOrderText, then checkBuildOrder with lines when the text parses, or the field and per-step checks of the parsed lines when a line fails to parse"]
     t2b -->|"issues with line"| pageIssues["page issue list"]
   end
   t2b -->|"order"| json["BuildOrder JSON"]
@@ -847,10 +847,14 @@ Choosing a prebuilt build replaces the text with that build's paste text; editin
 leaves the select as it is. Run converts the text with `textToBuildOrder` and the English catalog and posts the
 checked `buildOrder` and `inputs.durationSeconds` to the route. The issues list under the open editor view is
 live: parse issues (and the length cap) show at once, and check issues show from the first Run on (of any
-outcome), tracking every edit. It lists every issue in check order, adds `did you mean <id>?` where an issue
+outcome), tracking every edit. While any line fails to parse, the field and per-step issues of the lines that did
+parse are listed with the syntax issues at once, in line order with line-less issues first. Otherwise the list is
+in check order. It adds `Did you mean <id>?` after the message where an issue
 has a near match, and marks each issue's line in the gutter. An edit never clears a shown result. When the text
 does not convert, Run sends nothing, clears the shown result, selects Build and scrolls to the first issue's
-line, or to the list when that issue has no line or the table view is open. Server 400 issues stay in the
+line, or to the list when that issue has no line or the table view is open. After such a Run the list starts with
+`Fix N issues to run the simulation.` (`Fix 1 issue ...` for one), tracking the count as the text is edited, until a
+Run converts. Server 400 issues stay in the
 error list under the editor view, without lines. Gold run-outs and other info notes are in the collapsed info
 list in Results. The duration is not checked in the browser: an
 empty or non-numeric entry is sent as 0, and the route rejects any value outside its bounds.

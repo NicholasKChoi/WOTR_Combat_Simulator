@@ -68,7 +68,7 @@ test.describe('AoE4 build order live issues', () => {
     await expect(issues(page)).toHaveAttribute('data-code', 'unknown-id')
     await expect(issues(page)).toHaveAttribute('data-line', '2')
     await expect(issues(page)).toContainText('knigt')
-    await expect(page.getByTestId('build-order-issue-suggestion')).toHaveText('did you mean knight?')
+    await expect(page.getByTestId('build-order-issue-suggestion')).toHaveText('Did you mean knight?')
     await expect(gutterItem(page, 2)).toHaveAttribute('data-error', 'true')
     await expect(page.getByTestId('simulation-error')).toHaveCount(0)
 

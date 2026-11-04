@@ -178,6 +178,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
             setRejection({ line: converted.issues[0].line })
             return
         }
+        setRejection(null)
         setRunning(true)
         try {
             const response = await postSimulation(converted.order, Number(duration))
@@ -259,7 +260,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                                 </div>
                             )}
                             <div ref={issuesBox}>
-                                <IssueList issues={clientIssues} />
+                                <IssueList issues={clientIssues} rejected={rejection !== null} />
                             </div>
                             {issues.length > 0 ? (
                                 <div data-testid="simulation-error" role="alert" className="alert alert-danger">

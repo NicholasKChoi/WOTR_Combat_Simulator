@@ -56,6 +56,11 @@
     list-style: none;
 }
 
+.gutter li[data-error='true'] {
+    font-weight: 700;
+    color: var(--bs-danger, #dc3545);
+}
+
 .textarea {
     flex: 1;
     min-width: 0;

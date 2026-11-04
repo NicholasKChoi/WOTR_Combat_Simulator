@@ -13,6 +13,6 @@ test.describe('buildOrderFrom', () => {
   }
 
   test('throws with the issue message for an unknown unit', () => {
-    expect(() => buildOrderFrom('start -> sheep\nproduce knigt from stable')).toThrow('line 2: unknown unit "knigt" in unit')
+    expect(() => buildOrderFrom('start -> sheep\nproduce knigt from stable')).toThrow('line 2: unknown unit "knigt"')
   })
 })

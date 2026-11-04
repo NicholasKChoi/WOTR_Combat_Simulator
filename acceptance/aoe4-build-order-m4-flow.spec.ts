@@ -54,7 +54,7 @@ test.describe('AoE4 build order M4 flow', () => {
       await expect(page.getByTestId('build-order-issues')).toBeVisible()
       await expect(issue).toHaveCount(1)
       await expect(issue).toContainText('knigt')
-      await expect(issue.getByTestId('build-order-issue-suggestion')).toHaveText('did you mean knight?')
+      await expect(issue.getByTestId('build-order-issue-suggestion')).toHaveText('Did you mean knight?')
       await expect(page.locator('[data-testid="build-order-line-number"][data-line="2"]')).toHaveAttribute('data-error', 'true')
       await showTab(page, 'results')
       await expect(page.getByTestId('chart-units-produced')).toBeVisible()
