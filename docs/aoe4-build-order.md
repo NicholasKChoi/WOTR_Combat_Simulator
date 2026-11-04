@@ -920,7 +920,10 @@ the pasted text has no kind. The kind colour is independent of the flagged and l
 `<reason> <m:ss>` in the order resources, villagers, population, prerequisite, joined with `, `. A `waiting` step
 adds `still waiting on <waitingOn>` (alone when the breakdown is empty) and a `not-reached` step reads
 `not reached (<waitingOn>)`. A `waiting` or `not-reached` row is flagged. A row whose `waitSeconds` is 60 or more is
-highlighted as a long wait (exactly 60 counts, 59.9 does not). A reaction step's row is marked. The table scrolls
+highlighted as a long wait (exactly 60 counts, 59.9 does not). A reaction step's row is marked. Pointing at a row or focusing it with the keyboard highlights the row and shades that
+step's span, from Started to Finished, on every chart; an `in-progress` step's span runs to the end of the run, a step
+whose start and finish are the same second shows as a single vertical line, and a `waiting` or `not-reached` step (no
+start) shows no band. Moving off the row, or running again, clears the highlight. The table scrolls
 horizontally inside its wrapper when it is wider than the page. The
 step text is the pasted text as it was when Run was clicked, so editing the text afterwards does not change
 the labels until the next run. A result with empty `steps` (a `start`-only paste) shows no timeline, and a 400

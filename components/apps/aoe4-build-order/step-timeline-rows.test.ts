@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { StepTiming } from '../../../lib/aoe4-build-order/model'
 import { formatBuildStep, parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { formatStepTime, formatWaitBreakdown, timelineRows, type StepKind } from './step-timeline-rows'
+import { formatStepTime, formatWaitBreakdown, stepSpan, timelineRows, type StepKind } from './step-timeline-rows'
 
 const TEXT = [
     'start -> sheep',
@@ -121,5 +121,22 @@ describe('step time formatting', () => {
             'resources 0:02, villagers 1:15'
         )
         expect(formatWaitBreakdown([])).toBe('')
+    })
+})
+
+describe('stepSpan', () => {
+    const END = 600
+    it.each<[string, Partial<StepTiming>, { from: number; to: number } | null]>([
+        ['completed', { startedAt: 60, completedAt: 100 }, { from: 60, to: 100 }],
+        ['in-progress runs to the end of the run', { status: 'in-progress', startedAt: 500, completedAt: null }, { from: 500, to: 600 }],
+        ['waiting has no start', { status: 'waiting', startedAt: null, completedAt: null }, null],
+        ['not-reached has no start', { status: 'not-reached', startedAt: null, completedAt: null }, null],
+        ['zero-length completed', { startedAt: 30, completedAt: 30 }, { from: 30, to: 30 }],
+        ['in-progress starting at the end', { status: 'in-progress', startedAt: 600, completedAt: null }, { from: 600, to: 600 }],
+        ['clamps past the end', { startedAt: 590, completedAt: 700 }, { from: 590, to: 600 }],
+        ['clamps a start past the end', { startedAt: 650, completedAt: 700 }, { from: 600, to: 600 }],
+    ])('%s', (_name, overrides, expected) => {
+        const [row] = rowsOf([timing(0, overrides)], TEXT)
+        expect(stepSpan(row, END)).toEqual(expected)
     })
 })
