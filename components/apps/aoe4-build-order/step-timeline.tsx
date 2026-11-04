@@ -1,10 +1,8 @@
-import { useMemo } from 'react'
 import cn from 'classnames'
 
-import type { StepTiming } from '../../../lib/aoe4-build-order/model'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import styles from './results.module.css'
-import { STEP_KINDS, formatStepTime, timelineRows, type StepKind, type TimelineRow } from './step-timeline-rows'
+import { STEP_KINDS, formatStepTime, type StepKind, type TimelineRow } from './step-timeline-rows'
 
 const finishedText = (row: TimelineRow): string => (row.status === 'in-progress' ? 'ongoing' : formatStepTime(row.completedAt))
 
@@ -26,13 +24,12 @@ function KindBadge({ kind }: { kind: StepKind }) {
 }
 
 interface StepTimelineProps {
-    steps: StepTiming[]
-    text: string
-    landmarks: readonly string[]
+    rows: TimelineRow[]
+    activeStep: number | null
+    onActiveStepChange: (step: number | null) => void
 }
 
-export function StepTimeline({ steps, text, landmarks }: StepTimelineProps) {
-    const rows = useMemo(() => timelineRows(steps, text, landmarks), [steps, text, landmarks])
+export function StepTimeline({ rows, activeStep, onActiveStepChange }: StepTimelineProps) {
     if (rows.length === 0) return null
     return (
         <div className="mb-3">
@@ -66,7 +63,13 @@ export function StepTimeline({ steps, text, landmarks }: StepTimelineProps) {
                                 data-flagged={row.flagged ? 'true' : undefined}
                                 data-long-wait={row.longWait ? 'true' : undefined}
                                 data-reaction={row.reaction ? 'true' : undefined}
-                                className={row.flagged || row.longWait ? 'table-warning' : undefined}
+                                data-active={row.step === activeStep ? 'true' : undefined}
+                                className={cn({ 'table-warning': row.flagged || row.longWait, 'table-active': row.step === activeStep })}
+                                tabIndex={0}
+                                onPointerEnter={() => onActiveStepChange(row.step)}
+                                onPointerLeave={() => onActiveStepChange(null)}
+                                onFocus={() => onActiveStepChange(row.step)}
+                                onBlur={() => onActiveStepChange(null)}
                             >
                                 <td className={cn(styles.timeCell, KIND_CLASS[row.kind], styles.kindBorder)}>{formatStepTime(row.startedAt)}</td>
                                 <td className={styles.timeCell}>{finishedText(row)}</td>

@@ -1,9 +1,11 @@
+import { useMemo, useState } from 'react'
 import cn from 'classnames'
 
 import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
 import { resultMessages } from './messages'
 import { InfoMessages, WarningMessages } from './message-lists'
 import { StepTimeline } from './step-timeline'
+import { stepSpan, timelineRows } from './step-timeline-rows'
 import { SeriesChart } from './line-chart'
 import { resourceSeries, unitSeries } from './result-series'
 import styles from './workbench.module.css'
@@ -20,6 +22,11 @@ interface ResultsProps {
 
 export function Results({ result, pinned, text, landmarks, stale, infoExpanded, onInfoToggle }: ResultsProps) {
     const messages = resultMessages(result)
+    const rows = useMemo(() => timelineRows(result.steps, text, landmarks), [result.steps, text, landmarks])
+    const [active, setActive] = useState<{ result: SimulationResult; step: number } | null>(null)
+    const activeStep = active?.result === result ? active.step : null
+    const activeRow = rows.find((row) => row.step === activeStep)
+    const highlight = activeRow ? stepSpan(activeRow, result.durationSeconds) : null
     return (
         <div>
             {stale ? (
@@ -31,7 +38,11 @@ export function Results({ result, pinned, text, landmarks, stale, infoExpanded, 
             <InfoMessages messages={messages.info} expanded={infoExpanded} onToggle={onInfoToggle} />
             <div data-testid="results-split" className={styles.resultsSplit}>
                 <div className={styles.timelineColumn}>
-                    <StepTimeline steps={result.steps} text={text} landmarks={landmarks} />
+                    <StepTimeline
+                        rows={rows}
+                        activeStep={activeStep}
+                        onActiveStepChange={(step) => setActive(step === null ? null : { result, step })}
+                    />
                 </div>
                 <div className={styles.chartsColumn}>
                     <SeriesChart
@@ -39,6 +50,7 @@ export function Results({ result, pinned, text, landmarks, stale, infoExpanded, 
                         title="Units produced"
                         yLabel="Units"
                         times={result.times}
+                        highlight={highlight}
                         markers={result.markers}
                         series={unitSeries(result)}
                         pinnedMarkers={pinned?.markers}
@@ -49,6 +61,7 @@ export function Results({ result, pinned, text, landmarks, stale, infoExpanded, 
                         title="Gather rates"
                         yLabel="Per minute"
                         times={result.times}
+                        highlight={highlight}
                         markers={result.markers}
                         series={resourceSeries(result.gatherRates)}
                         pinnedMarkers={pinned?.markers}
@@ -59,6 +72,7 @@ export function Results({ result, pinned, text, landmarks, stale, infoExpanded, 
                         title="Gathered resources"
                         yLabel="Resources"
                         times={result.times}
+                        highlight={highlight}
                         markers={result.markers}
                         series={resourceSeries(result.gathered)}
                         pinnedMarkers={pinned?.markers}
@@ -69,6 +83,7 @@ export function Results({ result, pinned, text, landmarks, stale, infoExpanded, 
                         title="Floating resources"
                         yLabel="Resources"
                         times={result.times}
+                        highlight={highlight}
                         markers={result.markers}
                         series={resourceSeries(result.floating)}
                         pinnedMarkers={pinned?.markers}

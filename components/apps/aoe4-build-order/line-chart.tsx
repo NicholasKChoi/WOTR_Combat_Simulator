@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
 import {
@@ -15,6 +15,7 @@ import {
     toggleHidden,
 } from './chart-rows'
 import { MarkerLegend, SeriesLegend } from './chart-legend'
+import type { StepSpan } from './step-timeline-rows'
 import styles from './results.module.css'
 
 const LABEL_LINE_HEIGHT = 14
@@ -23,6 +24,7 @@ const Y_AXIS_WIDTH = 110
 // Mirrors recharts' default chart margin.
 const CHART_MARGIN_PX = 5
 const LABEL_FONT_SIZE = 12
+const BAND_COLOR = '#0d6efd'
 
 export interface PlacedMarker {
     marker: ChartMarker
@@ -68,9 +70,10 @@ interface SeriesChartProps {
     pinned?: PinnedSeries
     markers?: readonly ChartMarker[]
     pinnedMarkers?: readonly ChartMarker[]
+    highlight?: StepSpan | null
 }
 
-export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [] }: SeriesChartProps) {
+export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
     const [chartWidth, setChartWidth] = useState<number | null>(null)
     const end = Math.max(1, ...times, ...(pinned?.times ?? []))
@@ -133,6 +136,28 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             hide={hidden.has(pinnedKey(s.key))}
                         />
                     ))}
+                    {highlight && highlight.from < highlight.to ? (
+                        <ReferenceArea
+                            x1={highlight.from}
+                            x2={highlight.to}
+                            fill={BAND_COLOR}
+                            fillOpacity={0.15}
+                            stroke="none"
+                            data-testid="chart-step-band"
+                            data-from={highlight.from}
+                            data-to={highlight.to}
+                        />
+                    ) : null}
+                    {highlight && highlight.from === highlight.to ? (
+                        <ReferenceLine
+                            x={highlight.from}
+                            stroke={BAND_COLOR}
+                            strokeWidth={2}
+                            data-testid="chart-step-band"
+                            data-from={highlight.from}
+                            data-to={highlight.to}
+                        />
+                    ) : null}
                     {placed.map(({ marker, side, row, dx }) => (
                         <ReferenceLine
                             key={`${marker.kind}:${marker.label}:${marker.at}`}

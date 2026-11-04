@@ -65,6 +65,19 @@ export function stepKind(step: BuildStep | undefined, landmarks: readonly string
     }
 }
 
+export interface StepSpan {
+    from: number
+    to: number
+}
+
+export function stepSpan(row: TimelineRow, end: number): StepSpan | null {
+    if (row.startedAt === null) return null
+    const to = row.status === 'in-progress' ? end : (row.completedAt ?? end)
+    const clamp = (t: number) => Math.min(Math.max(t, 0), end)
+    const from = clamp(row.startedAt)
+    return { from, to: Math.max(from, clamp(to)) }
+}
+
 export function timelineRows(steps: StepTiming[], text: string, landmarks: readonly string[]): TimelineRow[] {
     const parsed = parseBuildOrderText(text)
     const parsedSteps = parsed.ok ? parsed.order.steps : []
