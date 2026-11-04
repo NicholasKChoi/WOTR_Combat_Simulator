@@ -3,11 +3,12 @@ import { listBuilds } from "../lib/aoe4-build-order/builds";
 import { loadGameData } from "../lib/aoe4-build-order/data";
 import { formatBuildOrderText } from "../lib/aoe4-build-order/parse-text";
 import { buildOrderCatalog } from "../lib/aoe4-build-order/schema";
-import { SIMULATE_PATH, buildOrderFrom, openPage, showView } from "./helpers";
+import { SIMULATE_PATH, buildOrderFrom, openPage, runSimulation, showTab, showView } from "./helpers";
 
 const row = (page: Page, i: number) => page.getByTestId("step-row").nth(i);
 const field = (page: Page, i: number, name: string) =>
   row(page, i).getByTestId(`step-field-${name}`);
+const more = (page: Page, i: number) => row(page, i).getByTestId("step-more");
 const textarea = (page: Page) => page.getByTestId("build-order-text");
 
 async function openWith(page: Page, text: string) {
@@ -172,8 +173,7 @@ test.describe("AoE4 step table", () => {
     await expectText(page,
       "start -> sheep\n@2:00 produce villager from capital-town-center",
     );
-    // Returning from the text view remounts the row, and an unset optional field starts hidden.
-    await row(page, 0).getByTestId("step-more").click();
+    await expect(more(page, 0)).toHaveAttribute("aria-expanded", "true");
     await count.fill("7");
     await expectText(page,
       "start -> sheep\n@2:00 produce villager from capital-town-center x7",
@@ -239,10 +239,12 @@ test.describe("AoE4 step table", () => {
       (r) => r.url().endsWith(SIMULATE_PATH) && r.method() === "POST",
     );
     await page.getByTestId("run-simulation").click();
-    expect((await request).postDataJSON().buildOrder).toEqual(
+    const posted = (await request).postDataJSON().buildOrder;
+    await expect(page.getByTestId("chart-units-produced")).toBeVisible();
+    await showTab(page, "build");
+    expect(posted).toEqual(
       buildOrderFrom(await textValue(page)),
     );
-    await expect(page.getByTestId("chart-units-produced")).toBeVisible();
   });
 
   test("the rally action offers no empty target and picking options keeps the table", async ({
@@ -597,5 +599,129 @@ test.describe("AoE4 step table", () => {
     await page.getByTestId("start-customize").click();
     await expect(page.getByTestId("step-start-row")).toHaveCount(1);
     await expect(page.getByTestId("step-row")).toHaveCount(2);
+  });
+
+  const OPEN_STATE_BUILD = [
+    "start -> sheep",
+    "produce villager from capital-town-center x3",
+    "produce villager from capital-town-center",
+    "produce villager from capital-town-center",
+  ].join("\n");
+
+  test("moving a row carries its open state and deleting a row keeps the others", async ({
+    page,
+  }) => {
+    await openWith(page, OPEN_STATE_BUILD);
+    await more(page, 2).click();
+    await expect(more(page, 0)).toHaveAttribute("aria-expanded", "true");
+    await expect(more(page, 2)).toHaveAttribute("aria-expanded", "true");
+
+    await row(page, 0).getByTestId("step-move-down").click();
+    await expect(field(page, 1, "count")).toHaveValue("3");
+    await expect(more(page, 0)).toHaveAttribute("aria-expanded", "false");
+    await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
+    await expect(more(page, 2)).toHaveAttribute("aria-expanded", "true");
+
+    await row(page, 0).getByTestId("step-delete").click();
+    await expect(more(page, 0)).toHaveAttribute("aria-expanded", "true");
+    await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
+    await expect(more(page, 2)).toHaveCount(0);
+  });
+
+  test("a text edit that sets an optional field on a closed row opens it in the table", async ({
+    page,
+  }) => {
+    await openWith(page, OPEN_STATE_BUILD);
+    await more(page, 1).click();
+    await more(page, 1).click();
+    await expect(more(page, 1)).toHaveAttribute("aria-expanded", "false");
+    await showView(page, "text");
+    await textarea(page).fill(
+      OPEN_STATE_BUILD.replace(
+        "produce villager from capital-town-center\nproduce villager from capital-town-center",
+        "produce villager from capital-town-center -> gold\nproduce villager from capital-town-center",
+      ),
+    );
+    await showView(page, "table");
+    await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
+    await expect(field(page, 1, "rally")).toHaveValue("gold");
+  });
+
+  test("an opened row stays open through Text and Table and through a Run", async ({
+    page,
+  }) => {
+    await openWith(page, OPEN_STATE_BUILD);
+    await more(page, 1).click();
+    await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
+    await showView(page, "text");
+    await showView(page, "table");
+    await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
+
+    await runSimulation(page);
+    await expect(page.getByTestId("panel-results")).toBeVisible();
+    await showTab(page, "build");
+    await showView(page, "text");
+    await showView(page, "table");
+    await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("an opened row stays open through text that does not parse and back", async ({
+    page,
+  }) => {
+    await openWith(page, OPEN_STATE_BUILD);
+    await more(page, 1).click();
+    await showView(page, "text");
+    await textarea(page).fill("start -> sheep\nat 8 vils fly capital-town-center");
+    await showView(page, "table");
+    await expect(page.getByTestId("step-table-unavailable")).toBeVisible();
+    await showView(page, "text");
+    await textarea(page).fill(OPEN_STATE_BUILD);
+    await showView(page, "table");
+    await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("a row added by a text edit after the text shrank does not inherit a dropped row's open state", async ({
+    page,
+  }) => {
+    await openWith(page, OPEN_STATE_BUILD);
+    await more(page, 2).click();
+    await showView(page, "text");
+    await textarea(page).fill(
+      "start -> sheep\nproduce villager from capital-town-center",
+    );
+    await textarea(page).fill(OPEN_STATE_BUILD);
+    await showView(page, "table");
+    await expect(more(page, 2)).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("the Text and Table buttons are disabled while Results is shown", async ({
+    page,
+  }) => {
+    await openWith(page, OPEN_STATE_BUILD);
+    await runSimulation(page);
+    await expect(page.getByTestId("panel-results")).toBeVisible();
+    for (const view of ["text", "table"]) {
+      await expect(page.getByTestId(`editor-view-${view}`)).toBeDisabled();
+    }
+    await page.getByTestId("editor-view-text").click({ force: true });
+    await expect(page.getByTestId("tab-results")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("panel-results")).toBeVisible();
+    await expect(page.getByTestId("editor-view-table")).toHaveAttribute("aria-pressed", "true");
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const bg = (view: string) =>
+            getComputedStyle(document.querySelector(`[data-testid="editor-view-${view}"]`)!)
+              .backgroundColor;
+          return bg("table") !== bg("text");
+        }),
+      )
+      .toBe(true);
+
+    await showTab(page, "build");
+    await showView(page, "text");
+    await expect(textarea(page)).toBeVisible();
+    await showView(page, "table");
+    await expect(page.getByTestId("step-table")).toBeVisible();
   });
 });

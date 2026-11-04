@@ -14,6 +14,7 @@ import {
     changeProducer,
     changeTriggerKind,
     defaultStep,
+    deleteFlag,
     deleteStartPair,
     deleteStep,
     firstUnusedStartNode,
@@ -21,6 +22,7 @@ import {
     insertStep,
     moveStep,
     offersEmptyChoice,
+    openFlags,
     optionLabel,
     replaceStep,
     selectChoices,
@@ -38,6 +40,8 @@ interface StepTableProps {
     order: BuildOrder
     catalog: BuildOrderCatalog
     onChange: (next: BuildOrder) => void
+    openRows: readonly boolean[]
+    onOpenRowsChange: (next: boolean[]) => void
 }
 
 type FieldDef = { name: string; kind: 'number' } | { name: string; kind: 'select'; choices: readonly string[] }
@@ -284,18 +288,14 @@ function StartRow({ order, catalog, onChange }: { order: BuildOrder; catalog: Bu
     )
 }
 
-export function StepTable({ order, catalog, onChange }: StepTableProps) {
+export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange }: StepTableProps) {
     const { steps } = order
-    const commit = (next: BuildStep[]) => {
+    const open = openFlags(openRows, steps)
+    const commit = (next: BuildStep[], nextOpen: boolean[] = open) => {
+        onOpenRowsChange(nextOpen)
         if (next !== steps) onChange({ ...order, steps: next })
     }
-    const [expansion, setExpansion] = useState(() => ({ rows: steps.length, open: steps.map(hasOptionalField) }))
-    let { open } = expansion
-    if (expansion.rows !== steps.length) {
-        open = steps.map(hasOptionalField)
-        setExpansion({ rows: steps.length, open })
-    }
-    const setOpen = (index: number, value: boolean) => setExpansion({ rows: steps.length, open: open.map((was, i) => (i === index ? value : was)) })
+    const setOpen = (index: number, value: boolean) => onOpenRowsChange(open.map((was, i) => (i === index ? value : was)))
 
     return (
         <div data-testid="step-table" className="mb-3">
@@ -305,8 +305,7 @@ export function StepTable({ order, catalog, onChange }: StepTableProps) {
                     {steps.map((step, index) => {
                         const edit = (next: BuildStep) => {
                             if (next === step) return
-                            if (next.action !== step.action) setOpen(index, false)
-                            commit(replaceStep(steps, index, next))
+                            commit(replaceStep(steps, index, next), next.action === step.action ? open : open.map((was, i) => i !== index && was))
                         }
                         return (
                             <tr key={index} data-testid="step-row" data-step={index}>
@@ -340,16 +339,16 @@ export function StepTable({ order, catalog, onChange }: StepTableProps) {
                                             </option>
                                         ))}
                                     </select>
-                                    <ActionFields step={step} options={catalog} expanded={open[index] ?? false} onToggle={() => setOpen(index, !open[index])} onEdit={edit} />
+                                    <ActionFields step={step} options={catalog} expanded={open[index]} onToggle={() => setOpen(index, !open[index])} onEdit={edit} />
                                 </td>
                                 <td className="text-nowrap">
-                                    <button type="button" data-testid="step-move-up" aria-label="Move up" className="btn btn-sm btn-outline-secondary me-1" disabled={index === 0} onClick={() => commit(moveStep(steps, index, -1))}>
+                                    <button type="button" data-testid="step-move-up" aria-label="Move up" className="btn btn-sm btn-outline-secondary me-1" disabled={index === 0} onClick={() => commit(moveStep(steps, index, -1), moveStep(open, index, -1))}>
                                         {'\u25B2'}
                                     </button>
-                                    <button type="button" data-testid="step-move-down" aria-label="Move down" className="btn btn-sm btn-outline-secondary me-1" disabled={index === steps.length - 1} onClick={() => commit(moveStep(steps, index, 1))}>
+                                    <button type="button" data-testid="step-move-down" aria-label="Move down" className="btn btn-sm btn-outline-secondary me-1" disabled={index === steps.length - 1} onClick={() => commit(moveStep(steps, index, 1), moveStep(open, index, 1))}>
                                         {'\u25BC'}
                                     </button>
-                                    <button type="button" data-testid="step-delete" aria-label="Delete step" className="btn btn-sm btn-outline-danger" onClick={() => commit(deleteStep(steps, index))}>
+                                    <button type="button" data-testid="step-delete" aria-label="Delete step" className="btn btn-sm btn-outline-danger" onClick={() => commit(deleteStep(steps, index), deleteFlag(open, index))}>
                                         {'\u2715'}
                                     </button>
                                 </td>
@@ -362,7 +361,10 @@ export function StepTable({ order, catalog, onChange }: StepTableProps) {
                 type="button"
                 data-testid="step-add"
                 className="btn btn-sm btn-outline-primary"
-                onClick={() => commit(insertStep(steps, steps.length, defaultStep('produce', catalog)))}
+                onClick={() => {
+                    const added = defaultStep('produce', catalog)
+                    commit(insertStep(steps, steps.length, added), [...open, hasOptionalField(added)])
+                }}
             >
                 Add step
             </button>

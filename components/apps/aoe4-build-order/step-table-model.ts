@@ -37,7 +37,7 @@ export function defaultTrigger(kind: TriggerKind, options: StepOptions): Trigger
     }
 }
 
-function inRange(steps: readonly BuildStep[], index: number): boolean {
+function inRange(steps: readonly unknown[], index: number): boolean {
     return Number.isInteger(index) && index >= 0 && index < steps.length
 }
 
@@ -56,9 +56,9 @@ export function replaceStep(steps: readonly BuildStep[], index: number, step: Bu
     return steps.map((s, i) => (i === index ? step : s))
 }
 
-export function moveStep(steps: readonly BuildStep[], index: number, delta: -1 | 1): BuildStep[] {
+export function moveStep<T>(steps: readonly T[], index: number, delta: -1 | 1): T[] {
     const target = index + delta
-    if (!inRange(steps, index) || !inRange(steps, target)) return steps as BuildStep[]
+    if (!inRange(steps, index) || !inRange(steps, target)) return steps as T[]
     const next = [...steps]
     next[index] = steps[target]
     next[target] = steps[index]
@@ -186,6 +186,18 @@ export function optionLabel(id: string, catalog: BuildOrderCatalog): string {
 export function hasOptionalField(step: BuildStep): boolean {
     const values = step as unknown as Record<string, unknown>
     return OPTIONAL_STEP_FIELDS[step.action].some((field) => values[field] !== undefined)
+}
+
+export function openFlags(flags: readonly boolean[], steps: readonly BuildStep[]): boolean[] {
+    return steps.map((step, i) => flags[i] ?? hasOptionalField(step))
+}
+
+export function deleteFlag(flags: readonly boolean[], index: number): boolean[] {
+    return flags.filter((_, i) => i !== index)
+}
+
+export function mergeExternalEdit(flags: readonly boolean[], steps: readonly BuildStep[]): boolean[] {
+    return steps.map((step, i) => (flags[i] ?? false) || hasOptionalField(step))
 }
 
 type StartPair = [NodeRef, number]

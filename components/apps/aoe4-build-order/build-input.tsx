@@ -21,6 +21,7 @@ interface BuildInputProps {
     onRun: () => void
     view: EditorView
     onViewChange: (view: EditorView) => void
+    viewDisabled?: boolean
     formRef?: Ref<HTMLFormElement>
 }
 
@@ -29,7 +30,7 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ builds, selected, onSelectedChange, onTextChange, duration, onDurationChange, running, onRun, view, onViewChange, formRef }: BuildInputProps) {
+export function BuildInput({ builds, selected, onSelectedChange, onTextChange, duration, onDurationChange, running, onRun, view, onViewChange, viewDisabled = false, formRef }: BuildInputProps) {
     function selectBuild(name: string) {
         onSelectedChange(name)
         const build = builds.find((b) => b.name === name)
@@ -83,7 +84,8 @@ export function BuildInput({ builds, selected, onSelectedChange, onTextChange, d
                         type="button"
                         data-testid={`editor-view-${option}`}
                         aria-pressed={view === option}
-                        className={cn('btn btn-outline-secondary', view === option && 'active')}
+                        disabled={viewDisabled}
+                        className={cn('btn btn-outline-secondary', view === option && ['active', styles.activeView])}
                         onClick={() => onViewChange(option)}
                     >
                         {label}
