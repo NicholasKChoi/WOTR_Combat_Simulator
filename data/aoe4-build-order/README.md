@@ -35,20 +35,20 @@ none.
 
 Each file in `builds/` is one `BuildOrder` the page offers in its prebuilt list, and one import line in
 `lib/aoe4-build-order/builds.ts`. Every number is a non-negative integer, so the build re-parses from its
-paste text unchanged. Ids are aoe4world `baseId`s. A guide step the paste grammar cannot express is left
-out, never approximated, and is listed under its build below. Every build meets a bar in the simulation,
-at default inputs with depletion on: at 1200 s and at 3600 s no step is waiting, every non-reaction step
-has started, and a reaction that is not reached is only waiting for its trigger; at both horizons every gold
-deposit that has run out has a `move all` reaction from it that starts at the run-out instant, and no gold
-warning is a `warning`. A farm holds one villager (the engine enforces it), so each build times its
-`build farm` steps so that every villager sent to `farm` finds a built farm, and at 1200 s, 1800 s and
-3600 s the run has no `farm-idle` warning. Each build also meets production floors and a floating cap at
-1200 s (villager and unit counts, a food rate, and a ceiling on each floating resource), set in
+paste text unchanged. Ids are aoe4world `baseId`s. A guide step the paste grammar cannot express is left out,
+never approximated, and is listed under its build below. Every build meets a bar in the simulation, at default
+inputs with depletion on: at 1200 s and at 3600 s no step is waiting, every non-reaction step has started, and
+a reaction that is not reached is only waiting for its trigger; at both horizons every gold deposit that has
+run out has a `move all` reaction from it that starts at the run-out instant, and no gold warning is a
+`warning`. A farm holds one villager (the engine enforces it), so each build times its `build farm` steps so
+that every villager sent to `farm` finds a built farm, and at 1200 s, 1800 s and 3600 s the run has no
+`farm-idle` warning. Each build also meets production floors and a floating cap at 1200 s (villager and unit
+counts, a food rate, and a ceiling on each floating resource), set in
 `lib/aoe4-build-order/production-floors.ts` and checked in `lib/aoe4-build-order/builds.test.ts`, so a build
 that starves its production or leaves its economy unspent fails. A guide step that would break a bar is left
-out and listed under its build with its reason. Entries describe what each build file does and why; measured results (run-out times,
-when a step fires, warnings' times) are not listed because they change whenever the engine or the build
-is tuned, and the page shows them for any run.
+out and listed under its build with its reason. Entries describe what each build file does and why; measured
+results (run-out times, when a step fires, warnings' times) are not listed because they change whenever the
+engine or the build is tuned, and the page shows them for any run.
 
 - `english-1tc` "ENG 1TC", https://aoe4guides.com/builds/reinDv5vkVX6KUny571E (English, Season 13).
   Villager production is continuous from the start, following the guide's villager counts. Omitted:
@@ -77,55 +77,53 @@ is tuned, and the page shows them for any run.
   continuous from the Town Center and, once built, the King's Palace. Nothing is omitted.
 
   Transcription choices: the `man-at-arms` step carries a `time` trigger of 681 s, the whole second after the
-  King's Palace completes, because men-at-arms are a Feudal unit and would otherwise start before
-  Castle; `crossbowman` is a Castle unit and waits on its age. Both steps sit before the rally at 700 s
-  so that step order does not hold them back, and they replace the spearman and longbowman orders on the
-  barracks and range they name. The trigger is hard-coded, so re-check it when an earlier step changes. The King's Palace
-  is a villager producer, so a `rally` step sends its villagers to wood. The Town Center rallies to sheep
-  until 20 s, to gold from 130 s to 200 s and from 560 s to 700 s, and to wood otherwise. The build has
-  three gold reactions: `gold` and `gold#2` move all gatherers to the next deposit, and `gold#3` moves them
-  to wood.
+  King's Palace completes, because men-at-arms are a Feudal unit and would otherwise start before Castle;
+  `crossbowman` is a Castle unit and waits on its age. Both steps sit before the rally at 700 s so that step
+  order does not hold them back, and they replace the spearman and longbowman orders on the barracks and range
+  they name. The trigger is hard-coded, so re-check it when an earlier step changes. The King's Palace is a
+  villager producer, so a `rally` step sends its villagers to wood. The Town Center rallies to sheep until
+  20 s, to gold from 130 s to 200 s and from 560 s to 700 s, and to wood otherwise. The build has three gold
+  reactions: `gold` and `gold#2` move all gatherers to the next deposit, and `gold#3` moves them to wood.
 
   Farms: every farmer gets a farm of its own from a `build farm` step. The mill builder and the three farm
   builders at the mill come from sheep, and a fourth `build farm` step from sheep (returning to sheep) gives
-  the mill builder a farm; every later `build farm` step takes a wood gatherer and puts it on the new farm.
-  No rally sends a villager to `farm`, so the Town Center and King's Palace keep sending new villagers to
-  wood (and the Town Center, at the times above, to gold). The farms are paid
-  from the wood those gatherers cut: four at the mill, three at 210 s, four at 320 s, four at 380 s (before Castle),
-  then groups at 740, 870, 890 and 900 s that grow the food the Castle army needs.
+  the mill builder a farm; every later `build farm` step takes a wood gatherer and puts it on the new farm. No
+  rally sends a villager to `farm`, so the Town Center and King's Palace keep sending new villagers to wood
+  (and the Town Center, at the times above, to gold). The farms are paid from the wood those gatherers cut:
+  four at the mill, three at 210 s, four at 320 s, four at 380 s (before Castle), then groups at 740, 870, 890
+  and 900 s that grow the food the Castle army needs.
 
-  Production: two barracks (right after the Council Hall starts) and three archery ranges (after Feudal)
-  run spearmen and longbowmen. At Castle the men-at-arms order replaces the spearman order on both barracks
-  and the crossbowman order replaces the longbowman order on the first range only, so the other two ranges
-  keep making longbowmen from the wood the economy gathers. At 700 s four more barracks and three more
-  ranges are built from wood, and the `produce` steps at 790 s give them men-at-arms and crossbowmen by
-  `instance` (a step that names an instance waits until that instance is built). The extra buildings and farms are there so the economy's food, wood and gold are spent on
-  units instead of floating.
+  Production: two barracks (right after the Council Hall starts) and three archery ranges (after Feudal) run
+  spearmen and longbowmen. At Castle the men-at-arms order replaces the spearman order on both barracks and
+  the crossbowman order replaces the longbowman order on the first range only, so the other two ranges keep
+  making longbowmen from the wood the economy gathers. At 700 s four more barracks and three more ranges are
+  built from wood, and the `produce` steps at 790 s give them men-at-arms and crossbowmen by `instance` (a
+  step that names an instance waits until that instance is built). The extra buildings and farms are there so
+  the economy's food, wood and gold are spent on units instead of floating.
 
 - `english-knight-longbow` "ENG Knight/Longbow (King's Palace)", `hand-authored for this simulator` (English).
-  The opening is the ENG 1TC economy, with Feudal reached through `abbey-of-kings` (the same landmark as
-  ENG 1TC, so the first five minutes are the already-tuned opening) and Castle through `build kings-palace`.
-  The 5:30 rally to gold waits behind the 5:15 farm block, so it fires after 5:30 and new villagers go to gold then, so the King's Palace's
-  600 gold is paid without moving gatherers; once the palace starts they go to farms, and from 12:00 to wood. The King's Palace is rallied to wood.
-  Three stables and two archery ranges; the second `produce longbowman` step comes after the second range
-  is built, because a `produce` step only orders the producers that exist when it starts. Three explicit
-  houses are built before the King's Palace. Auto-houses stay
-  off until the third of these (step 24) starts, so at default inputs, and at 1800 s and 3600 s, the run
-  returns one `auto-houses-held` warning: production is held at the supply limit until the third house
-  starts. Farms are added
-  in blocks of four at 10:00, 14:00, 16:00 and 18:00 (`time` 600, 840, 960 and 1080), each built by
-  wood gatherers who farm them; the 10:00 block sits after the third stable and the 10:34 pair in the
-  list, so it waits for both of them to start. Smaller groups of wood-and-return farms come at `time`
-  563 (four), 634 (two), 722 (one) and 942 (four). The groups are placed ahead of the
-  villagers sent to farm by the Town Center rally to farm and by the sheep reaction, so each of them
-  finds a built farm. The four blacksmith techs
-  (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after `build kings-palace` in
-  the list, so they queue behind the landmark instead of taking its gold first; `veteran-longbowmen` and
-  the Castle blacksmith techs (`balanced-projectiles`, `wedge-rivets`, `decarbonization`, `insulated-helm`)
-  follow `produce knight`. Gold: 5 deposits (`gold` to `gold#5`) run out by 3600 s; each has a
-  `whenever <ref> runs out move all <ref> to <next>` reaction at the end of the list, and `gold#5` moves to
-  `wood`. The five gold reactions are followed by one for the starting sheep: `whenever sheep runs out move all sheep to farm` moves the sheep gatherers to the farms, so no
-  villager is idle through 1800 s. Omitted: none.
+  The opening is the ENG 1TC economy, with Feudal reached through `abbey-of-kings` (the same landmark as ENG
+  1TC, so the first five minutes are the already-tuned opening) and Castle through `build kings-palace`. The
+  5:30 rally to gold waits behind the 5:15 farm block, so it fires after 5:30 and new villagers go to gold
+  then, so the King's Palace's 600 gold is paid without moving gatherers; once the palace starts they go to
+  farms, and from 12:00 to wood. The King's Palace is rallied to wood. Three stables and two archery ranges;
+  the second `produce longbowman` step comes after the second range is built, because a `produce` step only
+  orders the producers that exist when it starts. Explicit `build house` steps come early and in a block just
+  before the King's Palace. Auto-houses stay off until the last `build house` step has started, so the run can
+  carry an `auto-houses-held` warning while production waits at the supply limit before that step starts.
+  Farms are added in blocks of four at 10:00, 14:00, 16:00 and 18:00 (`time` 600, 840, 960 and 1080), each
+  built by wood gatherers who farm them; the 10:00 block sits after the third stable and the 10:34 pair in the
+  list, so it waits for both of them to start. Smaller groups of wood-and-return farms come at `time` 563
+  (four), 634 (two), 722 (one) and 942 (four). The groups are placed ahead of the villagers sent to farm by
+  the Town Center rally to farm and by the sheep reaction, so each of them finds a built farm. The four
+  blacksmith techs (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after
+  `build kings-palace` in the list, so they queue behind the landmark instead of taking its gold first;
+  `veteran-longbowmen` and the Castle blacksmith techs (`balanced-projectiles`, `wedge-rivets`,
+  `decarbonization`, `insulated-helm`) follow `produce knight`. Gold: 5 deposits (`gold` to `gold#5`) run out
+  by 3600 s; each has a `whenever <ref> runs out move all <ref> to <next>` reaction at the end of the list,
+  and `gold#5` moves to `wood`. The five gold reactions are followed by one for the starting sheep:
+  `whenever sheep runs out move all sheep to farm` moves the sheep gatherers to the farms, so no villager is
+  idle through 1800 s. Omitted: none.
 
 ## Hand-entered values
 

@@ -5,7 +5,7 @@ import { postSimulate } from './helpers'
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
 const GOLD_NODES = ['gold', 'gold#2', 'gold#3']
-const MAN_AT_ARMS_STEP = 35
+const MAN_AT_ARMS_STEP = 34
 // The step arms at the landmark and starts after it, once resources allow.
 const CASTLE_LANDMARK_SECONDS = 681
 const MAN_AT_ARMS_START_SECONDS = 696.4094792663907

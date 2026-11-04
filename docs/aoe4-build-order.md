@@ -32,7 +32,7 @@ The model treats the game as a small set of ordinary rules:
   `gatherNodes.<node>.amount` in `rules/base.json`; `inputs.nodeAmounts` overrides them per node, and a
   `null` override keeps a node infinite (see Depletion).
 
-Every quantity that could vary between games (walk time, idle time, distance to each resource) is a named
+Every quantity that could vary between games (walk time, drop-off time, distance to each resource) is a named
 simulator input, never a constant inside the step logic. The result and the API response are additive: a
 later spread of outcomes is a new field beside the existing ones, not a change to them.
 
@@ -960,15 +960,16 @@ When the body has `omittedIssues`, the list ends with one more item, "N more iss
 other HTTP failure shows "The simulation could not be run (HTTP <status>)."; a request or response-body
 error shows "The simulation could not be run. Please try again."
 
-Prebuilt builds live in `data/aoe4-build-order/builds/`, one `BuildOrder` JSON file per build, each
-with a `source`. Every prebuilt build is paste-representable: it re-parses from its own paste text to the
-same `start` and `steps`. At default inputs, with depletion on, every prebuilt build meets this bar: at
-1200 s and at 3600 s no step is `waiting`, every non-reaction step has started, and a `not-reached`
-reaction has `waitingOn: 'trigger'`; at both horizons every gold deposit that has run out has a `move all`
-reaction from it whose `startedAt` is its `depletedAt`, and no gold warning has severity `warning`; and no `farm-idle` warning appears at 1200 s, 1800 s or 3600 s. Each also meets its production floors and floating cap at 1200 s: villager and unit counts and a food rate
-at least the build's row in `lib/aoe4-build-order/production-floors.ts`, and each floating resource at most that file's cap.
-ENG 1TC
-ends with a `whenever gold runs out move all gold to gold#2` reaction.
+Prebuilt builds live in `data/aoe4-build-order/builds/`, one `BuildOrder` JSON file per build, each with a
+`source`. Every prebuilt build is paste-representable: it re-parses from its own paste text to the same
+`start` and `steps`. At default inputs, with depletion on, every prebuilt build meets this bar: at 1200 s and
+at 3600 s no step is `waiting`, every non-reaction step has started, and a `not-reached` reaction has
+`waitingOn: 'trigger'`; at both horizons every gold deposit that has run out has a `move all` reaction from it
+whose `startedAt` is its `depletedAt`, and no gold warning has severity `warning`; and no `farm-idle` warning
+appears at 1200 s, 1800 s or 3600 s. Each also meets its production floors and floating cap at 1200 s:
+villager and unit counts and a food rate at least the build's row in
+`lib/aoe4-build-order/production-floors.ts`, and each floating resource at most that file's cap. ENG 1TC ends
+with a `whenever gold runs out move all gold to gold#2` reaction.
 
 The three prebuilt builds are `ENG 1TC`, `ENG Knight/Longbow (King's Palace)` and `ENG Spear/Longbow into
 MAA/Crossbow`.
