@@ -5,7 +5,7 @@ import { effectiveGatherRate } from './gather'
 import { RESOURCE_KINDS } from './model'
 import type { BuildStart, BuildStep, GatherNodeId, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
-import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, inputsFor, run, sampleIndex } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, run, sampleIndex } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const noHouses = { autoHouses: false }
@@ -224,8 +224,7 @@ describe('gathered', () => {
 describe('gatherers', () => {
     const defaults = inputsFor(ENGLISH)
     const rateOf = (node: GatherNodeId): number => {
-        const state = { data: ENGLISH, age: 1, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: defaults.influenceCoverage }
-        return effectiveGatherRate(node, state, defaults)
+        return effectiveGatherRate(node, effectStateOf({ buildings: new Map([['capital-town-center', 1]]), coverage: defaults.influenceCoverage }), defaults)
     }
 
     it.each([
@@ -264,6 +263,8 @@ describe('gatherers', () => {
         expect(result.gatherers.food[after - 1]).toBe(3)
         expect(result.gatherers.food.slice(after).every((n) => n === 0)).toBe(true)
         expect(result.gatherers.wood.every((n) => n === 3)).toBe(true)
+        expect(result.gatherRates.food[after - 1]).toBeGreaterThan(0)
+        expect(result.gatherRates.food.slice(after).every((r) => r === 0)).toBe(true)
     })
 
     it.each(listBuilds().map((build) => [build.name, build] as const))('is a non-negative integer per sample, 0 exactly where the rate is 0, on the prebuilt build %s', (_, build) => {
