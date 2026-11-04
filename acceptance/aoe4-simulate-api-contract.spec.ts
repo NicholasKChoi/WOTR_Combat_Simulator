@@ -30,7 +30,7 @@ const spec = JSON.parse(readFileSync(join(__dirname, '..', 'docs', 'api', 'opena
 const schemas = spec.components.schemas
 const operation = spec.paths[SIMULATE_PATH].post
 const requestExamples = operation.requestBody.content['application/json'].examples
-const okExample = operation.responses['200'].content['application/json'].example
+const okExamples = operation.responses['200'].content['application/json'].examples
 const errorExamples = operation.responses['400'].content['application/json'].examples
 
 const ajv = new Ajv2020({ strict: false })
@@ -258,16 +258,22 @@ test.describe('examples', () => {
     for (const { value } of Object.values<{ value: unknown }>(requestExamples)) {
       expectValid('SimulateRequest', value)
     }
-    expectValid('SimulationResult', okExample)
+    for (const { value } of Object.values<{ value: unknown }>(okExamples)) {
+      expectValid('SimulationResult', value)
+    }
     for (const { value } of Object.values<{ value: unknown }>(errorExamples)) {
       expectValid('SimulateError', value)
     }
     expectValid('FightError', operation.responses['405'].content['application/json'].example)
   })
 
-  for (const name of ['buildOrder']) {
+  test('every request example has a 200 example under the same name', () => {
+    expect(keys(requestExamples)).toEqual(keys(okExamples))
+  })
+
+  for (const name of Object.keys(requestExamples)) {
     test(`the ${name} request example returns the documented 200 body`, async ({ request }) => {
-      expect(await expect200(request, requestExamples[name].value)).toEqual(okExample)
+      expect(await expect200(request, requestExamples[name].value)).toEqual(okExamples[name].value)
     })
   }
 

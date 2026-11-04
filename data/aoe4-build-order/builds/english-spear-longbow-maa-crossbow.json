@@ -231,15 +231,6 @@
       "then": "farm"
     },
     {
-      "trigger": {
-        "kind": "time",
-        "seconds": 380
-      },
-      "action": "rally",
-      "producer": "capital-town-center",
-      "to": "wood"
-    },
-    {
       "action": "build",
       "building": "kings-palace",
       "from": "farm",
