@@ -161,6 +161,21 @@ function aliveVillagers(state: EngineState): number {
   return NODE_REFS.reduce((sum, ref) => sum + state.gatherers[ref] + state.idle[ref], state.walking);
 }
 
+// The default villager order (step null) pays only while fewer than data.base.villagerTarget villagers are alive or
+// paid for; a produce step's villager order is not capped.
+function defaultVillagersDone(state: EngineState, order: ProductionOrder): boolean {
+  if (order.step !== null || order.unit !== VILLAGER_ID) {
+    return false;
+  }
+  let paid = 0;
+  for (const list of state.instances.values()) {
+    for (const instance of list) {
+      paid += instance.paid.filter((item) => item.entry.baseId === VILLAGER_ID).length;
+    }
+  }
+  return aliveVillagers(state) + paid >= state.data.base.villagerTarget.value;
+}
+
 // farm, wood and refs the order never names have no stock and never run out.
 function isDry(state: EngineState, ref: NodeRef): boolean {
   return isDepleted(state.stock, ref as FiniteNodeRef);
@@ -570,7 +585,7 @@ function orderNeed(cost: Resources, reserve: Readonly<Resources> | undefined): R
 function payOrder(engine: Engine, instance: BuildingInstance): void {
   const order = instance.order!;
   const entry = resolveUnitEntry(order.unit, engine);
-  if (!entry || entry.age > engine.age) {
+  if (!entry || entry.age > engine.age || defaultVillagersDone(engine, order)) {
     return;
   }
   if (engine.population + entry.costs.popcap > engine.supply) {
@@ -613,6 +628,9 @@ function startProduction(engine: Engine): void {
       if (instance.busyUntil !== null) {
         continue;
       }
+      if (instance.order === null && isVillagerProducer(engine, instance.baseId)) {
+        instance.order = { step: null, unit: VILLAGER_ID, remaining: null };
+      }
       if (instance.paid.length === 0 && instance.order && instance.order.remaining !== 0) {
         payOrder(engine, instance);
       }
@@ -630,7 +648,7 @@ function houseDemand(engine: Engine): HouseDemand {
     for (const instance of list) {
       const order = instance.order;
       const entry = order && order.remaining !== 0 ? resolveUnitEntry(order.unit, engine) : undefined;
-      if (entry) {
+      if (entry && !defaultVillagersDone(engine, order!)) {
         populationPerSecond += entry.costs.popcap / productionSeconds(engine, entry, instance.baseId);
       }
     }

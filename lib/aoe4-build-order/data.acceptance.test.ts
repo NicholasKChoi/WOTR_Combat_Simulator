@@ -56,9 +56,10 @@ describe('rules files', () => {
     const civ = englishRules as unknown as CivData
 
     it('base.json has exactly the documented keys and values', () => {
-        expect(Object.keys(base).sort()).toEqual(['builderScaling', 'gatherNodes', 'maxPopCap', 'walkSeconds'])
+        expect(Object.keys(base).sort()).toEqual(['builderScaling', 'gatherNodes', 'maxPopCap', 'villagerTarget', 'walkSeconds'])
         expect(base.walkSeconds.value).toBe(5)
         expect(base.maxPopCap.value).toBe(200)
+        expect(base.villagerTarget.value).toBe(100)
         expect(base.builderScaling.numerator.value).toBe(3)
         expect(base.builderScaling.offset.value).toBe(2)
         expect(Object.keys(base.gatherNodes).sort()).toEqual(['berry', 'boar', 'deer', 'farm', 'gold', 'sheep', 'stone', 'wood'])

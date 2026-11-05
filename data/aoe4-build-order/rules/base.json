@@ -365,6 +365,11 @@
     "source": "owner decision 2026-10-29; gamewatcher https://www.gamewatcher.com/age-of-empires-4-population-limit (start 10 + 19 houses x 10 = 200)",
     "unverified": true
   },
+  "villagerTarget": {
+    "value": 100,
+    "source": "owner decision 2026-11-05: villager producers keep making villagers until 100 exist",
+    "unverified": true
+  },
   "walkSeconds": {
     "value": 5,
     "source": "owner assumption: about 5-6 tiles at villager speed 1.12 tiles/s, no measurement",

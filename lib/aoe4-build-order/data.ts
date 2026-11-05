@@ -54,6 +54,7 @@ export interface BaseRules {
   gatherNodes: Record<GatherNodeId, GatherNodeRules>;
   builderScaling: { numerator: HandValue<number>; offset: HandValue<number> };
   maxPopCap: HandValue<number>;
+  villagerTarget: HandValue<number>;
   walkSeconds: HandValue<number>;
 }
 

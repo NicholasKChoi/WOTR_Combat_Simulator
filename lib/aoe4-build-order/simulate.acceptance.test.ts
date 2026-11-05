@@ -4,7 +4,7 @@ import { effectiveGatherRate } from './gather'
 import type { BuildStep } from './model'
 import { addBuildingInstance, simulateBuildOrder, triggerHolds } from './simulate'
 import type { EngineState } from './simulate'
-import { ENGLISH, at, buildOrder, countAt, editGameData, inputsFor, run, series, withHandler } from './test-helpers'
+import { ENGLISH, at, buildOrder, countAt, editGameData, inputsFor, noAutoVillagers, run, series, withHandler } from './test-helpers'
 
 const data = ENGLISH
 const inputs = inputsFor(data)
@@ -74,7 +74,7 @@ describe('counted produce', () => {
         const result = run([
             { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 5 },
             { action: 'pause', producer: 'capital-town-center', trigger: at(25) },
-        ])
+        ], { game: noAutoVillagers() })
         expect(result.steps[0]).toMatchObject({ status: 'completed', completedAt: 25 })
         expect(countAt(result, 'villager', 20)).toBe(1)
         expect(countAt(result, 'villager', 40)).toBe(2)

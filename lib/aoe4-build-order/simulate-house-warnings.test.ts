@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { listBuilds } from './builds'
 import type { BuildStart, BuildStep, GatherNodeId, SimulationResult, SimWarning } from './model'
 import { simulateBuildOrder } from './simulate'
-import { ENGLISH, at, editGameData, inputsFor, run } from './test-helpers'
+import { ENGLISH, at, editGameData, inputsFor, noAutoVillagers, run } from './test-helpers'
 
 const twoTowns = editGameData((parts) => {
     parts.civData.startingState.buildings.value = ['capital-town-center', 'town-center']
@@ -101,7 +101,7 @@ describe('auto-houses-held', () => {
             { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1, trigger: at(30) },
             house('wood', { trigger: at(100) }),
         ]
-        const result = run(steps, { start: { villagers: { wood: 9 }, rally: 'wood' }, inputs: { durationSeconds: 200 } })
+        const result = run(steps, { game: noAutoVillagers(), start: { villagers: { wood: 9 }, rally: 'wood' }, inputs: { durationSeconds: 200 } })
         expect(result.steps[1].waitingOn).toBe('population')
         expect(houseWarnings(result).map(({ step, at, ...w }) => ({ step, at, seconds: 'seconds' in w ? w.seconds : null }))).toEqual([{ step: 2, at: 30, seconds: 170 }])
     })
@@ -123,7 +123,7 @@ describe('auto-houses-held', () => {
             { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1, trigger: at(1) },
             house('wood', { trigger: at(150) }),
         ]
-        const result = run(steps, { start: { villagers: { wood: 9 }, rally: 'wood' }, inputs: { durationSeconds: 200 } })
+        const result = run(steps, { game: noAutoVillagers(), start: { villagers: { wood: 9 }, rally: 'wood' }, inputs: { durationSeconds: 200 } })
         expect(result.steps[2].waitSeconds).toBe(seconds)
         expect(houseWarnings(result).map(({ step, at, ...w }) => ({ step, at, seconds: 'seconds' in w ? w.seconds : null }))).toEqual([{ step: 3, at: heldAt, seconds }])
     })
@@ -164,8 +164,8 @@ describe('timing with the auto-house warnings', () => {
 
     it.each([
         ['ENG 1TC', '32a982d42fa1e689', null],
-        // Re-pinned for the house lead-time rule: the King's Palace supply lands after the lead time, so it no longer counts toward headroom.
-        ['ENG Spear/Longbow into MAA/Crossbow', '00079473e76ddeb2', null],
+        // Re-pinned for villagerTarget: the Town Center and King's Palace keep making villagers past 70, and the build adds a blacksmith, its upgrades and a gold rally at 1000 s.
+        ['ENG Spear/Longbow into MAA/Crossbow', '60e54bd7196e39e7', null],
         ["ENG Knight/Longbow (King's Palace)", '41524f8371275b79', { step: 23, at: 420, seconds: 61.236012345678944 }],
     ])('leaves spawnedPopulation, spent, steps, populationCapReachedAt, depletions and markers of %s at 1800 s as they were', (name, pinned, held) => {
         const build = listBuilds().find((b) => b.name === name)!
