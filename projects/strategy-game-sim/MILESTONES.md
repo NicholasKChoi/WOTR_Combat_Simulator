@@ -122,3 +122,26 @@ confirmed. Closed by the owner on 2026-11-05 as delivered.
 | One villager per farm, with the prebuilt builds re-timed | SGS-080, SGS-081 | done |
 | Engine code cleanups and guards | SGS-089, SGS-091 (SGS-090 discarded) | done |
 | Also shipped: per-villager gather rates, deer pack 2450 food | SGS-084, SGS-094 | done |
+
+## M6: AoE4 workbench re-runs on edit, and builds are saved and opened by link
+
+**Outcome:** The page re-runs the simulation as the build is edited, with results beside the editor, and a build
+can be saved on the server and opened by link, so an agent can hand the owner a link to the charts instead of
+screenshots.
+
+### Exit criteria
+
+Confirmed by the owner 2026-11-05. Owner decisions: the Run button is removed; while the text is invalid the charts
+keep the last good run, dimmed.
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M6.1 | Re-run on edit: each edit to the text, the step table or the duration restarts a debounce of about 500 ms; when it fires the page POSTs to simulate only if the text converts cleanly and the duration is valid, skips a request equal to the last one, aborts an in-flight request when a newer one starts, and ignores a response that lands after a newer one | code | | |
+| M6.2 | Layout: at desktop widths the editor is on the left and the charts on the right; under a breakpoint the page keeps the stacked tabs and still fits 390 px | code | | |
+| M6.3 | What re-running obsoletes is gone: the Run button is removed, nothing scrolls the page while typing, the stale indicator is reworked, and while the text is invalid the charts keep the last good run, dimmed, with its issues shown inline | code | | |
+| M6.4 | `POST /api/aoe4-build-order/builds` validates a build with the shared zod schema and stores it immutably under a short id; `GET .../builds/<id>` returns it; builds have a size cap and saves a rate limit; both routes are in `docs/api/openapi.json` and pass the contract check | code | | |
+| M6.5 | The page has a Save button that gives a copyable link; opening `?b=<id>` loads that build and runs it; an unknown id shows a clear error | code | | |
+| M6.6 | Storage sits behind one interface with a local stand-in as the default; the Blob adapter is used only when `BUILDS_STORE_ID` is set; keys are prefixed by `VERCEL_ENV`; a package.json override pins the nested zod so `npm audit` no longer reports the zod advisory | code | | |
+| M6.7 | `npm run smoke:preview -- <url>` saves a build to a deployment, reads it back, opens its link and deletes it | code | | |
+| M6.8 | The owner runs M6.7 on the M6 PR's preview deployment before merge | evidence | human | |
+| M6.9 | `docs/aoe4-build-order.md` covers re-run on edit, save and open by link, and how an agent saves a build and prints its link; Playwright covers re-run on edit, the split layout, and save then open by link against the local stand-in; specs that clicked Run are rewritten | code | | |
