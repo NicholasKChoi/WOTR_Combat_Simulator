@@ -5,7 +5,7 @@ import { listBuilds } from './builds'
 import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
-import { ENGLISH, at, countAt, editGameData, inputsFor, run, sampleIndex, series, withHandler } from './test-helpers'
+import { ENGLISH, at, countAt, editGameData, inputsFor, run, sampleIndex, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
@@ -108,24 +108,25 @@ describe('build step', () => {
     })
 
     it('reserves the cost when blocked on resources alone, not on age or builders', () => {
-        const woodVillagers = editGameData((parts) => {
-            editEntry(parts, 'villager-1', (v) => {
+        const woodScouts = editGameData((parts) => {
+            editEntry(parts, 'scout-1', (v) => {
                 v.costs.food = 0
                 v.costs.wood = 50
             })
             parts.civData.startingState.resources.value = { food: 200, wood: 100, gold: 100, stone: 0 }
         })
-        const options = { game: woodVillagers, start: { villagers: { wood: 6 }, rally: 'wood' as const }, inputs: noHouses }
-        const blocked = run([{ action: 'build', building: 'barracks', from: 'wood' }], options)
-        const started = blocked.steps[0].startedAt
-        expect(started).toBeCloseTo(50 / (6 * rw), 6)
-        const payments = series(blocked, 'villager')
-        expect(payments[sampleIndex(blocked, 20)]).toBe(0)
-        expect(payments[blocked.times.findIndex((t) => t >= started! + 20)]).toBe(0)
-        const aged = run([{ action: 'build', building: 'kings-palace', from: 'wood' }], options)
-        expect(aged.steps[0].status).toBe('waiting')
+        const options = { game: woodScouts, start: { villagers: { wood: 6 }, rally: 'wood' as const }, inputs: noHouses }
+        const scouts: BuildStep = { action: 'produce', producer: 'capital-town-center', unit: 'scout' }
+        const blocked = run([scouts, { action: 'build', building: 'barracks', from: 'wood' }], options)
+        const started = blocked.steps[1].startedAt
+        expect(blocked.floating.wood[0]).toBe(50)
+        expect(started).toBeCloseTo(100 / (6 * rw), 6)
+        expect(started).toBeGreaterThan(30)
+        expect(countAt(blocked, 'scout', 30)).toBe(1)
+        const aged = run([scouts, { action: 'build', building: 'kings-palace', from: 'wood' }], options)
+        expect(aged.steps[1].status).toBe('waiting')
         expect(aged.floating.wood[0]).toBe(50)
-        expect(countAt(aged, 'villager', 20)).toBe(1)
+        expect(countAt(aged, 'scout', 50)).toBe(2)
         for (const result of [blocked, aged]) {
             Object.values(result.floating).forEach((values) => values.forEach((v) => expect(v).toBeGreaterThanOrEqual(0)))
         }
@@ -408,19 +409,12 @@ describe('auto-houses', () => {
     })
 
     it('ignore a waiting step reserve', () => {
-        const woodVillagers = editGameData((parts) => {
-            editEntry(parts, 'villager-1', (v) => {
-                v.costs.food = 0
-                v.costs.wood = 50
-            })
-        })
         withHandler(
             'research',
             () => ({ started: false, waitingOn: 'resources', reserve: { food: 0, wood: 1e9, gold: 0, stone: 0 } }),
             () => {
-                const result = run([{ action: 'research', tech: 'wheelbarrow' }], { game: woodVillagers, start: { villagers: { sheep: 9 }, rally: 'sheep' } })
+                const result = run([{ action: 'research', tech: 'wheelbarrow' }], { start: { villagers: { sheep: 9 }, rally: 'sheep' } })
                 expect(result.floating.wood[0]).toBe(150)
-                expect(result.unitsProduced).toEqual([])
                 Object.values(result.floating).forEach((values) => values.forEach((v) => expect(v).toBeGreaterThanOrEqual(0)))
             },
         )
@@ -489,7 +483,7 @@ describe('auto-houses with a long build in flight', () => {
         expect(build.steps.slice(firstHouse, firstHouse + 3).every((step) => step.action === 'build' && step.building === 'house')).toBe(true)
         const result = simulateBuildOrder({ ...build, steps }, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 800 }))
         const population = (t: number) => result.spawnedPopulation[sampleIndex(result, t)]
-        expect(population(660)).toBe(39)
+        expect(population(660)).toBe(44)
         expect(population(760)).toBeGreaterThan(population(660))
     })
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CivData, GameData } from './data'
 import { effectiveGatherRate } from './gather'
-import type { BuildStep, SimulationResult } from './model'
+import type { BuildStep } from './model'
 import { addBuildingInstance, simulateBuildOrder, triggerHolds } from './simulate'
 import type { EngineState } from './simulate'
 import { ENGLISH, at, buildOrder, countAt, editGameData, inputsFor, run, series, withHandler } from './test-helpers'
@@ -18,7 +18,6 @@ function rate(node: 'sheep' | 'wood', buildings = ['capital-town-center']): numb
     return effectiveGatherRate(node, state, inputs)
 }
 
-const sheepRate = rate('sheep')
 const woodRate = rate('wood')
 const NO_RESERVE = { food: 0, wood: 0, gold: 0, stone: 0 }
 
@@ -84,19 +83,34 @@ describe('counted produce', () => {
 })
 
 describe('reserve returned by a registered handler', () => {
-    const ranges = (result: SimulationResult) => series(result, 'villager')
 
-    it('holds a villager payment until food stays at or above the reserve afterwards', () => {
+    it('holds a scout payment until food stays at or above the reserve afterwards', () => {
+        withHandler(
+            'build',
+            () => ({ started: false, waitingOn: 'resources', reserve: { ...NO_RESERVE, food: 200 } }),
+            () => {
+                const result = run([
+                    { action: 'produce', producer: 'capital-town-center', unit: 'scout' },
+                    { action: 'build', building: 'house', from: 'sheep' },
+                ])
+                const scouts = series(result, 'scout')
+                const above = result.floating.food.findIndex((v) => v >= 200)
+                expect(above).toBeGreaterThan(0)
+                expect(scouts[scouts.length - 1]).toBeGreaterThan(1)
+                result.floating.food.slice(above).forEach((v) => expect(v).toBeGreaterThanOrEqual(200 - 1e-9))
+            },
+        )
+    })
+
+    it('pays a villager through the reserve', () => {
         withHandler(
             'build',
             () => ({ started: false, waitingOn: 'resources', reserve: { ...NO_RESERVE, food: 200 } }),
             () => {
                 const result = run([{ action: 'build', building: 'house', from: 'sheep' }])
-                const payAt = 50 / (6 * sheepRate)
-                const first = ranges(result).findIndex((c) => c > 0)
-                expect(result.times[first]).toBeGreaterThanOrEqual(payAt + 20)
-                expect(result.times[first - 1]).toBeLessThan(payAt + 20)
-                result.floating.food.forEach((v) => expect(v).toBeGreaterThanOrEqual(150 - 1e-9))
+                expect(countAt(result, 'villager', 20)).toBe(1)
+                expect(result.floating.food[0]).toBeCloseTo(150, 9)
+                expect(result.steps[0].status).toBe('waiting')
             },
         )
     })

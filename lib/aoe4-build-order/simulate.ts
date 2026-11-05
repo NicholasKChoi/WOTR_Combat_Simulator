@@ -556,6 +556,7 @@ function applyDueEvents(engine: Engine): void {
 }
 
 // Under a reserve, an order payment must leave each resource the unit costs at or above the reserved amount.
+// Villager payments ignore the reserve: a player keeps the Town Center busy while saving for a step.
 function orderNeed(cost: Resources, reserve: Readonly<Resources> | undefined): Resources {
   const need = { ...cost };
   for (const kind of RESOURCE_KINDS) {
@@ -576,7 +577,7 @@ function payOrder(engine: Engine, instance: BuildingInstance): void {
     engine.supplyBlocked = true;
     return;
   }
-  const need = orderNeed(costOf(entry, 1), engine.reserve);
+  const need = orderNeed(costOf(entry, 1), entry.baseId === VILLAGER_ID ? undefined : engine.reserve);
   if (!canAfford(engine.resources, need)) {
     engine.needs.push(need);
     return;

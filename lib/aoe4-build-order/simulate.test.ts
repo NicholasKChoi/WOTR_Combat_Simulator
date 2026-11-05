@@ -50,26 +50,29 @@ describe('resources never go negative and waits are reported', () => {
         }
     })
 
-    it('starts the step once 90 food has been gathered by six villagers', () => {
+    const withBarracksAndFood = (food: number) =>
+        editGameData((parts) =>
+            withStart(parts, (start) => {
+                start.buildings.value = ['capital-town-center', 'barracks']
+                start.resources.value = { food, wood: 200, gold: 0, stone: 0 }
+            }),
+        )
+
+    it('pays the first villager at 50 food while the step waits on its 90 food', () => {
         expect(step.armedAt).toBe(0)
-        expect(step.startedAt).toBeGreaterThan(step.armedAt!)
+        expect(step.startedAt).toBeGreaterThan((90 + 50) / (6 * r))
         expect(step.waitSeconds).toBeGreaterThan(0)
-        expect(step.startedAt).toBeCloseTo(90 / (6 * r), 6)
         expect(step.waitSeconds).toBeCloseTo(step.startedAt! - step.armedAt!, 9)
+        expect(countAt(result, 'villager', 35)).toBe(1)
+        expect(step.startedAt).toBeGreaterThan(35)
     })
 
-    it('pays no villager before the step starts and the first one 50 food after it', () => {
-        expect(result.steps[1].armedAt).toBeCloseTo(step.startedAt! + 50 / (6 * r) + 20, 6)
+    it('completes the step 14.65 s after it starts', () => {
         expect(step.completedAt).toBeCloseTo(step.startedAt! + 14.65, 6)
     })
 
     it('lets the villager order keep paying while food stays above the step reserve', () => {
-        const goldless = editGameData((parts) =>
-            withStart(parts, (start) => {
-                start.buildings.value = ['capital-town-center', 'barracks']
-                start.resources.value = { food: 200, wood: 200, gold: 0, stone: 0 }
-            }),
-        )
+        const goldless = withBarracksAndFood(200)
         const blocked = run([{ action: 'produce', producer: 'barracks', unit: 'man-at-arms', count: 1 }], { game: goldless })
         expect(blocked.steps[0].status).toBe('waiting')
         expect(countAt(blocked, 'villager', 20)).toBe(1)
@@ -77,16 +80,29 @@ describe('resources never go negative and waits are reported', () => {
         expect(blocked.floating.food[0]).toBeCloseTo(150, 9)
     })
 
-    it('skips an order payment that would drop food below the reserve', () => {
-        const lean = editGameData((parts) =>
-            withStart(parts, (start) => {
-                start.buildings.value = ['capital-town-center', 'barracks']
-                start.resources.value = { food: 120, wood: 200, gold: 0, stone: 0 }
-            }),
-        )
+    it('pays a villager even when it drops food below the reserve', () => {
+        const lean = withBarracksAndFood(120)
         const blocked = run([{ action: 'produce', producer: 'barracks', unit: 'man-at-arms', count: 1 }], { game: lean })
-        expect(blocked.floating.food[0]).toBeCloseTo(120, 9)
-        expect(countAt(blocked, 'villager', 20)).toBe(0)
+        expect(blocked.steps[0].status).toBe('waiting')
+        expect(blocked.floating.food[0]).toBeCloseTo(70, 9)
+        expect(countAt(blocked, 'villager', 20)).toBe(1)
+    })
+
+    it('holds a scout payment until food stays at or above the reserve afterwards', () => {
+        const lean = withBarracksAndFood(120)
+        const blocked = run(
+            [
+                { action: 'produce', producer: 'capital-town-center', unit: 'scout' },
+                { action: 'produce', producer: 'barracks', unit: 'man-at-arms', count: 1 },
+            ],
+            { game: lean },
+        )
+        expect(blocked.steps[1].status).toBe('waiting')
+        expect(blocked.floating.food[0]).toBeCloseTo(55, 9)
+        const above = blocked.floating.food.findIndex((food) => food >= 90)
+        expect(above).toBeGreaterThan(0)
+        expect(countAt(blocked, 'scout', 60)).toBeGreaterThan(1)
+        blocked.floating.food.slice(above).forEach((food) => expect(food).toBeGreaterThanOrEqual(90 - 1e-9))
     })
 })
 

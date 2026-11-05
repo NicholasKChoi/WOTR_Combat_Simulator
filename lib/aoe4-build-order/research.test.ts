@@ -348,7 +348,7 @@ describe('resources never go negative and waits are reported', () => {
         effectiveGatherRate('gold', { data: game, age: 2, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: simInputs.influenceCoverage }, simInputs)
 
     describe('a research short of gold only', () => {
-        const game = startingWith(2, ['capital-town-center', ...houses], { food: 120, wood: 0, gold: 0, stone: 0 })
+        const game = startingWith(2, ['capital-town-center', ...houses], { food: 220, wood: 0, gold: 0, stone: 0 })
         const simInputs = inputsFor(game)
         const start: BuildStart = { rally: 'sheep', villagers: { gold: 6 } }
         const result = run([{ action: 'research', tech: 'textiles' }], { game, start })
@@ -371,10 +371,10 @@ describe('resources never go negative and waits are reported', () => {
             }
         })
 
-        it('holds back a villager payment that would drop food below the research cost of it', () => {
-            expect(result.floating.food[0]).toBeCloseTo(70, 9)
+        it('keeps paying villagers while it waits, as a run without it does', () => {
+            expect(result.floating.food[0]).toBeCloseTo(170, 9)
             expect(tierCountAt(plain, 'villager-1', 40)).toBe(2)
-            expect(tierCountAt(result, 'villager-1', 40)).toBe(1)
+            expect(tierCountAt(result, 'villager-1', 40)).toBe(2)
         })
     })
 

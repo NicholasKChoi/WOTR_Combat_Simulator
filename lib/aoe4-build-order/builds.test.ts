@@ -193,7 +193,7 @@ describe('ENG Spear/Longbow into MAA/Crossbow', () => {
             throw new Error('build missing')
         }
         const { depletions } = simulateBuildOrder(build, data, inputsFor(data, { durationSeconds: 1800 }))
-        expect(depletions.find((d) => d.node === 'gold')?.depletedAt).toBe(1200.64894561628)
+        expect(depletions.find((d) => d.node === 'gold')?.depletedAt).toBe(1205.7397474539005)
         expect(depletions.find((d) => d.node === 'gold#2')?.depletedAt).toBeNull()
     })
 })
