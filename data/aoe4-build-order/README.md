@@ -74,8 +74,10 @@ engine or the build is tuned, and the page shows them for any run.
 - `english-spear-longbow-maa-crossbow` "ENG Spear/Longbow into MAA/Crossbow", hand-authored for this
   simulator (no guide). Feudal through the Council Hall, spearmen and longbowmen from barracks and archery
   ranges, Castle through the King's Palace, then men-at-arms and crossbowmen. Villager production is
-  continuous from the Town Center and, once built, the King's Palace, until 70 villagers, when both are
-  paused so the rest of the 200 population goes to the army. Nothing is omitted.
+  continuous from the Town Center and, once built, the King's Palace, up to the simulator's 100-villager
+  target. A blacksmith at 950 s researches the Feudal and Castle attack and armor upgrades, and at 1000 s
+  both villager producers rally to gold so the income past the 200 population cap goes into upgrades.
+  Nothing is omitted.
 
   Transcription choices: the `man-at-arms` step carries a `time` trigger of 681 s, the whole second after the
   King's Palace completes, because men-at-arms are a Feudal unit and would otherwise start before Castle;

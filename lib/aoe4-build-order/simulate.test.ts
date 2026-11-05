@@ -9,7 +9,7 @@ import type { BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult, 
 import { FINITE_GATHER_NODES } from './model'
 import { SAMPLE_SECONDS, accrueWait, addBuildingInstance, simulateBuildOrder, stepHandlers } from './simulate'
 import type { BuildingInstance, EngineState, RallySource, StepStart } from './simulate'
-import { ENGLISH, INFINITE_NODES, at, buildOrder, countAt, editGameData, inputsFor, run, sampleIndex, series, withHandler } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, buildOrder, countAt, editGameData, inputsFor, noAutoVillagers, run, sampleIndex, series, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
@@ -423,14 +423,23 @@ describe('switch and pause', () => {
         expect(countAt(result, 'scout', 45)).toBe(1)
         expect(result.unitsProduced.map((u) => u.baseId)).toEqual(['villager', 'scout'])
         expect(result.steps[0]).toMatchObject({ status: 'completed', startedAt: 10, completedAt: 43 })
-        expect(countAt(result, 'villager', 120)).toBe(1)
+        // Villagers resume when the scout spawns at 43: 63, 83 and 103.
+        expect(countAt(result, 'villager', 120)).toBe(4)
     })
 
     it('pauses at once, lets the paid villager spawn and pays no more', () => {
-        const result = run([{ action: 'pause', producer: 'capital-town-center', trigger: at(10) }])
+        const result = run([{ action: 'pause', producer: 'capital-town-center', trigger: at(10) }], { game: noAutoVillagers() })
         expect(result.steps[0]).toEqual({ step: 0, status: 'completed', armedAt: 10, startedAt: 10, completedAt: 10, waitSeconds: 0, waitingOn: null, waitBreakdown: {} })
-        expect(countAt(result, 'villager', 20)).toBe(1)
-        expect(countAt(result, 'villager', 120)).toBe(1)
+        expect(countAt(result, 'villager', 20)).toBe(0)
+        expect(countAt(result, 'villager', 120)).toBe(0)
+        const counted = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager' }, { action: 'pause', producer: 'capital-town-center', trigger: at(10) }], { game: noAutoVillagers() })
+        expect(countAt(counted, 'villager', 20)).toBe(1)
+        expect(countAt(counted, 'villager', 120)).toBe(1)
+    })
+
+    it('goes back to villagers after a pause while fewer than villagerTarget exist', () => {
+        const result = run([{ action: 'pause', producer: 'capital-town-center', trigger: at(10) }])
+        expect(countAt(result, 'villager', 120)).toBe(6)
     })
 
     it('treats a pause of a missing instance as a completed no-op that is not held', () => {
@@ -458,7 +467,7 @@ describe('switch and pause', () => {
 
 describe('completion', () => {
     it('completes a counted produce at its last spawn', () => {
-        const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 2 }])
+        const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 2 }], { game: noAutoVillagers() })
         expect(result.steps[0]).toMatchObject({ status: 'completed', startedAt: 0, completedAt: 40 })
         expect(countAt(result, 'villager', 40)).toBe(2)
         expect(countAt(result, 'villager', 120)).toBe(2)
@@ -467,7 +476,7 @@ describe('completion', () => {
     it('leaves a continuous produce in progress, and completes it when a later pause replaces it', () => {
         const continuous: BuildStep = { action: 'produce', producer: 'capital-town-center', unit: 'villager' }
         expect(run([continuous]).steps[0].status).toBe('in-progress')
-        const paused = run([continuous, { action: 'pause', producer: 'capital-town-center', trigger: at(30) }])
+        const paused = run([continuous, { action: 'pause', producer: 'capital-town-center', trigger: at(30) }], { game: noAutoVillagers() })
         expect(paused.steps[0]).toMatchObject({ status: 'completed', completedAt: 30 })
         expect(countAt(paused, 'villager', 40)).toBe(2)
         expect(countAt(paused, 'villager', 120)).toBe(2)
@@ -750,6 +759,35 @@ describe('invalid engine input', () => {
     })
 })
 
+describe('villagerTarget', () => {
+    const target = (value: number, from?: GameData) => editGameData((parts) => void (parts.base.villagerTarget.value = value), from)
+    const twoTowns = editGameData((parts) => withStart(parts, (start) => void (start.buildings.value = ['capital-town-center', 'town-center'])))
+    const options = { inputs: { autoHouses: false, nodeAmounts: INFINITE_NODES, durationSeconds: 600 }, rules: { supplyProvider: () => 200 } }
+    const start = Object.values(data.civData.startingState.villagers.value).reduce((sum, n) => sum + n, 0)
+
+    it('stops the default villager order once villagerTarget villagers exist', () => {
+        const result = run([], { game: target(start + 3), ...options })
+        expect([20, 40, 60, 80, 600].map((t) => countAt(result, 'villager', t))).toEqual([1, 2, 3, 3, 3])
+    })
+
+    it('counts villagers in production, so two producers stop at the target together', () => {
+        const result = run([], { game: target(start + 3, twoTowns), ...options })
+        expect(countAt(result, 'villager', 600)).toBe(3)
+    })
+
+    it('resumes villagers on a producer whose counted order ran out', () => {
+        const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(30) }], options)
+        // The scout replaces the villager order at 30; once it spawns, the Town Center goes back to villagers.
+        expect(countAt(result, 'scout', 600)).toBe(1)
+        expect(countAt(result, 'villager', 600)).toBeGreaterThan(countAt(result, 'villager', 60) + 20)
+    })
+
+    it('does not cap the villagers of a produce step', () => {
+        const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 3 }], { game: target(0), ...options })
+        expect(countAt(result, 'villager', 600)).toBe(3)
+    })
+})
+
 describe('performance', () => {
     it('runs an hour with twenty steps in well under a second', () => {
         const steps: BuildStep[] = []
@@ -762,7 +800,7 @@ describe('performance', () => {
             )
         }
         const started = performance.now()
-        const result = run(steps, { inputs: { durationSeconds: 3600, nodeAmounts: INFINITE_NODES }, rules: { supplyProvider: () => 200 } })
+        const result = run(steps, { game: noAutoVillagers(), inputs: { durationSeconds: 3600, nodeAmounts: INFINITE_NODES }, rules: { supplyProvider: () => 200 } })
         expect(performance.now() - started).toBeLessThan(1000)
         expect(result.steps.every((s) => s.status !== 'waiting')).toBe(true)
         expect(countAt(result, 'villager', 3600)).toBe(3600 / 20)

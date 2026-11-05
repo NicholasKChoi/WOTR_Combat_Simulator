@@ -91,7 +91,7 @@ snapshot of aoe4world data (github.com/aoe4world/data), committed as
 
 - `data/aoe4-build-order/rules/base.json`, civilization-agnostic: `gatherNodes` (per-node rate, carry
   capacity, the effect properties that modify them, drop-off buildings and trip seconds), `builderScaling`,
-  `maxPopCap` (200) and `walkSeconds`.
+  `maxPopCap` (200), `villagerTarget` (100) and `walkSeconds`.
 - `data/aoe4-build-order/rules/english.json`, the English overlay: `startingState`, `supply`, `effects`
   and `upgradeTargets`.
 
@@ -183,8 +183,12 @@ a busy producer replaces its order (a switch); `pause` clears the order. A step 
 `baseId`, which applies to every instance, or by `instance` (1-based) for one.
 
 Every villager producer instance starts with a continuous villager order, which a `produce` or `pause`
-step replaces. When a counted `produce` spawns its last unit, the instance's order becomes empty; the
-villager order does not resume. Only a research resumes the instance's own order. A unit is paid before it is queued: its resource cost and its population are taken
+step replaces. A villager producer instance with no order, after a `pause` or after a counted `produce`
+spawns its last unit, goes back to the continuous villager order. This default villager order pays its
+next villager only while the villagers alive plus the villagers paid and in production are fewer than
+`villagerTarget` (100); a `produce villager` step is not capped. A `pause` on a villager producer
+therefore holds it only once that many villagers exist. On any other producer, a counted `produce` that
+spawns its last unit leaves the order empty. Only a research resumes the instance's own order. A unit is paid before it is queued: its resource cost and its population are taken
 together, and only when every resource covers its cost and supply has room for it. Each instance runs its
 paid units first in, first out, one at a time. An order pays its next unit only when its instance has no
 paid unit left.
@@ -367,7 +371,7 @@ The English farm bonus near a mill is four rows, one per age, with the wiki valu
 
 **Coverage.** Modeled:
 
-- villager production (town center, King's Palace +10%);
+- villager production (town center, King's Palace +10%), continuous until `villagerTarget` (100) villagers;
 - gathering sheep, berries, hunt (deer and boar), farms, wood, gold and stone;
 - mill, lumber camp and mining camp drop-offs;
 - farms (cost, one villager per built farm, extra farmers idle until a farm is built, mill coverage as an input, English farm bonus near a mill, wiki

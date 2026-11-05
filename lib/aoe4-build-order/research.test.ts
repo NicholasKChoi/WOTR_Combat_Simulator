@@ -8,7 +8,7 @@ import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
 import { researchEntry, researchHandler, researchNotes, resolveUnitEntry } from './research'
 import type { BuildingInstance, EngineState } from './simulate'
-import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, researchedOf, run, sampleIndex, series, withHandler } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, noAutoVillagers, researchedOf, run, sampleIndex, series, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
@@ -326,14 +326,14 @@ describe('research target', () => {
     })
 
     it('takes instance 1 of the named building without looking at queue length', () => {
-        const game = startingWith(2, ['capital-town-center', 'town-center', 'town-center'], plenty)
+        const game = noAutoVillagers(startingWith(2, ['capital-town-center', 'town-center', 'town-center'], plenty))
         const taken = recordTargets(() => {
-            run([{ action: 'pause', producer: 'town-center', instance: 2 }, { ...textiles, at: 'town-center', trigger: at(30) }], { game })
+            run([{ action: 'produce', producer: 'town-center', instance: 1, unit: 'villager' }, { ...textiles, at: 'town-center', trigger: at(30) }], { game })
         })
         expect(where(taken)).toEqual([['town-center', 1]])
         expect(taken[0].queues.filter(([baseId]) => baseId === 'town-center')).toEqual([
             ['town-center', 1, 1, true],
-            ['town-center', 2, 0, false],
+            ['town-center', 2, 0, true],
         ])
     })
 

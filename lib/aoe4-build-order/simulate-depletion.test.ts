@@ -6,7 +6,7 @@ import { FINITE_GATHER_NODES, NODE_REFS } from './model'
 import type { BuildStart, BuildStep, NodeRef, SimulationResult, SimWarning } from './model'
 import { stepHandlers } from './simulate'
 import type { EngineState } from './simulate'
-import { ENGLISH, at, countAt, run, sampleIndex, withHandler, withStartFarms } from './test-helpers'
+import { ENGLISH, at, countAt, noAutoVillagers, run, sampleIndex, withHandler, withStartFarms } from './test-helpers'
 
 const PAUSE: BuildStep = { action: 'pause', producer: 'capital-town-center' }
 const noHouses = { autoHouses: false }
@@ -51,7 +51,7 @@ function probingMoves(probe: (state: EngineState) => void, fn: () => void): void
 describe('stock and run-out', () => {
     const start: BuildStart = { villagers: { berry: 3, wood: 3 }, rally: 'wood' }
     const amount = 601
-    const result = run([PAUSE], { start, inputs: { ...noHouses, nodeAmounts: { berry: amount } } })
+    const result = run([PAUSE], { game: noAutoVillagers(), start, inputs: { ...noHouses, nodeAmounts: { berry: amount } } })
     const expected = amount / (3 * rb)
     const runOut = depletion(result, 'berry').depletedAt!
 
@@ -82,7 +82,7 @@ describe('stock and run-out', () => {
     })
 
     it('is deterministic', () => {
-        expect(run([PAUSE], { start, inputs: { ...noHouses, nodeAmounts: { berry: amount } } })).toEqual(result)
+        expect(run([PAUSE], { game: noAutoVillagers(), start, inputs: { ...noHouses, nodeAmounts: { berry: amount } } })).toEqual(result)
     })
 
     it('runs out at t=0 when the stock starts at 0, idling the villagers there', () => {
@@ -167,7 +167,7 @@ describe('idle arrivals', () => {
     const empty = { ...noHouses, nodeAmounts: { berry: 0 } }
 
     it('record one idle-arrival that adds up every arrival', () => {
-        const result = run([PAUSE, move(3, 'sheep', 'berry', { trigger: at(10) }), move(2, 'sheep', 'berry', { trigger: at(30) })], { inputs: empty })
+        const result = run([PAUSE, move(3, 'sheep', 'berry', { trigger: at(10) }), move(2, 'sheep', 'berry', { trigger: at(30) })], { game: noAutoVillagers(), inputs: empty })
         expect(warningsFor(result, 'idle-arrival', 'berry')).toEqual([
             { code: 'idle-arrival', severity: 'warning', message: expect.any(String), node: 'berry', at: result.steps[1].completedAt, idleVillagers: 5 },
         ])

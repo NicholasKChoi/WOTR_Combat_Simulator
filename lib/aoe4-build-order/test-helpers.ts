@@ -38,6 +38,11 @@ export function editGameData(edit: (parts: Parts) => void, from: GameData = ENGL
     return buildGameData(from.civ, parts.snapshot, parts.base, parts.civData)
 }
 
+// Villager producers make no villagers on their own, so only produce steps spawn villagers.
+export function noAutoVillagers(from: GameData = ENGLISH): GameData {
+    return editGameData((parts) => void (parts.base.villagerTarget.value = 0), from)
+}
+
 export function withStartFarms(farms: number, from: GameData = ENGLISH): GameData {
     return editGameData((parts) => void parts.civData.startingState.buildings.value.push(...Array<string>(farms).fill('farm')), from)
 }

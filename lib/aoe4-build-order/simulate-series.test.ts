@@ -5,7 +5,7 @@ import { effectiveGatherRate } from './gather'
 import { RESOURCE_KINDS } from './model'
 import type { BuildStart, BuildStep, GatherNodeId, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
-import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, run, sampleIndex } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, noAutoVillagers, run, sampleIndex } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const noHouses = { autoHouses: false }
@@ -23,6 +23,7 @@ function rich(parts: Parts): void {
     const start = parts.civData.startingState
     start.buildings.value = ['capital-town-center', 'barracks', 'mill']
     start.resources.value = { food: 5000, wood: 5000, gold: 5000, stone: 5000 }
+    parts.base.villagerTarget.value = 0
 }
 
 const game = editGameData(rich)
@@ -184,7 +185,7 @@ describe('gathered', () => {
     const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0)
 
     it('grows at the sampled gather rate from 0 while rates hold and nothing is paid', () => {
-        const result = run([pauseTownCenter], { inputs: { autoHouses: false, nodeAmounts: INFINITE_NODES, durationSeconds: 300 } })
+        const result = run([pauseTownCenter], { game: noAutoVillagers(), inputs: { autoHouses: false, nodeAmounts: INFINITE_NODES, durationSeconds: 300 } })
         expect(result.depletions.every((d) => d.depletedAt === null)).toBe(true)
         expect(Object.values(result.spent).flat().every((value) => value === 0)).toBe(true)
         for (const kind of RESOURCE_KINDS) {
@@ -257,7 +258,7 @@ describe('gatherers', () => {
     })
 
     it('drops at the same sample as the gather rate when a stocked node runs out', () => {
-        const result = run([pauseTownCenter], { start: { rally: 'wood', villagers: { berry: 3, wood: 3 } }, inputs: { ...noHouses, nodeAmounts: { berry: 601 } } })
+        const result = run([pauseTownCenter], { game: noAutoVillagers(), start: { rally: 'wood', villagers: { berry: 3, wood: 3 } }, inputs: { ...noHouses, nodeAmounts: { berry: 601 } } })
         const runOut = result.depletions.find((d) => d.node === 'berry')!.depletedAt!
         const after = result.times.findIndex((t) => t > runOut)
         expect(result.gatherers.food[after - 1]).toBe(3)

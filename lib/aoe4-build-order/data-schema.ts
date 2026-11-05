@@ -75,6 +75,7 @@ export const baseRulesFileSchema: z.ZodType<BaseRules> = z.object({
   gatherNodes: z.record(gatherNode, gatherNodeRulesSchema),
   builderScaling: z.object({ numerator: handNumber, offset: handNumber }),
   maxPopCap: handNumber,
+  villagerTarget: handNumber,
   walkSeconds: handNumber,
 });
 

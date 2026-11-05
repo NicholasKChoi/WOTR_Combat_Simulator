@@ -487,15 +487,59 @@
     },
     {
       "trigger": {
-        "kind": "villagers",
-        "count": 70
+        "kind": "time",
+        "seconds": 950
       },
-      "action": "pause",
-      "producer": "capital-town-center"
+      "action": "build",
+      "building": "blacksmith",
+      "from": "wood",
+      "then": "wood"
     },
     {
-      "action": "pause",
-      "producer": "kings-palace"
+      "action": "research",
+      "tech": "steeled-arrow"
+    },
+    {
+      "action": "research",
+      "tech": "fitted-leatherwork"
+    },
+    {
+      "action": "research",
+      "tech": "bloomery"
+    },
+    {
+      "action": "research",
+      "tech": "iron-undermesh"
+    },
+    {
+      "action": "research",
+      "tech": "wedge-rivets"
+    },
+    {
+      "action": "research",
+      "tech": "balanced-projectiles"
+    },
+    {
+      "action": "research",
+      "tech": "decarbonization"
+    },
+    {
+      "action": "research",
+      "tech": "insulated-helm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 1000
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "gold"
+    },
+    {
+      "action": "rally",
+      "producer": "kings-palace",
+      "to": "gold"
     },
     {
       "trigger": {
