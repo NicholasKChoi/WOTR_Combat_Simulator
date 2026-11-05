@@ -43,3 +43,18 @@ pull from here; triage moves an item into a milestone or deletes it.
   (local, node): client validation about 1 ms, server simulate 10-18 ms for the three shipped builds, response 39-49 KB;
   a round trip is network-bound, so the debounce, not the server, sets the felt latency. Acceptance specs that click Run
   need rewriting.
+- **AoE4 workbench: save a build on the server and open it by link (owner, 2026-11-05).** Goal: an agent (or a
+  person) saves a build and hands over a link, so the owner sees the charts in the browser instead of screenshots or
+  a file on disk. Saved builds are immutable: `POST /api/aoe4-build-order/builds` validates with the shared zod build
+  schema, stores it under a short id and returns the id; `GET .../builds/<id>` returns it; the page loads
+  `/apps/aoe4-build-order?b=<id>`. No accounts. Needs a size cap, basic rate limiting, OpenAPI entries.
+  Storage: Vercel Blob store `aoe4-simulator-builds` (private, iad1), already created and connected to Production and
+  Preview only (not Development) with env prefix `BUILDS_`, so the id is `BUILDS_STORE_ID` (the code passes it, not the
+  SDK default `BLOB_STORE_ID`); `BUILDS_WEBHOOK_PUBLIC_KEY` is unused. Behind a two-method storage interface: a local
+  stand-in (memory or a gitignored dir) is the default for `next dev`, unit and Playwright; the Blob adapter is used
+  only when `BUILDS_STORE_ID` is set. Keys are prefixed by `VERCEL_ENV` (preview/ vs production/) since both share the
+  store. Validation of the real store is on the PR's preview deploy, not locally: `npm run smoke:preview -- <url>`
+  saves, reads back, opens `?b=<id>`, deletes (through `vercel curl` or a protection-bypass token). Dependency:
+  `@vercel/blob` ^2.8.2 pulls `@vercel/oidc` -> `@vercel/cli-config` -> zod 4.1.11 (npm audit: 4 high, one zod
+  memory advisory <4.6.6); add a package.json `overrides` pinning that zod to ^4.6.6, never `npm audit fix --force`
+  (downgrades blob to 2.4.0). Supersedes a "build link in the URL" and a dev-only "live scratch file" idea.
