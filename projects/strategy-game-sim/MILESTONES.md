@@ -107,13 +107,18 @@ small code-cleanup backlog bullets stay in the backlog).
 | M4.13 | Mobile: at 390 px wide the page has no horizontal scroll; steps render as cards and wide tables scroll inside their own box | code | SGS-073 | done |
 | M4.14 | `docs/aoe4-build-order.md` and `docs/api/openapi.json` cover the changes and pass the contract check; Playwright covers the new layout, the inline error, the info list, pin persistence and the 390 px width | code | SGS-074 | done |
 
-## M5 (proposed; exit criteria not yet confirmed)
+## M5: AoE4 workbench follow-ups (delivered as backlog tickets)
 
-Scope the owner chose in the 2026-11-02 plan, for `milestone M5` to turn into exit criteria:
+**Outcome:** Shipped. The owner chose the scope in the 2026-11-02 plan, and it was delivered as backlog
+tickets on 2026-11-02 and 2026-11-03 instead of through `milestone M5`, so no exit criteria were ever
+confirmed. Closed by the owner on 2026-11-05 as delivered.
 
-- Drafts SGS-076 (timeline beside charts), SGS-077 (gathered resources chart), SGS-078 (timeline in time
-  order, coloured by step type), SGS-079 (prebuilt build docs state choices, not results).
-- Doc cleanup: docs state behavior only, no measured values (owner, 2026-11-02; SGS-079 covers only
-  `data/aoe4-build-order/README.md` today, so confirm whether it widens to every doc).
-- Backlog clusters, as planner required outlines: post-M4 UX fixes, flaky acceptance specs, one farm per
-  farmer, engine code cleanups.
+| scope | covered by | status |
+|-------|------------|--------|
+| Timeline beside the charts, gathered resources chart, timeline in time order coloured by step type | SGS-076, SGS-077, SGS-078 | done |
+| Docs and prebuilt build entries state behavior and choices, not measured values | SGS-079, SGS-093 | done |
+| Post-M4 UX fixes | SGS-083, SGS-085, SGS-086, SGS-087, SGS-088 | done |
+| Flaky acceptance specs and test hygiene | SGS-082, SGS-092 | done |
+| One villager per farm, with the prebuilt builds re-timed | SGS-080, SGS-081 | done |
+| Engine code cleanups and guards | SGS-089, SGS-091 (SGS-090 discarded) | done |
+| Also shipped: per-villager gather rates, deer pack 2450 food | SGS-084, SGS-094 | done |
