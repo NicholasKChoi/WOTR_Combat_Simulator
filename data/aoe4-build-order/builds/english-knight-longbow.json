@@ -210,7 +210,7 @@
     {
       "action": "rally",
       "producer": "capital-town-center",
-      "to": "farm"
+      "to": "gold"
     },
     {
       "action": "research",

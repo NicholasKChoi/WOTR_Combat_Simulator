@@ -149,15 +149,15 @@ describe('the Knight/Longbow build converts its longbowmen when veteran longbowm
     const veteran = build.steps.findIndex((s) => s.action === 'research' && s.tech === 'veteran-longbowmen')
 
     it('holds 9 tier-2 longbowmen just before completion and moves them all to tier 3 at it', () => {
-        expect(result.steps[veteran].completedAt).toBeGreaterThan(845)
-        expect(result.steps[veteran].completedAt).toBeLessThanOrEqual(850)
-        expect(count(result, 'longbowman-2', 845)).toBe(9)
-        expect(count(result, 'longbowman-3', 845)).toBe(0)
-        expect(count(result, 'longbowman-2', 850)).toBe(0)
-        expect(count(result, 'longbowman-3', 850)).toBe(9)
-        expect(count(result, 'longbowman-3', 1800)).toBe(63)
+        expect(result.steps[veteran].completedAt).toBeGreaterThan(835)
+        expect(result.steps[veteran].completedAt).toBeLessThanOrEqual(840)
+        expect(count(result, 'longbowman-2', 835)).toBe(9)
+        expect(count(result, 'longbowman-3', 835)).toBe(0)
+        expect(count(result, 'longbowman-2', 840)).toBe(0)
+        expect(count(result, 'longbowman-3', 840)).toBe(9)
+        expect(count(result, 'longbowman-3', 1800)).toBe(64)
         const lower = result.unitsProduced.find((u) => u.unitId === 'longbowman-2')!
-        expect(lower.counts.filter((_, i) => result.times[i] >= 850).every((c) => c === 0)).toBe(true)
+        expect(lower.counts.filter((_, i) => result.times[i] >= 840).every((c) => c === 0)).toBe(true)
     })
 
     it('changes nothing but the tier split of unitsProduced, whose per-unit sum is the units produced', () => {

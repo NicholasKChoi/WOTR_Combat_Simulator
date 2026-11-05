@@ -317,7 +317,7 @@
     },
     {
       "action": "build",
-      "building": "archery-range",
+      "building": "barracks",
       "from": "wood",
       "then": "wood"
     },
@@ -397,9 +397,9 @@
     },
     {
       "action": "produce",
-      "producer": "archery-range",
-      "unit": "crossbowman",
-      "instance": 6
+      "producer": "barracks",
+      "unit": "man-at-arms",
+      "instance": 7
     },
     {
       "trigger": {
@@ -484,6 +484,18 @@
       "building": "farm",
       "from": "wood",
       "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "villagers",
+        "count": 70
+      },
+      "action": "pause",
+      "producer": "capital-town-center"
+    },
+    {
+      "action": "pause",
+      "producer": "kings-palace"
     },
     {
       "trigger": {

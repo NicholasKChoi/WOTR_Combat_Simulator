@@ -172,7 +172,9 @@ trigger) starts at that instant, after the spawn. So `@T rally` routes the villa
 
 **Priority.** At most one non-reaction step is armed and not started at a time. While it waits on resources
 only, it reserves its cost; a reaction never reserves. A producer's order skips paying its next unit if
-that would drop any resource the unit costs below the reserving step's cost of that resource. A step waiting on supply, on an age or on a building
+that would drop any resource the unit costs below the reserving step's cost of that resource. Villager
+payments ignore the reserve, so villager production never stops for a waiting step; the step's start is
+pushed back by the food the villagers spend instead. A step waiting on supply, on an age or on a building
 instance that does not exist reserves nothing. At one instant, steps start before orders pay, so a step
 wins a tie with an order payment.
 

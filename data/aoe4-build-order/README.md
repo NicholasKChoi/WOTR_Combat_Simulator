@@ -64,7 +64,7 @@ engine or the build is tuned, and the page shows them for any run.
   continuous because the guide gives no count.
 
   Added after the guide (every one carries a `time` trigger of 420 s, the trigger of the guide's
-  `steeled-arrow` research): two more barracks and two more archery ranges, ten `build farm` steps from
+  `steeled-arrow` research): two more barracks and three more archery ranges, ten `build farm` steps from
   wood, and a second `produce spearman` and `produce longbowman`. Each farm step turns a wood gatherer into
   a farmer (a farm is paid from wood, and a farm holds one villager), and the extra buildings let the farmed
   food and the wood go into spearmen and longbowmen instead of floating. A `produce` step orders only the
@@ -74,7 +74,8 @@ engine or the build is tuned, and the page shows them for any run.
 - `english-spear-longbow-maa-crossbow` "ENG Spear/Longbow into MAA/Crossbow", hand-authored for this
   simulator (no guide). Feudal through the Council Hall, spearmen and longbowmen from barracks and archery
   ranges, Castle through the King's Palace, then men-at-arms and crossbowmen. Villager production is
-  continuous from the Town Center and, once built, the King's Palace. Nothing is omitted.
+  continuous from the Town Center and, once built, the King's Palace, until 70 villagers, when both are
+  paused so the rest of the 200 population goes to the army. Nothing is omitted.
 
   Transcription choices: the `man-at-arms` step carries a `time` trigger of 681 s, the whole second after the
   King's Palace completes, because men-at-arms are a Feudal unit and would otherwise start before Castle;
@@ -96,7 +97,7 @@ engine or the build is tuned, and the page shows them for any run.
   Production: two barracks (right after the Council Hall starts) and three archery ranges (after Feudal) run
   spearmen and longbowmen. At Castle the men-at-arms order replaces the spearman order on both barracks and
   the crossbowman order replaces the longbowman order on the first range only, so the other two ranges keep
-  making longbowmen from the wood the economy gathers. At 700 s four more barracks and three more ranges are
+  making longbowmen from the wood the economy gathers. At 700 s five more barracks and two more ranges are
   built from wood, and the `produce` steps at 790 s give them men-at-arms and crossbowmen by `instance` (a
   step that names an instance waits until that instance is built). The extra buildings and farms are there so
   the economy's food, wood and gold are spent on units instead of floating.
@@ -105,8 +106,8 @@ engine or the build is tuned, and the page shows them for any run.
   The opening is the ENG 1TC economy, with Feudal reached through `abbey-of-kings` (the same landmark as ENG
   1TC, so the first five minutes are the already-tuned opening) and Castle through `build kings-palace`. The
   5:30 rally to gold waits behind the 5:15 farm block, so it fires after 5:30 and new villagers go to gold
-  then, so the King's Palace's 600 gold is paid without moving gatherers; once the palace starts they go to
-  farms, and from 12:00 to wood. The King's Palace is rallied to wood. Three stables and two archery ranges;
+  then, so the King's Palace's 600 gold is paid without moving gatherers; they stay on gold after the palace
+  starts, because the knights need it, and go to wood from 12:00. The King's Palace is rallied to wood. Three stables and two archery ranges;
   the second `produce longbowman` step comes after the second range is built, because a `produce` step only
   orders the producers that exist when it starts. Explicit `build house` steps come early and in a block just
   before the King's Palace. Auto-houses stay off until the last `build house` step has started, so the run can

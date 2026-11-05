@@ -229,6 +229,16 @@
         "seconds": 420
       },
       "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 420
+      },
+      "action": "build",
       "building": "farm",
       "from": "wood",
       "then": "farm"
