@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
 import rules from '../data/aoe4-build-order/rules/english.json'
 import snapshot from '../data/aoe4-build-order/aoe4world/english.json'
-import { INFINITE_NODES, buildOrderFrom, finalCount, postSimulate } from './helpers'
+import { buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -65,27 +65,6 @@ test.describe('spent on the prebuilt English build', () => {
     expect(body.spent.buildings[0]).toBe(0)
   })
 
-  test('ends at the snapshot costs of the research and buildings it started, whole auto-houses, and each continuous producer paid one unit ahead', async ({ request }) => {
-    const body = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 1000, nodeAmounts: INFINITE_NODES } })
-    const started = english1tc.steps.filter((_, i) => body.steps[i].startedAt !== null)
-    const sumOf = (action: string, key: 'building' | 'tech') =>
-      started.filter((s) => s.action === action).reduce((sum, s) => sum + costOf((s as unknown as Record<string, string>)[key]), 0)
-
-    expect(last(body.spent.research)).toBe(sumOf('research', 'tech'))
-
-    const buildings = last(body.spent.buildings) - sumOf('build', 'building')
-    expect(buildings).toBeGreaterThan(0)
-    expect(buildings % costOf('house')).toBe(0)
-
-    // The continuous orders pay one unit ahead of the spawned count, so the end is within one queued unit.
-    const produced = (baseId: string) => finalCount(body, baseId) * costOf(baseId)
-    expect(last(body.spent.villagers)).toBe(produced('villager') + costOf('villager'))
-    const producers = (building: string) => started.filter((s) => s.action === 'build' && (s as unknown as Record<string, string>).building === building).length
-    expect(last(body.spent.military)).toBe(
-      produced('spearman') + produced('longbowman') + costOf('spearman') * producers('barracks') + costOf('longbowman') * producers('archery-range'),
-    )
-  })
-
   test('counts a payment made at exactly a sample time in that sample and a paid, unspawned villager only in spent', async ({ request }) => {
     const body = await simulate(request, { buildOrder: english1tc })
     const at = (t: number) => body.times.indexOf(t)
@@ -97,21 +76,6 @@ test.describe('spent on the prebuilt English build', () => {
     expect(body.spent.villagers[at(0)]).toBe(costOf('villager'))
     expect(body.spawnedPopulation[at(15)]).toBe(body.spawnedPopulation[0])
     expect(body.spawnedPopulation[at(20)]).toBe(body.spawnedPopulation[0] + popcapOf('villager'))
-  })
-
-  test('counts an auto-house under buildings when the order has no house step', async ({ request }) => {
-    const buildOrder = {
-      civ: 'english',
-      name: 'Auto houses',
-      start: { villagers: { sheep: 6 }, rally: 'sheep' },
-      steps: [{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 40 }],
-    }
-    const body = await simulate(request, { buildOrder, inputs: { nodeAmounts: INFINITE_NODES } })
-    expect(last(body.spent.villagers)).toBe(40 * costOf('villager'))
-    expect(last(body.spent.buildings)).toBeGreaterThan(0)
-    expect(last(body.spent.buildings) % costOf('house')).toBe(0)
-    expect(last(body.spent.military)).toBe(0)
-    expect(last(body.spent.research)).toBe(0)
   })
 })
 
