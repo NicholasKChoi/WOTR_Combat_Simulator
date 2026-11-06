@@ -1766,7 +1766,7 @@
             }
           },
           "400": {
-            "description": "The request was rejected; nothing was simulated. One exception does not match SimulateError: a body that is not valid JSON is rejected by the framework before the handler runs, with status 400 and the plain-text body Invalid JSON (no JSON content type).",
+            "description": "The request was rejected; nothing was simulated. A problem with the request itself is one syntax issue with no step or line: \"request: missing buildOrder\" when buildOrder is absent, \"request: text is no longer accepted; convert the paste to buildOrder and send that\" when the body has a text key, and \"request body: must be a JSON object\" when the body is not a JSON object. One exception does not match SimulateError: a body that is not valid JSON is rejected by the framework before the handler runs, with status 400 and the plain-text body Invalid JSON (no JSON content type).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3325,7 +3325,7 @@
           "message": {
             "type": "string",
             "minLength": 1,
-            "description": "Human-readable reason, naming the step and the offending id, kind or property."
+            "description": "Human-readable reason. It starts with where the issue is, followed by a colon: steps[N] for a step, an order field such as civ, name or start, build order for the whole order, inputs.<path> for an input, or request or request body for the request itself. It then names the offending id, kind or property."
           },
           "step": {
             "type": "integer",

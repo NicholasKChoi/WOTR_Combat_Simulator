@@ -371,6 +371,23 @@ describe('quoted ids in issue messages', () => {
         expect(got.filter((message) => message.endsWith(expected))).toHaveLength(1)
     })
 
+    const labelSites: [string, (key: string) => string[], (cut: string) => string][] = [
+        ['trips', (k) => simIssues({ trips: { [k]: {} } }), (c) => `inputs.trips.${c}: unknown node "${c}"`],
+        ['influenceCoverage', (k) => simIssues({ influenceCoverage: { [k]: 1 } }), (c) => `inputs.influenceCoverage.${c}: unknown building "${c}"`],
+        ['nodeAmounts', (k) => simIssues({ nodeAmounts: { [k]: 1 } }), (c) => `inputs.nodeAmounts.${c}: unknown node "${c}"`],
+        ['start.villagers', (k) => messages(order([], { rally: 'sheep', villagers: { [k]: '6' } })), (c) => `start: start.villagers.${c} must be a number`],
+    ]
+    const labelCases = labelSites.flatMap(([site, run, expected]) =>
+        [39, 40, 41, 5000].map((length): [string, number, string[], string] => {
+            const key = 'x'.repeat(length)
+            return [site, length, run(key), expected(length > 40 ? `${key.slice(0, 40)}...` : key)]
+        }),
+    )
+
+    it.each(labelCases)('%s: a %i character key is cut in the issue label', (_site, _length, got, expected) => {
+        expect(got.filter((message) => message === expected)).toHaveLength(1)
+    })
+
     it.each([
         ['wood', 'node "wood" never runs out in trigger.node'],
         ['gold#1', 'node "gold#1": deposit 1 is written gold in trigger.node'],
