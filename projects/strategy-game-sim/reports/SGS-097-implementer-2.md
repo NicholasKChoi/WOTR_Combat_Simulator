@@ -1,0 +1,2 @@
+# SGS-097 implementer pass 2 (Rework 1)
+Branch sgs-097-docs-issue-messages, worktree /home/choin/git/WOTR_Combat_Simulator/.claude/code-factory/worktrees/sgs-097-docs-issue-messages. Text-only: three replacements copied verbatim (openapi BuildOrderIssue.message, openapi simulate 400 description, docs/aoe4-build-order.md Validation paragraph). openapi.json still parses (jq). tsc 0, lint:dup clean, npm test 1511 passed/10 skipped, jq check finds both quoted messages. No tests edited.

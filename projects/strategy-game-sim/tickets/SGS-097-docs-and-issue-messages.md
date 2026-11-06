@@ -89,10 +89,10 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `BuildOrderIssue.message.description` in `docs/api/openapi.json` no longer says the message names "the step"
+- [x] `BuildOrderIssue.message.description` in `docs/api/openapi.json` no longer says the message names "the step"
   unconditionally and states the other locations (`start`, `inputs.<path>`, `request`). Check:
   `git grep -n "naming the step and" -- docs/api/openapi.json docs/aoe4-build-order.md` finds nothing.
-- [ ] (respec 1) The simulate `400` description contains both exact request-level messages quoted in Scope, and the
+- [x] (respec 1) The simulate `400` description contains both exact request-level messages quoted in Scope, and the
   existing 400 examples are unchanged. Check:
   `jq -r '.paths["/api/aoe4-build-order/simulate"].post.responses["400"].description' docs/api/openapi.json`
   prints text containing `request: missing buildOrder` and
@@ -100,7 +100,7 @@ Single-component change outside the core control loop; no diagram required.
   plain `git grep "request: missing buildOrder"` already matches the examples, so it does not confirm the
   description), and the contract spec (`acceptance/aoe4-simulate-api-contract.spec.ts`, 400-example cases) still
   passes.
-- [ ] (respec 1) A new table in `lib/aoe4-build-order/schema.test.ts` (next to the `quoted ids in issue messages`
+- [x] (respec 1) A new table in `lib/aoe4-build-order/schema.test.ts` (next to the `quoted ids in issue messages`
   table, same lengths 39, 40, 41 and 5000, key built from a fill such as `x` repeated so it is never a valid id)
   pins the label for each key site. With `cut` = the key for lengths 39 and 40, and its first 40 characters followed
   by `...` for 41 and 5000, exactly one message equals in full:
@@ -117,12 +117,12 @@ Single-component change outside the core control loop; no diagram required.
   `endsWith`, so the label prefix is checked. Break it must catch: reverting the `shortText` call in
   `checkSimInputs` makes the 41- and 5000-character `trips`, `influenceCoverage` and `nodeAmounts` rows fail;
   reverting the one in `startVillagersSchema` makes the 41- and 5000-character `start.villagers` rows fail.
-- [ ] An issue whose key is 40 characters or fewer has the same message as before this change: every existing
+- [x] An issue whose key is 40 characters or fewer has the same message as before this change: every existing
   `schema.test.ts` and route test that pins an `inputs.` or `start.villagers.` message passes unedited.
-- [ ] The `docs/aoe4-build-order.md` sentence on the 40-character cut names object keys in labels as well as quoted
+- [x] The `docs/aoe4-build-order.md` sentence on the 40-character cut names object keys in labels as well as quoted
   ids, and no doc states a measured value.
-- [ ] `docs/aoe4-build-order.md` Validation section no longer says a message always names "the step or line".
-- [ ] No INVARIANTS.md regressions
+- [x] `docs/aoe4-build-order.md` Validation section no longer says a message always names "the step or line".
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -136,3 +136,18 @@ None.
   `start.villagers` row pairing a long key with a non-number count; criterion 2 adds a `jq` check on the 400
   description; On merge drops the BACKLOG deletion (bullets already archived).
 - Branch work: none exists yet.
+
+## Rework 1 - 2026-11-06 (review, text)
+
+Gate: review (REQUEST CHANGES at tip 9e52088d830a08db1f6ee9805afd9fdd452aea09; no earlier gate had passed this branch).
+Findings are in `reports/SGS-097-review-1.md`. The code change and tests are correct; all three fixes are text-only.
+
+### Required fixes
+
+- [x] (text) `docs/api/openapi.json` (the `BuildOrderIssue.message` description, near line 3328): the location list was presented as exhaustive but the code also emits other labels. Replace the description with exactly:
+  `"Human-readable reason. It starts with where the issue is, followed by a colon: steps[N] for a step, an order field such as civ, name or start, build order for the whole order, inputs.<path> for an input, or request or request body for the request itself. It then names the offending id, kind or property."`
+- [x] (text) `docs/aoe4-build-order.md` (Validation paragraph, near line 665): replace the sentence "A message names where the issue is (a step or line, `start`, `inputs.<path>` or `request`) and the offending id, kind or property." with exactly (wrapped to the paragraph's width, near 110 characters):
+  "A message starts with where the issue is: a step (`steps[N]`) or paste line (`line N`), an order field such as `civ`, `name` or `start`, `build order` for the whole order, `inputs.<path>`, or, from the route, `request` or `request body`. It then names the offending id, kind or property."
+- [x] (text) `docs/api/openapi.json` (the simulate 400 response description, near line 1769): "Two request-level messages ..." implies only two exist and leaves the messages unquoted. Replace the description with exactly (JSON-escaped):
+  `"The request was rejected; nothing was simulated. A problem with the request itself is one syntax issue with no step or line: \"request: missing buildOrder\" when buildOrder is absent, \"request: text is no longer accepted; convert the paste to buildOrder and send that\" when the body has a text key, and \"request body: must be a JSON object\" when the body is not a JSON object. One exception does not match SimulateError: a body that is not valid JSON is rejected by the framework before the handler runs, with status 400 and the plain-text body Invalid JSON (no JSON content type)."`
+  The criterion 2 `jq` check still passes (both strings appear in the description).

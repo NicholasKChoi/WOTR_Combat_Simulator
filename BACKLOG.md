@@ -52,3 +52,5 @@ pull from here; triage moves an item into a milestone or deletes it.
 - `acceptance/aoe4-simulate-api-contract.spec.ts:284` ("the buildOrder request example returns the documented 200 body") fails on origin/main 9274372: engine output differs from the documented example at later `food` samples (~index 47). Reported by the SGS-097 implementer; the reviewer or suite should confirm. Source: SGS-097.
 
 - **M6 follow-up (deferred from SGS-096, owner Q13 A, 2026-11-06):** add a Playwright spec that resizes the window while the Results tab is hidden (charts may render at width 0), run at the narrow widths where the stacked tabs remain (M6.2). Source: SGS-096.
+
+- The documented 200 `buildOrder` example in `docs/api/openapi.json` no longer matches the real response since the villager-target change (villager producers keep making villagers until 100 exist): `aoe4-simulate-api-contract.spec.ts:284` fails on origin/main. Regenerate the example. Confirmed by the SGS-097 reviewer. Source: SGS-097.
