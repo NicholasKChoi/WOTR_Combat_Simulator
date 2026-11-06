@@ -1,9 +1,8 @@
 import { test, expect } from '@playwright/test'
-import { DEFAULT_ARMIES, fillArmies } from './helpers'
+import { DEFAULT_ARMIES, fillArmies, openCombatSimulator } from './helpers'
 
 test('submitting the form fights and renders results', async ({ page }) => {
-  await page.goto('/apps/combat-simulator')
-  await page.waitForLoadState('networkidle')
+  await openCombatSimulator(page)
   await fillArmies(page, DEFAULT_ARMIES)
 
   const fightResponse = page.waitForResponse(

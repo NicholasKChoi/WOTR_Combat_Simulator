@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { armies, fillArmies } from './helpers'
+import { armies, fillArmies, openCombatSimulator } from './helpers'
 
 function waitForFight(page: Page) {
   return page.waitForResponse((r) => r.url().endsWith('/api/fight') && r.request().method() === 'POST')
@@ -35,8 +35,7 @@ const SYNTHETIC = {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/apps/combat-simulator')
-  await page.waitForLoadState('networkidle')
+  await openCombatSimulator(page)
 })
 
 test('the battles input defaults to 1000 with 1-100000 bounds', async ({ page }) => {

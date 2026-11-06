@@ -360,15 +360,12 @@ describe('quoted ids in issue messages', () => {
         ['houseBuilderSource', '', 'a', (v) => simIssues({ houseBuilderSource: v }), (q) => `inputs.houseBuilderSource: unknown node "${q}"`],
         ['influenceCoverage key', '', 'a', (v) => simIssues({ influenceCoverage: { [v]: 1 } }), (q) => `unknown building "${q}"`],
     ]
-    const cases = sites.flatMap(([site, prefix, fill, run, expected]) =>
-        [39, 40, 41, 5000].map((length): [string, number, string[], string] => {
-            const value = prefix + fill.repeat(length - prefix.length)
-            return [site, length, run(value), expected(length > 40 ? `${value.slice(0, 40)}...` : value)]
-        }),
-    )
+    const cases = sites.flatMap((row) => [39, 40, 41, 5000].map((length): [string, number, (typeof sites)[number]] => [row[0], length, row]))
 
-    it.each(cases)('%s: a %i character value is quoted as %#', (_site, _length, got, expected) => {
-        expect(got.filter((message) => message.endsWith(expected))).toHaveLength(1)
+    it.each(cases)('%s: a %i character value is quoted whole up to 40 characters and cut with "..." beyond', (_site, length, [, prefix, fill, run, expected]) => {
+        const value = prefix + fill.repeat(length - prefix.length)
+        const tail = expected(length > 40 ? `${value.slice(0, 40)}...` : value)
+        expect(run(value).filter((message) => message.endsWith(tail))).toHaveLength(1)
     })
 
     const labelSites: [string, (key: string) => string[], (cut: string) => string][] = [
