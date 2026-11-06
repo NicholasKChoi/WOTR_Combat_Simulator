@@ -529,7 +529,7 @@ form (`town-center#2`). A node ref is accepted in every node field of every step
 
 The reason quotes a string value; a value that is not a string gets the reason `node must be a string`. For a step field, `start` and the `depleted` trigger the message reads
 `<reason> in <path>` when it has no paste line, as in `unknown node "iron" in start.rally`; a paste message reads `line N: <reason>`; for a `nodeAmounts` key it reads
-`inputs.nodeAmounts.<ref>: <reason>`, as in `inputs.nodeAmounts.iron: unknown node "iron"`. A quoted id longer than 40 characters is cut to its first 40 characters followed by `...` in every issue message that quotes it. In paste, any token shaped `<id>` or `<id>#<chars>` in a node position reaches validation
+`inputs.nodeAmounts.<ref>: <reason>`, as in `inputs.nodeAmounts.iron: unknown node "iron"`. A quoted id longer than 40 characters is cut to its first 40 characters followed by `...` in every issue message that quotes it. The same cut applies to an object key shown in an issue label (`inputs.<path>`, `start.villagers.<node>`). In paste, any token shaped `<id>` or `<id>#<chars>` in a node position reaches validation
 unchanged; the paste parser reports no node issue of its own.
 
 `inputs.trips` and `inputs.houseBuilderSource` are checked against the gather node ids only:
@@ -662,8 +662,8 @@ step by index (its fields in field order with `trigger` first, then its cross-fi
 cross-step issues by the later step's index. A cross-step issue therefore follows every step's own issues.
 
 A villager `produce` without `rally` is valid and uses the standing rally. Each issue is reported on its
-step or `start`, with the location fields above. A message names the step or line and the offending id,
-kind or property. Any issue stops the request; nothing is simulated.
+step or `start`, with the location fields above. A message names where the issue is (a step or line, `start`, `inputs.<path>` or `request`) and the offending
+id, kind or property. Any issue stops the request; nothing is simulated.
 
 ```mermaid
 flowchart LR

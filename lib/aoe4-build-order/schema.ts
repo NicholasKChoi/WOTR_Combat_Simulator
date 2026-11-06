@@ -461,7 +461,7 @@ const startVillagersSchema = z.custom<Partial<Record<NodeRef, number>>>().check(
     return;
   }
   for (const [node, count] of Object.entries(payload.value)) {
-    const name = `start.villagers.${node}`;
+    const name = `start.villagers.${shortText(node)}`;
     const problems = [typed(name, 'number', inRange(name, 'startVillagers'), { missing: false })(count), nodeAt('start.villagers', false)(node)];
     for (const problem of problems) if (problem) report(payload, problem);
   }
@@ -682,7 +682,7 @@ export function simInputsSchema(catalog: BuildOrderCatalog) {
 export function checkSimInputs(value: unknown, catalog: BuildOrderCatalog): { ok: true; inputs: SimInputs } | { ok: false; issues: BuildOrderIssue[] } {
   const result = simInputsSchema(catalog).safeParse(value ?? {});
   if (!result.success) {
-    const issues = result.error.issues.map((found) => ({ code: paramsOf(found).code ?? 'syntax', message: `${['inputs', ...found.path].join('.')}: ${found.message}` }));
+    const issues = result.error.issues.map((found) => ({ code: paramsOf(found).code ?? 'syntax', message: `${['inputs', ...found.path.map(shortText)].join('.')}: ${found.message}` }));
     return { ok: false, issues };
   }
   const given = result.data;
