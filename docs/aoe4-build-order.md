@@ -915,7 +915,7 @@ The Gather rates chart has a `Per villager` checkbox, off by default. On, each s
 run is drawn the same way.
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
-it again restores it; a pinned series' item follows its current series' item. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. Only `age-up` markers carry a
+it again restores it; a pinned item is hidden and restored under its own `pinned:<key>` key, independent of its current series' item (hiding `Gold` does not hide `Gold (pinned)`, and the reverse). Each chart also draws the result's `markers` as solid vertical lines in their kind colour. Only `age-up` markers carry a
 text label `<label> <m:ss>` (for example `Castle 13:24`) above the plot, stacked in rows by their measured width so each stays
 readable; the other kinds have no text label and show `<label> <m:ss>` as a hover title. Tooltip values are shown rounded to
 at most 1 decimal place. A marker legend titled "Markers", in its own row below the series legend, lists one entry per
