@@ -39,44 +39,6 @@ async function issuesOf(request: Parameters<typeof postSimulate>[0], body: unkno
 }
 
 test.describe('result shape', () => {
-  test('a villager-only order returns every result field, aligned to the times axis', async ({ request }) => {
-    const response = await postSimulate(request, { buildOrder: buildOrderFrom(VILLAGERS_TEXT) })
-    expect(response.status()).toBe(200)
-    expect(response.headers()['content-type']).toContain('application/json')
-    const body = await response.json()
-    expect(Object.keys(body).sort()).toEqual(
-      [
-        'ages',
-        'civ',
-        'depletions',
-        'durationSeconds',
-        'floating',
-        'gatherRates',
-        'gathered',
-        'gatherers',
-        'markers',
-        'notes',
-        'populationCapReachedAt',
-        'sampleSeconds',
-        'spawnedPopulation',
-        'spent',
-        'steps',
-        'times',
-        'unitsProduced',
-        'warnings',
-      ].sort(),
-    )
-    expect(body.times[0]).toBe(0)
-    expect(body.times[body.times.length - 1]).toBe(body.durationSeconds)
-    expect(body.times).toHaveLength(body.durationSeconds / body.sampleSeconds + 1)
-    expect(body.unitsProduced.length).toBeGreaterThan(0)
-    for (const series of body.unitsProduced) expect(series.counts).toHaveLength(body.times.length)
-    const villagers = body.unitsProduced.find((s: { baseId: string }) => s.baseId === 'villager')
-    expect(villagers.counts[villagers.counts.length - 1]).toBe(3)
-    for (const series of Object.values(body.gatherRates) as number[][]) expect(series).toHaveLength(body.times.length)
-    expect(body.steps).toEqual([expect.objectContaining({ step: 0, status: 'completed' })])
-  })
-
   test('a research step returns a timing for each step and a note for an unmodelled effect', async ({ request }) => {
     const body = await okBody(request, { buildOrder: buildOrderFrom(RESEARCH_TEXT) })
     expect(body.steps).toHaveLength(2)

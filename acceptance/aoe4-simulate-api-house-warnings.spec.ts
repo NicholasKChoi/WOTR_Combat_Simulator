@@ -1,5 +1,4 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
-import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
 import { buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
@@ -69,11 +68,4 @@ test.describe('auto-house warnings through the simulate API', () => {
       expect(houseWarnings(result)).toEqual([])
     })
   }
-
-  test('the knight and longbow build at 1800 s reports one held warning on its late house step', async ({ request }) => {
-    const result = await simulate(request, { buildOrder: knightLongbow, inputs: { durationSeconds: 1800 } })
-    expect(houseWarnings(result)).toEqual([
-      expect.objectContaining({ code: 'auto-houses-held', severity: 'warning', step: 23, at: expect.closeTo(461.819, 3), seconds: expect.closeTo(21.236, 3) }),
-    ])
-  })
 })

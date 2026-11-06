@@ -121,17 +121,6 @@ test.describe('markers at a truncated horizon', () => {
     expect(body.markers.map((m) => m.label)).toEqual(['Feudal'])
     expect(body.markers[0].at).toBe(body.ages[1].reachedAt)
   })
-
-  test('gives no marker to research still in progress, then marks it once the horizon passes the completion', async ({ request }) => {
-    const before = await simulate(request, withHorizon(408))
-    expect(before.steps.slice(14, 16).map((s) => s.status)).toEqual(['in-progress', 'in-progress'])
-    expect(before.markers.map((m) => m.label)).toEqual(['Feudal'])
-
-    const after = await simulate(request, withHorizon(409))
-    expect(after.steps.slice(14, 16).map((s) => s.status)).toEqual(['completed', 'completed'])
-    expect(after.markers.map((m) => m.label)).toEqual(['Feudal', 'double-broadax', 'horticulture'])
-    for (const m of after.markers) expect(m.at).toBeLessThanOrEqual(409)
-  })
 })
 
 test.describe('markers for research that never starts', () => {

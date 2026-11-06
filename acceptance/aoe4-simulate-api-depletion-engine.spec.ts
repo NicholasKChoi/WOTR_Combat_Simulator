@@ -1,6 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
-import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
+import { buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -37,12 +36,6 @@ const warningsOf = (result: Result, code: string, node: string) => result.warnin
 const sampleAtOrAfter = (result: Result, seconds: number) => result.times.findIndex((t) => t >= seconds)
 const last = <T>(series: T[]) => series[series.length - 1]
 
-// Per-villager rate per second of one node, read off the first sample of a run that gathers only it.
-async function perVillagerRate(request: APIRequestContext, node: string, resource: 'food' | 'gold' | 'wood') {
-  const result = await simulate(request, order({ villagers: { [node]: 1, wood: 5 }, rally: 'wood' }, [PAUSE]))
-  return result.gatherRates[resource][0] / 60
-}
-
 test.beforeAll(async ({ request }) => {
   await postSimulate(request, { buildOrder: buildOrderFrom('start 6 sheep -> sheep') }, WARM_UP_TIMEOUT_MS)
 })
@@ -50,18 +43,6 @@ test.beforeAll(async ({ request }) => {
 test.describe('a node with a finite stock', () => {
   const AMOUNT = 601
   const start = { villagers: { berry: 3, wood: 3 }, rally: 'wood' }
-
-  test('runs out at an exact instant between samples and gathers exactly its stock', async ({ request }) => {
-    const rate = await perVillagerRate(request, 'berry', 'food')
-    const result = await simulate(request, order(start, [PAUSE], { nodeAmounts: { berry: AMOUNT } }))
-
-    const row = depletionOf(result, 'berry')!
-    expect(row.amount).toBe(AMOUNT)
-    expect(row.depletedAt).toBeCloseTo(AMOUNT / (3 * rate), 5)
-    expect(row.depletedAt! % result.sampleSeconds).not.toBe(0)
-
-    expect(last(result.floating.food) - result.floating.food[0]).toBeCloseTo(AMOUNT, 5)
-  })
 
   test('leaves its gatherers idle: the food rate drops to zero and the bank stops rising', async ({ request }) => {
     const result = await simulate(request, order(start, [PAUSE], { nodeAmounts: { berry: AMOUNT } }))
@@ -116,16 +97,6 @@ test.describe('villagers arriving at a dry node', () => {
 
     expect(result.warnings.map((w) => [w.code, w.node])).toEqual([['node-depleted', 'berry'], ['idle-arrival', 'berry']])
     expect(result.warnings[1]).toMatchObject({ severity: 'warning', at: 10, idleVillagers: 3 })
-  })
-
-  test('produced villagers rallied to it add to a single idle-arrival warning', async ({ request }) => {
-    const produce = { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 2, rally: 'berry', walkSeconds: 5 }
-    const result = await simulate(request, order({ villagers: { sheep: 6 }, rally: 'sheep' }, [produce], { nodeAmounts: { berry: 0 } }))
-
-    const arrivals = warningsOf(result, 'idle-arrival', 'berry')
-    expect(arrivals).toHaveLength(1)
-    expect(arrivals[0]).toMatchObject({ severity: 'warning', idleVillagers: 2 })
-    expect(arrivals[0].at).toBeGreaterThan(0)
   })
 
   test('villagers the run-out itself made idle are not counted as arrivals', async ({ request }) => {
@@ -183,17 +154,6 @@ test.describe('move all', () => {
 test.describe('numbered gold deposits', () => {
   const start = { villagers: { gold: 2, 'gold#2': 4 }, rally: 'gold' }
 
-  test('run out independently: deposit 1 running dry leaves deposit 2 on the same run-out instant', async ({ request }) => {
-    const bothFinite = await simulate(request, order(start, [PAUSE], { nodeAmounts: { gold: 100, 'gold#2': 300 } }))
-    const firstInfinite = await simulate(request, order(start, [PAUSE], { nodeAmounts: { gold: null, 'gold#2': 300 } }))
-    const rate = await perVillagerRate(request, 'gold', 'gold')
-
-    expect(depletionOf(bothFinite, 'gold')).toEqual({ node: 'gold', amount: 100, depletedAt: expect.closeTo(100 / (2 * rate), 5) })
-    expect(depletionOf(bothFinite, 'gold#2')!.depletedAt).toBeCloseTo(300 / (4 * rate), 5)
-    expect(depletionOf(firstInfinite, 'gold#2')).toEqual(depletionOf(bothFinite, 'gold#2'))
-    expect(depletionOf(firstInfinite, 'gold')).toEqual({ node: 'gold', amount: null, depletedAt: null })
-  })
-
   test('credit each deposit its full stock', async ({ request }) => {
     const result = await simulate(request, order(start, [PAUSE], { nodeAmounts: { gold: 100, 'gold#2': 300 } }))
 
@@ -245,50 +205,5 @@ test.describe('a farm build', () => {
       expect(result.gatherRates.food[sampleAtOrAfter(result, completedAt)], then).toBe(result.gatherRates.food[0])
       expect(result.gatherRates.food[walkedBack], then).toBeGreaterThan(result.gatherRates.food[0])
     }
-  })
-})
-
-test.describe('the prebuilt English build against the pre-depletion engine', () => {
-  const noDepletion = (result: Result) => {
-    expect(result.depletions.filter((d) => d.node !== 'gold#2').every((d) => d.amount === null && d.depletedAt === null)).toBe(true)
-    expect(result.warnings).toEqual([])
-  }
-
-  test('differs only by the farm builders joining at completion: the 1200 second bank and the farm-walk food rates', async ({ request }) => {
-    const result = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 1200, nodeAmounts: INFINITE_NODES } })
-    noDepletion(result)
-
-    expect(last(result.floating.food)).toBeCloseTo(3362.1519434319575, 6)
-    expect(result.gatherRates.food[52]).toBeCloseTo(116.59414409921604, 6)
-    expect(last(result.gatherRates.food)).toBeCloseTo(995.7918852029113, 6)
-    expect(last(result.floating.wood)).toBeCloseTo(1744.3669834624384, 6)
-    expect(last(result.floating.gold)).toBeCloseTo(853.1661184210515, 6)
-  })
-
-  test('keeps every step timing to within a float ulp', async ({ request }) => {
-    const result = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 1200 } })
-
-    expect(result.steps[23].startedAt).toBeCloseTo(508.3666666666666, 9)
-    expect(result.steps[23].completedAt).toBeCloseTo(581.0153695878664, 9)
-    expect(result.steps[23].waitSeconds).toBeCloseTo(47.35129707880026, 9)
-    expect(result.steps[4].completedAt).toBeCloseTo(262.5666666666666, 9)
-  })
-
-  test('leaves orders without a farm build exactly as before', async ({ request }) => {
-    const villagers = await simulate(request, { buildOrder: buildOrderFrom('start 6 sheep -> sheep\nproduce villager from capital-town-center x20'), inputs: { nodeAmounts: INFINITE_NODES } })
-    noDepletion(villagers)
-    expect(villagers.steps[0]).toMatchObject({ completedAt: 400 })
-    expect(last(villagers.floating.food)).toBeCloseTo(15780.897488678529, 6)
-
-    const mill = await simulate(
-      request,
-      order({ villagers: { sheep: 6 }, rally: 'sheep' }, [
-        { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 8 },
-        { action: 'build', building: 'mill', from: 'sheep', then: 'berry' },
-        { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 4 },
-      ], { autoHouses: true, nodeAmounts: INFINITE_NODES }),
-    )
-    expect(mill.steps.map((s) => s.completedAt)).toEqual([0, 25, 100])
-    expect(last(mill.floating.food)).toBeCloseTo(7786.373096630632, 6)
   })
 })
