@@ -1,51 +1,52 @@
-# SGS-096: Hide a pinned series with its current series, and cover charts resized while Results is hidden
+# SGS-096: Document that a pinned legend item is independent of its current item
 
 - **Type**: Bug
 - **Component**: aoe4-build-order
 - **Milestone / criteria**: none (owner-chosen backlog cleanup 2026-11-06; independent of M6)
 - **Priority**: low
-- **Risk**: standard
-  <!-- Not low only because item 2 may need a chart fix of unknown size; item 4 changes a documented chart rule. No criticalPaths symbol, no API/schema change, no engine or data file. -->
-- **Invariants**: none adjacent (A1-A3 are not touched; chart and docs code only). S1 holds: imports stay inside `components/apps/aoe4-build-order/`.
-- **LOC estimate**: about 30 (`components/apps/aoe4-build-order/chart-rows.ts` about 10: one pure helper; `line-chart.tsx` and `chart-legend.tsx` about 10: use it in the three places that read `hidden`; a possible chart resize fix for item 2 is not counted until the spec shows one is needed). Business logic only.
+- **Risk**: low
+  <!-- Docs sentence plus one acceptance case; no chart, engine, API or schema code changes, no criticalPaths symbol. -->
+- **Invariants**: none adjacent (A1-A3 are not touched). S1 holds: no imports change.
+- **LOC estimate**: 0 business-logic lines (one docs sentence; one acceptance case, which is test code).
 - **Depends on**: none
-- **On merge**: none (manager follow-up: delete the four BACKLOG.md bullets this ticket names as Source)
-- **Source**: BACKLOG bullets "SGS-084 review-1: after hiding the current `Gold` legend item, `Gold (pinned)` still shows", "SGS-066 tech-lead: no spec covers resizing the window while the Results panel is hidden". Checked against `origin/main` at `9274372`. Two other bullets were dropped (see Scope).
+- **On merge**: none (manager follow-up: delete the BACKLOG.md bullets this ticket names as Source, and the SGS-066 resize bullet is deferred to M6, so move it under M6 rather than delete it)
+- **Source**: BACKLOG bullet "SGS-084 review-1: after hiding the current `Gold` legend item, `Gold (pinned)` still shows". Owner answers Q12 (B) and Q13 (A), 2026-11-06. Checked against `origin/main` at `9274372`.
 
 ## Context
 
-Two workbench chart gaps. Hiding a series in a chart legend leaves its pinned counterpart drawn, although `docs/aoe4-build-order.md` says "a pinned series' item follows its current series' item". Separately, the Results panel is a `hidden` tab panel on the Build tab, so the charts inside it measure width 0 and no spec checks they size correctly when the window changes while they are hidden.
+`docs/aoe4-build-order.md` says "a pinned series' item follows its current series' item", but the chart keeps the pinned item under its own `pinned:<key>` key: hiding `Gold` leaves `Gold (pinned)` drawn. The owner decided the code is right and the doc is wrong.
 
 ## Scope
 
-Checked on `origin/main` at `9274372`. Two of the four rough-task items no longer apply:
+1. **Reword the doc.** In `docs/aoe4-build-order.md`, next to the legend description ("Clicking a legend item hides that series ... a pinned series' item follows its current series' item."), replace the clause with a statement that a pinned item is hidden and restored under its own `pinned:<key>` key, independent of its current series' item (hiding `Gold` does not hide `Gold (pinned)`, and the reverse). Grep the doc, `README.md` and `ARCHITECTURE.md` for `pinned series' item` and `follows its current` and fix any other statement of the old rule. No code change in `chart-rows.ts`, `line-chart.tsx` or `chart-legend.tsx`.
+2. **Pin the independent behavior.** The existing case "the pinned legend item toggles only the pinned line" in `acceptance/aoe4-build-order-pin-compare.spec.ts` covers hiding the pinned item leaving the current line. It does not cover the reverse. Add a case in the same spec for hiding the current item leaving the pinned line drawn. `toggleHidden` tests in `chart-rows.test.ts` already cover per-key toggling; add no helper or unit tests.
 
-- **Dropped: `NumberControl` draft lost on the Text/Table toggle** (`components/apps/aoe4-build-order/step-table.tsx`). The draft is cleared by the input's own `onBlur` (`setDraft(null)`), and clicking or keyboard-activating the Text/Table button blurs the input first, so the toggle never has a live draft to lose. An invalid entry also never makes the text unparseable (`setTriggerNumber`, `setNumberField`, `setStartCount` in `step-table-model.ts` return the step unchanged for text that is not a number), so the table does not unmount mid-typing. This was read from code, not reproduced in a browser.
-- **Dropped: restore POSTs twice in dev Strict Mode** (`pages/apps/aoe4-build-order.tsx`, the restore `useEffect`). The repo has no `next.config.*` and no `StrictMode` wrapper, and Next 16 enables Strict Mode by default only for the App Router, not the Pages Router (`node_modules/next/dist/build/define-env.js`: `__NEXT_STRICT_MODE` is false when `reactStrictMode` is unset). Effects run once in dev.
+**Out of scope:** any chart or legend behavior change; a Playwright spec for resizing the window while the Results panel is hidden (deferred to M6, which covers the narrow-width stacked-tab case, Q13); the dropped items below; engine, route and data files.
 
-1. **A pinned series follows its current series when hidden.** In `components/apps/aoe4-build-order/chart-rows.ts` add a pure helper (name the implementer's, for example `seriesHidden(hidden, series, key)`) that says whether a series key is hidden: a pinned key (`pinnedKey(k)`, i.e. `pinned:<k>`) is hidden when `hidden` holds the pinned key itself, or when `series` holds a current series with key `k` and `hidden` holds `k`; any other key is hidden when `hidden` holds it. A pinned-only series (no current series with that key) depends on its own key alone. `SeriesChart` in `line-chart.tsx` (the `hide` prop on the current and pinned `Line`s) and `SeriesLegend` in `chart-legend.tsx` (`aria-pressed` and the dimmed `opacity`) use the helper instead of `hidden.has(...)`, so a pinned legend item is dimmed and `aria-pressed` while its current item is hidden. `toggleHidden` and the stored `hidden` set keep their shape: clicking a pinned item toggles only its own key (it stays dimmed while the current item is hidden), and clicking the current item again restores the pinned line unless the pinned item was hidden on its own. Hidden lines leave the tooltip, which is what `hide` already does in recharts.
-2. **Chart sizing when the window changes while Results is hidden.** Add a Playwright spec (in the existing spec nearest in topic, such as `acceptance/aoe4-results-split.spec.ts`, or a new `acceptance/aoe4-*.spec.ts`) that runs a build, returns to the Build tab (`showTab` in `acceptance/helpers.ts`), resizes the window while Results is hidden, then opens Results. If the chart sizes wrongly (width 0, stale width, clipped plot), fix it in `components/apps/aoe4-build-order/line-chart.tsx` (or the panel in `workbench-tabs.tsx`); if the spec passes on the current code, the ticket adds the spec only. The implementer reports which.
-3. **Docs made untrue.** `docs/aoe4-build-order.md`: the sentence "a pinned series' item follows its current series' item" next to the legend description. Rewrite it to the rule in Scope 1 (hiding the current series' item also hides its pinned counterpart; the pinned item can be hidden on its own). Grep the doc, `README.md` and `ARCHITECTURE.md` for `pinned series' item` and `follows its current` for other statements.
-4. **Existing tests.** A test of changed behavior gets the new expected value; any other test keeps its expectation. The pin-compare case "the pinned legend item toggles only the pinned line" (`acceptance/aoe4-build-order-pin-compare.spec.ts`) hides only the pinned item, so it should keep passing unedited. The implementer lists every test it edits.
+Dropped from the original rough task, checked on `origin/main` at `9274372`:
 
-**Out of scope:** the two dropped items; any other legend or chart behavior; the M6 re-run on edit, split layout and Run button removal (see Open questions); the stored `hidden` set shape; engine, route and data files.
+- `NumberControl` draft lost on the Text/Table toggle (`components/apps/aoe4-build-order/step-table.tsx`): the input's `onBlur` clears the draft before the toggle acts, and invalid text never makes the step text unparseable (`step-table-model.ts` setters return the step unchanged). Read from code, not reproduced in a browser.
+- Restore POSTs twice in dev Strict Mode (`pages/apps/aoe4-build-order.tsx`): no `next.config.*`, no `StrictMode` wrapper, and Next 16 does not enable Strict Mode by default for the Pages Router.
 
 ## Diagrams
 
-Single-component change outside the core control loop; no diagram required.
+Docs and test only; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] Unit tests in `components/apps/aoe4-build-order/chart-rows.test.ts` for the helper: (a) hidden `{food}`, current series `[food, wood]`, key `pinned:food` is hidden (a helper that checks only the key itself must fail); (b) hidden `{pinned:food}` leaves `food` visible and `pinned:wood` visible (a helper that hides both on any pinned toggle must fail); (c) hidden `{gold}`, current series `[food]` (no `gold`), key `pinned:gold` is visible (a pinned-only series must depend on its own key alone; a helper that ignores the series list must fail); (d) hidden `{}` hides nothing.
-- [ ] In `acceptance/aoe4-build-order-pin-compare.spec.ts`: with a pin and a later run, clicking the current legend item `food` in `chart-gather-rates` leaves no `food` line and no `pinned:food` line, dims both legend items (`opacity` 0.5, `aria-pressed=true`), and leaves `wood` and `pinned:wood` drawn; hovering the plot shows neither `Food` nor `Food (pinned)` in the tooltip; clicking `food` again restores both lines. Fails on `origin/main`, where `pinned:food` stays drawn.
-- [ ] In the same spec: hiding `pinned:food` alone, then hiding and restoring `food`, leaves `pinned:food` hidden (the pinned item's own state survives the current item's toggle).
-- [ ] A Playwright spec runs a build at one width, shows the Build tab, resizes the window to a different width while the Results tab is not shown, then selects Results: each chart's plot width is greater than 0 and not wider than the Results panel, and the page has no horizontal overflow. Run it for a shrink (from a desktop width to 390 px) and a grow (from 390 px to a desktop width). The spec fails if the chart keeps the width it measured before the resize.
-- [ ] The report states whether the resize spec passed on unmodified code and, if not, what fixed it.
-- [ ] `git grep -n "pinned series' item follows its current series' item" -- docs README.md ARCHITECTURE.md` finds nothing after the change, and the doc states that hiding the current item also hides its pinned counterpart.
-- [ ] `npx tsc --noEmit`, `npm test`, `npm run lint:dup` and the touched acceptance specs pass.
-- [ ] No INVARIANTS.md regressions
+- [x] In `acceptance/aoe4-build-order-pin-compare.spec.ts`, with a pin and a later run, clicking the current legend item `food` in `chart-gather-rates` leaves no `food` line, leaves the `pinned:food` line drawn, dims only the `food` item (`opacity` 0.5, exactly one item `aria-pressed=true`), and leaves `pinned:food`'s legend item at full opacity; clicking `food` again restores the `food` line. The case catches a change that hides the pinned line with its current series.
+- [x] The existing case "the pinned legend item toggles only the pinned line" still passes unedited.
+- [x] `git grep -n "follows its current" -- docs README.md ARCHITECTURE.md` finds nothing, and the doc states that a pinned item is hidden under its own key, independent of its current item.
+- [x] No file under `components/apps/aoe4-build-order/` other than tests changes.
+- [ ] `npx tsc --noEmit`, `npm test`, `npm run lint:dup` and the touched acceptance spec pass.
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
-- `owner`: item 1 reads the doc's "follows" as "hiding the current item also hides the pinned one, while the pinned item can still be hidden alone". The other reading is that the pinned item should be independent and the doc sentence is what is wrong (the existing test only checks hiding the pinned item alone). This ticket takes the first reading because the review bullet and the doc both expect it; say if you want the doc changed instead.
-- `designer`: M6.2 and M6.3 (`MILESTONES.md`) put the editor and charts side by side at desktop widths and remove the Run button. That makes item 2 partly moot: at desktop widths the Results panel is no longer hidden, so the resize-while-hidden case stays only under the stacked-tab breakpoint. The spec in Scope 2 should then run at the narrow widths the tabs keep, and its desktop-width step will need rewriting when M6.2 lands. Nothing else here depends on M6.
+none
+
+## Re-spec 2026-11-06
+
+- Underspecified: two owner questions (Q12 pinned-legend reading, Q13 resize spec) were open.
+- Changed: Q12 answer B turns item 1 into a doc rewrite plus one reverse-direction acceptance case, dropping the helper and its unit tests; Q13 answer A moves the resize spec to M6 (Out of scope). Risk lowered to low, LOC to 0; On merge stays none.
+- Branch work: none exists.

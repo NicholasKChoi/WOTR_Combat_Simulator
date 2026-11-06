@@ -19,8 +19,7 @@
   order with the check issue `no start.rally while starting building ... produces villagers`; the user fixes it
   with Customize start (`start-customize`)". In row `start row | start-villagers-add`, replace "at the end" with
   "to `start.villagers`; the formatter writes villager pairs in its fixed node order, so the new pair can appear
-  anywhere in the text, first included". Then delete the BACKLOG.md lines for the SGS-068, SGS-061 and SGS-091
-  bullets this ticket covers.
+  anywhere in the text, first included".
 - **Source**: BACKLOG.md bullets from the SGS-068 review (design M4 step table), SGS-061 review (OpenAPI wording,
   design C4) and SGS-091 ticket (long keys in labels)
 
@@ -62,9 +61,19 @@ in `nodeAmounts` produces a message that is 900,000 characters even though the q
 - `lib/aoe4-build-order/schema.ts`, `checkSimInputs`: the label `['inputs', ...found.path].join('.')` passes every
   segment through `shortText`. Segments that are fixed field names are shorter than 40 and unchanged; the keyed
   segments (`trips`, `influenceCoverage`, `nodeAmounts` keys) are cut.
-- `lib/aoe4-build-order/schema.ts`, `startVillagersSchema`: the `name` built from the node key for the `start.villagers.<node>` label uses
-  `shortText(node)` for the key. Its other use, `nodeAt('start.villagers', false)(node)`, already quotes via
-  `shortText`.
+  These rows run through `checkSimInputs` (the test file's `simIssues` helper). `keyedRecord` reports a bad key
+  with path `[key]`, so the key is in the label for the key's own reason: today `{ trips: { [k]: {} } }` gives
+  `inputs.trips.<k>: unknown node "<shortText(k)>"`, `{ influenceCoverage: { [k]: 1 } }` gives
+  `inputs.influenceCoverage.<k>: unknown building "<shortText(k)>"`, and `{ nodeAmounts: { [k]: 1 } }` with `k` not
+  a gather node gives `inputs.nodeAmounts.<k>: unknown node "<shortText(k)>"`. After the change `<k>` in the label
+  is `shortText(k)` too.
+- `lib/aoe4-build-order/schema.ts`, `startVillagersSchema`: the `name` built from the node key for the
+  `start.villagers.<node>` label uses `shortText(node)` for the key. That `name` appears only in the count problems
+  from `typed(name, 'number', ...)` (`start.villagers.<node> must be a number`) and `inRange(name, 'startVillagers')`
+  (`start.villagers.<node>: <n> is outside 0..200`); the key's own problem, `nodeAt('start.villagers', false)(node)`,
+  carries no key label and already quotes via `shortText`. These rows run through `checkBuildOrder` (the test
+  file's `messages` helper with `order([], { rally: 'sheep', villagers: { [k]: <bad count> } })`), where the count
+  message is rendered with the `start: ` location, for example `start: start.villagers.sheep must be a number`.
 - Response shape: unchanged. The issue has no separate `path` field; the path exists only as the prefix of
   `message`, so only the text of `message` changes, and only for keys over 40 characters. Flagged in Risk.
 - `docs/aoe4-build-order.md`, the node-validation paragraph ("A quoted id longer than 40 characters is cut ..."):
@@ -83,16 +92,31 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] `BuildOrderIssue.message.description` in `docs/api/openapi.json` no longer says the message names "the step"
   unconditionally and states the other locations (`start`, `inputs.<path>`, `request`). Check:
   `git grep -n "naming the step and" -- docs/api/openapi.json docs/aoe4-build-order.md` finds nothing.
-- [ ] The simulate `400` description contains both exact request-level messages quoted in Scope, and the existing
-  400 examples are unchanged. Check: the contract spec
-  (`acceptance/aoe4-simulate-api-contract.spec.ts`, 400-example cases) still passes.
-- [ ] A new table in `lib/aoe4-build-order/schema.test.ts` (extend the `quoted ids in issue messages` table's
-  `sites`, same lengths 39, 40, 41 and 5000) pins that for each of `inputs.trips`, `inputs.influenceCoverage`,
-  `inputs.nodeAmounts` and `start.villagers` an offending key of length 39 and 40 appears whole and of length 41 and
-  5000 appears as its first 40 characters followed by `...` in the message's label, and that the message ends with
-  the reason as today. Break it must catch: reverting either `shortText` call in `schema.ts` makes the 41- and
-  5000-character rows fail. Because `nodeAmounts` and `start.villagers` keys are checked for node shape, the test
-  chooses key values that fail with a reason (for example `x` repeated, an `unknown-id`).
+- [ ] (respec 1) The simulate `400` description contains both exact request-level messages quoted in Scope, and the
+  existing 400 examples are unchanged. Check:
+  `jq -r '.paths["/api/aoe4-build-order/simulate"].post.responses["400"].description' docs/api/openapi.json`
+  prints text containing `request: missing buildOrder` and
+  `request: text is no longer accepted; convert the paste to buildOrder and send that` (today it contains neither; a
+  plain `git grep "request: missing buildOrder"` already matches the examples, so it does not confirm the
+  description), and the contract spec (`acceptance/aoe4-simulate-api-contract.spec.ts`, 400-example cases) still
+  passes.
+- [ ] (respec 1) A new table in `lib/aoe4-build-order/schema.test.ts` (next to the `quoted ids in issue messages`
+  table, same lengths 39, 40, 41 and 5000, key built from a fill such as `x` repeated so it is never a valid id)
+  pins the label for each key site. With `cut` = the key for lengths 39 and 40, and its first 40 characters followed
+  by `...` for 41 and 5000, exactly one message equals in full:
+  - `trips` (via `simIssues({ trips: { [key]: {} } })`): `inputs.trips.<cut>: unknown node "<cut>"`;
+  - `influenceCoverage` (via `simIssues({ influenceCoverage: { [key]: 1 } })`):
+    `inputs.influenceCoverage.<cut>: unknown building "<cut>"`;
+  - `nodeAmounts` (via `simIssues({ nodeAmounts: { [key]: 1 } })`): `inputs.nodeAmounts.<cut>: unknown node "<cut>"`;
+  - `start.villagers` (via `messages(order([], { rally: 'sheep', villagers: { [key]: '6' } }))`, a long key paired
+    with a non-number count so the count problem renders the key label):
+    `start: start.villagers.<cut> must be a number`. The unknown-node message for the same key is not the asserted
+    one.
+
+  Matching is whole-message equality (`toContain` on the message list, or a filter on `===` with length 1), not
+  `endsWith`, so the label prefix is checked. Break it must catch: reverting the `shortText` call in
+  `checkSimInputs` makes the 41- and 5000-character `trips`, `influenceCoverage` and `nodeAmounts` rows fail;
+  reverting the one in `startVillagersSchema` makes the 41- and 5000-character `start.villagers` rows fail.
 - [ ] An issue whose key is 40 characters or fewer has the same message as before this change: every existing
   `schema.test.ts` and route test that pins an `inputs.` or `start.villagers.` message passes unedited.
 - [ ] The `docs/aoe4-build-order.md` sentence on the 40-character cut names object keys in labels as well as quoted
@@ -103,3 +127,12 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 None.
+
+## Re-spec 2026-11-06
+
+- Underspecified: the `start.villagers` test row could not fail on a revert (the key label appears only in count
+  problems), and the label table matched by `endsWith`, which skips the label prefix under change.
+- Changed: Scope names the helper and input for each key site; criterion 3 pins whole messages, with the
+  `start.villagers` row pairing a long key with a non-number count; criterion 2 adds a `jq` check on the 400
+  description; On merge drops the BACKLOG deletion (bullets already archived).
+- Branch work: none exists yet.

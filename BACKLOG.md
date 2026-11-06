@@ -48,3 +48,7 @@ pull from here; triage moves an item into a milestone or deletes it.
   `@vercel/blob` ^2.8.2 pulls `@vercel/oidc` -> `@vercel/cli-config` -> zod 4.1.11 (npm audit: 4 high, one zod
   memory advisory <4.6.6); add a package.json `overrides` pinning that zod to ^4.6.6, never `npm audit fix --force`
   (downgrades blob to 2.4.0). Supersedes a "build link in the URL" and a dev-only "live scratch file" idea.
+
+- `acceptance/aoe4-simulate-api-contract.spec.ts:284` ("the buildOrder request example returns the documented 200 body") fails on origin/main 9274372: engine output differs from the documented example at later `food` samples (~index 47). Reported by the SGS-097 implementer; the reviewer or suite should confirm. Source: SGS-097.
+
+- **M6 follow-up (deferred from SGS-096, owner Q13 A, 2026-11-06):** add a Playwright spec that resizes the window while the Results tab is hidden (charts may render at width 0), run at the narrow widths where the stacked tabs remain (M6.2). Source: SGS-096.
