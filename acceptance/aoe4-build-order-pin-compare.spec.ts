@@ -104,6 +104,28 @@ test.describe('AoE4 build order pin and compare', () => {
     await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(1)
   })
 
+  test('the current legend item toggles only the current line', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, { duration: 300 })
+    await pin(page)
+    await runOk(page, { duration: 600 })
+    const chart = page.getByTestId('chart-gather-rates')
+    const item = chart.locator('[data-testid="chart-series-legend-item"][data-series="food"]')
+    const pinnedItem = chart.locator('[data-testid="chart-series-legend-item"][data-series="pinned:food"]')
+    await expect(item).toHaveCount(1)
+    await expect(pinnedItem).toHaveCount(1)
+
+    await item.click()
+    await expect(item).toHaveCSS('opacity', '0.5')
+    await expect(pinnedItem).toHaveCSS('opacity', '1')
+    await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(1)
+    await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(0)
+    await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
+
+    await item.click()
+    await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(1)
+  })
+
   test('the compare table appears only with a pin and a result, omits rows blank on both sides and shows delta = current - pinned', async ({ page }) => {
     await openPage(page)
     const table = page.getByTestId('compare-key-numbers')
