@@ -662,8 +662,10 @@ step by index (its fields in field order with `trigger` first, then its cross-fi
 cross-step issues by the later step's index. A cross-step issue therefore follows every step's own issues.
 
 A villager `produce` without `rally` is valid and uses the standing rally. Each issue is reported on its
-step or `start`, with the location fields above. A message names where the issue is (a step or line, `start`, `inputs.<path>` or `request`) and the offending
-id, kind or property. Any issue stops the request; nothing is simulated.
+step or `start`, with the location fields above. A message starts with where the issue is: a step (`steps[N]`) or
+paste line (`line N`), an order field such as `civ`, `name` or `start`, `build order` for the whole order,
+`inputs.<path>`, or, from the route, `request` or `request body`. It then names the offending id, kind or
+property. Any issue stops the request; nothing is simulated.
 
 ```mermaid
 flowchart LR
