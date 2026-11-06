@@ -85,6 +85,16 @@ export function buildOrderFrom(text: string): BuildOrder {
 export const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 export const CHART_IDS = ['chart-units-produced', ...RESOURCE_CHARTS] as const
 
+// A click on Fight! before React hydrates submits the form natively and reloads the page. React DOM sets a
+// `__reactProps$` property on the form element once it attaches onSubmit; the server HTML has none.
+export async function openCombatSimulator(page: Page) {
+  await page.goto('/apps/combat-simulator')
+  await page.waitForFunction(() => {
+    const form = document.getElementById('fight-form')
+    return form !== null && Object.getOwnPropertyNames(form).some((name) => name.startsWith('__reactProps$'))
+  })
+}
+
 export const AOE4_PAGE = '/apps/aoe4-build-order'
 
 export async function openPage(page: Page) {

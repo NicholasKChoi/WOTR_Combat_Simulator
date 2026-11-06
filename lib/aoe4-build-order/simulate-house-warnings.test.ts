@@ -164,7 +164,6 @@ describe('timing with the auto-house warnings', () => {
 
     it.each([
         ['ENG 1TC', '32a982d42fa1e689', null],
-        // Re-pinned for villagerTarget: the Town Center and King's Palace keep making villagers past 70, and the build adds a blacksmith, its upgrades and a gold rally at 1000 s.
         ['ENG Spear/Longbow into MAA/Crossbow', '60e54bd7196e39e7', null],
         ["ENG Knight/Longbow (King's Palace)", '41524f8371275b79', { step: 23, at: 420, seconds: 61.236012345678944 }],
     ])('leaves spawnedPopulation, spent, steps, populationCapReachedAt, depletions and markers of %s at 1800 s as they were', (name, pinned, held) => {

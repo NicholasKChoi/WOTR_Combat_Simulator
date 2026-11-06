@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
-import { armies, fillArmies, postFight } from './helpers'
+import { armies, fillArmies, postFight, openCombatSimulator } from './helpers'
 
 const MAX_HITS_PER_SIDE_PER_ROUND = 5
 const BATTLES = 1000
@@ -116,8 +116,7 @@ test('repeated fights start from fresh armies each time', async ({ request }) =>
 })
 
 test('Fight! with 10/0/5 vs 0/10/5 renders the Army Results table', async ({ page }) => {
-  await page.goto('/apps/combat-simulator')
-  await page.waitForLoadState('networkidle')
+  await openCombatSimulator(page)
   await fillArmies(page, armies([10, 0, 5], [0, 10, 5]))
   const fightResponse = page.waitForResponse(
     (r) => r.url().endsWith('/api/fight') && r.request().method() === 'POST'

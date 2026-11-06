@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { armies, fillArmies } from './helpers'
+import { armies, fillArmies, openCombatSimulator } from './helpers'
 
 function select(page: Page, name: string) {
   return page.locator(`select[name="${name}"]`)
@@ -35,8 +35,7 @@ const alert = (page: Page) => page.locator('#fight-form').getByRole('alert')
 const resultsHeading = (page: Page) => page.getByRole('heading', { name: 'Army Results', exact: true })
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/apps/combat-simulator')
-  await page.waitForLoadState('networkidle')
+  await openCombatSimulator(page)
 })
 
 test('selects offer 0-10 fighters and 0-5 leaders', async ({ page }) => {
