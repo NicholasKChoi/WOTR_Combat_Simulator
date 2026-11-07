@@ -49,10 +49,8 @@ pull from here; triage moves an item into a milestone or deletes it.
   memory advisory <4.6.6); add a package.json `overrides` pinning that zod to ^4.6.6, never `npm audit fix --force`
   (downgrades blob to 2.4.0). Supersedes a "build link in the URL" and a dev-only "live scratch file" idea.
 
-- `acceptance/aoe4-simulate-api-contract.spec.ts:284` ("the buildOrder request example returns the documented 200 body") fails on origin/main 9274372: engine output differs from the documented example at later `food` samples (~index 47). Reported by the SGS-097 implementer; the reviewer or suite should confirm. Source: SGS-097.
 
 - **M6 follow-up (deferred from SGS-096, owner Q13 A, 2026-11-06):** add a Playwright spec that resizes the window while the Results tab is hidden (charts may render at width 0), run at the narrow widths where the stacked tabs remain (M6.2). Source: SGS-096.
 
-- The documented 200 `buildOrder` example in `docs/api/openapi.json` no longer matches the real response since the villager-target change (villager producers keep making villagers until 100 exist): `aoe4-simulate-api-contract.spec.ts:284` fails on origin/main. Regenerate the example. Confirmed by the SGS-097 reviewer. Source: SGS-097.
 - AoE4 acceptance coverage removed by SGS-098 (owner chose deletion over re-pin, Q14): pinned timelines and bank values (prebuilt English build, house lead time, spend/population, depletion-engine vs pre-depletion engine), veterancy-conversion counts, the contract 200-body example, edges result-shape, markers at a truncated horizon, triggers infinite-node timings, the house-warnings knight/longbow held warning, spear/longbow men-at-arms timing and 1200 s gold. Uncovered at acceptance level; unit pins are current. Source: reports/SGS-098-ticket-1.md.
 - acceptance/aoe4-small-screen.spec.ts:42 "run bar at 360x760 ... scrolls the results heading into view" failed once in a full npm run acceptance (1/734), passed 5/5 alone and on a second full run; likely load flake. (SGS-095 implementer-2)
