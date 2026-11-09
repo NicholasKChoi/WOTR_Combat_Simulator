@@ -1,5 +1,7 @@
-// Request and response types for POST /api/aoe4-build-order/simulate. docs/api/openapi.json is the contract; keep the two in step.
+// Request and response types for POST /api/aoe4-build-order/simulate and the saved-builds API. docs/api/openapi.json is the contract; keep the two in step.
 import type { BuildOrder, BuildOrderIssue, FiniteNodeRef, GatherNodeId, SimInputs, SimulationResult, TripInputs } from './model';
+
+export type { SavedBuild, SaveBuildRequest, SaveBuildResponse } from './saved-builds';
 
 export type TripInputOverrides = Partial<TripInputs>;
 
@@ -21,4 +23,8 @@ export interface SimulateError {
   error: string;
   issues: BuildOrderIssue[];
   omittedIssues?: number;
+}
+
+export interface BuildsError {
+  error: string;
 }
