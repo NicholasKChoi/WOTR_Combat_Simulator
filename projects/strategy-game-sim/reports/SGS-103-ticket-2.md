@@ -1,0 +1,3 @@
+# SGS-103 re-spec 2026-11-09 (written by the manager from the agent's returned text)
+
+Folded M6-designer-3 Q2, Q6-Q8. api-route.ts exports six names (RouteReply, ReplyTarget, isPlainObject, methodNotAllowed, notAnObjectError, sendReply), browser-safe, grep criterion for no data import. New server-only english-catalog.ts (englishCatalog), imported by simulate.ts and builds/index.ts; memo test moves to english-catalog.test.ts. saved-builds.ts drops SGS-099's private copies. OpenAPI SavedBuildWithId (OpenAPI-only), operationIds saveBuild/getSavedBuild/deleteSavedBuild. Error texts 429/503/404/500/413 as in design. Open questions: None.

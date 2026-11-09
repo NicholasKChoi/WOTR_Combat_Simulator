@@ -8,7 +8,7 @@
 - **Invariants**: S3 (the smoke sends one bounded save per run and never loops; every wait has a timeout), adjacent to A3 only through the saved record (the smoke posts a fixed build and compares the read-back by value). Not adjacent to A1 or A2.
 - **LOC estimate**: ~130 (`scripts/smoke-preview.mjs` ~120, 1 line in `package.json`; the acceptance spec, docs and the `ARCHITECTURE.md` row excluded)
 - **Depends on**: SGS-103, SGS-105
-- **On merge**: none
+- **On merge**: none. Human action before merge (M6.8, owner Q15 A): the owner enables "Protection Bypass for Automation" on the Vercel project, exports `VERCEL_AUTOMATION_BYPASS_SECRET`, runs the smoke on this PR's preview and reports the output; the PR stays unmerged until then.
 - **Source**: `design/M6.md` "Smoke (`npm run smoke:preview -- <url>`)", OD-2 (a), OD-3 (a); `reports/M6-designer-2.md` Q12; `plans/M6-20261105.md` outline H, Spec gaps 1 and 2 (owner Q15 A, Q16 A); M6.7, M6.9
 
 ## Context
@@ -44,8 +44,8 @@ it whenever `env !== 'production'`). SGS-105 gives the page `/apps/aoe4-build-or
 1. **New `scripts/smoke-preview.mjs`** (the repo's first `scripts/` file; plain ES module, no `tsx`, no new
    dependency; it imports `chromium` from `@playwright/test`, already a devDependency). Usage
    `node scripts/smoke-preview.mjs <url>`. `<url>` is the deployment origin (a trailing slash is ignored). A
-   missing or unparsable `<url>` prints `usage: npm run smoke:preview -- <url>` and exits 2 (see Open
-   questions). Every request is built from the parsed origin, so the script never follows the page to another
+   usage error prints `usage: npm run smoke:preview -- <url>` and exits 2 before any request; a usage error is
+   a missing or unparsable `<url>`, or a URL whose protocol is not `http:` or `https:`. Every request is built from the parsed origin, so the script never follows the page to another
    host for its API calls.
    - **auth.** Read `process.env.VERCEL_AUTOMATION_BYPASS_SECRET`. When it is set and non-empty, send the
      header `x-vercel-protection-bypass: <secret>` on every `fetch` and in `extraHTTPHeaders` of the browser
@@ -55,7 +55,8 @@ it whenever `env !== 'production'`). SGS-105 gives the page `/apps/aoe4-build-or
      and the response is 401 or 403, the step fails like any other status (exit 1), not exit 2.
    - **Steps run in order and stop at the first failure.** Each step prints exactly one line: `PASS <step>` or
      `FAIL <step>: <reason>`. The step names are `save`, `read back`, `open` and `delete`. A `PASS` line may add
-     a short detail after the name; `save` adds the status and the id (`PASS save: 201 <id>`). The exit code is
+     a short detail after the name; `save` adds the status and the id (`PASS save: <status> <id>`, e.g. `PASS save: 201 <id>`). The only other
+     fixed line is `FAIL production deployment: delete is disabled`. The exit code is
      0 only when all four steps pass, 1 on any failure, 2 only for the usage error and the unset-secret case.
    - **1 save.** Read `data/aoe4-build-order/builds/english-1tc.json` with `fs` and `JSON.parse`, from a path
      resolved against `import.meta.url` (so it works from any cwd). `POST <origin>/api/aoe4-build-order/builds`
@@ -167,7 +168,7 @@ recorded stub requests):
 - [ ] "open fails" (takes about 30 s; set this case's test timeout to at least 60 s): the page has no option containing `(<id>)`. Exit code 1, `FAIL open:`, a DELETE was sent. Break caught: the select check missing, or a page wait with no bound.
 - [ ] "delete refused in production": the stub's DELETE answers 405. Exit code 1 and stdout contains exactly `FAIL production deployment: delete is disabled`; the first three steps print `PASS`. Break caught: the text or exit code differing from the design.
 - [ ] "delete leaves the build": the stub's DELETE answers 204 but the following GET still answers 200. Exit code 1 and a `FAIL delete:` line. Break caught: step 4 not re-reading.
-- [ ] "usage": no argument exits 2 with `usage: npm run smoke:preview -- <url>`. Break caught: a usage error that exits 0 or 1.
+- [ ] "usage" (respec 1): one row each for no argument, an unparsable `<url>` (`not a url`) and a non-http URL (`ftp://example.com`): each exits 2 with `usage: npm run smoke:preview -- <url>` and the stub saw no request. Break caught: a usage error that exits 0 or 1, or a request sent before validation.
 - [ ] "runs from another directory": one row of "all steps pass" runs with `cwd` set to a temp directory and still passes. Break caught: the fixture path resolved against `process.cwd()`.
 
 Other criteria:
@@ -183,6 +184,10 @@ Other criteria:
 
 ## Open questions
 
-- `designer` (non-blocking; fallback: exit 2 with the `usage:` line): the design's Smoke table gives exit codes 0, 1 and 2 (2 for the unset secret) but no code for a missing or unparsable `<url>`. This ticket reuses 2 for usage errors. Confirm 2 is right or choose another.
-- `designer` (non-blocking; fallback: the line formats in Scope item 1): the Smoke table names one literal output line, `FAIL production deployment: delete is disabled`, and otherwise says only "one `PASS` or `FAIL` line" per step. This ticket sets `PASS <step>` and `FAIL <step>: <reason>` with the step names `save`, `read back`, `open` and `delete`, and the `save` detail `PASS save: <status> <id>`. Confirm the format.
-- `owner` (blocks merge, not the implementation): enable "Protection Bypass for Automation" on the Vercel project, export `VERCEL_AUTOMATION_BYPASS_SECRET`, run the smoke on this PR's preview and report the output (M6.8, owner Q15 A). The PR stays unmerged until then.
+None.
+
+## Re-spec 2026-11-09
+
+- Underspecified: the exit code for usage errors and the exact output line formats (two designer questions); the owner smoke run was filed as an open question though it is a merge-time action.
+- Changed: usage errors (missing, unparsable, non-http(s) URL) exit 2 before any request; line format and step names confirmed; the owner action moved to `On merge` as a human action; Open questions emptied; the "usage" criterion now has three rows.
+- Branch work: none exists yet.

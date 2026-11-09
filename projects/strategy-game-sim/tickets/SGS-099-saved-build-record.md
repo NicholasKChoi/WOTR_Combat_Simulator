@@ -48,7 +48,10 @@ Read first: `design/M6.md` C1 and C3 (authoritative for names and behavior). Exi
      413; error: BuildsError }`. Checks run in this order and the first failing group decides; within the
      400 group the issues are ordered order issues, then duration, then name:
      1. `body` is not a plain object (including an array or `null`): 400 with `error` and the single issue
-        message `request body: must be a JSON object`, issue code `syntax`.
+        message `request body: must be a JSON object`, issue code `syntax`. `api-route.ts` (SGS-103) is the
+        one source of `isPlainObject` and `notAnObjectError`; it does not exist yet, so this ticket keeps a
+        temporary private (non-exported) copy of both in `saved-builds.ts`, and SGS-103 deletes it and
+        imports the `api-route.ts` ones (design M6.md C7).
      2. `checkBuildOrder(body.buildOrder, catalog)` issues (a missing `buildOrder` is reported by it).
      3. `durationSeconds` missing, not a number, or failing `outOfRange(value, 'durationSeconds')`: one
         `out-of-range` issue with no `step`, message `durationSeconds: missing`, `durationSeconds: must be
@@ -65,7 +68,12 @@ Read first: `design/M6.md` C1 and C3 (authoritative for names and behavior). Exi
         400 with its issues (capped as in step 5). When it succeeds and its `steps` or `start` differ
         structurally from the record's (compare by value, ignoring key order), return 400 with one issue,
         code `invalid`, message `build order: reopening it as text would change the build; use whole
-        numbers for times and counts`. `name`, `civ` and `source` are not compared.
+        numbers for times and counts`. `name`, `civ` and `source` are not compared. This second branch is a
+        guard: no input `checkBuildOrder` accepts reaches it (it either re-parses equal or fails the first
+        half), and it stays for a future formatter or grammar change. A fractional `walkSeconds` such as
+        `2.5` fails the first half (formatted `walk 2.5s`; the grammar accepts whole seconds only) and returns
+        the `syntax` issue `line <n>: expected walk seconds like 4s, got '2.5s'` plus any issue the partial
+        order adds (design M6.md C3).
      8. Otherwise `{ ok: true, record, json }`.
 2. `lib/aoe4-build-order/api.ts`: add `export interface BuildsError { error: string }` and re-export the
    types `SavedBuild`, `SaveBuildRequest` and `SaveBuildResponse` from `./saved-builds` with `export type`.
@@ -135,28 +143,25 @@ Single-component change outside the core control loop; no diagram required.
       - An order whose formatted text is over 20000 characters gives 400 with the `text: <n> characters, more
         than 20000` issue returned by `textToBuildOrder`, not 413 and not `ok: true`. This catches a missing
         round-trip step.
-      - An order with a fractional `walkSeconds` (for example `2.5`) gives 400 with the issues
-        `textToBuildOrder` returns for the formatted `walk 2.5s`, with no 413 and no `ok: true`. The
-        implementer records the exact issue in the report.
-      - The "converted order differs" branch (message in Scope step 7) is pinned by an order the implementer
-        finds whose formatted text parses but converts to different `steps` or `start`. When no such order
-        exists in the current format, the implementer says so in the report and tests the comparison function
-        directly (same input different `steps` gives the issue; equal values with different key order give
-        none); the comparison must be a separate non-exported function or reachable through
-        `checkSaveBuildRequest`, so the test can fail if the compare is dropped.
+      - An order with `walkSeconds: 2.5` gives 400 with the `syntax` issue `line <n>: expected walk seconds
+        like 4s, got '2.5s'` (the test asserts the message with the `<n>` it gets) plus any partial-order
+        issues, no `invalid` issue, no 413 and no `ok: true`. (respec 1)
+      - The guard branch (message in Scope step 7) is pinned with `vi.mock('./parse-text', async
+        (importOriginal) => ...)` making `formatBuildOrderText` a `vi.fn` that wraps the original; for one
+        test, `mockReturnValueOnce` returns the text of a different shipped build (valid, parses, different
+        `steps`), and `checkSaveBuildRequest` returns 400 with the single `invalid` issue. A second case
+        returns the order's own text and gives `ok: true`, so the test fails if the compare is dropped or
+        always fires. No test-only export is added to `saved-builds.ts`. (respec 1)
 - [ ] `lib/aoe4-build-order/api.ts` exports `BuildsError` and the three re-exported types; `npx tsc --noEmit`
       and `npm run lint:dup` pass with no new duplication flagged against `simulate.ts` or `schema.ts`.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
 
-- `designer` (non-blocking): design C3 row 8 says a fractional `walkSeconds: 2.5` gives one `invalid` issue.
-  In the code today `formatBuildOrderText` writes `walk 2.5s` and `parseBuildOrderText` accepts only whole
-  seconds (`SECONDS = /^(\d+)s$/`), so that order fails the first half of the round-trip rule and returns
-  the parse issues, not one `invalid` issue. This ticket follows the code (parse issues returned) and leaves
-  the `invalid` issue for a case where parse succeeds but the result differs. The design's example, and
-  whether such a case exists, need a decision.
-- `designer` (non-blocking): `notAnObjectError()` (C7) lives in `api-route.ts`, which a later ticket creates,
-  but `checkSaveBuildRequest(body: unknown, ...)` must reject a non-object itself and this ticket cannot
-  depend on that file. The ticket inlines the same 400 body (private to `saved-builds.ts`); the ticket that
-  adds `api-route.ts` can point `saved-builds.ts` at `notAnObjectError` if the design wants one source.
+None.
+
+## Re-spec 2026-11-09
+
+- Underspecified: the fractional `walkSeconds` case (the design example, one `invalid` issue, disagreed with the code) and where `isPlainObject` and `notAnObjectError` live.
+- Changed: the design settled both. `walkSeconds: 2.5` returns the `syntax` parse issue; the `invalid` branch is a guard tested with a `vi.mock` of `formatBuildOrderText`; this ticket keeps a temporary private copy of the plain-object check that SGS-103 deletes.
+- Existing branch work: none (no branch yet).

@@ -39,10 +39,7 @@ Read first: `design/M6.md` C2 and C5 (authoritative). Names from SGS-099's `lib/
    - `createFileBuildStore(dir: string, env: string): BuildStore`: writes `<dir>/<key>` (the same keys,
      `node:fs/promises`, creating parent directories on write). `putBuild` creates the file exclusively
      (`flag: 'wx'`), mapping `EEXIST` to `'exists'`. `getBuild` returns `null` for `ENOENT`. `deleteBuild`
-     ignores `ENOENT`. `bumpCounter` must be atomic per key or return `'contended'` across concurrent requests
-     in separate module instances (`next dev` compiles the two builds routes separately); the implementer
-     chooses the mechanism (for example an exclusive lock file, or write-to-temp then rename with a lock) and
-     records it in the report. The file store never reads or writes outside `<dir>`: callers validate ids with
+     ignores `ENOENT`. `bumpCounter` is a synchronous read-modify-write (`readFileSync`, then `mkdirSync` and `writeFileSync`, with no `await` between the read and the write), so concurrent calls in one process never lose an update. No lock file. It never returns `'contended'`. Cross-process non-atomicity is accepted (the store is for `next dev`, Vitest and Playwright only; a lost count only loosens a dev limit); a comment at the function says so. `putBuild` stays as above (`wx`, `EEXIST` to `'exists'`, atomic across processes, matching the design). The file store never reads or writes outside `<dir>`: callers validate ids with
      `isSavedBuildId`, and `clientKey` yields only base64url characters, but the store must not rely on that
      for `..` or `/`; it rejects (throws) a key whose resolved path is not inside `<dir>`.
    - `bumpCounter` semantics (all stores): when the stored counter's `windowStart` equals the argument,
@@ -52,9 +49,9 @@ Read first: `design/M6.md` C2 and C5 (authoritative). Names from SGS-099's `lib/
      is non-empty, `const { createBlobBuildStore } = await import('./blob-build-store')` and
      `createBlobBuildStore(env.BUILDS_STORE_ID, storageEnv(env.VERCEL_ENV))`; otherwise
      `createFileBuildStore(env.BUILDS_LOCAL_DIR ?? BUILDS_LOCAL_DIR_DEFAULT, storageEnv(env.VERCEL_ENV))`
-     (an empty `BUILDS_LOCAL_DIR` also falls back to the default). It memoizes the in-flight promise per module
-     instance only when called with no argument (the production path); a call with an explicit `env` is never
-     memoized, so tests pass their own env. A rejected promise is cleared so the next call tries again.
+     (an empty `BUILDS_LOCAL_DIR` also falls back to the default). Only the no-argument call (the production path, which reads `process.env`) memoizes its in-flight promise, per module
+     instance; a call with an explicit `env` builds a fresh store every time and is never memoized, so tests pass
+     their own env. A rejected promise is not memoized (respec 1): it is cleared so the next call tries again.
      This is the only place `process.env` is read in this ticket, and it is the only static or dynamic
      reference to `./blob-build-store`.
 2. New `lib/aoe4-build-order/blob-build-store.ts`, the only file that imports `@vercel/blob`. It exports
@@ -98,11 +95,7 @@ Read first: `design/M6.md` C2 and C5 (authoritative). Names from SGS-099's `lib/
      implementer moves only then to a shared export and records it (that touches `saved-builds.ts`, allowed in
      that case only).
 4. Dependencies and config. `npm install @vercel/blob@^2.8.2` (written as `"@vercel/blob": "^2.8.2"` in
-   `dependencies`). Add to `package.json` an `overrides` entry for zod. The design writes
-   `"overrides": { "zod": "^4.6.6" }`, but `package.json` already has `"zod": "^4.6.7"` and npm refuses an
-   override that differs from a direct dependency (`EOVERRIDE: Override for zod@^4.6.7 conflicts with direct
-   dependency`, reproduced while writing this ticket). Use `"overrides": { "zod": "$zod" }`, which makes
-   `@vercel/oidc`'s nested zod follow the direct dependency (`^4.6.7`, inside the patched line). Never run
+   `dependencies`). Add `"overrides": { "zod": "$zod" }` to `package.json` (settled in the design; it makes `@vercel/oidc`'s nested zod follow the direct dependency `^4.6.7`, inside the patched line; the design's older `^4.6.6` text would fail with `EOVERRIDE`). Never run
    `npm audit fix --force`. Commit the updated `package-lock.json`. `.gitignore` gains `.builds-local/`.
 5. Docs: `ARCHITECTURE.md` "Where files go" gains, as new rows or in the "App logic" row's notes, the three lib
    files (`build-store.ts`, `blob-build-store.ts`, `save-rate-limit.ts`) with their owner roles, the rule that
@@ -165,9 +158,9 @@ A later route function takes `store: () => Promise<BuildStore>`. A test passes
       - Counters for two client keys do not interact.
       - Two stores with different `env` over the same backing (two memory stores; two file stores over the same
         directory) share neither builds nor counters, and the file store writes `<dir>/<env>/builds/<id>.json`.
-      - Ten concurrent `bumpCounter` calls on one key (`Promise.all`) never lose an update: the number of
-        non-`'contended'` results equals the count stored afterwards, and the counts they returned are
-        distinct.
+      - Ten concurrent `bumpCounter` calls on one key (`Promise.all`) never lose an update (respec 1): the counts
+        returned are exactly 1 to 10, distinct, and the count stored afterwards is 10. The file store never
+        returns `'contended'` (a test asserts no result is `'contended'`; the memory store likewise).
       - File store only: a key that would resolve outside the directory (a client key `../x`) throws and
         creates no file outside the directory.
 - [ ] `buildStoreFromEnv` table (explicit `env` argument, so nothing is memoized): `BUILDS_STORE_ID` unset or
@@ -213,7 +206,7 @@ A later route function takes `store: () => Promise<BuildStore>`. A test passes
       header `['1.2.3.4', '5.6.7.8']` equals `'1.2.3.4'`; a different address gives a different key; a
       missing or empty header uses `socket.remoteAddress`; both missing gives the key of `'unknown'`; the key
       never contains the raw address; a non-IP string (`'spec-a'`) is accepted and distinct from `'spec-b'`.
-- [ ] Dependencies: `package.json` has `@vercel/blob` at `^2.8.2` and an `overrides` entry for zod; `npm ci`
+- [ ] Dependencies: `package.json` has `@vercel/blob` at `^2.8.2` and an `overrides` entry `"zod": "$zod"`; `npm ci`
       succeeds; `npm audit` reports no advisory for `zod` (record the output in the PR body); the lockfile has
       a single resolved zod version, and no `npm audit fix --force` was run. `git grep -n "builds-local" --
       .gitignore` matches. No test file writes into `.builds-local/` (`git status` is clean after `npm test`).
@@ -224,13 +217,10 @@ A later route function takes `store: () => Promise<BuildStore>`. A test passes
 
 ## Open questions
 
-- `designer` (non-blocking): the design's `"overrides": { "zod": "^4.6.6" }` fails with `EOVERRIDE` because
-  `package.json` pins `"zod": "^4.6.7"` as a direct dependency. This ticket uses `"zod": "$zod"` (follow the
-  direct dependency). Confirm, or choose to lower the direct dependency instead. Verified while writing: with
-  `$zod`, `npm install --package-lock-only` succeeds and `npm audit` reports 0 vulnerabilities.
-- `designer` (non-blocking): the file store's cross-process atomicity for `bumpCounter` is left to the
-  implementer (lock file or similar), since the design only requires "atomic per key or `'contended'`" and it
-  is development-only. Tell me if a plain read-modify-write is acceptable there.
-- `designer` (non-blocking): `buildStoreFromEnv` memoizes only the no-argument call, so a test passing its own
-  env gets a fresh store. The design says "memoized per module instance"; this ticket narrows it to keep
-  tests independent.
+None.
+
+## Re-spec 2026-11-09
+
+- Underspecified: three designer questions (zod override, file store `bumpCounter` atomicity, memoization scope).
+- Changed: zod override fixed as `$zod`; file `bumpCounter` is a synchronous read-modify-write with no lock file and never `'contended'`; memoization stated as no-argument call only, rejection not memoized; concurrency criterion tightened. `putBuild` already matched the design (`wx`/`EEXIST`).
+- Stands: all other scope and criteria; no branch work exists.

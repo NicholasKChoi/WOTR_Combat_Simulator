@@ -6,10 +6,10 @@
 - **Priority**: medium
 - **Risk**: standard
 - **Invariants**: S3 (every save is bounded: the 128 kb body limit, the record byte cap and the rate limit all run before any stored write; `simulate.ts` keeps every cap it has), A3 (the simulate route's responses stay byte-identical; the reply functions read no clock, `nowMs` is an argument)
-- **LOC estimate**: ~180 (new `api-route.ts` ~45, `builds-routes.ts` ~110, two thin route files ~30, a net deletion in `simulate.ts`, 3 lines in `saved-builds.ts`; business logic only, OpenAPI JSON, docs and tests excluded)
+- **LOC estimate**: ~180 (new `api-route.ts` ~40, `english-catalog.ts` ~10, `builds-routes.ts` ~110, two thin route files ~30, a net deletion in `simulate.ts`, 3 lines in `saved-builds.ts`; business logic only, OpenAPI JSON, docs and tests excluded)
 - **Depends on**: SGS-099, SGS-101
 - **On merge**: none
-- **Source**: `design/M6.md` C3, C4 and C7, OD-2 (a), OD-8 (a); `plans/M6-20261105.md` outline C including owner Q17 A; `reports/M6-designer-2.md` Q9, Q10, Q11
+- **Source**: `design/M6.md` C3, C4 and C7, OD-2 (a), OD-8 (a); `plans/M6-20261105.md` outline C including owner Q17 A; `reports/M6-designer-2.md` Q9, Q10, Q11; `reports/M6-designer-3.md` Q2, Q6, Q7, Q8
 
 ## Context
 
@@ -36,9 +36,11 @@ error: BuildsError }`; `api.ts` exports `BuildsError { error: string }`. SGS-101
 (`putBuild`, `getBuild`, `deleteBuild`), `createMemoryBuildStore` and `buildStoreFromEnv` from `build-store.ts`,
 and `clientKey` and `takeSaveSlot` from `save-rate-limit.ts`.
 
-1. New `lib/aoe4-build-order/api-route.ts` (no `next`, `react` or `node:` import; `NextApiResponse` satisfies
-   `ReplyTarget` structurally). It exports exactly the C7 names: `RouteReply`, `ReplyTarget`, `isPlainObject`,
-   `methodNotAllowed`, `notAnObjectError`, `sendReply`, `englishCatalog`, with the behavior in C7:
+1. New `lib/aoe4-build-order/api-route.ts` (browser-safe: no `next`, `react`, `node:` or `data.ts` import, and
+   no other server-only import, because the page imports `saved-builds.ts`, which imports this file;
+   `NextApiResponse` satisfies `ReplyTarget` structurally). It exports exactly six names: `RouteReply`,
+   `ReplyTarget`, `isPlainObject`, `methodNotAllowed`, `notAnObjectError`, `sendReply` (not `englishCatalog`),
+   with the behavior in C7:
    - `methodNotAllowed(method, allowed)` returns status 405, header `Allow: <allowed joined by ', '>` and body
      `{ error: 'method <method> is not allowed; use <allowed joined by " or ">' }`. For `['POST']` it equals
      today's simulate 405 exactly.
@@ -46,22 +48,29 @@ and `clientKey` and `takeSaveSlot` from `save-rate-limit.ts`.
      message: 'request body: must be a JSON object' }] }`, today's simulate body.
    - `sendReply(res, reply)`: `res.status(reply.status)`, each header with `setHeader`, then `json(body)` when
      `reply.body !== undefined`, otherwise `end()`.
-   - `englishCatalog()` memoizes `buildOrderCatalog(loadGameData('english'))` in module scope (the same
-     instance on every call).
+   - It is the only source of `isPlainObject` and `notAnObjectError`.
+
+   New server-only `lib/aoe4-build-order/english-catalog.ts` exports `englishCatalog()`, which memoizes
+   `buildOrderCatalog(loadGameData('english'))` in module scope (the same instance on every call). It is the
+   only new file that imports `data.ts`; `simulate.ts` and `builds/index.ts` import it from there.
 2. `pages/api/aoe4-build-order/simulate.ts` adopts it: its local `isPlainObject`, its module-scope
    `englishCatalog` variable, the inline 405 and the inline not-an-object 400 are replaced by
-   `isPlainObject`, `methodNotAllowed(req.method, ['POST'])`, `notAnObjectError()`, `sendReply` and
-   `englishCatalog()`. Every response (status, headers, body) stays byte-identical. The handler stays
+   `isPlainObject`, `methodNotAllowed(req.method, ['POST'])`, `notAnObjectError()` and `sendReply` (from
+   `api-route.ts`) and `englishCatalog()` (from `english-catalog.ts`). Every response (status, headers, body) stays byte-identical. The handler stays
    synchronous with no new `await`: `lib/aoe4-build-order/simulate-api.acceptance.test.ts` calls it without
    awaiting and its recording `res` has `status`, `setHeader` and `json` only. `pages/api/fight.ts` keeps its
    own `isPlainObject` (outside jscpd's paths and outside M6).
-3. `lib/aoe4-build-order/saved-builds.ts` (SGS-099): replace its private copy of the not-an-object 400 body
-   with `notAnObjectError()` imported from `./api-route`, so one source exists. Its behavior and tests do not
-   change. `api-route.ts` imports `./api` for types only and no value from `saved-builds.ts`, so no runtime import
+3. `lib/aoe4-build-order/saved-builds.ts` (SGS-099): delete SGS-099's temporary private copies of
+   `isPlainObject` and the not-an-object 400 body and import both `isPlainObject` and `notAnObjectError` from
+   `./api-route`, so one source exists. Its behavior and tests do not change. `api-route.ts` imports `./api` for types only and no value from `saved-builds.ts`, so no runtime import
    cycle exists.
 4. New `lib/aoe4-build-order/builds-routes.ts` (no `next`, `react` or `node:` import) exporting exactly
    `saveBuildReply` and `savedBuildReply` with the C7 signatures. A store getter is called only after every
    store-free check and a rejection maps to 503.
+   Error texts, all lower case and fixed by the design: 429 `too many saves from this client; try again later`
+   (no number; `Retry-After` carries it), 503 `storage is unavailable; try again later`, 404 `no saved build
+   with that id` for every 404 (malformed id or absent build, GET or DELETE, so a caller cannot tell them
+   apart), 500 `the stored build could not be read`.
    `saveBuildReply(req: { method; body; clientKey }, deps: { store; catalog; nowMs })` returns the first
    matching row of this table:
 
@@ -69,7 +78,7 @@ and `clientKey` and `takeSaveSlot` from `save-rate-limit.ts`.
    |---|--------|---------|------|------|
    | 1 | 405 | `Allow: POST` | `methodNotAllowed` | `method !== 'POST'` |
    | 2 | 400 | | `checkSaveBuildRequest`'s `error` | `ok: false, status: 400` (a non-object body included) |
-   | 3 | 413 | | `checkSaveBuildRequest`'s `error` | `ok: false, status: 413` |
+   | 3 | 413 | | `checkSaveBuildRequest`'s `error`, text `saved build: <bytes> bytes, more than 65536` | `ok: false, status: 413` |
    | 4 | 503 | | `{ error: 'storage is unavailable; try again later' }` | `deps.store()` rejects |
    | 5 | 429 | `Retry-After: <retryAfterSeconds>` | `{ error: 'too many saves from this client; try again later' }` | `takeSaveSlot(store, clientKey, nowMs)` is `{ ok: false }` (`'contended'` included, its `retryAfterSeconds` is 1) |
    | 6 | 503 | | the row 4 body | `takeSaveSlot` or `putBuild` throws |
@@ -119,11 +128,13 @@ and `clientKey` and `takeSaveSlot` from `save-rate-limit.ts`.
      not 201, and still counts against the rate limit.
    - Schemas `SaveBuildRequest` (open, as the request-side AoE4 schemas are; `buildOrder` is `$ref BuildOrder`,
      `durationSeconds` an integer with the `SIM_INPUT_BOUNDS.durationSeconds` min and max), `SaveBuildResponse`,
-     `SavedBuild` and `BuildsError`, named after the TypeScript types in `saved-builds.ts` and `api.ts`.
+     `SavedBuild` and `BuildsError`, named after the TypeScript types in `saved-builds.ts` and `api.ts`, and
+     `SavedBuildWithId`, an OpenAPI-only name (no TypeScript type is added for it).
      Response-side schemas are closed and require every property, and every property has a description. The
      `SavedBuild` schema has no duration bounds (a read must succeed whatever the bounds become). The GET 200
-     body is a `SavedBuild` plus `id`; the implementer picks the composition (see Open questions for the name)
-     so that the live body validates and one with an extra property or without `id` does not.
+     body is `SavedBuildWithId`: closed, `SavedBuild`'s properties plus `id` (with `SAVED_BUILD_ID_PATTERN`),
+     composed so `SavedBuild` stays referenced and so that the live body validates and one with an extra
+     property or without `id` does not.
    - Examples (named, in `examples`): the save request; the 201 and 200 `SaveBuildResponse`; the GET 200 body for
      that save; the 400 rows (a non-object body, an unknown unit id, a `durationSeconds` out of range, a name
      of 101 characters); the 413 record cap; the 404; the 405 (`GET` on the save route, and `PUT` on the id
@@ -137,8 +148,9 @@ and `clientKey` and `takeSaveSlot` from `save-rate-limit.ts`.
 8. Tests (Vitest, table style of the nearest existing tests; shapes are checked by value, not by key order):
    - `lib/aoe4-build-order/api-route.test.ts`: `methodNotAllowed` and `notAnObjectError` tables including the
      byte-for-byte simulate 405 and 400 bodies; `sendReply` against a recording `ReplyTarget` (headers set, then
-     `json` for a body, `end` for none and `json` not called); `englishCatalog` returns one memoized catalog
-     that knows an English unit id.
+     `json` for a body, `end` for none and `json` not called).
+   - `lib/aoe4-build-order/english-catalog.test.ts`: `englishCatalog` returns one memoized catalog (same
+     instance on two calls) that knows an English unit id; the memo test moves here from `api-route.test.ts`.
    - `lib/aoe4-build-order/builds-routes.test.ts`: one case per row of each table above, with
      `store: () => Promise.resolve(createMemoryBuildStore())` (a fresh store per case, or one store where a case
      needs state), a rejecting getter for the 503 rows, a wrapper store whose `bumpCounter` or `putBuild` throws,
@@ -184,12 +196,18 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `api-route.ts` exports exactly the names in Scope item 1 and `builds-routes.ts` exactly `saveBuildReply`
-      and `savedBuildReply`. `git grep -nE "from '(next|react|node:)" -- lib/aoe4-build-order/api-route.ts
-      lib/aoe4-build-order/builds-routes.ts` has no match.
+- [ ] `api-route.ts` exports exactly six names (`RouteReply`, `ReplyTarget`, `isPlainObject`,
+      `methodNotAllowed`, `notAnObjectError`, `sendReply`; no `englishCatalog`) and `builds-routes.ts` exactly
+      `saveBuildReply` and `savedBuildReply`. `git grep -nE "from '(next|react|node:)"
+      -- lib/aoe4-build-order/api-route.ts lib/aoe4-build-order/builds-routes.ts` has no match, and
+      `git grep -nE "from '.*data'" -- lib/aoe4-build-order/api-route.ts` has no match (no `data.ts` import).
+      `english-catalog.ts` exports `englishCatalog`, and `simulate.ts` and `builds/index.ts` import it from
+      there.
 - [ ] One source for the shared handling: every match of `git grep -nE "function isPlainObject" -- pages lib` is
       in `lib/aoe4-build-order/api-route.ts` or `pages/api/fight.ts`; every match of
-      `git grep -n "must be a JSON object" -- lib pages ':!*.test.ts'` is in `api-route.ts`; every match of
+      `git grep -n "must be a JSON object" -- lib pages ':!*.test.ts'` is in `api-route.ts` (so
+      `saved-builds.ts` holds no private copy of `isPlainObject` or the 400 body and imports both from
+      `./api-route`); every match of
       `git grep -n "is not allowed; use" -- lib pages ':!*.test.ts'` is in `api-route.ts` or `pages/api/fight.ts`.
 - [ ] Simulate route unchanged: the simulate contract spec (`aoe4-simulate-api-contract.spec.ts`) and
       `simulate-api.acceptance.test.ts` pass with no edit to an existing expected value. New unit cases pin the
@@ -201,7 +219,8 @@ Single-component change outside the core control loop; no diagram required.
         getter is not called.
       - Rows 2 and 3: `[]`, a body with an unknown unit id, `durationSeconds` 59 and a 101-character `name` give
         400 with the `checkSaveBuildRequest` body; a record over `SAVED_BUILD_MAX_BYTES` gives 413 with a
-        `BuildsError` body (built from valid steps with a long `source`). For each, the store getter and
+        `BuildsError` body with the text `saved build: <bytes> bytes, more than 65536` (built from valid steps with
+        a long `source`). For each, the store getter and
         `bumpCounter` are not called, and 31 invalid bodies from one client followed by a valid one give 201 (an
         invalid body spends no slot: this fails if the check runs after `takeSaveSlot`).
       - Row 4: a getter that rejects gives 503 with the row's body and no 429 or 201.
@@ -284,17 +303,10 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Open questions
 
-- `designer` (non-blocking): the GET 200 body is `SavedBuild & { id }` (C1, C4), which has no schema name in
-  the design or in `saved-builds.ts`. The ticket leaves the OpenAPI composition to the implementer and the
-  name unset. Proposed: a component schema `SavedBuildWithId` (closed; `SavedBuild`'s properties plus `id`,
-  composed so `SavedBuild` stays referenced). Confirm the name, or add a TypeScript type for it.
-- `designer` (non-blocking): the design gives no wording for the 429, 503, 404 and 500 `error` texts. The
-  ticket fixes `too many saves from this client; try again later`, `storage is unavailable; try again later`,
-  `no saved build with that id` and `the stored build could not be read` (no number in the 429 text, since
-  `Retry-After` carries it). Confirm, or give other text. Also confirm the operation ids `saveBuild`,
-  `getSavedBuild` and `deleteSavedBuild`, which the design does not name.
-- `designer` (non-blocking): `saved-builds.ts` (browser-safe) imports `notAnObjectError` from `api-route.ts`,
-  which also exports `englishCatalog` and so pulls `loadGameData` into any bundle that imports `saved-builds.ts`.
-  The page already loads the game data for its catalog, so no new bytes are expected, and the module has no
-  side effects so unused exports are dropped. If the page bundle grows, move `notAnObjectError` and
-  `isPlainObject` to a module that has no data import.
+None.
+
+## Re-spec 2026-11-09
+
+- Underspecified: where `englishCatalog` lives (it would have pulled `data.ts` into the browser bundle via `saved-builds.ts`), the `SavedBuildWithId` name, operation ids and error texts.
+- Changed: `api-route.ts` now exports six names and imports no `data.ts` (grep criterion added); `english-catalog.ts` added with its memo test; `saved-builds.ts` imports `isPlainObject` and `notAnObjectError` from `api-route.ts`; OpenAPI names and exact error texts fixed; open questions removed.
+- Stands: no branch work exists yet.

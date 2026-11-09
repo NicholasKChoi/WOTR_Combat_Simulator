@@ -1,0 +1,1 @@
+SGS-106 re-spec: folded M6.md designer answers 11 and 12 (usage exit 2 incl. non-http(s); line format confirmed), deleted both questions, moved owner smoke run to On merge human action, usage criterion expanded to three rows.

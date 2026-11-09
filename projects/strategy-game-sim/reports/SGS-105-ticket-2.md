@@ -1,0 +1,3 @@
+# SGS-105 re-spec 2026-11-09 (written by the manager from the agent's returned text)
+
+Folded M6-designer-3 Q8-Q10. Bundle check is a plain criterion (unit_workshop_ram_3_eng absent from .next/static, present under .next/server); wiring grep forbids english-catalog imports from components and pages/apps. PrebuiltBuild.buildName; savedBuildOption sets it; new savedBuildName in pin-name.ts (unchanged text keeps stored name; edited -> '<base> (edited)', no double suffix, capped at 100); Save posts savedBuildName; pin-name.test.ts table of C6 samples; acceptance case: open ?b=<id>, save unchanged, same id. save-build-client.ts names and loadSavedBuild results confirmed. Open questions: None.

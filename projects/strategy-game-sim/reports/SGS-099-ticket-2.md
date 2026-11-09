@@ -1,0 +1,3 @@
+# SGS-099 re-spec 2026-11-09 (written by the manager from the agent's returned text)
+
+Folded M6-designer-3 Q1, Q2. Scope 7: fractional walkSeconds 2.5 fails the parse half with syntax issue "line <n>: expected walk seconds like 4s, got '2.5s'"; single-invalid branch kept as a guard. Scope 1: api-route.ts (SGS-103) is the single source of isPlainObject/notAnObjectError; temporary private copy in saved-builds.ts. Criteria (respec 1): fractional case 400 with that syntax issue; guard tested via vi.mock('./parse-text', importOriginal) with mockReturnValueOnce of another shipped build's text (expects one invalid issue) plus a passthrough case (expects ok). Open questions: None.

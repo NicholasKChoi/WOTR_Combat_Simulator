@@ -6,10 +6,10 @@
 - **Priority**: medium
 - **Risk**: standard
 - **Invariants**: S1 (imports stay inside `components/apps/aoe4-build-order/`, `lib/aoe4-build-order/` and `pages/apps/aoe4-build-order.tsx`), S3 (the page posts to the save route only for a settled, valid, `current` input and never sends an unvalidated body; the opened record is re-checked by `checkBuildOrder` through the controller before any simulate request), A3 (a `?b=` load and a manual edit of the same content show the same result: the page adds no timing-dependent state). Not adjacent to A1 or A2.
-- **LOC estimate**: ~190 (`save-build.tsx` ~90, `saved-build-loader.ts` ~35, `save-build-client.ts` ~40, page ~70 net, `build-input.tsx` ~15, `disabled` on `build-text-editor.tsx` and `step-table.tsx` ~10; UI markup and CSS, tests, docs and specs excluded where they carry no branch)
+- **LOC estimate**: ~205 (`save-build.tsx` ~90, `saved-build-loader.ts` ~35, `save-build-client.ts` ~40, `savedBuildName` in `pin-name.ts` ~15, page ~70 net, `build-input.tsx` ~15, `disabled` on `build-text-editor.tsx` and `step-table.tsx` ~10; UI markup and CSS, tests, docs and specs excluded where they carry no branch)
 - **Depends on**: SGS-103, SGS-102
 - **On merge**: none
-- **Source**: `design/M6.md` C6 (save part: `SaveBuild`, `loadSavedBuild`, `savedBuildOption`, the test ids), "Save and link", "`?b=<id>` load", "Page wiring", the "tabs (narrow)" row, OD-5 (a), OD-6 (a), OD-8 (a); `reports/M6-designer-2.md` Q4, Q5, Q9; `plans/M6-20261105.md` outline G; M6.5, M6.9
+- **Source**: `design/M6.md` C6 (save part: `SaveBuild`, `loadSavedBuild`, `savedBuildOption`, the test ids), "Save and link", "`?b=<id>` load", "Page wiring", the "tabs (narrow)" row, OD-5 (a), OD-6 (a), OD-8 (a); `design/M6.md` C6 "saved name" (`savedBuildName`, `PrebuiltBuild.buildName`) and C7 (`english-catalog.ts`); `reports/M6-designer-2.md` Q4, Q5, Q9; `reports/M6-designer-3.md` Q8, Q9, Q10; `plans/M6-20261105.md` outline G; M6.5, M6.9
 
 ## Context
 
@@ -40,7 +40,8 @@ Names from the dependencies are described as their tickets end, not as `main` re
 
 - SGS-099 `saved-builds.ts`: `savedBuildSchema`, `SavedBuild`, `SaveBuildRequest`, `SaveBuildResponse { id; path }`,
   `isSavedBuildId`, `SAVED_BUILD_ID_PATTERN`, `savedBuildPath`; `api.ts`: `BuildsError { error }`, `SimulateError`.
-- SGS-103: `POST /api/aoe4-build-order/builds` answers 201 and 200 `{ id, path }`, 400 `SimulateError`, 413
+- SGS-103: `englishCatalog` lives in the server-only `lib/aoe4-build-order/english-catalog.ts`, so `api-route.ts`
+  (six names, no data import) and `saved-builds.ts` import no game data and are browser-safe. `POST /api/aoe4-build-order/builds` answers 201 and 200 `{ id, path }`, 400 `SimulateError`, 413
   `BuildsError`, 429 `BuildsError` with `Retry-After`, 503 `BuildsError`, 405. `GET /api/aoe4-build-order/builds/{id}`
   answers 200 `SavedBuild & { id }`, 404, 500, 503. Acceptance helpers `BUILDS_PATH`, `buildPath(id)`,
   `postBuild(request, body, client)`, `uniqueClient(spec)`.
@@ -62,8 +63,10 @@ Names from the dependencies are described as their tickets end, not as `main` re
      dropped by the schema). 404: `not-found`. Any other status, a 200 body that fails the schema or is not
      JSON, a network error and an aborted signal: `failed`.
    - `savedBuildOption(id: string, saved: SavedBuild): PrebuiltBuild` returns `{ name: `${saved.buildOrder.name}
-     (${id})`, text: formatBuildOrderText(saved.buildOrder) }`.
-2. **`save-build-client.ts`** (no React; names not in the design, see Open questions):
+     (${id})`, text: formatBuildOrderText(saved.buildOrder), buildName: saved.buildOrder.name }`.
+     `PrebuiltBuild` (in `build-input.tsx`) gains `buildName?: string`, the `buildOrder.name` a save posts for that
+     option; it is absent for the prebuilt builds. The ` (<id>)` suffix is a select label only and is never saved.
+2. **`save-build-client.ts`** (no React; names confirmed by the design, C6):
    - `postSavedBuild(request: SaveBuildRequest, signal?: AbortSignal): Promise<{ ok: true; response: SaveBuildResponse } | { ok: false; message: string }>`
      posts JSON to `/api/aoe4-build-order/builds` (201 and 200 are success; a body that is not a
      `SaveBuildResponse` is a failure). Every failure is mapped by `saveFailureMessage` and the function never
@@ -79,12 +82,22 @@ Names from the dependencies are described as their tickets end, not as `main` re
      | 429, `retryAfter` missing, not a whole number, or below 1 | `Too many saves. Try again later.` |
      | 503 | `Saving is unavailable right now. Try again later.` |
      | any other status, a 400 with no readable issue, or `null` (network error) | `The build could not be saved. Try again.` |
-3. **`save-build.tsx`** exports `SaveBuild`. Props (the names are the implementer's; the data is): `status:
+3. **`pin-name.ts`** gains `savedBuildName(builds: readonly PrebuiltBuild[], text: string, selected: string): string`
+   (rules and samples are `design/M6.md` C6 "saved name", first match wins):
+   1. `builds` empty: `'Custom build'` (as `pinName`).
+   2. Some build's `text` equals `text` (the first in `builds` order): its `buildName ?? name`. So an unchanged
+      loaded build keeps its stored name and a save returns the same id.
+   3. Otherwise `base = builds.find(b => b.name === selected)?.buildName ?? selected`, with one trailing
+      ` (edited)` removed, and the result is `${base.slice(0, SAVED_NAME_MAX_CHARS - 9)} (edited)` (9 is the length
+      of ` (edited)`, `SAVED_NAME_MAX_CHARS` is 100), so it never exceeds 100 characters and never stacks a second
+      ` (edited)`.
+   `pinName` and the pin label are unchanged (a loaded build's pin label still shows ` (<id>)`).
+4. **`save-build.tsx`** exports `SaveBuild`. Props (the names are the implementer's; the data is): `status:
    AutoRunStatus`, `settled: LiveInput`, `conversion` (the settled conversion), `builds: PrebuiltBuild[]`, `busy:
    boolean` (a `?b=` load is in flight) and `onSaved(response: SaveBuildResponse, input: LiveInput): void`. Rules:
    - **Enabled** only when `status === 'current'`, `busy` is false and no save is in flight. Otherwise it is
      `disabled` (the attribute) and visibly dimmed. `data-testid="save-build"`, visible text `Save build`.
-   - **Click** posts, through `postSavedBuild`, `{ buildOrder: { ...conversion.order, name: pinName(builds,
+   - **Click** posts, through `postSavedBuild`, `{ buildOrder: { ...conversion.order, name: savedBuildName(builds,
      settled.text, settled.selected) }, durationSeconds: Number(settled.duration) }`. The body is built from the
      settled input and never from the live text.
    - **201 or 200:** shows `saved-build-link` (a read-only `<input>`, `aria-label="Link to this saved build"`,
@@ -105,9 +118,9 @@ Names from the dependencies are described as their tickets end, not as `main` re
 
 ### Page (`pages/apps/aoe4-build-order.tsx`) and `BuildInput`
 
-4. `builds` becomes page state (`useState(props.builds)`), so a loaded option can be put at the front. `pinName`,
+5. `builds` becomes page state (`useState(props.builds)`), so a loaded option can be put at the front. `pinName`,
    the select and `useAutoRun`'s `selected` all read the state.
-5. **The `?b=` read.** `useRouter` from `next/router`. A `useEffect` keyed on `router.isReady` (never read during
+6. **The `?b=` read.** `useRouter` from `next/router`. A `useEffect` keyed on `router.isReady` (never read during
    render for anything but `hold`) reads `router.query.b` once: an array gives its first value, and an absent or
    empty value is the normal first load. Only the initial `b` is read: a later change of `query.b` (back or forward
    after a save) loads nothing.
@@ -130,47 +143,50 @@ Names from the dependencies are described as their tickets end, not as `main` re
      The Text/Table toggle is unchanged.
    - The effect's `AbortController` aborts on cleanup, and no state changes after unmount or after an aborted
      load.
-6. **Tab after a load (OD-6 (a)).** Nothing sets `tab` except a successful `?b=` load: the first run that follows
+7. **Tab after a load (OD-6 (a)).** Nothing sets `tab` except a successful `?b=` load: the first run that follows
    it and ends `current` sets `tab` to `results`. If that run ends `invalid`, `rejected` or `failed`, `tab` stays
    `build`. No other run changes the tab.
-7. **The URL (OD-5 (a)).** The page owns every `router.replace`. After a save (`onSaved`) it calls
+8. **The URL (OD-5 (a)).** The page owns every `router.replace`. After a save (`onSaved`) it calls
    `router.replace({ query: { b: response.id } }, undefined, { shallow: true })`. The baseline for the URL is the
    input the `b` belongs to: the saved input after a save, the loaded input after a `?b=` load, and the default
    build's input after a failed load. When the settled input's `text`, `duration` or `selected` first differs
    from that baseline, the page calls `router.replace` with the `b` removed, shallow, once, and the link panel hides
-   (item 3). The settled input is what counts, never the live text, so `b` stays through the 500 ms pause, and it
+   (item 4). The settled input is what counts, never the live text, so `b` stays through the 500 ms pause, and it
    stays through the `?b=` load and its first run (the render between the load ending and the controller releasing
    still shows the default input as settled; that must not count as a change). A selection that changes the
    settled input counts. The final URL after removal is `/apps/aoe4-build-order` with no `?`; verify
    that `{ query: {...} }` without a `pathname` keeps the current path under Next 16 and add `pathname:
    router.pathname` if it does not.
-8. `BuildInput` hosts `SaveBuild` after the view toggle and before nothing else, inside the run bar form; Save is
+9. `BuildInput` hosts `SaveBuild` after the view toggle and before nothing else, inside the run bar form; Save is
    `type="button"` so Enter in the duration field still means `flush()` and never saves. The link panel follows the
    Save button in tab order, then Copy.
-9. Imports from `lib/aoe4-build-order/` into `components` and `pages/apps` are limited to `saved-builds.ts`
+10. Imports from `lib/aoe4-build-order/` into `components` and `pages/apps` are limited to `saved-builds.ts`
    (values and types) and `api.ts` (types), plus what the page already imports. Neither `api-route.ts`,
    `builds-routes.ts`, `build-store.ts`, `blob-build-store.ts` nor `save-rate-limit.ts` is imported client-side.
-   **Bundle check:** SGS-103 makes `saved-builds.ts` import `api-route.ts`, and `api-route.ts` exports
-   `englishCatalog`, which calls `loadGameData` (`data.ts` imports the 300 kB snapshot JSON). The page's client
-   bundle has no game data today because the imports used only by `getStaticProps` are stripped; verified on `main`
-   (`npx next build` at 1e6d6c2: the string `unit_workshop_ram_3_eng` from `english.json` is in `.next/server` and in
-   no file under `.next/static`). The implementer runs the check after the build and records the result. If the
-   string reaches `.next/static`, the data import came through `saved-builds.ts`; apply the fix in Open questions
-   (a) and record it.
+   **Bundle check:** `saved-builds.ts` imports `api-route.ts`, which holds no data import because `englishCatalog`
+   lives in the server-only `english-catalog.ts` (SGS-103). The page's client bundle must have no game data
+   (`data.ts` imports the 300 kB snapshot JSON); verified on `main` (`npx next build` at 1e6d6c2: the string
+   `unit_workshop_ram_3_eng` from `english.json` is in `.next/server` and in no file under `.next/static`). The
+   implementer runs the check after the build and records the result.
 
 ### Out of scope
 
 The controller, `useAutoRun` and the status texts (SGS-100, SGS-102); split layout (SGS-104); the routes, stores and
 rate limit (SGS-101, SGS-103) beyond calling them; the smoke script and the agent how-to (outline H); saving
 comments, blank lines or the raw text (OD-1 (a): the parsed order only); a DELETE or listing UI; the
-name rule for a loaded build (Open questions); `docs/api/openapi.json` (no route changes); the Strict Mode double
+`docs/api/openapi.json` (no route changes); the Strict Mode double
 effect (Strict Mode is off).
 
 ### Tests
 
-10. **Vitest** (no DOM, no new dependency; table style of `simulate-client.test.ts` from SGS-100):
+11. **Vitest** (no DOM, no new dependency; table style of `simulate-client.test.ts` from SGS-100):
+    - `pin-name.test.ts`: `savedBuildName` for every sample row of `design/M6.md` C6 "saved name" (prebuilt unchanged
+      and edited; loaded option `L` unchanged and edited; a `buildName` already ending ` (edited)` edited again; a
+      100-character `buildName` edited giving its first 91 characters + ` (edited)`), plus `builds` empty giving
+      `Custom build`, and a name never longer than 100 characters. Breaks caught: the ` (<id>)` label saved as the
+      name, a stacked ` (edited) (edited)`, a name over the cap, an unchanged loaded build renamed.
     - `saved-build-loader.test.ts`: `savedBuildOption` for a record named `Fast Castle` and id `Zx3_k9-QaB0` gives
-      name `Fast Castle (Zx3_k9-QaB0)` and the text equal to `formatBuildOrderText` of the order (and the text
+      name `Fast Castle (Zx3_k9-QaB0)`, `buildName` `Fast Castle` and the text equal to `formatBuildOrderText` of the order (and the text
       re-converts with `textToBuildOrder`). `loadSavedBuild` with `vi.stubGlobal('fetch', ...)`, one row each:
       `abc` and a 12-character id give `not-found` and `fetch` is not called; a valid id requests
       `/api/aoe4-build-order/builds/<id>` with the given `signal`; 200 with a valid record (extra `id` key) gives
@@ -188,7 +204,7 @@ effect (Strict Mode is off).
       `rejected`, `failed`, and without it for `current`; with `busy` true it is disabled even for `current`; no
       `saved-build-link` is rendered on first render. Break caught: Save enabled while a run is pending.
 
-11. **Acceptance** (Playwright). Helpers added to `acceptance/helpers.ts`: `openSavedBuild(page, id)` (goes to
+12. **Acceptance** (Playwright). Helpers added to `acceptance/helpers.ts`: `openSavedBuild(page, id)` (goes to
     `${AOE4_PAGE}?b=${id}` and waits for `auto-run-status` `data-status` `current`). Saved builds that a test only
     opens are created with `postBuild(request, body, uniqueClient('aoe4-save-open'))` from SGS-103 so the UI save is
     not the setup. New `acceptance/aoe4-save-open.spec.ts`. Every test that saves, through the UI or the API, uses
@@ -241,14 +257,19 @@ break it catches. A "saved build" below is created through the API unless the ca
 - [ ] Wiring holds in the end state: `git grep -nE "router\.(replace|push)" -- components pages` finds every match in
       `pages/apps/aoe4-build-order.tsx`; `git grep -n "navigator.clipboard" -- components pages` finds every match in
       `save-build.tsx`; `git grep -n "/api/aoe4-build-order/builds" -- components pages/apps` finds every match in
-      `saved-build-loader.ts` and `save-build-client.ts`; `git grep -nE "api-route|builds-routes|build-store|blob-build-store|save-rate-limit" -- components pages/apps`
+      `saved-build-loader.ts` and `save-build-client.ts`; `git grep -nE "api-route|english-catalog|builds-routes|build-store|blob-build-store|save-rate-limit" -- components pages/apps`
       finds no match; `git grep -nE "from 'next|from 'react" -- components/apps/aoe4-build-order/saved-build-loader.ts components/apps/aoe4-build-order/save-build-client.ts`
       finds no match.
 - [ ] Bundle: after `npx next build`, `grep -rlF "unit_workshop_ram_3_eng" .next/static` (a string that appears only in
       `data/aoe4-build-order/aoe4world/english.json`; if a snapshot refresh removes it, use another snapshot-only
       string) lists no file, and the same string is still found under `.next/server`. The report records both
       results. Break caught: a client import that pulls the game data into the page.
-- [ ] Unit tests in Scope item 10 pass and each table has the rows listed there.
+- [ ] "an unchanged opened build re-saves to the same id": open `?b=<id>` of a build saved through the API at 1200 s
+      (the record's name is not a prebuilt name), wait for `current`, click Save without an edit: the builds POST body's
+      `buildOrder.name` equals the stored name (no ` (<id>)`), the response is 200, and `saved-build-link` ends with
+      `?b=<id>`. After an edit and a save, the saved name is `<stored name> (edited)`. Break caught: the select label
+      saved as the name, so every re-save gets a new id.
+- [ ] Unit tests in Scope item 11 pass and each table has the rows listed there.
 - [ ] "save, copy, open in a fresh context": on the default build, `save-build` is enabled once status is `current`.
       Clicking it posts one body whose `buildOrder.name` is the default build's name, whose `durationSeconds` is
       1200, and which `postBuild`'s schema accepts (201). `saved-build-link` is visible with value matching
@@ -338,22 +359,12 @@ break it catches. A "saved build" below is created through the API unless the ca
 
 ## Open questions
 
-- `designer` (non-blocking, with a pre-agreed fallback): the page client imports value exports from `saved-builds.ts`
-  (`isSavedBuildId`, `savedBuildSchema`), and SGS-103 makes `saved-builds.ts` import `api-route.ts`, which exports
-  `englishCatalog` and so imports `data.ts` (the snapshot JSON). The bundle criterion above tests whether the page
-  gets the game data. Recommended fix if it does: move `englishCatalog` out of `api-route.ts` into its own
-  `lib/aoe4-build-order/english-catalog.ts` (importers: `simulate.ts` and `builds/index.ts`), so `api-route.ts` and
-  `saved-builds.ts` hold no data import. This changes where one C7 name lives, so the designer should confirm it. The
-  implementer applies it only when the check fails and records it, and then `api-route.ts` exports six names, not
-  seven.
-- `designer` (non-blocking): the design says Save posts `name: pinName(builds, settled.text, settled.selected)`, and an
-  opened build is the option `<name> (<id>)`. So saving a build that was just opened, unchanged, posts the name `Fast
-  Castle (Zx3_k9-QaB0)`, which differs from the stored `Fast Castle`, so it gets a new id and reopens as `Fast Castle
-  (Zx3_k9-QaB0) (Aa1...)`. Editing a loaded build gives `Fast Castle (Zx3_k9-QaB0) (edited)`, and a loaded name near
-  the 100-character cap can push the save past `SAVED_NAME_MAX_CHARS` (a 400 shown as the save error). This ticket
-  follows the design as written. Decide whether Save should strip a trailing ` (<id>)` from a loaded option's name,
-  or keep the stored name for an unchanged loaded build.
-- `designer` (non-blocking): the design names `SaveBuild`, `loadSavedBuild` and `savedBuildOption` only. This ticket
-  adds `postSavedBuild` and `saveFailureMessage` in `components/apps/aoe4-build-order/save-build-client.ts` (so the
-  save call and its message table are unit-testable without a DOM) and the return shape of `loadSavedBuild`
-  (`ok`, `not-found`, `failed`). Confirm the names, or move them into the files the design lists.
+None.
+
+## Re-spec 2026-11-09
+
+- Underspecified: the bundle fallback, the loaded-build name drift and the unconfirmed module names were open questions.
+- Changed: `englishCatalog` is in server-only `english-catalog.ts` (bundle criterion has no fallback); `PrebuiltBuild.buildName`,
+  `savedBuildName` in `pin-name.ts` and Save posting it (new item 3, `pin-name.test.ts`, unchanged re-save criterion);
+  names `postSavedBuild`, `saveFailureMessage`, `loadSavedBuild` results confirmed; open questions deleted.
+- Stands: no branch work existed. Scope items after 2 are renumbered by one.
