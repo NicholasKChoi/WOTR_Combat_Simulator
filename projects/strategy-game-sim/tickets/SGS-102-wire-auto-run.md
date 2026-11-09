@@ -34,6 +34,8 @@ described as SGS-100 ends, not as `main` reads today.
 **New `components/apps/aoe4-build-order/use-auto-run.ts`:**
 
 - `useAutoRun(args: { text: string; duration: string; selected: string; catalog: BuildOrderCatalog; hold: boolean }): AutoRunState & { flush(live?: LiveInput): void; retry(): void }`.
+- The controller is created in an effect (not during render), so a client-side navigation with `router.isReady` already
+  true cannot post during render.
 - It builds `AutoRunDeps` as `{ catalog, post: (request, signal) => postSimulation(request.buildOrder, request.inputs?.durationSeconds ?? 0, signal) }`
   (`inputs.durationSeconds` is always set by the controller; the adapter is this ticket's, as SGS-100 left it).
 - One controller per mounted page: created from the first render's `{ text, duration, selected }` and `hold`;
@@ -76,9 +78,11 @@ described as SGS-100 ends, not as `main` reads today.
 - Tabs: initial tab `build`; nothing sets `tab` from a run. `resultsEnabled = result !== null || pin !== null`
   (unchanged), `shownTab = resultsEnabled ? tab : 'build'`, `viewDisabled = shownTab === 'results'` (unchanged).
   A status alone never enables Results. Tabs stay at every width (the split layout is a later ticket).
-- Select change: `setSelected(name)`, set the text to the build's text, then
-  `flush({ text: build.text, duration, selected: name })` with the page's current `duration`. Enter in the duration
-  field (the form `onSubmit`, which still calls `preventDefault`): `flush()`.
+- Select change: `BuildInput`'s `onSelectedChange` and `onTextChange` pair is replaced by one prop
+  `onBuildSelect: (name: string) => void`; `selectBuild` calls only it. The page's handler does all three steps:
+  `setSelected(name)`, set the text to the build's text, then `flush({ text: build.text, duration, selected: name })`
+  with the page's current `duration`. Enter in the duration field (the form `onSubmit`, which still calls
+  `preventDefault`): `flush()`.
 - The pin restore effect stays as it is except that `postSimulation` is the one from `simulate-client.ts`
   (SGS-100). It calls it without a signal.
 - Build panel: `IssueList` with the settled conversion issues; when status is `rejected`, with `serverIssues` and
@@ -91,7 +95,8 @@ described as SGS-100 ends, not as `main` reads today.
 
 **Edit `components/apps/aoe4-build-order/build-input.tsx`:**
 
-- Remove the `run-simulation` button, `running` and `onRun`. Add props for the status
+- Remove the `run-simulation` button, `running` and `onRun`, and replace `onSelectedChange` and `onTextChange` with
+  `onBuildSelect` (see Select change on the page). Add props for the status
   (`status: AutoRunStatus`, `hasResult: boolean`), `durationError: string | null` and a submit handler
   (`onSubmit`, called after `preventDefault`).
 - Render `auto-run-status` once, inside the run bar: `id="auto-run-status"`, `data-testid="auto-run-status"`,
@@ -108,8 +113,9 @@ The `results-stale` alert is removed.
 
 **Edit `components/apps/aoe4-build-order/issue-list.tsx`:** the `rejected` prop is removed and the summary
 `Fix N issues to run the simulation.` (`Fix 1 issue to run the simulation.` for one) is always shown above the list.
-New optional prop `omittedIssues?: number`; when it is greater than 0 the list ends with one more item reading
-`N more issues not shown.`
+New optional prop `omittedIssues?: number`; when it is greater than 0 the list ends with one more `<li>` reading
+`N more issues not shown.` with `data-testid="build-order-issues-omitted"` (not `build-order-issue`, so per-issue
+counts stay the listed issues). The `Fix N issues` summary's N counts the listed issues only, not the omitted ones.
 
 **Edit `components/apps/aoe4-build-order/workbench.module.css`:** `.stale` is replaced by a dim class whose computed
 `opacity` is 0.5 or less, with no `transition` on opacity (so a test reads the final value at once). The `.issues`
@@ -148,8 +154,9 @@ gather-rates-per-villager). Rules, so a spec added meanwhile is covered:
    `window.scrollY` is unchanged after an edit's run completes.
 
 **New `acceptance/aoe4-auto-run.spec.ts`** with the cases in the acceptance criteria. Failure responses are made with
-`page.route` fulfilling the simulate path. Tests whose point is the timer (Enter and select skip it) use Playwright's
-paused clock so the 500 ms timer cannot elapse by itself.
+`page.route` fulfilling the simulate path. Tests whose point is the timer (Enter and select skip it; the "not `running` before the pause ends"
+assertion) use Playwright's paused clock so the 500 ms timer cannot elapse by itself. A response a test holds with
+`page.route` is fulfilled, continued or aborted at the end of that test so no request leaks into the next one.
 
 **Spear/longbow spec fold-in.** The hard-coded `MAN_AT_ARMS_STEP` in
 `acceptance/aoe4-simulate-api-spear-longbow-build.spec.ts` no longer exists on `main` (the tests that used it were
@@ -218,24 +225,24 @@ flowchart LR
 Specs below are Playwright in the named files; each states the break it catches. Wording of exact messages is as in
 Scope. Unless a case says otherwise it runs at the default viewport with a fresh browser context (no stored pin).
 
-- [ ] Wiring and removals hold in the end state: `git grep -nE "run-simulation|results-stale|runSimulation|runRejected" -- acceptance components pages docs` finds no match; `git grep -nE "scrollIntoView|scrollMarginTop" -- components pages` finds no match (specs may still scroll elements themselves); `git grep -niE "stale" -- components pages` finds no match; `git grep -nE "errorMessages" -- pages components` finds no match; `git grep -n "postSimulation" -- pages components` matches only in `simulate-client.ts`, `use-auto-run.ts`, `simulate-client.test.ts` and `pages/apps/aoe4-build-order.tsx`; `git grep -nE "\bRun\b([^-]|$)" -- docs/aoe4-build-order.md` finds no match (the "Run-out" sections stay).
+- [ ] Wiring and removals hold in the end state: `git grep -nE "run-simulation|results-stale|runSimulation|runRejected" -- acceptance components pages docs` finds no match; `git grep -nE "scrollIntoView|scrollMarginTop" -- components pages` finds no match (specs may still scroll elements themselves); `git grep -nE "results-stale|\.stale|stale=" -- components pages` finds no match (the word in SGS-100's controller comments about a dropped response is allowed); `git grep -nE "errorMessages" -- pages components` finds no match; the page defines no local `postSimulation` (`git grep -nE "function postSimulation|const postSimulation" -- pages` finds no match) and `git grep -n "fetch(" -- components/apps/aoe4-build-order` matches only in `simulate-client.ts` (respec 2); `git grep -nE "\bRun\b([^-]|$)" -- docs/aoe4-build-order.md` finds no match (the "Run-out" sections stay).
 - [ ] `autoRunStatusMessage` table test (`auto-run-status.test.ts`) pins every row of the Scope table. Break caught: a changed or missing message, `hasResult` ignored for `invalid` or `rejected`.
 - [ ] `issue-list.test.ts`: the summary is shown with no prop for 1 and 2 issues with the exact texts above; `omittedIssues: 3` ends the list with `3 more issues not shown.`; `omittedIssues: 0` and an absent prop add no item. Break caught: summary still gated by a prop, the omitted line missing or shown for 0.
-- [ ] `aoe4-auto-run.spec.ts` "no Run control": the page has no button named Run (`getByRole('button', { name: /run/i })` has count 0) and `auto-run-status` is inside `run-bar`. Break caught: Run left in place.
+- [ ] `aoe4-auto-run.spec.ts` "no Run control": `getByTestId('run-simulation')` has count 0, `getByRole('button', { name: /^run\b/i })` has count 0 (the kept `pin-run` button reads `Pin this run` and is not matched), and `auto-run-status` is inside `run-bar` (respec 2). Break caught: Run left in place.
 - [ ] "first load runs once": a fresh load of the default build sends exactly one simulate POST, its body is `{ buildOrder, inputs: { durationSeconds: 1200 } }` with the default build's `buildOrder` (`buildOrderFrom` of the textarea value), and `auto-run-status` ends `current`; `tab-build` stays selected and `tab-results` is enabled. Break caught: hold released before `router.isReady`, a second POST from the hook, the run selecting Results.
-- [ ] "one POST per settled text edit": two `fill`s of the textarea back to back send one POST for the last text after `AUTO_RUN_DEBOUNCE_MS`, with a `buildOrder` equal to `buildOrderFrom(text)`; while the second wait is under 500 ms the status is not `running` and the issues list still shows the previous settled text's issues. Break caught: leading-edge or non-restarting debounce.
+- [ ] "one POST per settled text edit": two `fill`s of the textarea back to back send one POST for the last text after `AUTO_RUN_DEBOUNCE_MS`, with a `buildOrder` equal to `buildOrderFrom(text)`; with the paused clock advanced to just under `AUTO_RUN_DEBOUNCE_MS` the status is not `running` and the issues list still shows the previous settled text's issues (respec 2). Break caught: leading-edge or non-restarting debounce.
 - [ ] "one POST per step-table and duration edit": a `step-add` click in the table view sends one POST whose `buildOrder.steps` has one more step; setting `duration-seconds` to 900 sends one POST with `inputs.durationSeconds` 900. Break caught: a table or duration edit that does not re-run, or runs twice.
 - [ ] "an undo inside the debounce sends nothing": filling different valid text then the original text within the debounce window sends no POST (`expectNoRun`) and ends `current`; a comment-only edit (`# note` line) sends none and ends `current`. Break caught: re-posting an unchanged request.
 - [ ] "Enter and build select skip the pause": with the clock paused so the timer cannot fire, a valid new duration then Enter in the field sends a POST, and choosing another prebuilt build sends a POST whose `buildOrder` equals that build's, and pinning that run then reads `Pinned: <that build's name>, <m:ss>`. Break caught: Enter navigating or waiting the debounce; select flushing with the old text or the old `selected`.
 - [ ] "an invalid text edit dims the charts": after a valid run, text with an unknown id leaves `auto-run-status` `data-status` `invalid` with `The charts show the last valid build.`, `build-order-issues` visible with the `Fix 1 issue to run the simulation.` summary, `results-last-good` still visible with computed `opacity` of 0.5 or less, no POST (`expectNoRun`), and `tab-results` still enabled; restoring the earlier text returns to `current`, full computed opacity, and no POST. Break caught: charts removed, no dim, posting invalid text, a re-post on restore.
-- [ ] "a first invalid load state has no target": with an invalid text from the start (filled before the first settle, with the first response held by `page.route`), the status says `No valid build to simulate yet.` once no result exists and neither `results-last-good` nor any chart is rendered. Break caught: an empty dimmed wrapper or a chart without data.
+- [ ] "a first invalid load state has no target": with an invalid text from the start (filled before the first settle, with the first response held by `page.route` and released at the end of the test), the status says `No valid build to simulate yet.` once no result exists and neither `results-last-good` nor any chart is rendered. Break caught: an empty dimmed wrapper or a chart without data.
 - [ ] "an invalid duration": `59`, `3601`, `61.5` each give `duration-error` with `Duration must be a whole number of seconds from 60 to 3600.`, `aria-invalid="true"` and `aria-describedby="duration-error"` on `duration-seconds`, status `invalid`, the charts dimmed, and no POST; an emptied field gives `Duration is required.`; a valid value afterwards removes `duration-error` and both attributes. Break caught: an out-of-range request reaching the route, an error with no attribute.
 - [ ] "a 400 keeps the last result": a `page.route`-fulfilled 400 with `{ error, issues: [one issue], omittedIssues: 2 }` for the next request gives status `rejected` with the issue's message and `2 more issues not shown.` under the editor, the charts dimmed, no automatic second POST, and settling to a different valid input posts again and ends `current` with the issues gone. Break caught: removing the charts on a 400, retrying a known 400.
 - [ ] "a failure shows a retry": a route-fulfilled 500 gives status `failed`, `simulation-error` reading `The simulation could not be run (HTTP 500).`, `simulation-retry` reading `Try again`, the charts dimmed; a request that the route aborts with a network error gives `The simulation could not be run. Please try again.`; clicking `simulation-retry` (route now continuing) sends one POST and ends `current` with `simulation-error` and `simulation-retry` gone. Break caught: failure leaving the in-flight key set so a retry is a no-op, retry rendered outside `failed`.
 - [ ] "a superseded request is aborted and its response never shows": the first POST is held by `page.route`; an edit then sends a second POST; the second completes and the status is `current`; the first request ends as aborted (`requestfailed`), and after the first is released the shown result is still the second's (pin it and read `pinned-label`: `Pinned: <name>, <m:ss>` of the second duration). Break caught: a late response overwriting the newer one.
 - [ ] "the page never scrolls by itself": at 390 px wide, after scrolling the page to a non-zero `window.scrollY`, an edit that produces a run (and one that produces an invalid state) leaves `window.scrollY` unchanged and the selected tab `build`. Break caught: a surviving scroll effect.
-- [ ] The rewritten specs: every spec listed by the Scope grep passes with `npm run acceptance`, uses `waitForRun` or `expectNoRun` where it used `runSimulation` or `runRejected`, and its three `results-stale` assertions (and any added since) are the dimmed-plus-status assertions of rule 3. The report lists each edited spec, the rule applied, and any test removed (with the reason it can no longer hold).
-- [ ] The small-screen spec asserts that no run scrolls the page, in place of "a run scrolls the results heading into view".
+- [ ] The rewritten specs: every spec listed by the Scope grep passes with `npm run acceptance`, uses `waitForRun` or `expectNoRun` where it used `runSimulation` or `runRejected`, and every `results-stale` assertion is the dimmed-plus-status assertions of rule 3. The report lists each edited spec, the rule applied, and any test removed (with the reason it can no longer hold).
+- [ ] The small-screen spec asserts that no run scrolls the page, in place of "a run scrolls the results heading into view"; its test "stays sticky at the top and offsets the results scroll by its height" (which reads `scrollMarginTop`, code this ticket deletes) is rewritten to check only that the run bar stays sticky, or removed with the reason, and is named in the report's edited-spec list (respec 2).
 - [ ] `docs/aoe4-build-order.md` states every item listed under Scope "Docs"; it quotes the status texts, the two duration messages, `Try again` and the summary text exactly as in Scope and contains no measured timing.
 - [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` pass; `npx next build` succeeds (the page prerenders with `hold` true and sends no request). The implementer records the commands and the test counts in the report.
 - [ ] No INVARIANTS.md regressions
@@ -243,3 +250,9 @@ Scope. Unless a case says otherwise it runs at the default viewport with a fresh
 ## Open questions
 
 None.
+
+## Re-spec 2026-11-09 (2)
+
+- Underspecified: the Run-control and grep criteria (would fail on a correct build or on SGS-100's files), the select seam, the omitted-issues item's test id.
+- Changed: those criteria narrowed or turned into rules; `onBuildSelect` pinned; `build-order-issues-omitted` and the summary count rule added; paused clock, held-route release, effect-created controller and the small-screen scroll-margin test named.
+- Standing: no branch work yet.

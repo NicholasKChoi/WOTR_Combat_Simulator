@@ -47,9 +47,13 @@ Names below from SGS-102 (acceptance helpers `waitForRun` and `expectNoRun`; `op
   panel has `hidden` or `role="tabpanel"` or `aria-labelledby`; both keep their `id` and `data-testid`. `active` and
   `onSelect` are not used and nothing calls `focus()`. Column proportions are equal (`minmax(0, 1fr)` each) so a
   wide child never widens its column; the results column scrolls with the page (no own scroll, no sticky).
-- The panels' content is the same React elements in both modes; the switch must not unmount the editor, step
-  table or charts' state beyond what remounting under a changed parent costs (the page keeps `text`, open rows,
-  pin and view in its own state).
+- Tree rule (respec 1): `WorkbenchTabs` renders one stable wrapper in both modes,
+  `<div className={split ? styles.workbenchSplit : undefined}>` (`data-testid="workbench-split"` only while split),
+  with the tablist rendered conditionally as the first child and `panel-build` then `panel-results` at fixed
+  positions whose element type and key do not change with `split` (the conditional tablist renders `false`, not a
+  fragment, so child positions are stable). The wrapper has no grid class in tabs mode. Nothing in the build or results
+  panels remounts on a layout switch: the editor textarea keeps focus and value, the step table keeps its draft cell
+  state, and the charts keep their state.
 
 **Edit `pages/apps/aoe4-build-order.tsx`:**
 
@@ -73,6 +77,7 @@ Names below from SGS-102 (acceptance helpers `waitForRun` and `expectNoRun`; `op
 **Acceptance helpers (`acceptance/helpers.ts`)** (edited by this ticket; SGS-102 changed `openPage` and removed
 `runSimulation`/`runRejected` in the same file):
 
+- `CHART_IDS` is already exported from this file on `main`; the new spec imports it (respec 3), no copy is declared.
 - Export `SPLIT_MIN_WIDTH = 1200`, `TABS_VIEWPORT = { width: 1024, height: 768 }` and
   `SPLIT_VIEWPORT = { width: 1280, height: 800 }` (inputs, not computed values).
 - `showTab(page, tab)` becomes split-aware: when `page.viewportSize()` is at least `SPLIT_MIN_WIDTH` wide it clicks
@@ -97,8 +102,9 @@ timeline-compare; SGS-098 and SGS-102 change the count, so apply these rules rat
    wrapped run bar, no sideways scroll) are unchanged. The 1024 describe (timeline stacked) is unchanged.
 4. A test that already pins a viewport below 1200 px is unchanged. A test at 1280 whose assertion is about a box
    inside the results column (for example the compare table fitting its box in `aoe4-narrow-layout.spec.ts`) keeps
-   its expected value; if it fails because the column is now half the page, the implementer reports it as a
-   finding and does not loosen it.
+   its expected value; if it fails because the column is now half the page, the spec moves to the 1800 px `WIDE`
+   viewport (`test.use`, narrowest scope) with its expected value unchanged, and the implementer lists the move as a
+   finding in the report (respec 4). `npm run acceptance` must pass, so no spec is left failing or loosened.
 5. The implementer lists every spec and test it edits, with the rule number, in the report.
 
 **New `acceptance/aoe4-split-layout.spec.ts`** with the cases in the acceptance criteria (the split cases, the
@@ -141,23 +147,29 @@ the break it catches. Viewports are inputs; layout is read in one `page.evaluate
 - [ ] "split at 1280": at `SPLIT_VIEWPORT`, after the first run, `workbench-tabs` and both `tab-*` have count 0,
   `panel-build` and `panel-results` are both visible, neither has the `hidden` attribute or `role="tabpanel"`,
   `panel-build` is left of `panel-results` (right edge of the first at or before the left edge of the second, read in
-  one evaluate), the editor textarea and the `results-last-good` heading area are inside the viewport together, and
+  one evaluate), the `getBoundingClientRect()` of the editor textarea and of `results-last-good` each lie inside the viewport (`top >= 0`,
+  `bottom <= innerHeight`, `left >= 0`, `right <= innerWidth`) right after the run with no scroll (if the
+  `results-last-good` rect is too tall to fit, assert its top edge only and say so in the report), and
   `document.documentElement.scrollWidth` is at most 1280. Break caught: a tablist left in split, a panel `hidden`,
   columns stacked.
 - [ ] "tabs at 390": at 390 px wide the tablist is present, `tab-build` is selected, `panel-results` is not visible,
   `document.documentElement.scrollWidth` is at most 390 with Build shown and again with Results shown. Break caught:
   split rules leaking below 1200 px.
-- [ ] "the breakpoint is 1200 px": at width 1199 `workbench-tabs` has count 1; at 1200 it has count 0 (after the
-  load settles, `auto-run-status` `current`). Break caught: a query that drifted from the 1200 px in the design, a
+- [ ] "the breakpoint is 1200 px": at viewport width 1199 (as set by `setViewportSize`; poll, do not read once)
+  `workbench-tabs` has count 1; at 1200 it has count 0 (after the load settles, `auto-run-status` `current`), and at
+  1200 `document.documentElement.scrollWidth` is at most 1200 (no child widens the half-width column). Break caught: a query that drifted from the 1200 px in the design, a
   helper constant out of step with the query.
 - [ ] "the layout switches live": starting at `SPLIT_VIEWPORT`, resizing to `TABS_VIEWPORT` shows the tablist with
   `tab-build` selected and `panel-results` not visible; selecting Results, resizing to `SPLIT_VIEWPORT` shows both
   panels and no tablist; resizing back to `TABS_VIEWPORT` shows `tab-results` selected and `panel-results` visible
   (the selected tab was kept). The simulate POST count does not change across the resizes (`expectNoRun`). Break
   caught: a reset tab on resize, a re-run on layout change, a layout that needs a reload.
-- [ ] "resize keeps focus and text": with the cursor in the duration field (or the editor) at `SPLIT_VIEWPORT`,
-  resizing to `TABS_VIEWPORT` and back leaves `document.activeElement` the same field and its value and the editor
-  text unchanged. Break caught: remounting the build panel's inputs or moving focus.
+- [ ] "resize keeps focus and state" (respec 1): at `SPLIT_VIEWPORT` with focus in the editor textarea (the duration
+  field is in the run bar outside `WorkbenchTabs` and proves nothing), resizing to `TABS_VIEWPORT`, then to
+  `SPLIT_VIEWPORT`, then to `TABS_VIEWPORT` leaves `document.activeElement` the editor textarea with its value
+  unchanged; an open step-table row with an uncommitted draft cell value keeps both, and the chart state (pin) is
+  unchanged, across the same round trip. Break caught: a parent element or child position that changes with `split`
+  and remounts the panels.
 - [ ] "the view toggle is never disabled by the tab in split": at `TABS_VIEWPORT` with Results selected,
   `editor-view-text` and `editor-view-table` are disabled; after resizing to `SPLIT_VIEWPORT` both are enabled and
   switching to Table shows the step table beside the visible results; after resizing back they are disabled again.
@@ -192,3 +204,9 @@ the break it catches. Viewports are inputs; layout is read in one `page.evaluate
 ## Open questions
 
 None.
+
+## Re-spec 2026-11-09
+
+- Underspecified: the WorkbenchTabs tree (remount hedge vs. the focus criterion), the 1280 viewport observable, the `CHART_IDS` source (already exported from `acceptance/helpers.ts` on main, so Scope now says import it), and the rule 4 end state.
+- Changed: one stable wrapper with fixed child positions; rect bounds; boundary check at 1200 for scrollWidth; rule 4 moves the spec to the 1800 px viewport and reports it.
+- Stands: no code exists for this ticket yet; nothing on a branch to preserve.
