@@ -19,38 +19,6 @@ pull from here; triage moves an item into a milestone or deletes it.
   the engine rejects it; (3) crosscut-saw's +5 wood carry is not modeled (SGS-014 known data gap); (4) Blacksmith
   techs are combat-only, so by the v1 coverage decision they cost resources and queue time but their effects are
   ignored. Decide whether a follow-up adds overlay rows for (2)-(3).
-- **AoE4 workbench: auto-simulate on edit, results beside the editor (owner, 2026-11-05).** Replace the Run button flow in
-  `pages/apps/aoe4-build-order.tsx` with an auto-run: each edit to the text (or the step table, or the duration) restarts
-  a debounce timer (start near 500 ms), and when it fires the page POSTs to `/api/aoe4-build-order/simulate`. Frontend
-  validation gates the POST: only send when `textToBuildOrder(text, catalog)` is ok and the duration is valid
-  (the page already computes `converted` client-side); an invalid build shows its client issues inline and sends nothing.
-  Also skip the POST when the text and duration equal the last run, cancel the in-flight request (AbortController) when a
-  newer one starts, and ignore an older response that lands after a newer one. Layout: the Build/Results tabs become a
-  side-by-side split (editor left, charts right) at desktop widths; under a breakpoint keep the stacked/tabbed layout so the
-  page still fits 390 px (#81). Revisit what auto-run makes obsolete or annoying: the `stale` indicator, the
-  `resultsShownCount` scroll-into-view and the `rejection` scroll (both would jump the page while typing), the run bar,
-  and whether the last good chart stays visible (dimmed) while the current text is invalid. Measured cost on main ee7ecb9
-  (local, node): client validation about 1 ms, server simulate 10-18 ms for the three shipped builds, response 39-49 KB;
-  a round trip is network-bound, so the debounce, not the server, sets the felt latency. Acceptance specs that click Run
-  need rewriting.
-- **AoE4 workbench: save a build on the server and open it by link (owner, 2026-11-05).** Goal: an agent (or a
-  person) saves a build and hands over a link, so the owner sees the charts in the browser instead of screenshots or
-  a file on disk. Saved builds are immutable: `POST /api/aoe4-build-order/builds` validates with the shared zod build
-  schema, stores it under a short id and returns the id; `GET .../builds/<id>` returns it; the page loads
-  `/apps/aoe4-build-order?b=<id>`. No accounts. Needs a size cap, basic rate limiting, OpenAPI entries.
-  Storage: Vercel Blob store `aoe4-simulator-builds` (private, iad1), already created and connected to Production and
-  Preview only (not Development) with env prefix `BUILDS_`, so the id is `BUILDS_STORE_ID` (the code passes it, not the
-  SDK default `BLOB_STORE_ID`); `BUILDS_WEBHOOK_PUBLIC_KEY` is unused. Behind a two-method storage interface: a local
-  stand-in (memory or a gitignored dir) is the default for `next dev`, unit and Playwright; the Blob adapter is used
-  only when `BUILDS_STORE_ID` is set. Keys are prefixed by `VERCEL_ENV` (preview/ vs production/) since both share the
-  store. Validation of the real store is on the PR's preview deploy, not locally: `npm run smoke:preview -- <url>`
-  saves, reads back, opens `?b=<id>`, deletes (through `vercel curl` or a protection-bypass token). Dependency:
-  `@vercel/blob` ^2.8.2 pulls `@vercel/oidc` -> `@vercel/cli-config` -> zod 4.1.11 (npm audit: 4 high, one zod
-  memory advisory <4.6.6); add a package.json `overrides` pinning that zod to ^4.6.6, never `npm audit fix --force`
-  (downgrades blob to 2.4.0). Supersedes a "build link in the URL" and a dev-only "live scratch file" idea.
-
-
-- **M6 follow-up (deferred from SGS-096, owner Q13 A, 2026-11-06):** add a Playwright spec that resizes the window while the Results tab is hidden (charts may render at width 0), run at the narrow widths where the stacked tabs remain (M6.2). Source: SGS-096.
 
 - AoE4 acceptance coverage removed by SGS-098 (owner chose deletion over re-pin, Q14): pinned timelines and bank values (prebuilt English build, house lead time, spend/population, depletion-engine vs pre-depletion engine), veterancy-conversion counts, the contract 200-body example, edges result-shape, markers at a truncated horizon, triggers infinite-node timings, the house-warnings knight/longbow held warning, spear/longbow men-at-arms timing and 1200 s gold. Uncovered at acceptance level; unit pins are current. Source: reports/SGS-098-ticket-1.md.
 - acceptance/aoe4-small-screen.spec.ts:42 "run bar at 360x760 ... scrolls the results heading into view" failed once in a full npm run acceptance (1/734), passed 5/5 alone and on a second full run; likely load flake. (SGS-095 implementer-2)
