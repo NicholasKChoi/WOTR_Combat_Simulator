@@ -17,3 +17,6 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-101 | Build store seam, Blob adapter, save rate limit | M6 | M6.4,M6.6 | | high | SGS-099 | | | | draft | | | tickets/SGS-101-build-store-and-rate-limit.md |
 | SGS-102 | Wire auto-run into the page | M6 | M6.1,M6.3,M6.9 | | high | SGS-100 | | | | draft | | | tickets/SGS-102-wire-auto-run.md |
 | SGS-104 | Split layout at 1200 px and resize-while-hidden spec | M6 | M6.2,M6.9 | | standard | SGS-102 | | | | draft | | | tickets/SGS-104-split-layout.md |
+| SGS-103 | Builds API routes, OpenAPI 2.4.0 and contract check | M6 | M6.4 | | standard | SGS-099,SGS-101 | | | | draft | | | tickets/SGS-103-builds-api-routes.md |
+| SGS-105 | Save button, copyable link and ?b= load | M6 | M6.5,M6.9 | | standard | SGS-103,SGS-102 | | | | draft | | | tickets/SGS-105-save-and-open-by-link.md |
+| SGS-106 | smoke:preview script and agent how-to | M6 | M6.7,M6.9 | | standard | SGS-103,SGS-105 | | | | draft | | | tickets/SGS-106-smoke-preview-and-agent-howto.md |
