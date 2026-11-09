@@ -101,10 +101,12 @@ timeline-compare; SGS-098 and SGS-102 change the count, so apply these rules rat
    sits beside the charts from 1800 px; its assertions (timeline left of the charts, stays below the run bar,
    wrapped run bar, no sideways scroll) are unchanged. The 1024 describe (timeline stacked) is unchanged.
 4. A test that already pins a viewport below 1200 px is unchanged. A test at 1280 whose assertion is about a box
-   inside the results column (for example the compare table fitting its box in `aoe4-narrow-layout.spec.ts`) keeps
+   inside either column (respec 3: the results column, for example the compare table fitting its box in
+   `aoe4-narrow-layout.spec.ts`, or the Build column, for example editor, issues and step-table assertions in the
+   inline-issues, step-table, step-band and chart-readability specs; at 1280 each column is half the page) keeps
    its expected value; if it fails because the column is now half the page, the spec moves to the 1800 px `WIDE`
-   viewport (`test.use`, narrowest scope) with its expected value unchanged, and the implementer lists the move as a
-   finding in the report (respec 4). `npm run acceptance` must pass, so no spec is left failing or loosened.
+   viewport (`test.use` or the spec's viewport constant, narrowest scope) with its expected value unchanged, and the
+   implementer lists the move as a finding in the report (respec 4). `npm run acceptance` must pass, so no spec is left failing or loosened.
 5. The implementer lists every spec and test it edits, with the rule number, in the report.
 
 **New `acceptance/aoe4-split-layout.spec.ts`** with the cases in the acceptance criteria (the split cases, the
@@ -164,12 +166,14 @@ the break it catches. Viewports are inputs; layout is read in one `page.evaluate
   panels and no tablist; resizing back to `TABS_VIEWPORT` shows `tab-results` selected and `panel-results` visible
   (the selected tab was kept). The simulate POST count does not change across the resizes (`expectNoRun`). Break
   caught: a reset tab on resize, a re-run on layout change, a layout that needs a reload.
-- [ ] "resize keeps focus and state" (respec 1): at `SPLIT_VIEWPORT` with focus in the editor textarea (the duration
-  field is in the run bar outside `WorkbenchTabs` and proves nothing), resizing to `TABS_VIEWPORT`, then to
-  `SPLIT_VIEWPORT`, then to `TABS_VIEWPORT` leaves `document.activeElement` the editor textarea with its value
-  unchanged; an open step-table row with an uncommitted draft cell value keeps both, and the chart state (pin) is
-  unchanged, across the same round trip. Break caught: a parent element or child position that changes with `split`
-  and remounts the panels.
+- [ ] "resize keeps focus and state" (respec 1, respec 3): only one editor view is mounted at a time, so this runs
+  as two round trips (two tests, or one test run twice), each `TABS_VIEWPORT` -> `SPLIT_VIEWPORT` -> `TABS_VIEWPORT`
+  (starting at `SPLIT_VIEWPORT` and resizing as in "the layout switches live" is also fine). (a) Text view: with
+  focus in the editor textarea (the duration field is in the run bar outside `WorkbenchTabs` and proves nothing),
+  after the round trip `document.activeElement` is the editor textarea and its value is unchanged. (b) Table view:
+  an open step-table row with an uncommitted draft cell value keeps both across the round trip. In both, the chart
+  state (pin) is unchanged. Break caught: a parent element or child position that changes with `split` and remounts
+  the panels.
 - [ ] "the view toggle is never disabled by the tab in split": at `TABS_VIEWPORT` with Results selected,
   `editor-view-text` and `editor-view-table` are disabled; after resizing to `SPLIT_VIEWPORT` both are enabled and
   switching to Table shows the step table beside the visible results; after resizing back they are disabled again.
@@ -210,3 +214,9 @@ None.
 - Underspecified: the WorkbenchTabs tree (remount hedge vs. the focus criterion), the 1280 viewport observable, the `CHART_IDS` source (already exported from `acceptance/helpers.ts` on main, so Scope now says import it), and the rule 4 end state.
 - Changed: one stable wrapper with fixed child positions; rect bounds; boundary check at 1200 for scrollWidth; rule 4 moves the spec to the 1800 px viewport and reports it.
 - Stands: no code exists for this ticket yet; nothing on a branch to preserve.
+
+## Re-spec 2026-11-09 (3)
+
+- Underspecified: rule 4 named only the results column, though at 1280 the Build column is half width too; and the focus-and-state criterion needs the text view and the table view, only one of which is mounted.
+- Changed: rule 4 covers a box inside either column (same remedy: move to WIDE, list as a finding); the criterion runs as two round trips, text view and table view.
+- Stands: everything else in the ticket; no code exists yet.

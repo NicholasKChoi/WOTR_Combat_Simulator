@@ -44,14 +44,17 @@ it whenever `env !== 'production'`). SGS-105 gives the page `/apps/aoe4-build-or
 1. **New `scripts/smoke-preview.mjs`** (the repo's first `scripts/` file; plain ES module, no `tsx`, no new
    dependency; it imports `chromium` from `@playwright/test`, already a devDependency). Usage
    `node scripts/smoke-preview.mjs <url>`. `<url>` is the deployment origin (a trailing slash is ignored). A
-   usage error prints `usage: npm run smoke:preview -- <url>` and exits 2 before any request; a usage error is
+   usage error prints `usage: npm run smoke:preview -- <url>` to stderr (nothing on stdout) and exits 2 before any request; a usage error is
    a missing or unparsable `<url>`, or a URL whose protocol is not `http:` or `https:`. Every request is built from the parsed origin, so the script never follows the page to another
    host for its API calls.
    - **auth.** Read `process.env.VERCEL_AUTOMATION_BYPASS_SECRET`. When it is set and non-empty, send the
-     header `x-vercel-protection-bypass: <secret>` on every `fetch` and in `extraHTTPHeaders` of the browser
-     context. The secret is never written to stdout, stderr, a thrown message, or a URL; the script logs no
+     header `x-vercel-protection-bypass: <secret>` on every `fetch` and on every browser request to the
+     deployment origin. In the browser the header is added with `context.route('**/*', ...)` (or an equivalent
+     check) only when the request's origin equals the parsed deployment origin; it is never set context-wide
+     through `extraHTTPHeaders`, so a request to any other origin (a CDN font or script) carries no
+     `x-vercel-protection-bypass` header. The secret is never written to stdout, stderr, a thrown message, or a URL; the script logs no
      request headers. When it is unset, try anyway; if the first response (step 1's POST) is 401 or 403, print
-     `set VERCEL_AUTOMATION_BYPASS_SECRET` and exit 2 (nothing was saved, so nothing is deleted). When it is set
+     `set VERCEL_AUTOMATION_BYPASS_SECRET` to stderr (nothing on stdout) and exit 2 (nothing was saved, so nothing is deleted). When it is set
      and the response is 401 or 403, the step fails like any other status (exit 1), not exit 2.
    - **Steps run in order and stop at the first failure.** Each step prints exactly one line: `PASS <step>` or
      `FAIL <step>: <reason>`. The step names are `save`, `read back`, `open` and `delete`. A `PASS` line may add
@@ -67,7 +70,12 @@ it whenever `env !== 'production'`). SGS-105 gives the page `/apps/aoe4-build-or
      `error` text when the body is JSON with a string `error`).
    - **2 read back.** `GET <origin>/api/aoe4-build-order/builds/<id>`. Status 200 and `body.buildOrder` and
      `body.durationSeconds` deep-equal what was sent (compare by value, key order ignored; use
-     `node:util` `isDeepStrictEqual` or `node:assert` `deepStrictEqual`).
+     `node:util` `isDeepStrictEqual` or `node:assert` `deepStrictEqual`). The compared value is the GET body's
+     `buildOrder`, which is what the store holds after the route's zod parse (`buildOrderShape`), against the
+     parsed `english-1tc.json` as sent; the script imports no schema. The local verification run confirms that
+     `english-1tc.json` comes back equal (no field stripped or defaulted). If a field differs, the implementer
+     does not weaken the compare or import `lib/`; the report names the differing key and the ticket goes back
+     for a decision.
    - **3 open.** Playwright Chromium (`chromium.launch()`, one context with the bypass header when set) opens
      `<origin>/apps/aoe4-build-order?b=<id>`. Within 30 seconds in total, (a) the select
      `build-order-select` has a selected option whose text contains `(<id>)`, (b) `auto-run-status` has
@@ -158,23 +166,25 @@ flowchart LR
 Spec cases (all in `acceptance/smoke-preview.spec.ts`; each asserts the exit code, the exact stdout lines and the
 recorded stub requests):
 
-- [ ] "all steps pass": the stub accepts the save with 201. Exit code 0; stdout is, in order, one `PASS save: 201 <id>` line, then `PASS read back`, `PASS open`, `PASS delete`, and no `FAIL` line. The stub's request log is, in order, POST builds, GET builds/id, the page request, DELETE builds/id, GET builds/id. The POST body deep-equals `{ buildOrder: <the parsed english-1tc.json>, durationSeconds: 1200 }`. Break caught: a step skipped or reordered, a wrong fixture or duration.
+- [ ] "all steps pass": the stub accepts the save with 201. Exit code 0; stdout is, in order, one `PASS save: 201 <id>` line, then `PASS read back`, `PASS open`, `PASS delete`, and no `FAIL` line. The stub's request log, with any `/favicon.ico` request ignored (the spec filters it out before comparing, since headless Chromium may fetch it), is, in order, POST builds, GET builds/id, the page request, DELETE builds/id, GET builds/id. The POST body deep-equals `{ buildOrder: <the parsed english-1tc.json>, durationSeconds: 1200 }`. Break caught: a step skipped or reordered, a wrong fixture or duration.
 - [ ] "repeat run": the stub answers the second save of the same content with 200 and the same id. Exit code 0 and `PASS save: 200 <id>` with the same id as the first run. Break caught: the script treating 200 as a failure.
-- [ ] "secret set is sent and never printed": `VERCEL_AUTOMATION_BYPASS_SECRET` set to a sentinel string. Every recorded stub request (fetch and the page navigation and its subresources) carries `x-vercel-protection-bypass` with the sentinel, and neither stdout nor stderr contains the sentinel in any scenario of this file (assert in a shared `afterEach` for every row). Break caught: a header missing on the browser context, or the secret echoed in an error message.
-- [ ] "secret unset, first response 401" and "secret unset, first response 403": the stub answers the save with that status. Exit code 2, stdout/stderr contain `set VERCEL_AUTOMATION_BYPASS_SECRET`, the stub saw exactly one request, and no DELETE was sent. Break caught: continuing past a protected deployment, or deleting an id that was never saved.
+- [ ] "secret set is sent and never printed": `VERCEL_AUTOMATION_BYPASS_SECRET` set to a sentinel string. Every request recorded by the deployment-origin stub (fetch and the page navigation and its subresources) carries `x-vercel-protection-bypass` with the sentinel, and neither stdout nor stderr contains the sentinel in any scenario of this file (assert in a shared `afterEach` for every row). Break caught: a header missing on the browser context, or the secret echoed in an error message.
+- [ ] "secret unset, first response 401" and "secret unset, first response 403": the stub answers the save with that status. (respec 3) Exit code 2, stderr contains `set VERCEL_AUTOMATION_BYPASS_SECRET` and stdout is empty, the stub saw exactly one request, and no DELETE was sent. Break caught: continuing past a protected deployment, or deleting an id that was never saved.
 - [ ] "secret set, first response 401": exit code 1 and stdout has a `FAIL save:` line that includes `401`. Break caught: exit 2 when the secret was set.
 - [ ] "save fails": the stub answers 400 `{ error: 'x' }`. Exit code 1, a `FAIL save:` line that includes `400`, no GET after it, and no DELETE. Break caught: running later steps after a failure, or deleting without an id.
 - [ ] "read back differs": the stub's GET returns a record whose `durationSeconds` is 900. Exit code 1, `FAIL read back:`, no `open` line, and a DELETE was sent (the `finally` delete). Break caught: the delete missing from the failure path, or the compare ignoring `durationSeconds`.
 - [ ] "open fails" (takes about 30 s; set this case's test timeout to at least 60 s): the page has no option containing `(<id>)`. Exit code 1, `FAIL open:`, a DELETE was sent. Break caught: the select check missing, or a page wait with no bound.
 - [ ] "delete refused in production": the stub's DELETE answers 405. Exit code 1 and stdout contains exactly `FAIL production deployment: delete is disabled`; the first three steps print `PASS`. Break caught: the text or exit code differing from the design.
 - [ ] "delete leaves the build": the stub's DELETE answers 204 but the following GET still answers 200. Exit code 1 and a `FAIL delete:` line. Break caught: step 4 not re-reading.
-- [ ] "usage" (respec 1): one row each for no argument, an unparsable `<url>` (`not a url`) and a non-http URL (`ftp://example.com`): each exits 2 with `usage: npm run smoke:preview -- <url>` and the stub saw no request. Break caught: a usage error that exits 0 or 1, or a request sent before validation.
+- [ ] "usage" (respec 1): one row each for no argument, an unparsable `<url>` (`not a url`) and a non-http URL (`ftp://example.com`): (respec 3) each exits 2 with `usage: npm run smoke:preview -- <url>` on stderr, empty stdout, and the stub saw no request. Break caught: a usage error that exits 0 or 1, or a request sent before validation.
 - [ ] "runs from another directory": one row of "all steps pass" runs with `cwd` set to a temp directory and still passes. Break caught: the fixture path resolved against `process.cwd()`.
 
 Other criteria:
 
 - [ ] `package.json` has the script `smoke:preview` and `git grep -n "smoke:preview" -- package.json` finds it; the script path it runs exists. `scripts/smoke-preview.mjs` imports nothing from `lib/`, `components/` or `pages/`, and `tsx` is not in `package.json` (`git grep -nE "from '\.\./(lib|components|pages)" -- scripts` finds no match).
-- [ ] No file other than `scripts/smoke-preview.mjs`, `acceptance/smoke-preview.spec.ts`, `package.json`, `ARCHITECTURE.md` and `docs/aoe4-build-order.md` changes, apart from `package-lock.json` if and only if `npm` rewrites it (it should not, since no dependency is added).
+- [ ] (respec 2) The diff touches no app code and no contract: nothing under `lib/`, `components/`, `pages/` or `data/`, and not `docs/api/openapi.json`. Besides the script and the new spec, the only files changed are docs and `package.json`. (respec 3) `package-lock.json` is unchanged, since no dependency is added.
+- [ ] (respec 2) "secret set is sent only to the deployment origin": in the spec, the page the stub serves also requests a resource from a second origin (a second stub server on another ephemeral port). With the secret set, every request the first stub records carries `x-vercel-protection-bypass` with the sentinel, and no request the second stub records carries that header. Break caught: the header set context-wide through `extraHTTPHeaders`.
+- [ ] (respec 2) The read-back step compares the GET body's `buildOrder` (the stored, zod-parsed value) to the sent build. The local verification run shows `read back` passing with `english-1tc.json`, so the fixture survives the schema unchanged.
 - [ ] Local verification (recorded in the report and the PR body, with the real output): with `BUILDS_LOCAL_DIR` set to a throwaway directory and `npm run dev` running, `npm run smoke:preview -- http://localhost:<port>` exits 0 and prints four `PASS` lines; running it a second time exits 0 and its `save` line shows status 200 and the same id. The implementer states the port, that the dev server was stopped after, and that the throwaway directory holds no leftover record.
 - [ ] Docs (read against the "Saving a build from a script" and "Checking a deployment with the smoke test" subsections): the agent how-to names the request body fields, every status listed in Scope item 4 with what to do, and the printed link as `<origin><path>`; the smoke subsection names `VERCEL_AUTOMATION_BYPASS_SECRET`, `x-vercel-protection-bypass`, the four steps, the three exit codes, the first-failure stop and the production refusal; the example `curl` runs unchanged against `npm run dev` and returns an `{ id, path }` body (the implementer runs it and says so in the report). No timing, count, rate-limit number or run-out time appears in either subsection, and every match of `git grep -n "protection-bypass" -- docs/aoe4-build-order.md` is spelled `x-vercel-protection-bypass`.
 - [ ] `ARCHITECTURE.md` "Where files go" has a `Scripts` row naming `scripts/`; `git grep -n "scripts/" -- ARCHITECTURE.md` finds it.
@@ -190,4 +200,16 @@ None.
 
 - Underspecified: the exit code for usage errors and the exact output line formats (two designer questions); the owner smoke run was filed as an open question though it is a merge-time action.
 - Changed: usage errors (missing, unparsable, non-http(s) URL) exit 2 before any request; line format and step names confirmed; the owner action moved to `On merge` as a human action; Open questions emptied; the "usage" criterion now has three rows.
+- Branch work: none exists yet.
+
+## Re-spec 2026-11-09 (2)
+
+- Underspecified: the "no other file" criterion was a closed list; the bypass header scope in the browser; what step 2 compares against (the zod-parsed stored record).
+- Changed: the file criterion is now a rule (no `lib/`, `components/`, `pages/`, `data/`, `docs/api/openapi.json`; only docs and `package.json` besides the script and spec; lockfile clause kept); the header goes only to the deployment origin via `context.route` with a new two-origin spec criterion; step 2 states its comparison and the local run confirms it. Designer pass 4 (C3 `SavedBuildWithId`, closed GET body) agrees with the GET-body expectations; no change needed.
+- Branch work: none exists yet.
+
+## Re-spec 2026-11-09 (3)
+
+- Underspecified: the request-log pin in "all steps pass" could flake on `/favicon.ico`; the stream of the usage and secret-missing messages; an uncheckable lockfile clause.
+- Changed: the log check ignores `/favicon.ico`; both messages go to stderr with empty stdout, asserted by the spec; the lockfile criterion is "`package-lock.json` is unchanged". `design/M6.md` line 627 (`extraHTTPHeaders`) is left for the next designer pass; the `context.route` rule in this ticket governs.
 - Branch work: none exists yet.

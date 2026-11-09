@@ -34,17 +34,26 @@ described as SGS-100 ends, not as `main` reads today.
 **New `components/apps/aoe4-build-order/use-auto-run.ts`:**
 
 - `useAutoRun(args: { text: string; duration: string; selected: string; catalog: BuildOrderCatalog; hold: boolean }): AutoRunState & { flush(live?: LiveInput): void; retry(): void }`.
-- The controller is created in an effect (not during render), so a client-side navigation with `router.isReady` already
-  true cannot post during render.
+- The controller is created in a mount `useEffect` (never during render), so a client-side navigation with
+  `router.isReady` already true cannot post during render. The effect creates it with `held = hold` and the current
+  `{ text, duration, selected }`, copies `getState()` into React state (create never calls `onChange`), and its cleanup
+  calls `dispose()` (this also covers the development double mount: one disposed controller, one live one).
 - It builds `AutoRunDeps` as `{ catalog, post: (request, signal) => postSimulation(request.buildOrder, request.inputs?.durationSeconds ?? 0, signal) }`
   (`inputs.durationSeconds` is always set by the controller; the adapter is this ticket's, as SGS-100 left it).
-- One controller per mounted page: created from the first render's `{ text, duration, selected }` and `hold`;
-  `input({ text, duration, selected })` on every later change of any of the three; when `hold` goes from true to
-  false, `release()` runs after `input` with the same render's values; `dispose()` on unmount. The state returned is
-  the last state passed to `onChange`, and before the controller exists (server render, first client render) it is
-  status `loading` with `settled` equal to the first render's input. No request is sent while rendering on the server
-  or before hydration.
-- `flush` and `retry` are stable functions that call the controller's.
+- One controller per mounted page: `input({ text, duration, selected })` on every later change of any of the three;
+  when `hold` goes from true to false, `release()` runs after `input` with the same render's values. The state returned
+  is the last state the effect copied from `getState()` or `onChange` passed.
+- **First-paint state (server render and the first client render, before the effect has run).** The hook returns,
+  computed from the args alone: `status` `loading`; `settled` equal to the args' `{ text, duration, selected }`;
+  `conversion` = `textToBuildOrder(text, catalog)`; `durationError` = `durationError(duration)`; `request` = the request
+  the controller builds for that input (`{ buildOrder: conversion.order, inputs: { durationSeconds: Number(duration) } }`)
+  when `conversion` succeeds and `durationError` is null, else `null`; `result`, `resultRequestKey`, `shown` and
+  `errorMessage` `null`; `serverIssues` empty; `omittedIssues` 0. It uses the same exported functions the controller
+  uses (`textToBuildOrder`, `durationError`), so no rule is written twice, and builds no controller during render. The
+  first paint therefore shows the settled conversion's check issues and `duration-error` (they track the settled input
+  at all times) with status `loading` and no result; the prerendered HTML and the first client render are identical, so
+  hydration does not mismatch. No request is sent while rendering on the server or before hydration.
+- `flush` and `retry` are stable functions that call the controller's; before the controller exists they do nothing.
 - No other logic: every rule (debounce, dedupe, abort, late drop, retry) stays in the controller.
 
 **New `components/apps/aoe4-build-order/auto-run-status.ts`** (pure, no React import):
@@ -81,7 +90,9 @@ described as SGS-100 ends, not as `main` reads today.
 - Select change: `BuildInput`'s `onSelectedChange` and `onTextChange` pair is replaced by one prop
   `onBuildSelect: (name: string) => void`; `selectBuild` calls only it. The page's handler does all three steps:
   `setSelected(name)`, set the text to the build's text, then `flush({ text: build.text, duration, selected: name })`
-  with the page's current `duration`. Enter in the duration field (the form `onSubmit`, which still calls
+  with the page's current `duration`. Step two is `editText(build.text)` (the page's existing function, not a bare
+  `setText`), so the step table's open-row flags survive through `mergeExternalEdit`. A name with no matching build does
+  only `setSelected(name)` and no flush, as `selectBuild` does today. Enter in the duration field (the form `onSubmit`, which still calls
   `preventDefault`): `flush()`.
 - The pin restore effect stays as it is except that `postSimulation` is the one from `simulate-client.ts`
   (SGS-100). It calls it without a signal.
@@ -225,14 +236,14 @@ flowchart LR
 Specs below are Playwright in the named files; each states the break it catches. Wording of exact messages is as in
 Scope. Unless a case says otherwise it runs at the default viewport with a fresh browser context (no stored pin).
 
-- [ ] Wiring and removals hold in the end state: `git grep -nE "run-simulation|results-stale|runSimulation|runRejected" -- acceptance components pages docs` finds no match; `git grep -nE "scrollIntoView|scrollMarginTop" -- components pages` finds no match (specs may still scroll elements themselves); `git grep -nE "results-stale|\.stale|stale=" -- components pages` finds no match (the word in SGS-100's controller comments about a dropped response is allowed); `git grep -nE "errorMessages" -- pages components` finds no match; the page defines no local `postSimulation` (`git grep -nE "function postSimulation|const postSimulation" -- pages` finds no match) and `git grep -n "fetch(" -- components/apps/aoe4-build-order` matches only in `simulate-client.ts` (respec 2); `git grep -nE "\bRun\b([^-]|$)" -- docs/aoe4-build-order.md` finds no match (the "Run-out" sections stay).
+- [ ] Wiring and removals hold in the end state: `git grep -nE "run-simulation|results-stale|runSimulation|runRejected" -- acceptance components pages docs ':!acceptance/aoe4-auto-run.spec.ts'` finds no match (that one new spec is the only file allowed to contain `run-simulation`, in its "no Run control" case) (respec 3); `git grep -nE "scrollIntoView|scrollMarginTop" -- components pages` finds no match (specs may still scroll elements themselves); `git grep -nE "results-stale|\.stale|stale=" -- components pages` finds no match (the word in SGS-100's controller comments about a dropped response is allowed); `git grep -nE "errorMessages" -- pages components` finds no match; the page defines no local `postSimulation` (`git grep -nE "function postSimulation|const postSimulation" -- pages` finds no match) and no non-test file under `components/apps/aoe4-build-order/` other than `simulate-client.ts` contains `fetch(` (`git grep -n "fetch(" -- components/apps/aoe4-build-order ':!*.test.ts'` matches only in `simulate-client.ts`) (respec 3); `git grep -nE "\bRun\b([^-]|$)" -- docs/aoe4-build-order.md` finds no match (the "Run-out" sections stay).
 - [ ] `autoRunStatusMessage` table test (`auto-run-status.test.ts`) pins every row of the Scope table. Break caught: a changed or missing message, `hasResult` ignored for `invalid` or `rejected`.
 - [ ] `issue-list.test.ts`: the summary is shown with no prop for 1 and 2 issues with the exact texts above; `omittedIssues: 3` ends the list with `3 more issues not shown.`; `omittedIssues: 0` and an absent prop add no item. Break caught: summary still gated by a prop, the omitted line missing or shown for 0.
 - [ ] `aoe4-auto-run.spec.ts` "no Run control": `getByTestId('run-simulation')` has count 0, `getByRole('button', { name: /^run\b/i })` has count 0 (the kept `pin-run` button reads `Pin this run` and is not matched), and `auto-run-status` is inside `run-bar` (respec 2). Break caught: Run left in place.
 - [ ] "first load runs once": a fresh load of the default build sends exactly one simulate POST, its body is `{ buildOrder, inputs: { durationSeconds: 1200 } }` with the default build's `buildOrder` (`buildOrderFrom` of the textarea value), and `auto-run-status` ends `current`; `tab-build` stays selected and `tab-results` is enabled. Break caught: hold released before `router.isReady`, a second POST from the hook, the run selecting Results.
 - [ ] "one POST per settled text edit": two `fill`s of the textarea back to back send one POST for the last text after `AUTO_RUN_DEBOUNCE_MS`, with a `buildOrder` equal to `buildOrderFrom(text)`; with the paused clock advanced to just under `AUTO_RUN_DEBOUNCE_MS` the status is not `running` and the issues list still shows the previous settled text's issues (respec 2). Break caught: leading-edge or non-restarting debounce.
 - [ ] "one POST per step-table and duration edit": a `step-add` click in the table view sends one POST whose `buildOrder.steps` has one more step; setting `duration-seconds` to 900 sends one POST with `inputs.durationSeconds` 900. Break caught: a table or duration edit that does not re-run, or runs twice.
-- [ ] "an undo inside the debounce sends nothing": filling different valid text then the original text within the debounce window sends no POST (`expectNoRun`) and ends `current`; a comment-only edit (`# note` line) sends none and ends `current`. Break caught: re-posting an unchanged request.
+- [ ] "an undo inside the debounce sends nothing": with the paused clock, filling different valid text then the original text (the clock never advancing past `AUTO_RUN_DEBOUNCE_MS` between the fills, then advanced past it) sends no POST (`expectNoRun`) and ends `current`; a comment-only edit (`# note` line) sends none and ends `current` (respec 3). Break caught: re-posting an unchanged request.
 - [ ] "Enter and build select skip the pause": with the clock paused so the timer cannot fire, a valid new duration then Enter in the field sends a POST, and choosing another prebuilt build sends a POST whose `buildOrder` equals that build's, and pinning that run then reads `Pinned: <that build's name>, <m:ss>`. Break caught: Enter navigating or waiting the debounce; select flushing with the old text or the old `selected`.
 - [ ] "an invalid text edit dims the charts": after a valid run, text with an unknown id leaves `auto-run-status` `data-status` `invalid` with `The charts show the last valid build.`, `build-order-issues` visible with the `Fix 1 issue to run the simulation.` summary, `results-last-good` still visible with computed `opacity` of 0.5 or less, no POST (`expectNoRun`), and `tab-results` still enabled; restoring the earlier text returns to `current`, full computed opacity, and no POST. Break caught: charts removed, no dim, posting invalid text, a re-post on restore.
 - [ ] "a first invalid load state has no target": with an invalid text from the start (filled before the first settle, with the first response held by `page.route` and released at the end of the test), the status says `No valid build to simulate yet.` once no result exists and neither `results-last-good` nor any chart is rendered. Break caught: an empty dimmed wrapper or a chart without data.
@@ -240,10 +251,12 @@ Scope. Unless a case says otherwise it runs at the default viewport with a fresh
 - [ ] "a 400 keeps the last result": a `page.route`-fulfilled 400 with `{ error, issues: [one issue], omittedIssues: 2 }` for the next request gives status `rejected` with the issue's message and `2 more issues not shown.` under the editor, the charts dimmed, no automatic second POST, and settling to a different valid input posts again and ends `current` with the issues gone. Break caught: removing the charts on a 400, retrying a known 400.
 - [ ] "a failure shows a retry": a route-fulfilled 500 gives status `failed`, `simulation-error` reading `The simulation could not be run (HTTP 500).`, `simulation-retry` reading `Try again`, the charts dimmed; a request that the route aborts with a network error gives `The simulation could not be run. Please try again.`; clicking `simulation-retry` (route now continuing) sends one POST and ends `current` with `simulation-error` and `simulation-retry` gone. Break caught: failure leaving the in-flight key set so a retry is a no-op, retry rendered outside `failed`.
 - [ ] "a superseded request is aborted and its response never shows": the first POST is held by `page.route`; an edit then sends a second POST; the second completes and the status is `current`; the first request ends as aborted (`requestfailed`), and after the first is released the shown result is still the second's (pin it and read `pinned-label`: `Pinned: <name>, <m:ss>` of the second duration). Break caught: a late response overwriting the newer one.
-- [ ] "the page never scrolls by itself": at 390 px wide, after scrolling the page to a non-zero `window.scrollY`, an edit that produces a run (and one that produces an invalid state) leaves `window.scrollY` unchanged and the selected tab `build`. Break caught: a surviving scroll effect.
+- [ ] "the page never scrolls by itself": at 390 px wide, after scrolling the page to a non-zero `window.scrollY`, an edit that produces a run (and one that produces an invalid state) leaves `window.scrollY` unchanged and the selected tab `build`; `scrollY` is read with `expect.poll` or a single `page.evaluate`, never two separate reads (smooth scroll moves between reads) (respec 3). Break caught: a surviving scroll effect.
 - [ ] The rewritten specs: every spec listed by the Scope grep passes with `npm run acceptance`, uses `waitForRun` or `expectNoRun` where it used `runSimulation` or `runRejected`, and every `results-stale` assertion is the dimmed-plus-status assertions of rule 3. The report lists each edited spec, the rule applied, and any test removed (with the reason it can no longer hold).
 - [ ] The small-screen spec asserts that no run scrolls the page, in place of "a run scrolls the results heading into view"; its test "stays sticky at the top and offsets the results scroll by its height" (which reads `scrollMarginTop`, code this ticket deletes) is rewritten to check only that the run bar stays sticky, or removed with the reason, and is named in the report's edited-spec list (respec 2).
-- [ ] `docs/aoe4-build-order.md` states every item listed under Scope "Docs"; it quotes the status texts, the two duration messages, `Try again` and the summary text exactly as in Scope and contains no measured timing.
+- [ ] `docs/aoe4-build-order.md` states every item listed under Scope "Docs"; it quotes the status texts, the two duration messages, `Try again` and the summary text exactly as in Scope and contains no measured timing (the 500 ms pause may be named, it is the design constant `AUTO_RUN_DEBOUNCE_MS`; no observed durations).
+- [ ] First paint (respec 3): a Vitest-free check, `npx next build` plus a page load with JavaScript disabled or the first client render shows, for a build whose default text is valid, status `loading`, no `build-order-issues`, no `duration-error`, no `results-last-good` and no simulate POST before hydration; the acceptance case "first load runs once" additionally asserts no `hydration` console error. Break caught: a controller built during render, a hydration mismatch from state computed differently on server and client.
+- [ ] Select keeps open step rows (respec 3): in the table view with a step row open, choosing a build whose text has the same step count keeps that row's open flag (the page handler calls `editText`). Break caught: a bare `setText` dropping the flags.
 - [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test` and `npm run acceptance` pass; `npx next build` succeeds (the page prerenders with `hold` true and sends no request). The implementer records the commands and the test counts in the report.
 - [ ] No INVARIANTS.md regressions
 
@@ -255,4 +268,10 @@ None.
 
 - Underspecified: the Run-control and grep criteria (would fail on a correct build or on SGS-100's files), the select seam, the omitted-issues item's test id.
 - Changed: those criteria narrowed or turned into rules; `onBuildSelect` pinned; `build-order-issues-omitted` and the summary count rule added; paused clock, held-route release, effect-created controller and the small-screen scroll-margin test named.
+- Standing: no branch work yet.
+
+## Re-spec 2026-11-09 (3)
+
+- Underspecified: the pre-controller state of `useAutoRun` (only `settled` was stated), which setter the select handler calls, and two criteria whose greps contradicted the end state (the new spec's `run-simulation` assertion, test files calling `fetch(`).
+- Changed: first-paint state computed in the hook from the args with the controller's own functions, first paint shows settled issues and `duration-error`; effect-created controller with dispose cleanup; select calls `editText`; greps narrowed; paused clock for the undo case; 500 ms constant allowed in docs; scroll read rule; two criteria added (first paint, open rows).
 - Standing: no branch work yet.

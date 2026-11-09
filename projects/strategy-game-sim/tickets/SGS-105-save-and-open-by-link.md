@@ -95,7 +95,8 @@ Names from the dependencies are described as their tickets end, not as `main` re
 4. **`save-build.tsx`** exports `SaveBuild`. Props (the names are the implementer's; the data is): `status:
    AutoRunStatus`, `settled: LiveInput`, `conversion` (the settled conversion), `builds: PrebuiltBuild[]`, `busy:
    boolean` (a `?b=` load is in flight) and `onSaved(response: SaveBuildResponse, input: LiveInput): void`. Rules:
-   - **Enabled** only when `status === 'current'`, `busy` is false and no save is in flight. Otherwise it is
+   - **Enabled** only when `status === 'current'`, `busy` is false and no save is in flight. `conversion.order` is
+     read only inside the `status === 'current'` branch (type narrowing, no cast). Otherwise it is
      `disabled` (the attribute) and visibly dimmed. `data-testid="save-build"`, visible text `Save build`.
    - **Click** posts, through `postSavedBuild`, `{ buildOrder: { ...conversion.order, name: savedBuildName(builds,
      settled.text, settled.selected) }, durationSeconds: Number(settled.duration) }`. The body is built from the
@@ -151,9 +152,17 @@ Names from the dependencies are described as their tickets end, not as `main` re
    input the `b` belongs to: the saved input after a save, the loaded input after a `?b=` load, and the default
    build's input after a failed load. When the settled input's `text`, `duration` or `selected` first differs
    from that baseline, the page calls `router.replace` with the `b` removed, shallow, once, and the link panel hides
-   (item 4). The settled input is what counts, never the live text, so `b` stays through the 500 ms pause, and it
-   stays through the `?b=` load and its first run (the render between the load ending and the controller releasing
-   still shows the default input as settled; that must not count as a change). A selection that changes the
+   (item 4). The settled input is what counts, never the live text, so `b` stays through the 500 ms pause.
+   **Rule for the interim render (respec 1):** the comparison runs only while `status !== 'loading'`. The hook's
+   `loading` status is the held state (`design/M6.md` C6 and designer pass 4: before the mount effect, and while
+   `hold` is true, the hook returns `loading` with `settled` equal to the args at that time). The render in which
+   the `?b=` load has ended but the hook has not yet released still reports `loading` with the default input as
+   `settled`, so it is skipped, and the next non-`loading` status already carries the loaded input as `settled`
+   and equals the baseline. A failed load needs no wait: the baseline is the default input, equal to `settled`.
+   `b` therefore stays through the load and its first run. **Late save response (respec 1):** a save response is
+   acted on only if the input it was posted for equals the current settled `text`, `duration` and `selected`; if
+   it differs (the settled input changed while the save was in flight) no link panel shows, `onSaved` does not
+   call `router.replace`, and the baseline does not move. A selection that changes the
    settled input counts. The final URL after removal is `/apps/aoe4-build-order` with no `?`; verify
    that `{ query: {...} }` without a `pathname` keeps the current path under Next 16 and add `pathname:
    router.pathname` if it does not.
@@ -168,6 +177,13 @@ Names from the dependencies are described as their tickets end, not as `main` re
    (`data.ts` imports the 300 kB snapshot JSON); verified on `main` (`npx next build` at 1e6d6c2: the string
    `unit_workshop_ram_3_eng` from `english.json` is in `.next/server` and in no file under `.next/static`). The
    implementer runs the check after the build and records the result.
+
+**Existing tests (respec 1).** The Save button and link panel change the run bar. A test of the changed behavior gets
+the new expected value; any other test keeps its expected value and adapts only its setup. Every unit or acceptance
+test that fails only because `builds` is page state, `BuildInput` gained props or the run bar holds a new control
+is fixed to the same expectation. The likeliest to change are the narrow-layout spec
+(`acceptance/aoe4-narrow-layout.spec.ts`) and the run-bar height specs; the implementer lists every test it edits in
+the report.
 
 ### Out of scope
 
@@ -255,9 +271,9 @@ Specs are Playwright in `acceptance/aoe4-save-open.spec.ts` unless a case names 
 break it catches. A "saved build" below is created through the API unless the case saves through the UI.
 
 - [ ] Wiring holds in the end state: `git grep -nE "router\.(replace|push)" -- components pages` finds every match in
-      `pages/apps/aoe4-build-order.tsx`; `git grep -n "navigator.clipboard" -- components pages` finds every match in
-      `save-build.tsx`; `git grep -n "/api/aoe4-build-order/builds" -- components pages/apps` finds every match in
-      `saved-build-loader.ts` and `save-build-client.ts`; `git grep -nE "api-route|english-catalog|builds-routes|build-store|blob-build-store|save-rate-limit" -- components pages/apps`
+      `pages/apps/aoe4-build-order.tsx`; `git grep -n "navigator.clipboard" -- components pages ':!*.test.ts'` finds every match in
+      `save-build.tsx`; `git grep -n "/api/aoe4-build-order/builds" -- components pages/apps ':!*.test.ts'` finds every match in
+      `saved-build-loader.ts` and `save-build-client.ts` (test files are excluded: the loader and client tests assert the URL); `git grep -nE "api-route|english-catalog|builds-routes|build-store|blob-build-store|save-rate-limit" -- components pages/apps`
       finds no match; `git grep -nE "from 'next|from 'react" -- components/apps/aoe4-build-order/saved-build-loader.ts components/apps/aoe4-build-order/save-build-client.ts`
       finds no match.
 - [ ] Bundle: after `npx next build`, `grep -rlF "unit_workshop_ram_3_eng" .next/static` (a string that appears only in
@@ -292,6 +308,11 @@ break it catches. A "saved build" below is created through the API unless the ca
       `page.route` (`running`) disabled with no builds POST made by a click; a route-fulfilled 500 (`failed`) disabled;
       a route-fulfilled 400 (`rejected`) disabled; after restoring a valid input and `waitForRun`, enabled. Break
       caught: Save posting a build the charts do not show.
+- [ ] (respec 1) "the load does not drop `b`" and "a late save response": after a `?b=` load and its first run `page.url()`
+      still ends `?b=<id>` with no `router.replace` call that removes it (spy on `history.replaceState` through
+      `addInitScript`); with the builds POST held by `page.route`, an edit that settles before the response is
+      released leaves no `saved-build-link` and `page.url()` without `b`, and the released response adds no `b`. Break
+      caught: the interim `loading` render counted as a change; a stale save putting `b` back for content no longer shown.
 - [ ] "an edit after a save hides the link and drops `b`": after a UI save, with the clock paused, `fill`ing the text
       leaves `saved-build-link` visible and `?b=` in `page.url()` until `AUTO_RUN_DEBOUNCE_MS` elapses; after it, the
       link and `save-build-error` are gone and `page.url()` has no `b` and no `?` (checked under `expect.poll`). A
@@ -354,7 +375,8 @@ break it catches. A "saved build" below is created through the API unless the ca
       every match of `git grep -n "starts on Build" -- docs/aoe4-build-order.md` also states the `?b=` exception.
 - [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test`, `npm run acceptance` and `npx next build` pass (the page
       prerenders with `hold` true and no `?b=` read, and sends no request). Every existing test that failed because
-      `builds` is page state or `BuildInput` gained props keeps its expected value; the report lists each test edited.
+      `builds` is page state or `BuildInput` gained props keeps its expected value; the report lists each test edited
+      (see Scope "Existing tests").
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
@@ -368,3 +390,13 @@ None.
   `savedBuildName` in `pin-name.ts` and Save posting it (new item 3, `pin-name.test.ts`, unchanged re-save criterion);
   names `postSavedBuild`, `saveFailureMessage`, `loadSavedBuild` results confirmed; open questions deleted.
 - Stands: no branch work existed. Scope items after 2 are renumbered by one.
+
+## Re-spec 2026-11-09 (spec gate 1)
+
+- Underspecified: how the interim render after a `?b=` load avoids counting as a URL change; a save response that
+  arrives after the settled input moved; the `conversion` narrowing; the existing-tests rule lived only in criteria.
+- Changed: Scope item 8 compares only while `status !== 'loading'` (agrees with designer pass 4: `loading` with `settled`
+  equal to the args before the mount effect and while held) and ignores a save response whose input differs from the
+  settled one; item 4 reads `conversion.order` only when `current`; the `navigator.clipboard` and builds-URL greps
+  exclude `*.test.ts`; "Existing tests" paragraph and a new criterion added.
+- Stands: no branch work existed; module, test and doc scope unchanged.

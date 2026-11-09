@@ -28,7 +28,7 @@ Read first: `design/M6.md` C1 and C3 (authoritative for names and behavior). Exi
 
 1. New `lib/aoe4-build-order/saved-builds.ts`, pure TS. It imports no `node:` module, React or Next, and
    uses Web Crypto (`crypto.subtle`), `TextEncoder` and `btoa`, never `node:crypto` or `Buffer`, so the
-   page can import it. It exports exactly the C1 names:
+   page can import it. It exports each C1 name:
    - `SAVED_BUILD_VERSION = 1`, `savedBuildSchema` (zod, `version: z.literal(1)`, `buildOrder:
      buildOrderShape`, `durationSeconds: z.number().int()`), and `SavedBuild = z.infer<typeof
      savedBuildSchema>`. Duration bounds are not part of this schema (a read must succeed whatever the
@@ -63,20 +63,27 @@ Read first: `design/M6.md` C1 and C3 (authoritative for names and behavior). Exi
         simulate route.
      6. Build `record = { version: 1, buildOrder: <checked order>, durationSeconds }` in schema key order and
         `json = JSON.stringify(record)`. When `json` is more than `SAVED_BUILD_MAX_BYTES` UTF-8 bytes
-        (`TextEncoder`), return 413 with `error` `saved build: <bytes> bytes, more than 65536`.
+        (`TextEncoder`), return 413 with `error` `saved build: <bytes> bytes, more than 65536`. Only `source` (no length cap)
+        can reach this: a `name` is capped at 100 characters by step 4.
      7. Paste round trip: `textToBuildOrder(formatBuildOrderText(order), catalog)`. When it fails, return
-        400 with its issues (capped as in step 5). When it succeeds and its `steps` or `start` differ
+        400 with its issues (capped as in step 5; `error` is the first issue's message). When it succeeds and its `steps` or `start` differ
         structurally from the record's (compare by value, ignoring key order), return 400 with one issue,
         code `invalid`, message `build order: reopening it as text would change the build; use whole
-        numbers for times and counts`. `name`, `civ` and `source` are not compared. This second branch is a
+        numbers for times and counts`, and `error` equal to that message. `name`, `civ` and `source` are not compared. This second branch is a
         guard: no input `checkBuildOrder` accepts reaches it (it either re-parses equal or fails the first
-        half), and it stays for a future formatter or grammar change. A fractional `walkSeconds` such as
+        half), and it stays for a future formatter or grammar change; that is a claim about today's formatter
+        and no test depends on it (the guard test uses a mock). The `textToBuildOrder` 20000-character cap
+        (`text: <n> characters, more than 20000`) also fails the first half, but no valid order reaches it today
+        (at most 200 steps of about 95 formatted characters is about 19,000 characters); it stays as a guard
+        against a longer formatter or larger bounds and its unit case uses the same mock. A fractional `walkSeconds` such as
         `2.5` fails the first half (formatted `walk 2.5s`; the grammar accepts whole seconds only) and returns
         the `syntax` issue `line <n>: expected walk seconds like 4s, got '2.5s'` plus any issue the partial
         order adds (design M6.md C3).
      8. Otherwise `{ ok: true, record, json }`.
 2. `lib/aoe4-build-order/api.ts`: add `export interface BuildsError { error: string }` and re-export the
    types `SavedBuild`, `SaveBuildRequest` and `SaveBuildResponse` from `./saved-builds` with `export type`.
+   Update the file's header comment ("Request and response types for POST /api/aoe4-build-order/simulate") to
+   cover the builds API types too.
    `saved-builds.ts` imports `SimulateError`, `BuildsError` and `MAX_REPORTED_ISSUES` from `./api`; the
    cycle is type-only on the `api.ts` side and must not create a runtime import cycle.
 3. Input validation (common.md): the request has a nested object, so it is past the hand-check threshold.
@@ -101,8 +108,7 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `saved-builds.ts` exports every name in Scope item 1 with the stated signatures, and no other
-      exported name. The match for node, React or Next imports is empty:
+- [ ] `saved-builds.ts` exports each name in Scope item 1 with the stated signatures. The match for node, React or Next imports is empty:
       `git grep -nE "from '(node:|react|next)" -- lib/aoe4-build-order/saved-builds.ts`.
 - [ ] `savedBuildId`: every id for a table of different records is exactly 11 characters matching
       `SAVED_BUILD_ID_PATTERN`. Test cases pin: the same record gives the same id twice; the same record built
@@ -127,10 +133,12 @@ Single-component change outside the core control loop; no diagram required.
       - `durationSeconds` of `59`, `3601`, `61.5`, missing and `'60'` each give 400 with one `out-of-range`
         issue that has no `step`, with the messages in Scope.
       - `name` of 100 characters passes and of 101 gives 400 with `name: 101 characters, more than 100`.
-      - A record just over `SAVED_BUILD_MAX_BYTES` gives 413 with `BuildsError` shape; the same order shortened
-        to under the cap gives `ok: true`. The test builds the record from valid steps, not by editing the
-        constant, so it fails if the check compares characters instead of UTF-8 bytes (use a multi-byte `name`
-        or `source` chosen so the character count is under the cap and the byte count is over it).
+      - A valid order with a multi-byte `source` (for example 30,000 three-byte characters: under the cap in
+        characters, over it in UTF-8 bytes) gives 413 with `BuildsError` shape and `error` `saved build: <bytes>
+        bytes, more than 65536`; the same order with a short `source` gives `ok: true`. The test builds the record
+        from valid steps, not by editing the constant, so it fails if the check compares characters instead of
+        UTF-8 bytes. The test uses `source`, never `name` (a name is capped at 100 characters and cannot reach
+        413). (respec 2)
       - A valid order and `durationSeconds` of 60 and 3600 give `ok: true`, `record.version` is 1, and
         `json === JSON.stringify(record)`.
 - [ ] Issue-order test: a body with an invalid order and an invalid `durationSeconds` returns the order issues
@@ -140,9 +148,11 @@ Single-component change outside the core control loop; no diagram required.
       capped, `omittedIssues` is the remainder, and `error` equals `issues[0].message`.
 - [ ] Round-trip test cases:
       - A valid shipped build (every entry of `listBuilds()`, as a loop) gives `ok: true`.
-      - An order whose formatted text is over 20000 characters gives 400 with the `text: <n> characters, more
-        than 20000` issue returned by `textToBuildOrder`, not 413 and not `ok: true`. This catches a missing
-        round-trip step.
+      - A valid order (so the order checks pass) with the same `vi.mock` of `formatBuildOrderText` as the guard
+        test, its mock returning a 20001-character text once, gives 400 with the single issue `text: 20001
+        characters, more than 20000` from `textToBuildOrder`, `error` equal to that message, not 413 and not
+        `ok: true`. This catches a missing round-trip step. No real order is built for this row, since none
+        reaches 20000 characters. (respec 2)
       - An order with `walkSeconds: 2.5` gives 400 with the `syntax` issue `line <n>: expected walk seconds
         like 4s, got '2.5s'` (the test asserts the message with the `<n>` it gets) plus any partial-order
         issues, no `invalid` issue, no 413 and no `ok: true`. (respec 1)
@@ -152,7 +162,8 @@ Single-component change outside the core control loop; no diagram required.
         `steps`), and `checkSaveBuildRequest` returns 400 with the single `invalid` issue. A second case
         returns the order's own text and gives `ok: true`, so the test fails if the compare is dropped or
         always fires. No test-only export is added to `saved-builds.ts`. (respec 1)
-- [ ] `lib/aoe4-build-order/api.ts` exports `BuildsError` and the three re-exported types; `npx tsc --noEmit`
+- [ ] `lib/aoe4-build-order/api.ts` exports `BuildsError` and the three re-exported types, and its header
+      comment covers the builds API types; `npx tsc --noEmit`
       and `npm run lint:dup` pass with no new duplication flagged against `simulate.ts` or `schema.ts`.
 - [ ] No INVARIANTS.md regressions
 
@@ -164,4 +175,10 @@ None.
 
 - Underspecified: the fractional `walkSeconds` case (the design example, one `invalid` issue, disagreed with the code) and where `isPlainObject` and `notAnObjectError` live.
 - Changed: the design settled both. `walkSeconds: 2.5` returns the `syntax` parse issue; the `invalid` branch is a guard tested with a `vi.mock` of `formatBuildOrderText`; this ticket keeps a temporary private copy of the plain-object check that SGS-103 deletes.
+- Existing branch work: none (no branch yet).
+
+## Re-spec 2026-11-09 (2)
+
+- Underspecified: the over-20000-character round-trip row had no buildable input (no valid order reaches it), the 413 row named `name` (capped, cannot reach 413), and the export criterion was a closed list.
+- Changed: the 20000 row now uses the `formatBuildOrderText` mock; the 413 test uses a multi-byte `source`; step 7 states `error` for both 400 branches; the `api.ts` header comment is updated; the export criterion says "each C1 name" with the import grep (design pass 4, item 2).
 - Existing branch work: none (no branch yet).

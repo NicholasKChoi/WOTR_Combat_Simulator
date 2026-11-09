@@ -5,10 +5,10 @@
 - **Milestone / criteria**: M6 / M6.4 (POST validates and stores under a short id, GET, size cap, rate limit, OpenAPI and contract check)
 - **Priority**: medium
 - **Risk**: standard
-- **Invariants**: S3 (every save is bounded: the 128 kb body limit, the record byte cap and the rate limit all run before any stored write; `simulate.ts` keeps every cap it has), A3 (the simulate route's responses stay byte-identical; the reply functions read no clock, `nowMs` is an argument)
+- **Invariants**: S3 ("Every simulation request finishes in bounded time"; adjacent, not changed: `simulate.ts` keeps every cap it has, and the new save routes run no simulation), A3 (the simulate route's responses stay byte-identical; the reply functions read no clock, `nowMs` is an argument)
 - **LOC estimate**: ~180 (new `api-route.ts` ~40, `english-catalog.ts` ~10, `builds-routes.ts` ~110, two thin route files ~30, a net deletion in `simulate.ts`, 3 lines in `saved-builds.ts`; business logic only, OpenAPI JSON, docs and tests excluded)
 - **Depends on**: SGS-099, SGS-101
-- **On merge**: none
+- **On merge**: CONTEXT.md Key surfaces: add `POST /api/aoe4-build-order/builds` (`operationId: saveBuild`) and `GET` and `DELETE /api/aoe4-build-order/builds/{id}` (`getSavedBuild`, `deleteSavedBuild`), and the files `lib/aoe4-build-order/api-route.ts` and `builds-routes.ts`
 - **Source**: `design/M6.md` C3, C4 and C7, OD-2 (a), OD-8 (a); `plans/M6-20261105.md` outline C including owner Q17 A; `reports/M6-designer-2.md` Q9, Q10, Q11; `reports/M6-designer-3.md` Q2, Q6, Q7, Q8
 
 ## Context
@@ -110,11 +110,13 @@ and `clientKey` and `takeSaveSlot` from `save-rate-limit.ts`.
    `sendReply(res, await savedBuildReply({ method: req.method, id: req.query.id }, { store: buildStoreFromEnv,
    env: storageEnv(process.env.VERCEL_ENV) }))`, with the env read per request. Neither file has a branch of its
    own. `Date.now()` is read only in `index.ts`.
-6. `playwright.config.ts`: `webServer.env` is `{ ...process.env, BUILDS_LOCAL_DIR: <a directory under
-   test-results/> }` (the spread is needed because `env` replaces the inherited environment), so acceptance
-   runs write builds under the git-ignored `test-results/` and never into `.builds-local/`. `BUILDS_STORE_ID`
-   is removed from that environment so acceptance never reaches Vercel Blob even when the developer's shell
-   has it set. The file store creates parent directories on write, so a Playwright cleanup of
+6. `playwright.config.ts`: `webServer.env` is the inherited `process.env` entries with a string value (the spread is needed
+   because `env` replaces the inherited environment, and `webServer.env` is `Record<string, string>`, so
+   `undefined` values are filtered, for example with `Object.fromEntries`), plus `BUILDS_LOCAL_DIR: <a directory
+   under test-results/>`, so acceptance runs write builds under the git-ignored `test-results/` and never into
+   `.builds-local/`. `BUILDS_STORE_ID` and `VERCEL_ENV` are removed from that environment, so acceptance never
+   reaches Vercel Blob and DELETE is never answered 405 as in production, even when the developer's shell sets
+   them. It type-checks under `strictNullChecks`. The file store creates parent directories on write, so a Playwright cleanup of
    `test-results/` does not break it.
 7. `docs/api/openapi.json`, `info.version` `2.3.0` to `2.4.0`:
    - Paths `/api/aoe4-build-order/builds` (`post`, `operationId: saveBuild`) and
@@ -129,12 +131,18 @@ and `clientKey` and `takeSaveSlot` from `save-rate-limit.ts`.
    - Schemas `SaveBuildRequest` (open, as the request-side AoE4 schemas are; `buildOrder` is `$ref BuildOrder`,
      `durationSeconds` an integer with the `SIM_INPUT_BOUNDS.durationSeconds` min and max), `SaveBuildResponse`,
      `SavedBuild` and `BuildsError`, named after the TypeScript types in `saved-builds.ts` and `api.ts`, and
-     `SavedBuildWithId`, an OpenAPI-only name (no TypeScript type is added for it).
-     Response-side schemas are closed and require every property, and every property has a description. The
-     `SavedBuild` schema has no duration bounds (a read must succeed whatever the bounds become). The GET 200
-     body is `SavedBuildWithId`: closed, `SavedBuild`'s properties plus `id` (with `SAVED_BUILD_ID_PATTERN`),
-     composed so `SavedBuild` stays referenced and so that the live body validates and one with an extra
-     property or without `id` does not.
+     `SavedBuildWithId`, an OpenAPI-only name (no TypeScript type is added for it). Per `design/M6.md` C3:
+     - `SavedBuild`: `version` (`const: 1`), `buildOrder` (`$ref` `BuildOrder`), `durationSeconds` (integer, no
+       duration bounds, so a read succeeds whatever the bounds become); all three `required`, each with a
+       `description`; no `additionalProperties` keyword (open, so it can be composed).
+     - `SavedBuildWithId` (the GET 200 body): `{ allOf: [ { $ref: '#/components/schemas/SavedBuild' }, {
+       properties: { id: { type: 'string', pattern: <SAVED_BUILD_ID_PATTERN>, description } }, required: ['id']
+       } ], unevaluatedProperties: false }`. It is closed through `unevaluatedProperties: false`; the whole-schema
+       `$ref` keeps `SavedBuild` referenced in the surface spec's reference walk.
+     - `SaveBuildResponse` (`id` with the same pattern, `path`; both required) and `BuildsError` (`error`,
+       required): closed with `additionalProperties: false`, every property described.
+     - The closed response-side schemas are exactly `SaveBuildResponse`, `BuildsError` and `SavedBuildWithId`.
+     The contract specs use `ajv/dist/2020` with `strict: false`, which supports `unevaluatedProperties`.
    - Examples (named, in `examples`): the save request; the 201 and 200 `SaveBuildResponse`; the GET 200 body for
      that save; the 400 rows (a non-object body, an unknown unit id, a `durationSeconds` out of range, a name
      of 101 characters); the 413 record cap; the 404; the 405 (`GET` on the save route, and `PUT` on the id
@@ -150,7 +158,7 @@ and `clientKey` and `takeSaveSlot` from `save-rate-limit.ts`.
      byte-for-byte simulate 405 and 400 bodies; `sendReply` against a recording `ReplyTarget` (headers set, then
      `json` for a body, `end` for none and `json` not called).
    - `lib/aoe4-build-order/english-catalog.test.ts`: `englishCatalog` returns one memoized catalog (same
-     instance on two calls) that knows an English unit id; the memo test moves here from `api-route.test.ts`.
+     instance on two calls) that knows an English unit id.
    - `lib/aoe4-build-order/builds-routes.test.ts`: one case per row of each table above, with
      `store: () => Promise.resolve(createMemoryBuildStore())` (a fresh store per case, or one store where a case
      needs state), a rejecting getter for the 503 rows, a wrapper store whose `bumpCounter` or `putBuild` throws,
@@ -160,14 +168,16 @@ and `clientKey` and `takeSaveSlot` from `save-rate-limit.ts`.
 9. Acceptance specs (Playwright; follow OD-8 (a)). New helpers in `acceptance/helpers.ts`: `BUILDS_PATH`,
    `buildPath(id)`, `postBuild(request, body, client, timeout?)`, `postBuildRaw(request, raw, client, timeout?)`
    and `uniqueClient(spec)` (`${spec}-${randomUUID()}`); the two post helpers always set `x-forwarded-for` to
-   `client`. New `acceptance/aoe4-builds-api.spec.ts` (live rows) and
+   `client`, and `postBuildRaw` also sends `Content-Type: application/json` (as `postSimulateRaw` does), so the
+   128 kb body limit and the framework `Invalid JSON` 400 are exercised. New `acceptance/aoe4-builds-api.spec.ts` (live rows) and
    `acceptance/aoe4-builds-api-contract.spec.ts` (documented schemas and examples). Every `describe` that posts
    takes its own `uniqueClient`, so no spec depends on the shared 127.0.0.1 budget. Edits to existing specs:
    `acceptance/aoe4-simulate-api-contract.spec.ts` checks every request example's documented 200 body (the
    loop over `['goldRunOut']` becomes a loop over every key of `requestExamples`). Every existing test that
    pins the document version, the list of paths or the list of schema names takes the new value (examples:
    `aoe4-gathered-resources.spec.ts` and `aoe4-simulate-api-issue-shape.spec.ts` pin `2.3.0`;
-   `fight-api-spec-surface.spec.ts` pins the paths and `AOE4_SCHEMA_NAMES`); the same file's bounds table
+   `fight-api-spec-surface.spec.ts` pins the paths and `AOE4_SCHEMA_NAMES`, and its test title "is OpenAPI 3.1
+   and lists /api/fight and /api/aoe4-build-order/simulate" is updated to name the paths the test now checks); the same file's bounds table
    (`aoe4-simulate-api-contract.spec.ts`, `durationSeconds` locations) gains `SaveBuildRequest.durationSeconds`.
    The implementer lists every test it edits.
 10. Input validation (common.md): the save request has a nested object (past the hand-check threshold). It is
@@ -205,7 +215,7 @@ Single-component change outside the core control loop; no diagram required.
       there.
 - [ ] One source for the shared handling: every match of `git grep -nE "function isPlainObject" -- pages lib` is
       in `lib/aoe4-build-order/api-route.ts` or `pages/api/fight.ts`; every match of
-      `git grep -n "must be a JSON object" -- lib pages ':!*.test.ts'` is in `api-route.ts` (so
+      `git grep -n "request body: must be a JSON object" -- lib pages ':!*.test.ts'` is in `api-route.ts` (the exact text, so `pages/api/fight.ts`'s `request body must be a JSON object` does not match; so
       `saved-builds.ts` holds no private copy of `isPlainObject` or the 400 body and imports both from
       `./api-route`); every match of
       `git grep -n "is not allowed; use" -- lib pages ':!*.test.ts'` is in `api-route.ts` or `pages/api/fight.ts`.
@@ -274,24 +284,30 @@ Single-component change outside the core control loop; no diagram required.
       - `info.version` is `2.4.0` and the document has exactly the paths `/api/fight`,
         `/api/aoe4-build-order/simulate`, `/api/aoe4-build-order/builds` and `/api/aoe4-build-order/builds/{id}`
         (and the surface spec's list is updated to match).
-      - `SaveBuildRequest`, `SaveBuildResponse`, `SavedBuild` and `BuildsError` exist; response-side schemas are
-        closed and require every property; every property has a description; `SaveBuildRequest.durationSeconds`
-        has the `SIM_INPUT_BOUNDS.durationSeconds` min and max; `SavedBuild` has no duration bounds; every
-        schema is referenced from a path or another schema.
+      - `SaveBuildRequest`, `SaveBuildResponse`, `SavedBuild`, `SavedBuildWithId` and `BuildsError` exist;
+        `SavedBuild` requires every property and is open (no `additionalProperties` keyword); `SavedBuildWithId`
+        is `allOf` of `$ref SavedBuild` and an `id` object (pattern `SAVED_BUILD_ID_PATTERN`, required) with
+        `unevaluatedProperties: false`; the closed response-side schemas (`additionalProperties: false` or
+        `unevaluatedProperties: false`) are exactly `SaveBuildResponse`, `BuildsError` and `SavedBuildWithId`,
+        and each requires every property; every property has a description;
+        `SaveBuildRequest.durationSeconds` has the `SIM_INPUT_BOUNDS.durationSeconds` min and max; `SavedBuild`
+        has no duration bounds; every schema is referenced from a path or another schema.
       - Every example validates against its schema. Every example that can be produced live is reproduced by a
         request and equals the real response (`toEqual` on the body): the save request gives the 201 or 200
         example body, GET gives the GET example, and each 400, 413, 404, 405 and 429 example equals the response
         to the request the spec builds for it. The 503 and 500 examples are validated against `BuildsError`
         only; the spec names them as the two without a live reproduction.
-      - A real 201 body, a real GET body and a real 400 validate, and a copy with an added property (or, for the
-        GET body, a missing `id`) does not.
+      - A real 201 body, a real GET body (against `SavedBuildWithId`) and a real 400 validate; a copy of the 201
+        body or of the GET body with an added property does not, and a copy of the GET body without `id` does
+        not.
 - [ ] Stale example fixed and guarded (owner Q17 A): `aoe4-simulate-api-contract.spec.ts` has one test per key of
       `requestExamples` (so the `buildOrder` example too) asserting the live 200 body `toEqual` the documented
       200 example. The test for `buildOrder` fails on the current `docs/api/openapi.json` (its example differs
       from the engine in the keys listed in Scope item 7) and passes after the example is regenerated; the
       implementer records both runs in the report.
-- [ ] `playwright.config.ts` `webServer.env` sets `BUILDS_LOCAL_DIR` to a directory under `test-results/`, spreads
-      `process.env` and removes `BUILDS_STORE_ID`. After `npm run acceptance`, `git status` is clean and no
+- [ ] `playwright.config.ts` `webServer.env` sets `BUILDS_LOCAL_DIR` to a directory under `test-results/`, carries
+      the inherited string-valued `process.env` entries, omits `BUILDS_STORE_ID` and `VERCEL_ENV`, and `npx tsc
+      --noEmit` passes on it. After `npm run acceptance`, `git status` is clean and no
       `.builds-local/` directory was created.
 - [ ] Every existing test that pins the document version, the path list or the schema-name list holds the new
       value, and every other existing test keeps its expected value. The report lists each test edited.
@@ -309,4 +325,10 @@ None.
 
 - Underspecified: where `englishCatalog` lives (it would have pulled `data.ts` into the browser bundle via `saved-builds.ts`), the `SavedBuildWithId` name, operation ids and error texts.
 - Changed: `api-route.ts` now exports six names and imports no `data.ts` (grep criterion added); `english-catalog.ts` added with its memo test; `saved-builds.ts` imports `isPlainObject` and `notAnObjectError` from `api-route.ts`; OpenAPI names and exact error texts fixed; open questions removed.
+- Stands: no branch work exists yet.
+
+## Re-spec 2026-11-09 (second)
+
+- Underspecified: the `SavedBuild` and `SavedBuildWithId` composition (a closed `SavedBuild` cannot be composed with `id`), and the One-source grep that matched `pages/api/fight.ts`.
+- Changed: Scope item 7 and the contract criteria follow the amended C3 (open `SavedBuild`, `SavedBuildWithId` closed by `unevaluatedProperties: false`, three closed schemas); the grep uses `request body: must be a JSON object`; also the Invariants S3 wording, `webServer.env` typing and `VERCEL_ENV`, `postBuildRaw` content type, the surface spec title, the stray memo clause removed, and On merge now adds the routes to CONTEXT.md Key surfaces.
 - Stands: no branch work exists yet.
