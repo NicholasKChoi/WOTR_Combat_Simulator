@@ -3,7 +3,7 @@ import type { SimulateRequest, SimulateResponse } from '../../../lib/aoe4-build-
 import { loadGameData } from '../../../lib/aoe4-build-order/data'
 import type { BuildOrderIssue } from '../../../lib/aoe4-build-order/model'
 import { SIM_INPUT_BOUNDS, buildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
-import { AUTO_RUN_DEBOUNCE_MS, createAutoRunController, durationError, requestKey, type AutoRunState, type LiveInput } from './auto-run'
+import { AUTO_RUN_DEBOUNCE_MS, createAutoRunController, durationError, requestKey, type AutoRunController, type AutoRunState, type LiveInput } from './auto-run'
 import { simulationFailureMessage } from './simulate-client'
 
 const catalog = buildOrderCatalog(loadGameData('english'))
@@ -80,6 +80,13 @@ async function withRejection(text = VALID) {
     const harness = setup(live(text))
     await harness.answer(0, reply(400, { error: 'bad', issues: [issue], omittedIssues: 2 }))
     expect(harness.state().status).toBe('rejected')
+    return harness
+}
+
+async function withFailure() {
+    const harness = setup()
+    await harness.answer(0, reply(500, {}))
+    expect(harness.state().status).toBe('failed')
     return harness
 }
 
@@ -609,17 +616,20 @@ describe('dispose', () => {
         expect(history).toEqual([])
     })
 
-    it('ignores every later call', async () => {
-        const { controller, post, history, state } = await withRejection()
+    it.each([
+        ['input', async () => withResult(), (controller: AutoRunController) => controller.input(live(OTHER))],
+        ['flush', async () => withResult(), (controller: AutoRunController) => controller.flush(live(OTHER))],
+        ['release', async () => setup(live(), true), (controller: AutoRunController) => controller.release()],
+        ['retry', async () => withFailure(), (controller: AutoRunController) => controller.retry()],
+    ])('ignores a later %s', async (_, make, call) => {
+        const { controller, post, history, state } = await make()
         const before = state()
+        const calls = post.mock.calls.length
         const changes = history.length
         controller.dispose()
-        controller.input(live(OTHER))
+        call(controller)
         vi.advanceTimersByTime(AUTO_RUN_DEBOUNCE_MS)
-        controller.flush(live(THIRD))
-        controller.release()
-        controller.retry()
-        expect(post).toHaveBeenCalledTimes(1)
+        expect(post).toHaveBeenCalledTimes(calls)
         expect(state()).toBe(before)
         expect(history).toHaveLength(changes)
     })
