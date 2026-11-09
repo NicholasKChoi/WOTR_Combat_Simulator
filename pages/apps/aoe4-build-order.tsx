@@ -16,13 +16,14 @@ import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-pan
 import { Results } from '../../components/apps/aoe4-build-order/results'
 import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
 import { mergeExternalEdit } from '../../components/apps/aoe4-build-order/step-table-model'
+import { postSimulation, readRejection, simulationFailureMessage } from '../../components/apps/aoe4-build-order/simulate-client'
 import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-build-order/workbench-tabs'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { loadGameData } from '../../lib/aoe4-build-order/data'
 import { formatBuildOrderText, parseBuildOrderText } from '../../lib/aoe4-build-order/parse-text'
 import { type BuildOrderCatalog, buildOrderCatalog } from '../../lib/aoe4-build-order/schema'
 import { textToBuildOrder } from '../../lib/aoe4-build-order/text-to-build'
-import type { SimulateError, SimulateRequest, SimulateResponse } from '../../lib/aoe4-build-order/api'
+import type { SimulateResponse } from '../../lib/aoe4-build-order/api'
 
 const pageTitle = 'AoE4 Build Order Simulator'
 const DEFAULT_DURATION_SECONDS = 1200
@@ -62,29 +63,16 @@ function browserStorage(): Storage | null {
     }
 }
 
-function postSimulation(buildOrder: SimulateRequest['buildOrder'], durationSeconds: number): Promise<Response> {
-    const request: SimulateRequest = { buildOrder, inputs: { durationSeconds } }
-    return fetch('/api/aoe4-build-order/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(request),
-    })
-}
-
 async function errorMessages(response: Response): Promise<string[]> {
     if (response.status === 400) {
-        try {
-            const body: Partial<SimulateError> = await response.json()
-            if (Array.isArray(body.issues) && body.issues.length > 0) {
-                const messages = body.issues.map((issue) => issue.message)
-                if (typeof body.omittedIssues === 'number' && body.omittedIssues > 0) {
-                    messages.push(`${body.omittedIssues} more issues not shown.`)
-                }
-                return messages
-            }
-        } catch {}
+        const rejection = await readRejection(response)
+        if (rejection !== null) {
+            const messages = rejection.issues.map((issue) => issue.message)
+            if (rejection.omittedIssues > 0) messages.push(`${rejection.omittedIssues} more issues not shown.`)
+            return messages
+        }
     }
-    return [`The simulation could not be run (HTTP ${response.status}).`]
+    return [simulationFailureMessage(response.status)]
 }
 
 export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
@@ -208,7 +196,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
             setResult(null)
             setRun(null)
             setTab('build')
-            setIssues(['The simulation could not be run. Please try again.'])
+            setIssues([simulationFailureMessage(null)])
         } finally {
             setRunning(false)
         }
