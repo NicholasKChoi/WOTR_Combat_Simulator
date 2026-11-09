@@ -17,7 +17,7 @@ import {
     storageEnv,
     type SavedBuild,
 } from './saved-builds'
-import { buildOrderCatalog } from './schema'
+import { buildOrderCatalog, checkBuildOrder } from './schema'
 import { ENGLISH } from './test-helpers'
 
 vi.mock('./parse-text', async (importOriginal) => {
@@ -186,9 +186,13 @@ describe('checkSaveBuildRequest', () => {
 
         it('caps the issues and counts the rest', () => {
             const steps = Array.from({ length: 150 }, () => badSteps[0])
-            const error = badRequest(withOrder({ steps }))
+            const order = withOrder({ steps })
+            const uncapped = checkBuildOrder(order.buildOrder, catalog)
+            const total = uncapped.ok ? 0 : uncapped.issues.length
+            const error = badRequest(order)
+            expect(total).toBeGreaterThan(MAX_REPORTED_ISSUES)
             expect(error.issues).toHaveLength(MAX_REPORTED_ISSUES)
-            expect(error.omittedIssues).toBeGreaterThan(0)
+            expect(error.omittedIssues).toBe(total - MAX_REPORTED_ISSUES)
             expect(error.error).toBe(error.issues[0].message)
         })
     })
