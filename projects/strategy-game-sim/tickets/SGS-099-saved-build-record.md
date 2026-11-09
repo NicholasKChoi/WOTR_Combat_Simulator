@@ -1,0 +1,162 @@
+# SGS-099: Add the saved-build record, its id and the save checks
+
+- **Type**: Task
+- **Component**: aoe4-build-order
+- **Milestone / criteria**: M6 / M6.4 (validation, size cap), M6.6 (env key prefix)
+- **Priority**: medium
+- **Risk**: standard
+- **Invariants**: A1 (no game number is written into code: the caps reuse `SIM_INPUT_BOUNDS`), S3 (the save path is bounded: the record has a byte cap and the name a length cap)
+- **LOC estimate**: ~150 (new `lib/aoe4-build-order/saved-builds.ts`; a few lines in `lib/aoe4-build-order/api.ts`; business logic only, tests excluded)
+- **Depends on**: none
+- **On merge**: none
+- **Source**: `design/M6.md` C1 and the C3 rows that `checkSaveBuildRequest` produces (the 400 and 413 rows); `plans/M6-20261105.md` outline A
+
+## Context
+
+M6 saves a validated `{ buildOrder, durationSeconds }` under a content-addressed 11-character id and reads
+it back. This ticket adds the pure, browser-safe module that owns the record shape, the id, the key layout
+and the save checks. The stores, rate limit, routes and page (later tickets) build on it and use its names
+exactly. Nothing calls it yet, so no behavior on the site changes.
+
+## Scope
+
+Read first: `design/M6.md` C1 and C3 (authoritative for names and behavior). Existing code used:
+`buildOrderShape`, `checkBuildOrder`, `outOfRange`, `SIM_INPUT_BOUNDS` and `BuildOrderCatalog` in
+`lib/aoe4-build-order/schema.ts`; `textToBuildOrder` in `lib/aoe4-build-order/text-to-build.ts`;
+`formatBuildOrderText` in `lib/aoe4-build-order/parse-text.ts`; `SimulateError` and `MAX_REPORTED_ISSUES` in
+`lib/aoe4-build-order/api.ts`; `BuildOrderIssue` in `lib/aoe4-build-order/model.ts`.
+
+1. New `lib/aoe4-build-order/saved-builds.ts`, pure TS. It imports no `node:` module, React or Next, and
+   uses Web Crypto (`crypto.subtle`), `TextEncoder` and `btoa`, never `node:crypto` or `Buffer`, so the
+   page can import it. It exports exactly the C1 names:
+   - `SAVED_BUILD_VERSION = 1`, `savedBuildSchema` (zod, `version: z.literal(1)`, `buildOrder:
+     buildOrderShape`, `durationSeconds: z.number().int()`), and `SavedBuild = z.infer<typeof
+     savedBuildSchema>`. Duration bounds are not part of this schema (a read must succeed whatever the
+     bounds become); they are checked on save only.
+   - `SaveBuildRequest = Omit<SavedBuild, 'version'>` and `SaveBuildResponse { id: string; path: string }`.
+   - `SAVED_BUILD_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/` and `isSavedBuildId(value: unknown): value is string`
+     (false for any non-string).
+   - `savedBuildId(record: SavedBuild): Promise<string>`: SHA-256 of `JSON.stringify(record)` as UTF-8, first
+     11 characters of the unpadded base64url digest (`+` to `-`, `/` to `_`, `=` removed).
+   - `storageEnv(vercelEnv: string | undefined): string`: `'production'` or `'preview'` when the input is
+     exactly that, otherwise `'development'`.
+   - `savedBuildKey(env, id)` is `${env}/builds/${id}.json`; `rateCounterKey(env, clientKey)` is
+     `${env}/rate-limit/${clientKey}.json`; `savedBuildPath(id)` is `/apps/aoe4-build-order?b=${id}`.
+   - `SAVED_BUILD_MAX_BYTES = 65_536` and `SAVED_NAME_MAX_CHARS = 100`.
+   - `checkSaveBuildRequest(body: unknown, catalog: BuildOrderCatalog)` returning `{ ok: true; record:
+     SavedBuild; json: string } | { ok: false; status: 400; error: SimulateError } | { ok: false; status:
+     413; error: BuildsError }`. Checks run in this order and the first failing group decides; within the
+     400 group the issues are ordered order issues, then duration, then name:
+     1. `body` is not a plain object (including an array or `null`): 400 with `error` and the single issue
+        message `request body: must be a JSON object`, issue code `syntax`.
+     2. `checkBuildOrder(body.buildOrder, catalog)` issues (a missing `buildOrder` is reported by it).
+     3. `durationSeconds` missing, not a number, or failing `outOfRange(value, 'durationSeconds')`: one
+        `out-of-range` issue with no `step`, message `durationSeconds: missing`, `durationSeconds: must be
+        a number`, or `durationSeconds: <outOfRange text>`.
+     4. When the order is valid, `name` longer than `SAVED_NAME_MAX_CHARS` (UTF-16 length, as `textChars`
+        counts): one `out-of-range` issue, message `name: <n> characters, more than 100`.
+     5. If steps 2 to 4 found issues, return 400 with `error` equal to the first issue's message, `issues`
+        capped at `MAX_REPORTED_ISSUES`, and `omittedIssues` only when above zero, the same shape as the
+        simulate route.
+     6. Build `record = { version: 1, buildOrder: <checked order>, durationSeconds }` in schema key order and
+        `json = JSON.stringify(record)`. When `json` is more than `SAVED_BUILD_MAX_BYTES` UTF-8 bytes
+        (`TextEncoder`), return 413 with `error` `saved build: <bytes> bytes, more than 65536`.
+     7. Paste round trip: `textToBuildOrder(formatBuildOrderText(order), catalog)`. When it fails, return
+        400 with its issues (capped as in step 5). When it succeeds and its `steps` or `start` differ
+        structurally from the record's (compare by value, ignoring key order), return 400 with one issue,
+        code `invalid`, message `build order: reopening it as text would change the build; use whole
+        numbers for times and counts`. `name`, `civ` and `source` are not compared.
+     8. Otherwise `{ ok: true, record, json }`.
+2. `lib/aoe4-build-order/api.ts`: add `export interface BuildsError { error: string }` and re-export the
+   types `SavedBuild`, `SaveBuildRequest` and `SaveBuildResponse` from `./saved-builds` with `export type`.
+   `saved-builds.ts` imports `SimulateError`, `BuildsError` and `MAX_REPORTED_ISSUES` from `./api`; the
+   cycle is type-only on the `api.ts` side and must not create a runtime import cycle.
+3. Input validation (common.md): the request has a nested object, so it is past the hand-check threshold.
+   `buildOrder` is validated by the existing zod schema through `checkBuildOrder`; the stored shape is
+   `savedBuildSchema`. `checkSaveBuildRequest` adds no hand-rolled validator for the contents of
+   `buildOrder`; the envelope checks in steps 1, 3 and 4 above are the only hand checks (they reuse
+   `outOfRange` and the existing issue shape).
+4. New `lib/aoe4-build-order/saved-builds.test.ts` (Vitest, table style of `schema.test.ts`, `ENGLISH` from
+   `test-helpers.ts`, a valid order from `listBuilds()`).
+5. Docs: no existing doc becomes untrue (no behavior is exposed yet). Before writing, grep `docs/`,
+   `ARCHITECTURE.md` and `README.md` for `saved-builds`, `saved build` and `BuildsError`; if any
+   statement exists that this contradicts, fix it here.
+
+**Out of scope:** the stores and `build-store.ts`, the rate limit and `clientKey`, `api-route.ts`, the
+routes, the OpenAPI spec, the page, the smoke script, `@vercel/blob` and the zod `overrides`. A hash helper
+shared with `clientKey` is the rate-limit ticket's concern. `savedBuildKey` and `rateCounterKey` do not
+validate their arguments; the callers (the stores and routes) validate ids with `isSavedBuildId`.
+
+## Diagrams
+
+Single-component change outside the core control loop; no diagram required.
+
+## Acceptance criteria
+
+- [ ] `saved-builds.ts` exports every name in Scope item 1 with the stated signatures, and no other
+      exported name. The match for node, React or Next imports is empty:
+      `git grep -nE "from '(node:|react|next)" -- lib/aoe4-build-order/saved-builds.ts`.
+- [ ] `savedBuildId`: every id for a table of different records is exactly 11 characters matching
+      `SAVED_BUILD_ID_PATTERN`. Test cases pin: the same record gives the same id twice; the same record built
+      with its fields in a different object-literal order, passed through `savedBuildSchema.parse`, gives the
+      same id; changing `durationSeconds`, `buildOrder.name` or one step each gives a different id. A
+      `savedBuildId` that hashes a different serialization (for example, of the unparsed input) fails the
+      key-order case.
+- [ ] `isSavedBuildId` table: `'Zx3_k9-QaB0'` true; `'abc'`, a 10-character, a 12-character string, and 11
+      characters containing each of `.`, `/` and `=` false; `undefined`, `null`, a number and an array false;
+      an 11-character string followed by `\n` false (pins that the pattern is anchored).
+- [ ] `storageEnv` table: `'production'` and `'preview'` return themselves; `'development'`, `undefined`,
+      `''`, `'Production'` and `'staging'` return `'development'`.
+- [ ] Key tables: `savedBuildKey('preview', 'Zx3_k9-QaB0')` is `preview/builds/Zx3_k9-QaB0.json`;
+      `rateCounterKey('development', 'AbCdEfGhIjKlMnOp')` is
+      `development/rate-limit/AbCdEfGhIjKlMnOp.json`; `savedBuildPath('Zx3_k9-QaB0')` is
+      `/apps/aoe4-build-order?b=Zx3_k9-QaB0`.
+- [ ] `checkSaveBuildRequest` has one test row per C3 400 or 413 row, each asserting `status` and the
+      response shape:
+      - `[]`, `null` and `'x'` give 400, `error` `request body: must be a JSON object`, and one `syntax`
+        issue.
+      - A unit id `knigt` in a step gives 400 with an `unknown-id` issue from `checkBuildOrder`.
+      - `durationSeconds` of `59`, `3601`, `61.5`, missing and `'60'` each give 400 with one `out-of-range`
+        issue that has no `step`, with the messages in Scope.
+      - `name` of 100 characters passes and of 101 gives 400 with `name: 101 characters, more than 100`.
+      - A record just over `SAVED_BUILD_MAX_BYTES` gives 413 with `BuildsError` shape; the same order shortened
+        to under the cap gives `ok: true`. The test builds the record from valid steps, not by editing the
+        constant, so it fails if the check compares characters instead of UTF-8 bytes (use a multi-byte `name`
+        or `source` chosen so the character count is under the cap and the byte count is over it).
+      - A valid order and `durationSeconds` of 60 and 3600 give `ok: true`, `record.version` is 1, and
+        `json === JSON.stringify(record)`.
+- [ ] Issue-order test: a body with an invalid order and an invalid `durationSeconds` returns the order issues
+      first, then the duration issue; an order that is invalid and a 101-character name returns no name issue
+      (name is checked only for a valid order); a valid order with both a bad duration and a long name returns
+      the duration issue before the name issue. With more than `MAX_REPORTED_ISSUES` order issues, `issues` is
+      capped, `omittedIssues` is the remainder, and `error` equals `issues[0].message`.
+- [ ] Round-trip test cases:
+      - A valid shipped build (every entry of `listBuilds()`, as a loop) gives `ok: true`.
+      - An order whose formatted text is over 20000 characters gives 400 with the `text: <n> characters, more
+        than 20000` issue returned by `textToBuildOrder`, not 413 and not `ok: true`. This catches a missing
+        round-trip step.
+      - An order with a fractional `walkSeconds` (for example `2.5`) gives 400 with the issues
+        `textToBuildOrder` returns for the formatted `walk 2.5s`, with no 413 and no `ok: true`. The
+        implementer records the exact issue in the report.
+      - The "converted order differs" branch (message in Scope step 7) is pinned by an order the implementer
+        finds whose formatted text parses but converts to different `steps` or `start`. When no such order
+        exists in the current format, the implementer says so in the report and tests the comparison function
+        directly (same input different `steps` gives the issue; equal values with different key order give
+        none); the comparison must be a separate non-exported function or reachable through
+        `checkSaveBuildRequest`, so the test can fail if the compare is dropped.
+- [ ] `lib/aoe4-build-order/api.ts` exports `BuildsError` and the three re-exported types; `npx tsc --noEmit`
+      and `npm run lint:dup` pass with no new duplication flagged against `simulate.ts` or `schema.ts`.
+- [ ] No INVARIANTS.md regressions
+
+## Open questions
+
+- `designer` (non-blocking): design C3 row 8 says a fractional `walkSeconds: 2.5` gives one `invalid` issue.
+  In the code today `formatBuildOrderText` writes `walk 2.5s` and `parseBuildOrderText` accepts only whole
+  seconds (`SECONDS = /^(\d+)s$/`), so that order fails the first half of the round-trip rule and returns
+  the parse issues, not one `invalid` issue. This ticket follows the code (parse issues returned) and leaves
+  the `invalid` issue for a case where parse succeeds but the result differs. The design's example, and
+  whether such a case exists, need a decision.
+- `designer` (non-blocking): `notAnObjectError()` (C7) lives in `api-route.ts`, which a later ticket creates,
+  but `checkSaveBuildRequest(body: unknown, ...)` must reject a non-object itself and this ticket cannot
+  depend on that file. The ticket inlines the same 400 body (private to `saved-builds.ts`); the ticket that
+  adds `api-route.ts` can point `saved-builds.ts` at `notAnObjectError` if the design wants one source.
