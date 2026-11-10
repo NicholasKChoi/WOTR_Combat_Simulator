@@ -693,6 +693,7 @@ test.describe('opening a link', () => {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ version: 1, id: 'BBBBBBBBBBB', buildOrder: broken, durationSeconds: 1200 }) }),
     )
     const posts = trackSimulatePosts(page)
+    await page.setViewportSize(PHONE)
     await page.goto(`${AOE4_PAGE}?b=BBBBBBBBBBB`)
     await expect(status(page)).toHaveAttribute('data-status', 'invalid')
     await expect(textarea(page)).toHaveValue(/knigt/)
