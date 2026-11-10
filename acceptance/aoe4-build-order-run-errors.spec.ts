@@ -1,18 +1,25 @@
 import { test, expect, type Page } from '@playwright/test'
-import { SIMULATE_PATH, openPage, runSimulation, showTab } from './helpers'
+import { AOE4_PAGE, SIMULATE_PATH, openPage, showTab, waitForRun } from './helpers'
 
 const errorBox = (page: Page) => page.getByTestId('simulation-error')
+const status = (page: Page) => page.getByTestId('auto-run-status')
+
+async function loadWithStatus(page: Page, expected: string) {
+  await page.goto(AOE4_PAGE)
+  await expect(status(page)).toHaveAttribute('data-status', expected)
+}
 
 test.describe('AoE4 build order page run outcomes', () => {
-  test('a successful run posts the request body to the simulate path and shows the results tab', async ({ page }) => {
+  test('a successful run posts the request body to the simulate path and enables the results tab', async ({ page }) => {
     await openPage(page)
-    await page.getByTestId('duration-seconds').fill('300')
-    const response = await runSimulation(page)
+    const response = await waitForRun(page, () => page.getByTestId('duration-seconds').fill('300'))
     expect(response.status()).toBe(200)
     const request = response.request()
     expect(request.headers()['content-type']).toContain('application/json')
     expect(Object.keys(request.postDataJSON()).sort()).toEqual(['buildOrder', 'inputs'])
     expect(request.postDataJSON().inputs).toEqual({ durationSeconds: 300 })
+    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
+    await showTab(page, 'results')
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
     await expect(errorBox(page)).toHaveCount(0)
   })
@@ -32,10 +39,10 @@ test.describe('AoE4 build order page run outcomes', () => {
         }),
       })
     )
-    await openPage(page)
-    expect((await runSimulation(page)).status()).toBe(400)
-    const items = errorBox(page).locator('li')
+    await loadWithStatus(page, 'rejected')
+    const items = page.getByTestId('build-order-issues').locator('li')
     await expect(items).toHaveText(['first problem', 'second problem', '7 more issues not shown.'])
+    await expect(errorBox(page)).toHaveCount(0)
   })
 
   test('a 400 whose omittedIssues is zero adds no count line', async ({ page }) => {
@@ -46,9 +53,8 @@ test.describe('AoE4 build order page run outcomes', () => {
         body: JSON.stringify({ error: 'bad', issues: [{ code: 'syntax', message: 'only problem' }], omittedIssues: 0 }),
       })
     )
-    await openPage(page)
-    await runSimulation(page)
-    await expect(errorBox(page).locator('li')).toHaveText(['only problem'])
+    await loadWithStatus(page, 'rejected')
+    await expect(page.getByTestId('build-order-issues').locator('li')).toHaveText(['only problem'])
   })
 
   const unreadable: { name: string; status: number; body: string; contentType: string; message: string }[] = [
@@ -67,9 +73,8 @@ test.describe('AoE4 build order page run outcomes', () => {
   for (const row of unreadable) {
     test(`${row.name} shows the HTTP status message on the build tab`, async ({ page }) => {
       await page.route(`**${SIMULATE_PATH}`, (route) => route.fulfill({ status: row.status, contentType: row.contentType, body: row.body }))
-      await openPage(page)
-      await runSimulation(page)
-      await expect(errorBox(page).locator('li')).toHaveText([row.message])
+      await loadWithStatus(page, 'failed')
+      await expect(errorBox(page)).toHaveText(row.message)
       await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
     })
   }
@@ -77,11 +82,12 @@ test.describe('AoE4 build order page run outcomes', () => {
   test('a network failure shows the try-again message and a later good run clears it', async ({ page }) => {
     await openPage(page)
     await page.route(`**${SIMULATE_PATH}`, (route) => route.abort())
-    await page.getByTestId('run-simulation').click()
-    await expect(errorBox(page).locator('li')).toHaveText(['The simulation could not be run. Please try again.'])
+    await page.getByTestId('duration-seconds').fill('900')
+    await expect(status(page)).toHaveAttribute('data-status', 'failed')
+    await expect(errorBox(page)).toHaveText('The simulation could not be run. Please try again.')
 
     await page.unroute(`**${SIMULATE_PATH}`)
-    expect((await runSimulation(page)).status()).toBe(200)
+    expect((await waitForRun(page, () => page.getByTestId('duration-seconds').fill('1000'))).status()).toBe(200)
     await expect(errorBox(page)).toHaveCount(0)
     await showTab(page, 'results')
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
@@ -89,8 +95,7 @@ test.describe('AoE4 build order page run outcomes', () => {
 
   test('a 200 whose body is not JSON is reported as the try-again failure', async ({ page }) => {
     await page.route(`**${SIMULATE_PATH}`, (route) => route.fulfill({ status: 200, contentType: 'text/plain', body: 'not json' }))
-    await openPage(page)
-    await runSimulation(page)
-    await expect(errorBox(page).locator('li')).toHaveText(['The simulation could not be run. Please try again.'])
+    await loadWithStatus(page, 'failed')
+    await expect(errorBox(page)).toHaveText('The simulation could not be run. Please try again.')
   })
 })

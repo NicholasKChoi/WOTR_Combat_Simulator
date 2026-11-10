@@ -7,13 +7,13 @@ import { IssueList } from './issue-list'
 const unknownUnit: BuildOrderIssue = { code: 'unknown-id', message: 'line 2: unknown unit "knigt"', line: 2, suggestion: 'knight' }
 const syntax: BuildOrderIssue = { code: 'syntax', message: 'line 3: expected a trigger or action, got end of line', line: 3 }
 
-function itemTexts(issues: BuildOrderIssue[], rejected?: boolean): string[] {
-    const html = renderToStaticMarkup(createElement(IssueList, { issues, rejected }))
+function itemTexts(issues: BuildOrderIssue[], omittedIssues?: number): string[] {
+    const html = renderToStaticMarkup(createElement(IssueList, { issues, omittedIssues }))
     return [...html.matchAll(/<li[^>]*>(.*?)<\/li>/g)].map(([, inner]) => inner.replace(/<[^>]+>/g, ''))
 }
 
-function summary(issues: BuildOrderIssue[], rejected?: boolean): string | null {
-    const html = renderToStaticMarkup(createElement(IssueList, { issues, rejected }))
+function summary(issues: BuildOrderIssue[], omittedIssues?: number): string | null {
+    const html = renderToStaticMarkup(createElement(IssueList, { issues, omittedIssues }))
     return /data-testid="build-order-issues-summary"[^>]*>(.*?)<\/p>/.exec(html)?.[1] ?? null
 }
 
@@ -35,11 +35,19 @@ describe('IssueList', () => {
     it.each([
         [[syntax], 'Fix 1 issue to run the simulation.'],
         [[syntax, unknownUnit], 'Fix 2 issues to run the simulation.'],
-    ])('summarises a rejected run: %#', (issues, text) => {
-        expect(summary(issues, true)).toBe(text)
+    ])('summarises the issues: %#', (issues, text) => {
+        expect(summary(issues)).toBe(text)
     })
 
-    it('has no summary before a rejected run', () => {
-        expect(summary([syntax])).toBeNull()
+    it('ends the list with the count of omitted issues', () => {
+        expect(itemTexts([syntax], 3)).toEqual([syntax.message, '3 more issues not shown.'])
+    })
+
+    it.each([0, undefined])('adds no omitted item for %s', (omittedIssues) => {
+        expect(itemTexts([syntax], omittedIssues)).toEqual([syntax.message])
+    })
+
+    it('counts only the listed issues in the summary', () => {
+        expect(summary([syntax], 2)).toBe('Fix 1 issue to run the simulation.')
     })
 })

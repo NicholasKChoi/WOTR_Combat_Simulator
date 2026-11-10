@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openPage, runSimulation, showTab } from './helpers'
+import { openPage, showTab, waitForRun } from './helpers'
 
 const WIDE = { width: 1280, height: 800 }
 const NARROW = { width: 1024, height: 768 }
@@ -19,8 +19,7 @@ const rects = (page: Page) =>
 
 async function openResults(page: Page) {
   await openPage(page)
-  await page.getByTestId('duration-seconds').fill('200')
-  const response = await runSimulation(page)
+  const response = await waitForRun(page, () => page.getByTestId('duration-seconds').fill('200'))
   expect(response.status()).toBe(200)
   await showTab(page, 'results')
   await expect(page.getByTestId('step-timeline-scroll')).toBeVisible()
@@ -51,8 +50,7 @@ test.describe('AoE4 results split at 1280 px', () => {
   test('a build with no steps keeps both columns, empty timeline first, and draws no timeline', async ({ page }) => {
     await openPage(page)
     await showTab(page, 'build')
-    await page.getByTestId('build-order-text').fill('start -> sheep')
-    const response = await runSimulation(page)
+    const response = await waitForRun(page, () => page.getByTestId('build-order-text').fill('start -> sheep'))
     expect(response.status()).toBe(200)
     await showTab(page, 'results')
     const columns = page.getByTestId('results-split').locator('> *')

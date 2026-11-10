@@ -860,29 +860,40 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 ### Page
 
 The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls; below that it scrolls with the page. It
-holds the prebuilt build select, the `durationSeconds` number input (default 1200), the run button and a
-text/table toggle. Below it are two tabs, Build and Results. Results is enabled while there is a shown result or
-a pinned run; a successful run selects Results and scrolls it into view, and a rejected or failed run selects
-Build. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so the toggle is usable on the Build tab only. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The Build tab shows one editor view
+holds the prebuilt build select, the `durationSeconds` number input (default 1200), a text/table toggle and the
+run status (`auto-run-status`). There is no run button: the page re-runs the simulation on edit. Below the bar are
+two tabs, Build and Results. Results is enabled while there is a result or a pinned run. No run selects a tab, and
+the page never scrolls by itself. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so the toggle is usable on the Build tab only. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The Build tab shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the
-step table. The view survives runs and tab switches but not a reload; the selected tab follows each run
-(see above) and a reload starts on Build.
+step table. The view survives runs and tab switches but not a reload, and a reload starts on Build.
 Choosing a prebuilt build replaces the text with that build's paste text; editing the text
-leaves the select as it is. Run converts the text with `textToBuildOrder` and the English catalog and posts the
-checked `buildOrder` and `inputs.durationSeconds` to the route. The issues list under the open editor view is
-live: parse issues (and the length cap) show at once, and check issues show from the first Run on (of any
-outcome), tracking every edit. While any line fails to parse, the field and per-step issues of the lines that did
+leaves the select as it is.
+
+The input settles 500 ms (`AUTO_RUN_DEBOUNCE_MS`) after the last edit to the text, the step table or the duration,
+and the page then re-runs it; Enter in the duration field and choosing a prebuilt build settle the input at once.
+On load the default build settles and runs once. A settled input is converted with `textToBuildOrder` and the
+English catalog, and the checked `buildOrder` and `inputs.durationSeconds` are posted to the route only when the
+input is valid and differs from both the shown result's input and the one in flight; a newer request aborts the
+one in flight, and only the newest response is shown. The duration is checked in the browser: an empty field reads
+`Duration is required.` and anything but a whole number from 60 to 3600 reads
+`Duration must be a whole number of seconds from 60 to 3600.` (`duration-error`, with `aria-invalid` and
+`aria-describedby` on the field). The status reads `Loading the build.` before the first run,
+`Computing the simulation.` while a run with no result yet is in flight, `Updating the results.` while a newer
+run is in flight, nothing while the shown result matches the input, `The simulation failed.` after a failure, and
+for an invalid or rejected input `The charts show the last valid build.` when there is a result and
+`No valid build to simulate yet.` when there is none. An invalid, rejected (400) or failed input keeps the last
+good result on Results, dimmed, with the issues or the error beside the editor; a failure adds a `Try again`
+button (`simulation-retry`) that sends the same request again. The pin name is that of the shown result's input.
+
+The issues list under the open editor view tracks the settled input at all times: parse issues (and the length
+cap) and check issues show for every settled text. While any line fails to parse, the field and per-step issues of the lines that did
 parse are listed with the syntax issues at once, in line order with line-less issues first. Otherwise the list is
 in check order. It adds `Did you mean <id>?` after the message where an issue
-has a near match, and marks each issue's line in the gutter. An edit never clears a shown result. When the text
-does not convert, Run sends nothing, clears the shown result, selects Build and scrolls to the first issue's
-line, or to the list when that issue has no line or the table view is open. After such a Run the list starts with
-`Fix N issues to run the simulation.` (`Fix 1 issue ...` for one), tracking the count as the text is edited, until a
-Run converts. Server 400 issues stay in the
-error list under the editor view, without lines. Gold run-outs and other info notes are in the collapsed info
-list in Results. The duration is not checked in the browser: an
-empty or non-numeric entry is sent as 0, and the route rejects any value outside its bounds.
+has a near match, and marks each issue's line in the gutter. An edit never clears a shown result. The list starts
+with `Fix N issues to run the simulation.` (`Fix 1 issue to run the simulation.` for one), counting the settled
+issues. Server 400 issues take its place under the editor view, without lines, until the next settled input.
+Gold run-outs and other info notes are in the collapsed info list in Results.
 
 Narrow layout: under 768 px the step rows are cards (their selects and inputs shrink to the card), the run bar scrolls with the page and wraps onto several rows with the select and
 duration input at full width, and the step timeline and compare tables scroll sideways inside their own boxes. The
@@ -907,18 +918,18 @@ leaves the flags unchanged. The table is mounted only in Table view and only whi
 survive switching between Text and Table, the text going unparseable and back, and the Build and Results tabs. The first row edits `start`: the rally node, one villager
 count and node per pair (a node used by another pair is not offered), add and delete for pairs, and a
 Customize button that inserts the civ's default `start` while the order has none; the table does not check
-that the counts sum to the civ's total, and Run reports that. Under 768 px each row, the start row included,
+that the counts sum to the civ's total, and the issues list reports that. Under 768 px each row, the start row included,
 is a card with its fields stacked. An edit builds the new order
 and sets `text` to `formatBuildOrderText(order)`, so a table edit drops comments and blank lines and keeps
 `start`; typing in the textarea never rewrites the text. While the text does not parse, the table view shows
 a notice (`step-table-unavailable`) holding the first parse issue's message instead of the table, and the
 toggle stays usable. Id selects list the English data's choices (a unit select lists what the row's producer can make, a
 research `at` select lists the buildings that research the tech); a pasted id the choices do not list shows as
-an extra selected `<id> (unknown)` choice that the table leaves alone, and Run reports it as an issue under
+an extra selected `<id> (unknown)` choice that the table leaves alone, and the issues list reports it under
 the editor view. Number fields take unsigned integers (`move` count also takes `all`, and the trigger time is
 whole seconds); clearing an optional number field omits it, while an empty or invalid entry in a required
-field leaves the step as it was. Bounds are checked on Run, not in the table. Editing while a run is in flight
-does not change the result shown.
+field leaves the step as it was. Bounds are checked when the input settles, not in the table. An edit while a run
+is in flight keeps the shown result until a newer run lands.
 
 A 200 draws four line charts, each with a series legend titled "Series" (one toggle button per series):
 
@@ -965,21 +976,20 @@ step's span, from Started to Finished, on every chart; an `in-progress` step's s
 whose start and finish are the same second shows as a single vertical line, and a `waiting` or `not-reached` step (no
 start) shows no band. Moving off the row, or running again, clears the highlight. The table scrolls
 horizontally inside its wrapper when it is wider than the page. The
-step text is the pasted text as it was when Run was clicked, so editing the text afterwards does not change
-the labels until the next run. A result with empty `steps` (a `start`-only paste) shows no timeline, and a 400
+step text is the text of the shown result's input, so editing the text afterwards does not change the labels until
+the next run lands. A result with empty `steps` (a `start`-only paste) shows no timeline, and a 400
 shows none.
 
 Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown, unless its text and
 duration both equal the pinned run's) keeps the shown result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is
-pinned) drops it. The pin stays through later runs, text and build edits, and failed runs (a failed run clears the shown
-result but not the pin) and a reload: the pin is kept in `localStorage` under
+pinned) drops it. The pin stays through later runs, text and build edits, invalid, rejected and failed inputs, and a reload: the pin is kept in `localStorage` under
 `aoe4-build-order.pinned-run` as the build text, duration and name (not the result), and the page re-runs it on
 load. A stored value that is not valid, a text that no longer converts, or a response that is not ok (400 or 5xx)
 from the re-run drops it; only a failed request (the network) keeps it, and no pin is shown. A Pin or Unpin made before the re-run finishes wins. The label
-`pinned-label` reads `Pinned: <name>, <m:ss>`. The name is fixed when the run is made: the prebuilt build's name
-when the run's text equals one exactly, `<name> (edited)` (the build selected at the Run) otherwise, and `Custom
-build` when there are no prebuilt builds. A shown result whose text or duration was edited since its Run is marked
-stale (`results-stale`) until the edit is reverted or the next Run.
+`pinned-label` reads `Pinned: <name>, <m:ss>`. The name comes from the shown result's input: the prebuilt build's
+name when its text equals one exactly, `<name> (edited)` (the build selected when that input was sent) otherwise,
+and `Custom build` when there are no prebuilt builds. The shown result is dimmed (`results-last-good`) while the
+input is invalid, rejected or failed.
 
 With a pinned run, each chart also draws the pinned run's series dashed, in the same color as the
 current series with that key, with the name `<name> (pinned)` and the key `pinned:<key>`. The x axis covers
@@ -999,7 +1009,7 @@ earlier time is better. A `better` delta is green and a `worse` delta red. When 
 is replaced by `compare-empty` reading "Nothing to compare yet". The table sits in a horizontally scrolling wrapper
 (`compare-scroll`) and is hidden unless both runs exist.
 
-A 400 shows every returned issue's `message` (each starts with the step or field it applies to, such as `steps[2]` or `inputs.durationSeconds`, or with `build order:` or `request:` for whole-body problems; the route never names a line) and removes any earlier charts and message lists, so only the error list shows; with a pinned run, Results stays enabled and still shows the compare panel (pin label and Unpin, no compare table without a shown result).
+A 400 shows every returned issue's `message` (each starts with the step or field it applies to, such as `steps[2]` or `inputs.durationSeconds`, or with `build order:` or `request:` for whole-body problems; the route never names a line) under the editor view and keeps any earlier result on Results, dimmed; that rejected request is not sent again. With no earlier result, Results is enabled only by a pinned run, and shows the compare panel (pin label and Unpin, no compare table without a shown result).
 When the body has `omittedIssues`, the list ends with one more item, "N more issues not shown." Any
 other HTTP failure shows "The simulation could not be run (HTTP <status>)."; a request or response-body
 error shows "The simulation could not be run. Please try again."

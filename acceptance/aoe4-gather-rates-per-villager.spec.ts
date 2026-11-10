@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
-import { CHART_IDS, openPage, runSimulation, showTab } from './helpers'
+import { CHART_IDS, openPage, showTab, waitForRun } from './helpers'
 
 const CHART = 'chart-gather-rates'
 const HOVER_FRACTION = 0.15
@@ -13,8 +13,7 @@ const SHEEP_ONLY_PASTE = 'start 6 sheep -> sheep'
 
 async function runOk(page: Page, text: string): Promise<SimulationResult> {
   await showTab(page, 'build')
-  await page.getByTestId('build-order-text').fill(text)
-  const response = await runSimulation(page)
+  const response = await waitForRun(page, () => page.getByTestId('build-order-text').fill(text))
   expect(response.status()).toBe(200)
   return (await response.json()) as SimulationResult
 }
@@ -114,6 +113,7 @@ test.describe('AoE4 Gather rates per-villager toggle', () => {
   test('with a pin, the pinned tooltip value is also per villager and a hidden legend entry stays hidden across the toggle', async ({ page }) => {
     await openPage(page)
     const pinnedRun = await runOk(page, MIXED_NODES_PASTE)
+    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
     const current = await runOk(page, SHEEP_ONLY_PASTE)
     await showTab(page, 'results')

@@ -3,7 +3,8 @@ import { listBuilds } from "../lib/aoe4-build-order/builds";
 import { loadGameData } from "../lib/aoe4-build-order/data";
 import { formatBuildOrderText } from "../lib/aoe4-build-order/parse-text";
 import { buildOrderCatalog } from "../lib/aoe4-build-order/schema";
-import { SIMULATE_PATH, buildOrderFrom, openPage, runSimulation, showTab, showView } from "./helpers";
+import { AUTO_RUN_DEBOUNCE_MS } from "../components/apps/aoe4-build-order/auto-run";
+import { buildOrderFrom, isSimulatePost, openPage, showTab, showView, waitForRun } from "./helpers";
 
 const row = (page: Page, i: number) => page.getByTestId("step-row").nth(i);
 const field = (page: Page, i: number, name: string) =>
@@ -209,21 +210,22 @@ test.describe("AoE4 step table", () => {
     await expect(page.getByTestId("step-row")).toHaveCount(1);
   });
 
-  test("table buttons never post to the simulate route", async ({ page }) => {
+  test("table edits made inside the pause post once, after they settle", async ({ page }) => {
     await openPage(page);
     await showView(page, "table");
-    let posted = false;
+    let posted = 0;
     page.on("request", (r) => {
-      if (r.url().endsWith(SIMULATE_PATH) && r.method() === "POST")
-        posted = true;
+      if (isSimulatePost(r)) posted++;
     });
-    await page.getByTestId("step-add").click();
-    await page.getByTestId("step-delete").first().click();
-    await page.waitForTimeout(300);
-    expect(posted).toBe(false);
+    await waitForRun(page, async () => {
+      await page.getByTestId("step-add").click();
+      await page.getByTestId("step-delete").first().click();
+    });
+    await page.waitForTimeout(AUTO_RUN_DEBOUNCE_MS + 500);
+    expect(posted).toBe(1);
   });
 
-  test("after a table edit Run posts exactly the textarea text and draws the charts", async ({
+  test("a table edit posts exactly the textarea text and draws the charts", async ({
     page,
   }) => {
     const build = listBuilds()[0];
@@ -231,15 +233,12 @@ test.describe("AoE4 step table", () => {
     await page.getByTestId("build-order-select").selectOption(build.name);
     await showView(page, "table");
     await expect(page.getByTestId("step-row")).toHaveCount(build.steps.length);
-    await page.getByTestId("step-add").click();
+    const response = await waitForRun(page, () => page.getByTestId("step-add").click());
     await expect(page.getByTestId("step-row")).toHaveCount(
       build.steps.length + 1,
     );
-    const request = page.waitForRequest(
-      (r) => r.url().endsWith(SIMULATE_PATH) && r.method() === "POST",
-    );
-    await page.getByTestId("run-simulation").click();
-    const posted = (await request).postDataJSON().buildOrder;
+    const posted = response.request().postDataJSON().buildOrder;
+    await showTab(page, "results");
     await expect(page.getByTestId("chart-units-produced")).toBeVisible();
     await showTab(page, "build");
     expect(posted).toEqual(
@@ -647,7 +646,7 @@ test.describe("AoE4 step table", () => {
     await expect(field(page, 1, "rally")).toHaveValue("gold");
   });
 
-  test("an opened row stays open through Text and Table and through a Run", async ({
+  test("an opened row stays open through Text and Table and through a run", async ({
     page,
   }) => {
     await openWith(page, OPEN_STATE_BUILD);
@@ -657,7 +656,8 @@ test.describe("AoE4 step table", () => {
     await showView(page, "table");
     await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
 
-    await runSimulation(page);
+    await waitForRun(page, () => page.getByTestId("duration-seconds").fill("900"));
+    await showTab(page, "results");
     await expect(page.getByTestId("panel-results")).toBeVisible();
     await showTab(page, "build");
     await showView(page, "text");
@@ -698,7 +698,7 @@ test.describe("AoE4 step table", () => {
     page,
   }) => {
     await openWith(page, OPEN_STATE_BUILD);
-    await runSimulation(page);
+    await showTab(page, "results");
     await expect(page.getByTestId("panel-results")).toBeVisible();
     for (const view of ["text", "table"]) {
       await expect(page.getByTestId(`editor-view-${view}`)).toBeDisabled();
