@@ -161,11 +161,11 @@ this milestone (M4.13 and M6.2's 390 px clause are waived for the new UI).
 
 | id | criterion | kind | covered by | status |
 |----|-----------|------|------------|--------|
-| M7.1 | After a run, each step-table row shows its timeline kind colour (age-up, research, military, villager, building, economy, other) and its started and finished times; a step that was never reached or is still waiting is marked as such | code | | open |
-| M7.2 | Each row carries what the timeline showed: waited time, the Blocked by reasons, and the flagged and long-wait (60 s or more) highlights | code | | open |
-| M7.3 | Hovering or focusing a row shades that step's span on every chart, as the timeline rows did | code | | open |
-| M7.4 | While the results are stale (an edit since the last run, or invalid text) the row annotations dim with the charts and never show times from a different build | code | | open |
-| M7.5 | The separate step timeline is removed from Results, and the charts use the freed width | code | | open |
-| M7.6 | Compact view: the Text tab's line gutter shows each step line's kind colour and started and finished times, with waited and Blocked by on hover, dimmed when stale, and hovering or putting the caret on a line shades that step on the charts | code | | open |
-| M7.7 | `docs/aoe4-build-order.md` describes the annotated build order instead of the step timeline; Playwright covers the colours and times, the hover shading, the stale dimming, the compact view, and the timeline's absence; specs that drove the timeline are rewritten; no 390 px check is added for the new UI | code | | open |
-| M7.8 | Explicit `build house` steps no longer freeze production: auto-houses are not held off for the whole build by the last explicit house step (owner added from the backlog, Q22); the rule is documented and the build 259 case has a test | code | | open |
+| M7.1 | After a run, each step-table row shows its timeline kind colour (age-up, research, military, villager, building, economy, other) and its started and finished times; a step that was never reached or is still waiting is marked as such | code | SGS-107, SGS-108 | open |
+| M7.2 | Each row carries what the timeline showed: waited time, the Blocked by reasons, and the flagged and long-wait (60 s or more) highlights | code | SGS-107, SGS-108 | open |
+| M7.3 | Hovering or focusing a row shades that step's span on every chart, as the timeline rows did | code | SGS-109 | open |
+| M7.4 | While the results are stale (an edit since the last run, or invalid text) the row annotations dim with the charts and never show times from a different build | code | SGS-107, SGS-108 | open |
+| M7.5 | The separate step timeline is removed from Results, and the charts use the freed width | code | SGS-109 | open |
+| M7.6 | Compact view: the Text tab's line gutter shows each step line's kind colour and started and finished times, with waited and Blocked by on hover, dimmed when stale, and hovering or putting the caret on a line shades that step on the charts | code | SGS-110 | open |
+| M7.7 | `docs/aoe4-build-order.md` describes the annotated build order instead of the step timeline; Playwright covers the colours and times, the hover shading, the stale dimming, the compact view, and the timeline's absence; specs that drove the timeline are rewritten; no 390 px check is added for the new UI | code | SGS-108, SGS-109, SGS-110 | open |
+| M7.8 | Explicit `build house` steps no longer freeze production: auto-houses are not held off for the whole build by the last explicit house step (owner added from the backlog, Q22); the rule is documented and the build 259 case has a test | code | SGS-111 | done |

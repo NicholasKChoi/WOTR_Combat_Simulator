@@ -22,6 +22,6 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-106 | smoke:preview script and agent how-to | M6 | M6.7,M6.9 | | standard | SGS-103,SGS-105 | | sgs-106-smoke-preview | 0aee0751a40e8e7ac9159cb9bb682770f75412d4 | integrated | | 115 | tickets/SGS-106-smoke-preview-and-agent-howto.md |
 | SGS-107 | Step annotation model and resultsStale | M7 | M7.1,M7.2,M7.4 | aoe4-build-order | standard | | | sgs-107-step-annotation-model | | in_progress | | | tickets/SGS-107-step-annotation-model.md |
 | SGS-110 | Text-tab gutter annotations | M7 | M7.6,M7.7 | aoe4-build-order | standard | SGS-108,SGS-109 | | | | spec_ready | | | tickets/SGS-110-text-gutter-annotations.md |
-| SGS-111 | Explicit build house steps no longer freeze production | M7 | M7.8 | aoe4-build-order | high | | | sgs-111-drop-house-gate | | in_progress | | | tickets/SGS-111-drop-house-gate.md |
+| SGS-111 | Explicit build house steps no longer freeze production | M7 | M7.8 | aoe4-build-order | high | | | sgs-111-drop-house-gate | 8ac8ee9 | integrated | | 117 | tickets/SGS-111-drop-house-gate.md |
 | SGS-108 | Run cell on each step-table row; charts dim on stale | M7 | M7.1,M7.2,M7.4,M7.7 | aoe4-build-order | standard | SGS-107 | | | | spec_ready | | | tickets/SGS-108-step-run-cell.md |
 | SGS-109 | Row hover shades the charts; step timeline removed | M7 | M7.3,M7.5,M7.7 | aoe4-build-order | standard | SGS-108 | | | | spec_ready | | | tickets/SGS-109-row-hover-drop-timeline.md |

@@ -153,3 +153,13 @@ flowchart LR
 ## Open questions
 
 none
+
+## Rework 1 - 2026-11-10 (review, text)
+
+Bounced by review (reports/SGS-111-review-1.md) at tip 3844378. Implementer passed at 3844378; no other gate has passed it yet.
+
+Findings:
+- `docs/aoe4-build-order.md:332-334`: the added sentence "The planner counts a house under construction in its headroom whichever kind it is" contradicts `planAutoHouse` (`lib/aoe4-build-order/houses.ts:22-23`), which counts only builds that finish within the lead.
+
+Required fixes:
+- [x] (text) In `docs/aoe4-build-order.md`, replace that sentence verbatim with: "Whichever kind it is, a house under construction that finishes within the lead counts toward the planner's headroom, so an explicit step that starts after auto-houses already cover the demand adds a surplus house."
