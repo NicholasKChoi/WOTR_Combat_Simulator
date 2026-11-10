@@ -24,19 +24,6 @@ Detail goes in the research report. Each item has this shape:
 
 next: Q35
 
-## Q26: Retro P1: review must never downgrade a can't-fail test to a note; dictated tests name the break they catch
-kind: confirmation
-blocks: retro-20261110
-options: A) approve | B) change: say what | C) reject
-recommendation: A: evidence in the retro report
-research: reports/retro-20261110.md
-thread: 1569830095185772594
-
-Retro 2026-11-10 proposal 1 (engine layer). Approve to apply; engine edits go to an agent in the code-factory repo.
-- tests that cannot fail rose from 3 tickets to 7 (SGS-084,099,100,108,109,081)
-
-### Answer
-
 ## Q27: Retro P2: a visible defect in UI the diff adds is blocking (NEEDS_SPEC if it conflicts with spec)
 kind: confirmation
 blocks: retro-20261110
@@ -121,6 +108,7 @@ blocks: retro-20261110
 options: A) approve | B) change: say what | C) reject
 recommendation: A: evidence in the retro report
 research: reports/retro-20261110.md
+thread: 1569830117977366638
 
 Retro 2026-11-10 proposal 8 (repo layer). Approve to apply; engine edits go to an agent in the code-factory repo.
 - SGS-108 reworks 1-2; step-annotation.test.ts:33-39 cannot fail
@@ -133,6 +121,7 @@ blocks: retro-20261110
 options: A) approve | B) change: say what | C) reject
 recommendation: A: evidence in the retro report
 research: reports/retro-20261110.md
+thread: 1569830121219821718
 
 Retro 2026-11-10 proposal 9 (repo layer). Approve to apply; engine edits go to an agent in the code-factory repo.
 - about 12 sandbox issue lines
