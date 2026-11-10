@@ -2,6 +2,7 @@
 // Browser-safe: Web Crypto only, no node: modules.
 import { z } from 'zod';
 import { MAX_REPORTED_ISSUES, type BuildsError, type SimulateError } from './api';
+import { isPlainObject, notAnObjectError } from './api-route';
 import type { BuildOrder, BuildOrderIssue } from './model';
 import { formatBuildOrderText } from './parse-text';
 import { buildOrderShape, checkBuildOrder, outOfRange, type BuildOrderCatalog } from './schema';
@@ -54,15 +55,6 @@ type SaveCheck =
   | { ok: true; record: SavedBuild; json: string }
   | { ok: false; status: 400; error: SimulateError }
   | { ok: false; status: 413; error: BuildsError };
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function notAnObjectError(): SimulateError {
-  const message = 'request body: must be a JSON object';
-  return { error: message, issues: [{ code: 'syntax', message }] };
-}
 
 function badRequest(all: BuildOrderIssue[]): SaveCheck {
   const issues = all.slice(0, MAX_REPORTED_ISSUES);

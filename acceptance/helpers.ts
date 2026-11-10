@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { expect, type APIRequestContext, type Page, type Request } from '@playwright/test'
 import { FINITE_GATHER_NODES, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { buildOrderCatalog, type BuildOrderCatalog } from '../lib/aoe4-build-order/schema'
@@ -159,3 +160,21 @@ export function expectedCompareKeys(current: SimulationResult, pinned: Simulatio
 }
 
 export const hexToRgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+
+export const BUILDS_PATH = '/api/aoe4-build-order/builds'
+export const buildPath = (id: string) => `${BUILDS_PATH}/${id}`
+
+export const uniqueClient = (spec: string) => `${spec}-${randomUUID()}`
+
+export function postBuild(request: APIRequestContext, body: unknown, client: string, timeout = 10_000) {
+  return request.post(BUILDS_PATH, { data: body, headers: { 'x-forwarded-for': client }, timeout })
+}
+
+// Playwright JSON-encodes a string `data`, so a raw body (a bare JSON value, an oversized body) goes as a Buffer.
+export function postBuildRaw(request: APIRequestContext, raw: string, client: string, timeout = 10_000) {
+  return request.post(BUILDS_PATH, {
+    data: Buffer.from(raw),
+    headers: { 'Content-Type': 'application/json', 'x-forwarded-for': client },
+    timeout,
+  })
+}

@@ -25,6 +25,7 @@ const AOE4_SCHEMA_NAMES = [
   'BuildOrderNote',
   'BuildStart',
   'BuildStep',
+  'BuildsError',
   'ChartMarker',
   'ChartMarkerKind',
   'CivId',
@@ -35,6 +36,10 @@ const AOE4_SCHEMA_NAMES = [
   'NodeDepletion',
   'NodeRef',
   'ResourceKind',
+  'SaveBuildRequest',
+  'SaveBuildResponse',
+  'SavedBuild',
+  'SavedBuildWithId',
   'Severity',
   'SimInputOverrides',
   'SimWarning',
@@ -61,9 +66,14 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.describe('spec file shape', () => {
-  test('is OpenAPI 3.1 and lists /api/fight and /api/aoe4-build-order/simulate', () => {
+  test('is OpenAPI 3.1 and lists /api/fight, the simulate route and the two builds routes', () => {
     expect(spec.openapi).toMatch(/^3\.1\./)
-    expect(Object.keys(spec.paths).sort()).toEqual(['/api/aoe4-build-order/simulate', '/api/fight'])
+    expect(Object.keys(spec.paths).sort()).toEqual([
+      '/api/aoe4-build-order/builds',
+      '/api/aoe4-build-order/builds/{id}',
+      '/api/aoe4-build-order/simulate',
+      '/api/fight',
+    ])
     expect(spec.info.version).toBeTruthy()
     expect(spec.info.description).not.toContain('/api/models/army')
   })
