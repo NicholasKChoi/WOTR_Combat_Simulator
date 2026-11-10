@@ -40,3 +40,4 @@ pull from here; triage moves an item into a milestone or deletes it.
 - `acceptance/aoe4-auto-run.spec.ts:309`: the open-rows test never asserts the two builds differ, so it could go vacuous. (SGS-102 review 1)
 - `acceptance/aoe4-auto-run.spec.ts:189`: two chart ids listed by hand instead of `CHART_IDS`. (SGS-102 review 1)
 - `docs/aoe4-build-order.md:878`: "until the next settled input" is loose; an edit that leaves the request unchanged keeps the 400 issues. Suggested text in reports/SGS-102-review-1.md. (SGS-102 review 1)
+- Tooling: install a TypeScript LSP server for this repo (e.g. `typescript-language-server` via a Claude Code LSP plugin, using the repo's `tsconfig.json`) so agents get diagnostics, go-to-definition and find-references while working in task worktrees. (owner request, 2026-11-09)
