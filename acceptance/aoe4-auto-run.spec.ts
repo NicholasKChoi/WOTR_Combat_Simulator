@@ -11,6 +11,7 @@ import {
   scrollInstantly,
   setDurationInPlace,
   settledScrollY,
+  TABS_VIEWPORT,
   showTab,
   showView,
   waitForRun,
@@ -61,22 +62,26 @@ test.describe('AoE4 build order auto-run', () => {
     await expect(page.getByTestId('run-bar').getByTestId('auto-run-status')).toHaveCount(1)
   })
 
-  test('first load runs once', async ({ page }) => {
-    const hydration: string[] = []
-    page.on('console', (m) => {
-      if (/hydrat/i.test(m.text())) hydration.push(m.text())
+  test.describe('first load runs once in the tabs layout', () => {
+    test.use({ viewport: TABS_VIEWPORT })
+
+    test('first load runs once', async ({ page }) => {
+      const hydration: string[] = []
+      page.on('console', (m) => {
+        if (/hydrat/i.test(m.text())) hydration.push(m.text())
+      })
+      const posts = trackPosts(page)
+      await openPage(page)
+      await expectNoRun(page)
+      expect(posts).toHaveLength(1)
+      expect(Object.keys(posted(posts[0])).sort()).toEqual(['buildOrder', 'inputs'])
+      expect(posted(posts[0]).inputs).toEqual({ durationSeconds: 1200 })
+      expect(posted(posts[0]).buildOrder).toEqual(json(buildOrderFrom(await textarea(page).inputValue())))
+      await expect(status(page)).toHaveAttribute('data-status', 'current')
+      await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
+      await expect(page.getByTestId('tab-results')).toBeEnabled()
+      expect(hydration).toEqual([])
     })
-    const posts = trackPosts(page)
-    await openPage(page)
-    await expectNoRun(page)
-    expect(posts).toHaveLength(1)
-    expect(Object.keys(posted(posts[0])).sort()).toEqual(['buildOrder', 'inputs'])
-    expect(posted(posts[0]).inputs).toEqual({ durationSeconds: 1200 })
-    expect(posted(posts[0]).buildOrder).toEqual(json(buildOrderFrom(await textarea(page).inputValue())))
-    await expect(status(page)).toHaveAttribute('data-status', 'current')
-    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByTestId('tab-results')).toBeEnabled()
-    expect(hydration).toEqual([])
   })
 
   test('one POST per settled text edit', async ({ page }) => {
@@ -154,23 +159,27 @@ test.describe('AoE4 build order auto-run', () => {
     await expect(page.getByTestId('pinned-label')).toHaveText(`Pinned: ${other.name}, 15:00`)
   })
 
-  test('an invalid text edit dims the charts', async ({ page }) => {
-    await openPage(page)
-    const original = await textarea(page).inputValue()
-    await expectNoRun(page, () => textarea(page).fill(UNKNOWN_ID))
-    await expect(status(page)).toHaveAttribute('data-status', 'invalid')
-    await expect(status(page)).toHaveText('The charts show the last valid build.')
-    await expect(page.getByTestId('build-order-issues')).toBeVisible()
-    await expect(page.getByTestId('build-order-issues-summary')).toHaveText('Fix 1 issue to run the simulation.')
-    await expect(page.getByTestId('tab-results')).toBeEnabled()
-    await showTab(page, 'results')
-    await expect(page.getByTestId('results-last-good')).toBeVisible()
-    await expectDimmed(page)
+  test.describe('an invalid text edit dims the charts in the tabs layout', () => {
+    test.use({ viewport: TABS_VIEWPORT })
 
-    await showTab(page, 'build')
-    await expectNoRun(page, () => textarea(page).fill(original))
-    await expect(status(page)).toHaveAttribute('data-status', 'current')
-    await expect.poll(() => lastGoodOpacity(page)).toBe(1)
+    test('an invalid text edit dims the charts', async ({ page }) => {
+      await openPage(page)
+      const original = await textarea(page).inputValue()
+      await expectNoRun(page, () => textarea(page).fill(UNKNOWN_ID))
+      await expect(status(page)).toHaveAttribute('data-status', 'invalid')
+      await expect(status(page)).toHaveText('The charts show the last valid build.')
+      await expect(page.getByTestId('build-order-issues')).toBeVisible()
+      await expect(page.getByTestId('build-order-issues-summary')).toHaveText('Fix 1 issue to run the simulation.')
+      await expect(page.getByTestId('tab-results')).toBeEnabled()
+      await showTab(page, 'results')
+      await expect(page.getByTestId('results-last-good')).toBeVisible()
+      await expectDimmed(page)
+
+      await showTab(page, 'build')
+      await expectNoRun(page, () => textarea(page).fill(original))
+      await expect(status(page)).toHaveAttribute('data-status', 'current')
+      await expect.poll(() => lastGoodOpacity(page)).toBe(1)
+    })
   })
 
   test('a first invalid load state has no target', async ({ page }) => {

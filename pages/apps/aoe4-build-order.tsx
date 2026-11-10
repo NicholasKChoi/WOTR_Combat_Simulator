@@ -19,6 +19,7 @@ import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
 import { mergeExternalEdit } from '../../components/apps/aoe4-build-order/step-table-model'
 import { postSimulation } from '../../components/apps/aoe4-build-order/simulate-client'
 import { useAutoRun } from '../../components/apps/aoe4-build-order/use-auto-run'
+import { useSplitLayout } from '../../components/apps/aoe4-build-order/use-split-layout'
 import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-build-order/workbench-tabs'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { loadGameData } from '../../lib/aoe4-build-order/data'
@@ -78,6 +79,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const run: Run | null = shown === null ? null : { text: shown.text, durationSeconds: shown.durationSeconds, name: pinName(builds, shown.text, shown.selected) }
     const resultsEnabled = result !== null || pin !== null
     const shownTab = resultsEnabled ? tab : 'build'
+    const split = useSplitLayout()
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
     const clientIssues = conversion.ok ? [] : conversion.issues
     const rejected = status === 'rejected'
@@ -170,13 +172,14 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                     onSubmit={() => autoRun.flush()}
                     view={view}
                     onViewChange={setView}
-                    viewDisabled={shownTab === 'results'}
+                    viewDisabled={!split && shownTab === 'results'}
                     formRef={runBar}
                 />
                 <WorkbenchTabs
                     active={shownTab}
                     onSelect={setTab}
                     resultsEnabled={resultsEnabled}
+                    split={split}
                     build={
                         <>
                             {view === 'text' ? (

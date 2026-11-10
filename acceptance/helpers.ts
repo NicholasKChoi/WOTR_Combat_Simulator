@@ -105,7 +105,17 @@ export async function openPage(page: Page) {
   await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'current')
 }
 
+export const SPLIT_MIN_WIDTH = 1200
+export const TABS_VIEWPORT = { width: 1024, height: 768 }
+export const SPLIT_VIEWPORT = { width: 1280, height: 800 }
+export const WIDE_VIEWPORT = { width: 1800, height: 900 }
+
+// Decides from the viewport, not the DOM, so it cannot race the first client render.
 export async function showTab(page: Page, tab: 'build' | 'results') {
+  if ((page.viewportSize()?.width ?? 0) >= SPLIT_MIN_WIDTH) {
+    await expect(page.getByTestId(`panel-${tab}`)).toBeVisible()
+    return
+  }
   await page.getByTestId(`tab-${tab}`).click()
 }
 
