@@ -149,7 +149,7 @@ const ROWS: Row[] = [
     check: (out, stub) => {
       expect(out.code).toBe(0)
       expect(lines(out)).toEqual(PASS_LINES)
-      expect(summary(stub)).toEqual([POST, GET, OPEN, DELETE, GET])
+      expect(summary(stub)).toEqual([POST, GET, OPEN, DELETE])
       expect(stub.posted).toEqual([{ buildOrder: BUILD, durationSeconds: 1200 }])
     },
   },
@@ -157,7 +157,7 @@ const ROWS: Row[] = [
     name: 'secret set is sent and never printed',
     check: (out, stub, assets) => {
       expect(out.code).toBe(0)
-      expect(summary(stub)).toHaveLength(5)
+      expect(summary(stub)).toHaveLength(4)
       for (const request of stub.requests) expect(request.headers[BYPASS_HEADER]).toBe(SENTINEL)
       expect(assets.requests.filter((r) => r.url === '/asset.js')).toHaveLength(1)
       for (const request of assets.requests) expect(request.headers[BYPASS_HEADER]).toBeUndefined()
@@ -220,12 +220,12 @@ const ROWS: Row[] = [
     },
   },
   {
-    name: 'delete leaves the build',
+    name: 'a cached read after delete does not fail the run',
     stub: { keepAfterDelete: true },
     check: (out, stub) => {
-      expect(out.code).toBe(1)
-      expect(lines(out).at(-1)).toMatch(/^FAIL delete:/)
-      expect(summary(stub)).toEqual([POST, GET, OPEN, DELETE, GET])
+      expect(out.code).toBe(0)
+      expect(lines(out)).toEqual(PASS_LINES)
+      expect(summary(stub)).toEqual([POST, GET, OPEN, DELETE])
     },
   },
 ]

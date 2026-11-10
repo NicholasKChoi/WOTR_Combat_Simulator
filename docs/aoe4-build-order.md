@@ -1104,7 +1104,8 @@ The run has four steps, in this order, and stops at the first failure:
 2. `read back`: reads the build by its id and expects the same `buildOrder` and `durationSeconds`.
 3. `open`: opens `/apps/aoe4-build-order?b=<id>` in Chromium and expects the saved build selected, the run
    current and the units-produced chart visible.
-4. `delete`: deletes the build, then expects reading it to give 404.
+4. `delete`: deletes the build and expects 204. It does not read the build again: GET is cached as immutable, so
+   the CDN can still serve a deleted build.
 
 Each step prints one line, `PASS <step>` or `FAIL <step>: <reason>`. The exit code is 0 when all four pass, 1 when a
 step failed, and 2 for a usage error or a missing secret (the first save answered 401 or 403 while the variable was
