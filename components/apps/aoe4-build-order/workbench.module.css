@@ -24,6 +24,7 @@
 }
 
 .gutter,
+.annotations,
 .textarea {
     margin: 0;
     font-family: var(--bs-font-monospace, monospace);
@@ -41,6 +42,35 @@
     color: #6c757d;
     user-select: none;
     list-style: none;
+}
+
+.annotations {
+    flex: none;
+    width: 17ch;
+    padding-left: 0;
+    padding-right: 0.25rem;
+    list-style: none;
+    user-select: none;
+}
+
+.annotations li {
+    height: 1.5em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+}
+
+.annotations li > span {
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.annotations li.annotation {
+    border-left: 4px solid var(--kind-color, transparent);
+}
+
+.annotations li[data-gutter-active='true'] {
+    box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
 }
 
 .gutter li[data-error='true'] {
