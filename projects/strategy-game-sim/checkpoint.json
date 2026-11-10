@@ -1,5 +1,5 @@
 {
-  "lastBaseSha": "1e6d6c2d0acfbfbd4a400905b613d62cac3cb189",
+  "lastBaseSha": "b6a733829f4ae38d073e93b5a72884e3fd127f2c",
   "openPRs": [],
   "retro": {
     "lastRun": "2026-11-02",
@@ -7,7 +7,7 @@
   },
   "milestone": {
     "id": "M7",
-    "step": "3 tickets",
+    "step": "complete",
     "waiting": []
   }
 }
