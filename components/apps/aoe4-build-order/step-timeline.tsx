@@ -2,7 +2,7 @@ import cn from 'classnames'
 
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import styles from './results.module.css'
-import { STEP_KINDS, formatStepTime, type StepKind, type TimelineRow } from './step-timeline-rows'
+import { STEP_KINDS, formatStepTime, type StepKind, type TimelineRow } from './step-annotations'
 
 const finishedText = (row: TimelineRow): string => (row.status === 'in-progress' ? 'ongoing' : formatStepTime(row.completedAt))
 

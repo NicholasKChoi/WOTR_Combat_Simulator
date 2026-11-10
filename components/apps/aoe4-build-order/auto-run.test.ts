@@ -3,7 +3,7 @@ import type { SimulateRequest, SimulateResponse } from '../../../lib/aoe4-build-
 import { loadGameData } from '../../../lib/aoe4-build-order/data'
 import type { BuildOrderIssue } from '../../../lib/aoe4-build-order/model'
 import { SIM_INPUT_BOUNDS, buildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
-import { AUTO_RUN_DEBOUNCE_MS, createAutoRunController, durationError, requestKey, type AutoRunController, type AutoRunState, type LiveInput } from './auto-run'
+import { AUTO_RUN_DEBOUNCE_MS, createAutoRunController, durationError, requestKey, resultsStale, type AutoRunController, type AutoRunState, type LiveInput } from './auto-run'
 import { simulationFailureMessage } from './simulate-client'
 
 const catalog = buildOrderCatalog(loadGameData('english'))
@@ -632,5 +632,36 @@ describe('dispose', () => {
         expect(post).toHaveBeenCalledTimes(calls)
         expect(state()).toBe(before)
         expect(history).toHaveLength(changes)
+    })
+})
+
+describe('resultsStale', () => {
+    const result = { steps: [] } as unknown as SimulateResponse
+    const shown = { text: VALID, durationSeconds: 1200, selected: 'English 1 TC' }
+    const statuses = ['loading', 'running', 'current', 'updating', 'invalid', 'rejected', 'failed'] as const
+    const broken = new Set(['invalid', 'rejected', 'failed'])
+
+    it.each(statuses)('%s with no result is never stale', (status) => {
+        expect(resultsStale({ status, result: null, shown: null }, live(OTHER))).toBe(false)
+    })
+
+    it.each(statuses)('%s with live equal to shown is stale only for a broken status', (status) => {
+        expect(resultsStale({ status, result, shown }, live())).toBe(broken.has(status))
+    })
+
+    it.each(statuses)('%s with differing text is stale', (status) => {
+        expect(resultsStale({ status, result, shown }, live(OTHER))).toBe(true)
+    })
+
+    it.each([['1201'], [''], ['abc']])('current with duration %j is stale', (duration) => {
+        expect(resultsStale({ status: 'current', result, shown }, live(VALID, duration))).toBe(true)
+    })
+
+    it('treats an empty duration as different even when the shown duration is zero', () => {
+        expect(resultsStale({ status: 'current', result, shown: { ...shown, durationSeconds: 0 } }, live(VALID, ''))).toBe(true)
+    })
+
+    it('ignores a change of selected alone', () => {
+        expect(resultsStale({ status: 'current', result, shown }, live(VALID, '1200', 'Other'))).toBe(false)
     })
 })

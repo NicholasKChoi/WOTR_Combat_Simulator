@@ -5,7 +5,7 @@ import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
 import { resultMessages } from './messages'
 import { InfoMessages, WarningMessages } from './message-lists'
 import { StepTimeline } from './step-timeline'
-import { stepSpan, timelineRows } from './step-timeline-rows'
+import { stepSpan, timelineRows } from './step-annotations'
 import { SeriesChart } from './line-chart'
 import { perVillagerSeries, resourceSeries, unitSeries } from './result-series'
 import styles from './workbench.module.css'
@@ -25,8 +25,8 @@ export function Results({ result, pinned, text, landmarks, dimmed, infoExpanded,
     const rows = useMemo(() => timelineRows(result.steps, text, landmarks), [result.steps, text, landmarks])
     const [active, setActive] = useState<{ result: SimulationResult; step: number } | null>(null)
     const activeStep = active?.result === result ? active.step : null
-    const activeRow = rows.find((row) => row.step === activeStep)
-    const highlight = activeRow ? stepSpan(activeRow, result.durationSeconds) : null
+    const activeTiming = activeStep === null ? undefined : result.steps[activeStep]
+    const highlight = activeTiming ? stepSpan(activeTiming, result.durationSeconds) : null
     const [perVillager, setPerVillager] = useState(false)
     const gatherRateSeries = (run: SimulationResult) => (perVillager ? perVillagerSeries(run.gatherRates, run.gatherers) : resourceSeries(run.gatherRates))
     return (

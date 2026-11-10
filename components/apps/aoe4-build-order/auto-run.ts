@@ -56,6 +56,13 @@ export function durationError(duration: string): string | null {
     return `Duration must be a whole number of seconds from ${min} to ${max}.`
 }
 
+export function resultsStale(state: Pick<AutoRunState, 'status' | 'result' | 'shown'>, live: LiveInput): boolean {
+    const { status, result, shown } = state
+    if (result === null) return false
+    if (status === 'invalid' || status === 'rejected' || status === 'failed') return true
+    return shown === null || live.text !== shown.text || live.duration.trim() === '' || Number(live.duration) !== shown.durationSeconds
+}
+
 export function requestKey(request: SimulateRequest): string {
     return JSON.stringify(request)
 }
