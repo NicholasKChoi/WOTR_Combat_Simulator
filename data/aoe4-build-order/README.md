@@ -129,6 +129,32 @@ engine or the build is tuned, and the page shows them for any run.
   `whenever sheep runs out move all sheep to farm` moves the sheep gatherers to the farms, so no villager is
   idle through 1800 s. Omitted: none.
 
+- `english-1tc-council-hall` "ENG 1TC Council Hall", https://www.aoeivbuilds.com/build_orders/259 ("eng 1 tc",
+  English, aoeivbuilds.com, no author listed). The guide covers the first 7:30: villager production is
+  continuous, two farms from sheep at the start, new villagers rally to gold from the 7th villager (who builds
+  the mining camp at the 8th) and to wood from the 10th, Feudal at 2:30 with three sheep builders, then the
+  lumber camp, mill, a farm, wheelbarrow, two longbowmen from the landmark at 4:29, a barracks,
+  `double-broadax`, continuous longbowmen and spearmen from 6:30, and farms at 7:00 and 7:30. Omitted:
+  - The guide's "push" and "attack" notes: the simulator has no combat or unit movement.
+  - Houses: the guide lists them as "keep building houses"; auto-houses cover supply.
+
+  Transcription choices: the guide names a Feudal landmark only by its units, so it is `council-hall` (the
+  English landmark that produces longbowmen); the 2:30 Council Hall builders come from sheep and return to
+  sheep; the villager splits the guide lists at each time are approximate, set by rallies rather than moves;
+  `horticulture` is added at Feudal for the farms; the guide's Castle tech `fertilization` is kept and
+  reached through an added `the-white-tower`.
+
+  Added after the guide (from 7:30 on): three more wood-to-farm farms at 450 s; at 600 s an archery range, a
+  second barracks, four farms and continuous longbowmen and spearmen from them; at 660 s a blacksmith with
+  `steeled-arrow` and `iron-undermesh`; at 690 s a mining camp at `gold#3` and eight wood gatherers moved
+  there; at 780 s `the-white-tower` (four builders from wood) for Castle, then `fertilization`,
+  `veteran-longbowmen`, `veteran-spearmen`, `bloomery` and `fitted-leatherwork`; at 900 s five farms built
+  from wood (returning to wood) for the sheep gatherers, then the Castle blacksmith techs, `lumber-preservation`,
+  `textiles`, `specialized-pick` and two more wood-to-farm farms. Past the population cap the economy's income
+  goes into these techs instead of floating. The gold reaction `gold` to `gold#2` is the first reaction step;
+  `gold#3`, `gold#4` and `gold#5` each move to the next deposit, `gold#5` to wood, and the last reaction moves
+  the sheep gatherers to the farms built at 900 s.
+
 ## Hand-entered values
 
 Each hand-entered leaf is a `HandValue`: `{ "value": ..., "source": "...", "unverified": true }`.

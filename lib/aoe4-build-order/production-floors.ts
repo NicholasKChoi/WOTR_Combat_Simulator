@@ -20,6 +20,11 @@ export const PRODUCTION_FLOORS: Record<string, ProductionFloor> = {
     military: { spearman: 39, longbowman: 39 },
     foodPerMinute: 490,
   },
+  'ENG 1TC Council Hall': {
+    villager: 50,
+    military: { spearman: 60, longbowman: 60 },
+    foodPerMinute: 900,
+  },
 };
 
 export const MAX_FLOATING_AT_1200 = 2000;

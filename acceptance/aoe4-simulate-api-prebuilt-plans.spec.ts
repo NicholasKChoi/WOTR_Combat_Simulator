@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
+import english1tcCouncilHall from '../data/aoe4-build-order/builds/english-1tc-council-hall.json'
 import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
 import spearLongbow from '../data/aoe4-build-order/builds/english-spear-longbow-maa-crossbow.json'
 import { postSimulate, simulateOk } from './helpers'
@@ -22,6 +23,7 @@ const plans = [
   { build: english1tc, units: ['longbowman', 'spearman', 'villager'] },
   { build: knightLongbow, units: ['knight', 'longbowman', 'villager'] },
   { build: spearLongbow, units: ['crossbowman', 'longbowman', 'man-at-arms', 'spearman', 'villager'] },
+  { build: english1tcCouncilHall, units: ['longbowman', 'spearman', 'villager'] },
 ]
 
 test.describe.configure({ timeout: 60_000 })

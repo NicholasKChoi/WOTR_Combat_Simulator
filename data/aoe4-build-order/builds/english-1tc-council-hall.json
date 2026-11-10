@@ -1,0 +1,418 @@
+{
+  "civ": "english",
+  "name": "ENG 1TC Council Hall",
+  "source": "https://www.aoeivbuilds.com/build_orders/259",
+  "start": {
+    "rally": "sheep"
+  },
+  "steps": [
+    {
+      "action": "produce",
+      "producer": "capital-town-center",
+      "unit": "villager"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "sheep",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "villagers",
+        "count": 7
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "gold"
+    },
+    {
+      "action": "build",
+      "building": "mining-camp",
+      "from": "gold",
+      "then": "gold",
+      "trigger": {
+        "kind": "villagers",
+        "count": 8
+      }
+    },
+    {
+      "trigger": {
+        "kind": "villagers",
+        "count": 10
+      },
+      "action": "rally",
+      "producer": "capital-town-center",
+      "to": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 150
+      },
+      "action": "build",
+      "building": "council-hall",
+      "from": "sheep",
+      "then": "sheep",
+      "builders": 3
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 210
+      },
+      "action": "build",
+      "building": "lumber-camp",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "mill",
+      "from": "sheep",
+      "then": "sheep"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "research",
+      "tech": "wheelbarrow"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 269
+      },
+      "action": "produce",
+      "producer": "council-hall",
+      "unit": "longbowman",
+      "count": 2
+    },
+    {
+      "action": "build",
+      "building": "barracks",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "research",
+      "tech": "double-broadax"
+    },
+    {
+      "action": "research",
+      "tech": "horticulture"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 390
+      },
+      "action": "produce",
+      "producer": "council-hall",
+      "unit": "longbowman"
+    },
+    {
+      "action": "produce",
+      "producer": "barracks",
+      "unit": "spearman"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 450
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 450
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 600
+      },
+      "action": "build",
+      "building": "archery-range",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "barracks",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "produce",
+      "producer": "archery-range",
+      "unit": "longbowman"
+    },
+    {
+      "action": "produce",
+      "producer": "barracks",
+      "unit": "spearman"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 660
+      },
+      "action": "build",
+      "building": "blacksmith",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "research",
+      "tech": "steeled-arrow"
+    },
+    {
+      "action": "research",
+      "tech": "iron-undermesh"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 690
+      },
+      "action": "build",
+      "building": "mining-camp",
+      "from": "wood",
+      "then": "gold#3"
+    },
+    {
+      "action": "move",
+      "count": 8,
+      "from": "wood",
+      "to": "gold#3"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 780
+      },
+      "action": "build",
+      "building": "the-white-tower",
+      "from": "wood",
+      "builders": 4,
+      "then": "wood"
+    },
+    {
+      "action": "research",
+      "tech": "fertilization"
+    },
+    {
+      "action": "research",
+      "tech": "veteran-longbowmen"
+    },
+    {
+      "action": "research",
+      "tech": "veteran-spearmen"
+    },
+    {
+      "action": "research",
+      "tech": "bloomery"
+    },
+    {
+      "action": "research",
+      "tech": "fitted-leatherwork"
+    },
+    {
+      "trigger": {
+        "kind": "time",
+        "seconds": 900
+      },
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "wood"
+    },
+    {
+      "action": "research",
+      "tech": "decarbonization"
+    },
+    {
+      "action": "research",
+      "tech": "insulated-helm"
+    },
+    {
+      "action": "research",
+      "tech": "balanced-projectiles"
+    },
+    {
+      "action": "research",
+      "tech": "wedge-rivets"
+    },
+    {
+      "action": "research",
+      "tech": "lumber-preservation"
+    },
+    {
+      "action": "research",
+      "tech": "textiles"
+    },
+    {
+      "action": "research",
+      "tech": "specialized-pick"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "action": "build",
+      "building": "farm",
+      "from": "wood",
+      "then": "farm"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold",
+      "to": "gold#2"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold#3"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold#3",
+      "to": "gold#4"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold#4"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold#4",
+      "to": "gold#5"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "gold#5"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "gold#5",
+      "to": "wood"
+    },
+    {
+      "trigger": {
+        "kind": "depleted",
+        "node": "sheep"
+      },
+      "reaction": true,
+      "action": "move",
+      "count": "all",
+      "from": "sheep",
+      "to": "farm"
+    }
+  ]
+}

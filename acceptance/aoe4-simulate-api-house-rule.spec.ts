@@ -1,5 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
+import english1tcCouncilHall from '../data/aoe4-build-order/builds/english-1tc-council-hall.json'
 import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
 import spearLongbow from '../data/aoe4-build-order/builds/english-spear-longbow-maa-crossbow.json'
 import openapi from '../docs/api/openapi.json'
@@ -86,7 +87,7 @@ test.describe('removed house-gate warnings', () => {
     expect(description).not.toContain('auto-houses')
   })
 
-  for (const [name, build] of [['english-1tc', english1tc], ['english-knight-longbow', knightLongbow], ['english-spear-longbow-maa-crossbow', spearLongbow]] as const) {
+  for (const [name, build] of [['english-1tc', english1tc], ['english-knight-longbow', knightLongbow], ['english-spear-longbow-maa-crossbow', spearLongbow], ['english-1tc-council-hall', english1tcCouncilHall]] as const) {
     test(`${name} returns only remaining warning codes and no step waits at 1800 s with auto-houses on`, async ({ request }) => {
       const response = await postSimulate(request, { buildOrder: build, inputs: { durationSeconds: 1800, autoHouses: true } })
       expect(response.status(), await response.text()).toBe(200)
