@@ -1859,7 +1859,7 @@
       "post": {
         "operationId": "saveBuild",
         "summary": "Save a build order under a short id.",
-        "description": "Validates a build order and stores it under a content-addressed id, so saving the same build again returns the same id. The first save of a build answers 201; a repeat save answers 200 with the same body and changes nothing stored. A repeat save still counts against the rate limit, which is per client and per window; the 429 response carries Retry-After. A save is validated before it costs a rate-limit slot or a storage call, so an invalid body never counts. A body that is not a JSON object gives one syntax issue; otherwise the order is checked like the simulate route checks buildOrder, durationSeconds must be an integer in range, and name at most 100 characters; the issues are listed as in the simulate route. A record over 65536 bytes is a 413 with a BuildsError. Two framework responses have no schema and happen before the handler runs: a body that is not valid JSON is a 400 with the plain-text body Invalid JSON, and a body over the 128 kb body limit is a 413 with a plain-text body.",
+        "description": "Validates a build order and stores it under a content-addressed id, so saving the same build again returns the same id. The first save of a build answers 201; a repeat save answers 200 with the same body and changes nothing stored. A repeat save still counts against the rate limit, which is per client and per window; the 429 response carries Retry-After. A save is validated before it costs a rate-limit slot or a storage call, so an invalid body never counts. A body that is not a JSON object gives one syntax issue; otherwise the order is checked like the simulate route checks buildOrder, durationSeconds must be an integer in range, name at most 100 characters, and the order must read back unchanged when turned into text and parsed again (a fractional walkSeconds, for example, is rejected); the issues are listed as in the simulate route. A record over 65536 bytes is a 413 with a BuildsError. Two framework responses have no schema and happen before the handler runs: a body that is not valid JSON is a 400 with the plain-text body Invalid JSON, and a body over the 128 kb body limit is a 413 with a plain-text body.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4251,7 +4251,7 @@
         "properties": {
           "buildOrder": {
             "$ref": "#/components/schemas/BuildOrder",
-            "description": "The build order to save. It is checked like the simulate route checks buildOrder, and its name is at most 100 characters."
+            "description": "The build order to save. It is checked like the simulate route checks buildOrder, its name is at most 100 characters, and it must read back unchanged when turned into text and parsed again (a fractional walkSeconds, for example, is rejected)."
           },
           "durationSeconds": {
             "type": "integer",
