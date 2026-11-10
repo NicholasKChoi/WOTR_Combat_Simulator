@@ -231,13 +231,14 @@ effect (Strict Mode is off).
 
 **Docs.** In `docs/aoe4-build-order.md` add a subsection "Saving a build and opening it by link" after the "Page"
 text. It states, as rules and with no measured result or copied rate-limit number: Save is enabled only while the
-shown result matches the settled input; a save stores the parsed build order with the name the pin would use and
-the duration, so comments and blank lines are not kept and the text reopens in canonical form; the same content
+shown result matches the settled input; a save stores the parsed build order with the name of the build whose text
+it equals, or else the selected build's name followed by ` (edited)`, an opened build being named by its stored name
+without the ` (<id>)` of its select label (rework 1), and the duration, so comments and blank lines are not kept and the text reopens in canonical form; the same content
 gives the same link, and saving again returns it; the link is the page's origin plus `?b=<id>` and is shown
 read-only with a Copy button, which falls back to a selected link and a hint; the link and the `b` in the address
 bar go away on the first settled change and a save puts `b` back; opening `?b=<id>` loads the build into the editor
-and runs it, adds an option `<name> (<id>)` to the select, disables the editor while it loads, and on a narrow
-screen opens Results after the first successful run; an unknown or malformed id, or a failed load, shows the
+and runs it, adds an option `<name> (<id>)` to the select, disables the editor while it loads, and, when the page shows the
+Build and Results tabs, selects Results after the first successful run (rework 1); an unknown or malformed id, or a failed load, shows the
 message and runs the default build; a saved build whose text no longer converts opens as text with the issues; the
 save error texts and the 429 wording follow `saveFailureMessage`. Fix every statement this makes untrue: grep
 `docs/aoe4-build-order.md` for `starts on Build` and for the sentence that the select holds the prebuilt builds
@@ -400,3 +401,82 @@ None.
   settled one; item 4 reads `conversion.order` only when `current`; the `navigator.clipboard` and builds-URL greps
   exclude `*.test.ts`; "Existing tests" paragraph and a new criterion added.
 - Stands: no branch work existed; module, test and doc scope unchanged.
+
+## Rework 1 - 2026-11-09 (review)
+
+Bounced by review 1 at tip 66a9a18671fa567e0cf4b8fa1a976d1b4591692b (report `reports/SGS-105-review-1.md`). No
+earlier gate passed a tip. Review runs again in full after this rework.
+
+### Findings
+
+1. `docs/aoe4-build-order.md:869` and `:920-921` (text): the docs say Results opens after a `?b=` load "on a narrow
+   screen"; without SGS-104 the tabs show at every width and the code selects Results at any width.
+2. `docs/aoe4-build-order.md:905-907` (text): "the name the pin would use" is false for an opened build; the pin uses
+   `<name> (<id>)`, the save stores `<name>`.
+3. `docs/aoe4-build-order.md:875` (text): "On load the default build settles and runs once." is false with `?b=`.
+4. `docs/aoe4-build-order.md:1020-1021` (text): the pin label searches the select options, which include the opened
+   build's `<name> (<id>)` option, not only the prebuilt builds.
+5. `pages/apps/aoe4-build-order.tsx:63` and `components/apps/aoe4-build-order/save-build.tsx:23` (code): each copies
+   the private `sameInput` of `components/apps/aoe4-build-order/auto-run.ts:80`.
+
+### Required fixes
+
+- [ ] At `docs/aoe4-build-order.md:869`, replace "(except that opening a `?b=` link selects Results on a narrow screen after its first successful run)" with "(except that after opening a `?b=` link, Results is selected after its first successful run when the page shows the Build and Results tabs)".
+- [ ] At `docs/aoe4-build-order.md:920-921`, replace "On a narrow screen Results opens after the first successful run." with "When the page shows the Build and Results tabs, Results is selected after the first successful run."
+- [ ] At `docs/aoe4-build-order.md:905-907`, replace "with the name the pin would use (an unchanged opened build keeps its stored name, an edited one gets ` (edited)` once, and the name is cut to fit the name cap)" with "with the name of the build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label".
+- [ ] At `docs/aoe4-build-order.md:875`, replace "On load the default build settles and runs once." with "On load the default build settles and runs once; with a `?b=` link the opened build runs instead, once its load ends (the default build runs if the load fails)."
+- [ ] At `docs/aoe4-build-order.md:1020-1021`, replace "the prebuilt build's name when its text equals one exactly" with "the name of the select option whose text it equals exactly (for an opened build, `<name> (<id>)`)".
+- [ ] Export `sameInput` from `components/apps/aoe4-build-order/auto-run.ts`, import it in `pages/apps/aoe4-build-order.tsx` and `components/apps/aoe4-build-order/save-build.tsx`, and delete both local copies. Unit tests, tsc, lint and `lint:dup` stay clean.
+
+## Rework 2 - 2026-11-09 (review)
+
+Bounced by review 2 at tip 60d2161310061081dedec168cd67dc8511d8c46f (report `reports/SGS-105-review-2.md`); review 1
+bounced 66a9a18. No other gate has passed a tip. Review runs again in full after this rework. Finding 1 comes from
+review 1's own replacement text, not from the implementer or the spec.
+
+### Findings
+
+1. `docs/aoe4-build-order.md:905-906` (text): the rework 1 clause split "A save stores ... with the name ... and the
+   duration", so the doc now says an opened build's name leaves out "the duration" and no longer says a save stores
+   the duration (save-build.tsx:65 posts `durationSeconds`).
+2. `components/apps/aoe4-build-order/save-build-client.test.ts:61-76` (convention): four `postSavedBuild` blocks
+   repeat the stub-then-`toStrictEqual` shape instead of one table.
+
+### Required fixes
+
+- [ ] In `docs/aoe4-build-order.md` (905-906; the sentence spans the line break after "the text"), replace "A save stores the parsed build order, not the raw text, with the name of the build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label and the duration, so comments and blank lines are not kept and the text reopens in canonical form." with "A save stores the parsed build order, not the raw text, and the duration, so comments and blank lines are not kept and the text reopens in canonical form. The saved name is that of the build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label."
+- [ ] In `components/apps/aoe4-build-order/save-build-client.test.ts`, fold the four `postSavedBuild` result blocks (the `it.each([201, 200])` success, `maps 429 with Retry-After to minutes`, `maps a rejecting fetch to the network message`, and the `it.each([201, 200])` non-save body) into one `it.each<[string, () => Promise<Response>, Awaited<ReturnType<typeof postSavedBuild>>]>` table of `[label, respond, expected]` rows, as `saved-build-loader.test.ts:65-76` does. Keep `posts the request as JSON` separate. Every case stays covered.
+
+## Rework 3 - 2026-11-09 (review, text)
+
+Bounced by review 3 at tip e2bc300c2259f2a679ced7ee620ec9dca39132e3 (report `reports/SGS-105-review-3.md`). Text-only:
+`reworkCount` stays 2, and review runs in delta mode from e2bc300.
+
+### Findings
+
+1. `docs/aoe4-build-order.md:901-928` (text): the "#### Saving a build and opening it by link" section sits inside
+   the "Narrow layout" paragraph, so "At 1200 px and wider ..." trails the 429 paragraph and the rest of the Page
+   section (step table, pin, error texts, prebuilt builds) falls under the Save heading.
+
+### Required fixes
+
+- [ ] In `docs/aoe4-build-order.md`, move with no wording change: cut the blank line at :901 and the block from the "#### Saving a build and opening it by link" heading through "...when the wait is unknown." (end of :927); paste it after the line ending "MAA/Crossbow`.", just before `## CivRules seams`, with one blank line on each side. "At 1200 px and wider ..." then rejoins the Narrow layout paragraph.
+
+## Rework 4 - 2026-11-09 (suite)
+
+Bounced by batch 10 suite 1 at tip c016f92e3089747e8e1f1d6edbfcb350f2229278 (report `reports/batch10-suite-1.md`),
+the first run after rebasing onto SGS-104's split layout (`sgs-104-split-layout` at 32d9d29). Earlier passes:
+review 4 APPROVE and acceptance-test 1 PASS at 7835b9b (pre-rebase); simplify at c016f92. Classified stale-test.
+
+### Findings
+
+1. `acceptance/aoe4-save-open.spec.ts:704` ("a saved build whose text no longer converts opens as text with the
+   issues and no run"): it runs at the default desktop viewport, where the split layout renders no tabs, so
+   `getByTestId('tab-build')` does not exist. The criterion "a saved build that no longer converts" requires
+   `tab-build` selected at 390 px; the test never sets that viewport.
+
+### Required fixes
+
+- [x] Make that test run at the `PHONE` viewport (390x844), e.g. `await page.setViewportSize(PHONE)` before
+      `page.goto`, keeping every existing assertion. Test-only; no production change.
+- [x] Run `acceptance/aoe4-save-open.spec.ts` and `acceptance/aoe4-split-layout.spec.ts` on the result; both pass.

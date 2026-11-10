@@ -90,7 +90,7 @@ it whenever `env !== 'production'`). SGS-105 gives the page `/apps/aoe4-build-or
      line unless the delete itself failed, in which case it prints one `FAIL delete: <reason>` line; the exit
      code stays 1. Because the build content is fixed, a build another run or tool saved with the same content
      is deleted too; the script is for previews and local runs only.
-   - **repeat.** No special code: a second run saves the same content, so step 1 gets 200 with the same id.
+   - **repeat.** No special code: a second run saves the same content, so step 1 shows the same id: 201 after the previous run's delete, 200 only if the build was still stored (rework 1).
    - **production.** No special code beyond the 405 rule above.
    - Network errors (a thrown `fetch`) fail the current step with the error's `message`, never with a header
      or the URL's credentials. The script sets a timeout on each `fetch` (`AbortSignal.timeout`, 15 s).
@@ -185,7 +185,7 @@ Other criteria:
 - [ ] (respec 2) The diff touches no app code and no contract: nothing under `lib/`, `components/`, `pages/` or `data/`, and not `docs/api/openapi.json`. Besides the script and the new spec, the only files changed are docs and `package.json`. (respec 3) `package-lock.json` is unchanged, since no dependency is added.
 - [ ] (respec 2) "secret set is sent only to the deployment origin": in the spec, the page the stub serves also requests a resource from a second origin (a second stub server on another ephemeral port). With the secret set, every request the first stub records carries `x-vercel-protection-bypass` with the sentinel, and no request the second stub records carries that header. Break caught: the header set context-wide through `extraHTTPHeaders`.
 - [ ] (respec 2) The read-back step compares the GET body's `buildOrder` (the stored, zod-parsed value) to the sent build. The local verification run shows `read back` passing with `english-1tc.json`, so the fixture survives the schema unchanged.
-- [ ] Local verification (recorded in the report and the PR body, with the real output): with `BUILDS_LOCAL_DIR` set to a throwaway directory and `npm run dev` running, `npm run smoke:preview -- http://localhost:<port>` exits 0 and prints four `PASS` lines; running it a second time exits 0 and its `save` line shows status 200 and the same id. The implementer states the port, that the dev server was stopped after, and that the throwaway directory holds no leftover record.
+- [ ] Local verification (recorded in the report and the PR body, with the real output): with `BUILDS_LOCAL_DIR` set to a throwaway directory and `npm run dev` running, `npm run smoke:preview -- http://localhost:<port>` exits 0 and prints four `PASS` lines; running it a second time exits 0 and its `save` line shows the same id (201 after the previous run's delete; 200 only if the build was still stored) (rework 1). The implementer states the port, that the dev server was stopped after, and that the throwaway directory holds no leftover record.
 - [ ] Docs (read against the "Saving a build from a script" and "Checking a deployment with the smoke test" subsections): the agent how-to names the request body fields, every status listed in Scope item 4 with what to do, and the printed link as `<origin><path>`; the smoke subsection names `VERCEL_AUTOMATION_BYPASS_SECRET`, `x-vercel-protection-bypass`, the four steps, the three exit codes, the first-failure stop and the production refusal; the example `curl` runs unchanged against `npm run dev` and returns an `{ id, path }` body (the implementer runs it and says so in the report). No timing, count, rate-limit number or run-out time appears in either subsection, and every match of `git grep -n "protection-bypass" -- docs/aoe4-build-order.md` is spelled `x-vercel-protection-bypass`.
 - [ ] `ARCHITECTURE.md` "Where files go" has a `Scripts` row naming `scripts/`; `git grep -n "scripts/" -- ARCHITECTURE.md` finds it.
 - [ ] The PR body states the merge hold sentence from Context.
@@ -213,3 +213,14 @@ None.
 - Underspecified: the request-log pin in "all steps pass" could flake on `/favicon.ico`; the stream of the usage and secret-missing messages; an uncheckable lockfile clause.
 - Changed: the log check ignores `/favicon.ico`; both messages go to stderr with empty stdout, asserted by the spec; the lockfile criterion is "`package-lock.json` is unchanged". `design/M6.md` line 627 (`extraHTTPHeaders`) is left for the next designer pass; the `context.route` rule in this ticket governs.
 - Branch work: none exists yet.
+
+## Rework 1 - 2026-11-09 (review, text)
+
+Bounced by review 1 (`reports/SGS-106-review-1.md`) at tip 5bdd00ad3cca9baaf314fd641c65046eaae90414. No earlier gate has passed this branch.
+
+Findings:
+- `docs/aoe4-build-order.md:1104` (text): the step 1 line says save expects "an `{ id, path }` body", but `scripts/smoke-preview.mjs:69-72` checks only `id`, as Scope item 1 asks.
+
+Required fixes:
+- [ ] Replace `docs/aoe4-build-order.md:1104` with exactly: "1. `save`: posts `data/aoe4-build-order/builds/english-1tc.json` with a duration of 1200 s and expects 201 or 200 with a body whose `id` is a valid build id."
+- [ ] Re-run the local verification twice and record the real output in the report; the second run's `save` line shows the same id (201 after the delete), per the corrected Local verification criterion.

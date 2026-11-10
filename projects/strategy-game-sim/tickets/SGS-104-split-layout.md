@@ -33,7 +33,8 @@ Names below from SGS-102 (acceptance helpers `waitForRun` and `expectNoRun`; `op
 **New `components/apps/aoe4-build-order/use-split-layout.ts`:**
 
 - `WORKBENCH_SPLIT_QUERY = '(min-width: 1200px)'` (exported) and `useSplitLayout(): boolean`.
-- Returns false on the server and on the first client render (hydration must match the static HTML), then
+- Returns false on the server and during hydration (hydration must match the static HTML; on a client-side
+  navigation the first render already reads `matchMedia`) (rework 1), then
   reads `window.matchMedia(WORKBENCH_SPLIT_QUERY).matches` after mount and subscribes to its `change` event,
   unsubscribing on unmount. No `resize` listener, no other logic. A `useSyncExternalStore` with a false
   `getServerSnapshot`, or a mounted flag plus effect, both satisfy this; the implementer picks one.
@@ -68,6 +69,11 @@ Names below from SGS-102 (acceptance helpers `waitForRun` and `expectNoRun`; `op
 
 - Add `.workbenchSplit` (two-column grid, `gap: 1rem`, `align-items: start`; no media query, because the class is
   applied only while `split` is true).
+- (respec 3) `.workbenchSplit > :first-child { overflow-x: auto }`: in split mode the first element child is
+  `panel-build` (the tablist renders `false`), so a Build panel wider than its half column (the step table's
+  minimum width can exceed it) scrolls sideways inside the column instead of running under the Results column,
+  where `simulation-warnings` in `panel-results` intercepts clicks on step-table buttons such as `step-delete`. The
+  Results column gets no own scroll (the sticky timeline at 1800 px depends on page scroll).
 - The whole `@media (min-width: 1200px)` block (`.resultsSplit`, `.timelineColumn` with `position: sticky`,
   `top`, `align-self`, `max-height`, `overflow-y`, and `.chartsColumn`) becomes `@media (min-width: 1800px)`
   with the same declarations. Below 1800 px the timeline stacks above the charts with no sticky position and no
@@ -77,9 +83,10 @@ Names below from SGS-102 (acceptance helpers `waitForRun` and `expectNoRun`; `op
 **Acceptance helpers (`acceptance/helpers.ts`)** (edited by this ticket; SGS-102 changed `openPage` and removed
 `runSimulation`/`runRejected` in the same file):
 
-- `CHART_IDS` is already exported from this file on `main`; the new spec imports it (respec 3), no copy is declared.
-- Export `SPLIT_MIN_WIDTH = 1200`, `TABS_VIEWPORT = { width: 1024, height: 768 }` and
-  `SPLIT_VIEWPORT = { width: 1280, height: 800 }` (inputs, not computed values).
+- `CHART_IDS` is already exported from this file on `main`; the new spec imports it, no copy is declared.
+- Export `SPLIT_MIN_WIDTH = 1200`, `TABS_VIEWPORT = { width: 1024, height: 768 }`,
+  `SPLIT_VIEWPORT = { width: 1280, height: 800 }` and `WIDE_VIEWPORT = { width: 1800, height: 900 }` (inputs, not
+  computed values; `WIDE_VIEWPORT` is the viewport rule 4 moves specs to).
 - `showTab(page, tab)` becomes split-aware: when `page.viewportSize()` is at least `SPLIT_MIN_WIDTH` wide it clicks
   nothing and expects `panel-${tab}` to be visible; otherwise it clicks `tab-${tab}` as today. It decides from the
   viewport, not from the DOM, so it cannot race the first client render.
@@ -97,17 +104,31 @@ timeline-compare; SGS-098 and SGS-102 change the count, so apply these rules rat
    tabindex; `workbench-tabs`; a panel being `hidden` or not visible while the other is shown; the keyboard model)
    gets `test.use({ viewport: TABS_VIEWPORT })` on its describe or file, or on the test, whichever is narrower. Its
    expectations do not change.
-3. `aoe4-results-split.spec.ts`: the 1280 describe moves to a 1800 px wide viewport (`WIDE`), because the timeline
-   sits beside the charts from 1800 px; its assertions (timeline left of the charts, stays below the run bar,
-   wrapped run bar, no sideways scroll) are unchanged. The 1024 describe (timeline stacked) is unchanged.
-4. A test that already pins a viewport below 1200 px is unchanged. A test at 1280 whose assertion is about a box
-   inside either column (respec 3: the results column, for example the compare table fitting its box in
-   `aoe4-narrow-layout.spec.ts`, or the Build column, for example editor, issues and step-table assertions in the
-   inline-issues, step-table, step-band and chart-readability specs; at 1280 each column is half the page) keeps
-   its expected value; if it fails because the column is now half the page, the spec moves to the 1800 px `WIDE`
-   viewport (`test.use` or the spec's viewport constant, narrowest scope) with its expected value unchanged, and the
-   implementer lists the move as a finding in the report (respec 4). `npm run acceptance` must pass, so no spec is left failing or loosened.
+3. `aoe4-results-split.spec.ts`: the 1280 describe moves to a 1800 px wide viewport (the spec's `WIDE` constant or
+   `WIDE_VIEWPORT`), because the timeline sits beside the charts from 1800 px; its assertions (timeline left of the
+   charts, stays below the run bar, wrapped run bar, no sideways scroll) are unchanged. The 1024 describe (timeline
+   stacked) is unchanged. The 1799/1800 boundary case from the acceptance criteria goes in this file.
+4. (respec 3) A test that already pins a viewport below 1200 px is unchanged. A test at 1280 whose assertion is about
+   a box inside either column (the results column, for example the compare table fitting its box in
+   `aoe4-narrow-layout.spec.ts`; or the Build column, for example editor, issues and step-table assertions in the
+   inline-issues, step-table, step-band and chart-readability specs; at 1280 each column is half the page) keeps its
+   expected value. If it fails because its column is now half the page, it moves, at the narrowest scope (`test.use`,
+   or the viewport the test sets), to a viewport that gives the box the room the expected value needs: `WIDE_VIEWPORT`
+   (each column about half of the 1320 px container), or `TABS_VIEWPORT` (the tabs layout, one full-width panel) when
+   the assertion is about the 768 px-and-wider form of a Build-panel control rather than the split itself. Either way
+   the expected value is unchanged and the implementer lists the move as a finding in the report. The only test whose
+   expected value changes is the one in rule 6. `npm run acceptance` must pass, so no spec is left failing or loosened.
 5. The implementer lists every spec and test it edits, with the rule number, in the report.
+6. (respec 3) `aoe4-step-table.spec.ts` "the start row sits above the step rows at both widths and stacks under 768
+   px": its wide half asserted that the start row's `start-field-rally` and `start-villagers-count` share one line
+   (`|rally.y - count.y| < 4`), which needs about the 1140 px container the page had at 1280 and holds in no layout
+   now (the Build column at 1800 px and the 960 px tabs container both wrap the rally select under the Start label in
+   its cell). `docs/aoe4-build-order.md` promises only that under 768 px each row, the start row included, is a card
+   with its fields stacked; at 768 px and wider the start row is a table row whose rally cell and villagers cell sit
+   side by side. The wide half runs at `WIDE_VIEWPORT` and its start-row assertion becomes that property: the
+   `start-villagers-count` left edge is greater than the `start-field-rally` left edge. The step-row assertion
+   (`step-trigger-kind` and `step-action` within 4 px vertically), the 390 px half and the rest of the test are
+   unchanged. Widening the Build column is not the fix: the tabs layout fails the old check too.
 
 **New `acceptance/aoe4-split-layout.spec.ts`** with the cases in the acceptance criteria (the split cases, the
 live switch, the 1199/1200 boundary, the 1800 px timeline boundary, and resize-while-hidden). Resizes use
@@ -123,7 +144,9 @@ there are no tabs, and both are always shown; below 1200 px the tabs stay and no
 the layout follows the viewport live and the tab selected before a resize is kept for the tabs layout; the view
 toggle is never disabled by the tab in the side-by-side layout and is disabled while Results is the shown tab in the
 tabs layout; the timeline sits beside the charts and stays under the run bar from 1800 px, and is stacked above the
-charts below 1800 px; the first paint is the tabs layout and the page switches after it loads. Behavior and rules
+charts below 1800 px, scrolling with the page (rework 1); when the page is opened directly its first paint is the tabs
+layout and it switches after it loads (rework 1); in the side-by-side
+layout a Build panel wider than its column scrolls sideways inside the column. Behavior and rules
 only, no measured sizes. `ARCHITECTURE.md` is not changed (it does not list the files of
 `components/apps/aoe4-build-order/`; grep first). `docs/api/openapi.json` is not changed.
 
@@ -141,19 +164,31 @@ Single-component change outside the core control loop; no diagram required.
 Specs below are Playwright in `acceptance/aoe4-split-layout.spec.ts` unless a case names another file. Each states
 the break it catches. Viewports are inputs; layout is read in one `page.evaluate` or under `expect.poll`.
 
-- [ ] Wiring holds in the end state: `git grep -n "min-width: 1200px" -- components` finds no match (the split query
-  lives in `use-split-layout.ts` only as `WORKBENCH_SPLIT_QUERY`); every `min-width: 1800px` match in `components` is in
+- [ ] Wiring holds in the end state (respec 3): every `git grep -n "min-width: 1200px" -- components` match is in
+  `use-split-layout.ts`, in the `WORKBENCH_SPLIT_QUERY` constant (no CSS file under `components` matches); every `min-width: 1800px` match in `components` is in
   `workbench.module.css`; `git grep -n "useSplitLayout" -- components pages` matches only in `use-split-layout.ts` and
   `pages/apps/aoe4-build-order.tsx`; `git grep -nE "matchMedia" -- components pages` matches only in
   `use-split-layout.ts`.
-- [ ] "split at 1280": at `SPLIT_VIEWPORT`, after the first run, `workbench-tabs` and both `tab-*` have count 0,
-  `panel-build` and `panel-results` are both visible, neither has the `hidden` attribute or `role="tabpanel"`,
-  `panel-build` is left of `panel-results` (right edge of the first at or before the left edge of the second, read in
-  one evaluate), the `getBoundingClientRect()` of the editor textarea and of `results-last-good` each lie inside the viewport (`top >= 0`,
-  `bottom <= innerHeight`, `left >= 0`, `right <= innerWidth`) right after the run with no scroll (if the
-  `results-last-good` rect is too tall to fit, assert its top edge only and say so in the report), and
-  `document.documentElement.scrollWidth` is at most 1280. Break caught: a tablist left in split, a panel `hidden`,
-  columns stacked.
+- [ ] "split at 1280" (respec 3): at `SPLIT_VIEWPORT`, after the first run, `workbench-tabs` and both `tab-*` have
+  count 0, `panel-build` and `panel-results` are both visible, neither has the `hidden` attribute or
+  `role="tabpanel"`, `panel-build` is left of `panel-results` (right edge of the first at or before the left edge of
+  the second, read in one evaluate), and the `getBoundingClientRect()` of the editor textarea and of
+  `results-last-good` each start inside the viewport right after the run with no scroll: `top >= 0`,
+  `top < innerHeight`, `left >= 0`, `right <= innerWidth`. The bottom edge is not asserted, because the default
+  build makes both taller than the 800 px viewport. `document.documentElement.scrollWidth` is at most 1280. Break
+  caught: a tablist left in split, a panel `hidden`, columns stacked (the results top would sit below the viewport).
+- [ ] "the Build column scrolls inside itself" (respec 3): `.workbenchSplit > :first-child` has `overflow-x: auto`
+  in `workbench.module.css`, and the step-table spec's tests that click `step-delete` or `step-add` run at the
+  default 1280 px viewport (split) without a viewport move and pass. Break caught: with the rule removed, the step
+  table runs under the Results column and `simulation-warnings` in `panel-results` intercepts the `step-delete`
+  click, so those tests time out.
+- [ ] "the start row stays a table row from 768 px" (respec 3, `aoe4-step-table.spec.ts`): the test "the start row
+  sits above the step rows at both widths and stacks under 768 px" sets `WIDE_VIEWPORT` for its wide half and there
+  asserts, under `toPass`, that `step-trigger-kind` and `step-action` tops differ by less than 4 px and that the
+  `start-villagers-count` left edge is greater than the `start-field-rally` left edge; its 390 px half is unchanged
+  (action below trigger at the same x, count below rally). No assertion in the file still requires the rally select
+  and the villagers count to share one line. Break caught: the start row stacked as a card at 768 px and wider (with
+  the stacking media query widened past 1800 px the count's left edge falls left of the rally's).
 - [ ] "tabs at 390": at 390 px wide the tablist is present, `tab-build` is selected, `panel-results` is not visible,
   `document.documentElement.scrollWidth` is at most 390 with Build shown and again with Results shown. Break caught:
   split rules leaking below 1200 px.
@@ -166,7 +201,7 @@ the break it catches. Viewports are inputs; layout is read in one `page.evaluate
   panels and no tablist; resizing back to `TABS_VIEWPORT` shows `tab-results` selected and `panel-results` visible
   (the selected tab was kept). The simulate POST count does not change across the resizes (`expectNoRun`). Break
   caught: a reset tab on resize, a re-run on layout change, a layout that needs a reload.
-- [ ] "resize keeps focus and state" (respec 1, respec 3): only one editor view is mounted at a time, so this runs
+- [ ] "resize keeps focus and state" (respec 1, respec 2): only one editor view is mounted at a time, so this runs
   as two round trips (two tests, or one test run twice), each `TABS_VIEWPORT` -> `SPLIT_VIEWPORT` -> `TABS_VIEWPORT`
   (starting at `SPLIT_VIEWPORT` and resizing as in "the layout switches live" is also fine). (a) Text view: with
   focus in the editor textarea (the duration field is in the run bar outside `WorkbenchTabs` and proves nothing),
@@ -207,16 +242,39 @@ the break it catches. Viewports are inputs; layout is read in one `page.evaluate
 
 ## Open questions
 
-None.
+none
 
-## Re-spec 2026-11-09
+## Re-spec 1 - 2026-11-09
 
 - Underspecified: the WorkbenchTabs tree (remount hedge vs. the focus criterion), the 1280 viewport observable, the `CHART_IDS` source (already exported from `acceptance/helpers.ts` on main, so Scope now says import it), and the rule 4 end state.
 - Changed: one stable wrapper with fixed child positions; rect bounds; boundary check at 1200 for scrollWidth; rule 4 moves the spec to the 1800 px viewport and reports it.
 - Stands: no code exists for this ticket yet; nothing on a branch to preserve.
 
-## Re-spec 2026-11-09 (3)
+## Re-spec 2 - 2026-11-09
 
 - Underspecified: rule 4 named only the results column, though at 1280 the Build column is half width too; and the focus-and-state criterion needs the text view and the table view, only one of which is mounted.
 - Changed: rule 4 covers a box inside either column (same remedy: move to WIDE, list as a finding); the criterion runs as two round trips, text view and table view.
 - Stands: everything else in the ticket; no code exists yet.
+
+## Re-spec 3 - 2026-11-09
+
+- Underspecified: rule 4 assumed every 1280 test passes at 1800 with its expected value unchanged, but the step-table start-row check (rally select and villagers count on one line) holds in no layout now; the Build-column scroll rule, `WIDE_VIEWPORT`, the `TABS_VIEWPORT` move for the labelled-fields test and the bottom edge of the 1280 rect check were not in the ticket.
+- Changed: rule 6 relaxes the start-row wide check to the documented property (rally and villagers cells side by side from 768 px; checked against the branch, passes at 1800 and fails with the stacking query widened); rule 4 allows `WIDE_VIEWPORT` or `TABS_VIEWPORT`; Scope adds `.workbenchSplit > :first-child { overflow-x: auto }`, `WIDE_VIEWPORT` and a doc sentence; "split at 1280" asserts top, left and right only.
+- Stands: all branch work at bca1d06 (hook, tabs, page, CSS, helpers, new spec, spec moves, docs); only the start-row assertion in `aoe4-step-table.spec.ts` and the doc sentence on Build-column scroll (already present) need checking against the ticket.
+
+## Rework 1 - 2026-11-09 (review)
+
+Bounced by review 1 at tip 7e05a8aa9b24b179358c63c6e397a782d7d4859a (report `reports/SGS-104-review-1.md`). Spec-gate 4 passed the ticket (READY).
+
+### Findings
+
+1. `docs/aoe4-build-order.md:902-904` (text): the "below 1800 px" clause sits mid-sentence, so "it scrolls vertically inside that column" reads as applying to the stacked timeline, which has no column or `overflow-y`.
+2. `docs/aoe4-build-order.md:867` and `components/apps/aoe4-build-order/use-split-layout.ts:14` (text): "the first paint is the tabs layout" and "False ... on the first client render" hold only on a direct load; on a `next/link` navigation from `/` the first render already reads `matchMedia`.
+3. `acceptance/aoe4-split-layout.spec.ts:165-167`: the resize-while-hidden setup copies `openPage` (`acceptance/helpers.ts:102-106`) line for line.
+
+### Required fixes
+
+- [ ] Replace `docs/aoe4-build-order.md:902-904` with: "At 1800 px and wider the step timeline sits in a column to the left of the charts and stays on screen just below the run bar while the charts scroll; it scrolls vertically inside that column, and sideways inside its own box when the table is wider than the column. Below 1800 px it is stacked above the charts and scrolls with the page."
+- [ ] In `docs/aoe4-build-order.md:867`, replace "The first paint is the tabs layout; the page switches to the side-by-side layout after it loads." with "When the page is opened directly, its first paint is the tabs layout and it switches to the side-by-side layout after it loads."
+- [ ] Replace the comment at `components/apps/aoe4-build-order/use-split-layout.ts:14` with "// False on the server and during hydration, so the first render matches the static HTML."
+- [ ] In `acceptance/aoe4-split-layout.spec.ts:165-167`, replace the three setup lines with `await openPage(page)` and drop the `AOE4_PAGE` import if nothing else in the file uses it.
