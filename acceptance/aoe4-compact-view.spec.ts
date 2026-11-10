@@ -206,6 +206,32 @@ test.describe('AoE4 compact view in the Text tab', () => {
     await expect(kept).not.toHaveAttribute('data-stale', /.*/)
   })
 
+  test('a changed step that was flagged keeps only its kind: no times, status, flags or warning background', async ({ page }) => {
+    const result = await openText(page, MIXED_BUILD)
+    expectStatus(result, 4, 'not-reached')
+    const changed = gutter(page, LINE_OF.notReached)
+    const calm = gutter(page, LINE_OF.instant)
+    const background = (locator: ReturnType<typeof gutter>) => locator.evaluate((el) => getComputedStyle(el).backgroundColor)
+    await expect(changed).toHaveAttribute('data-status', 'not-reached')
+    await expect(changed).toHaveAttribute('data-flagged', 'true')
+    const warning = await background(changed)
+    expect(warning).not.toBe(await background(calm))
+
+    const release = await holdSimulate(page)
+    try {
+      await textarea(page).fill(MIXED_BUILD.replace('with 9 from sheep', 'with 8 from sheep'))
+      await expect(changed).toHaveAttribute('data-stale', 'true')
+      await expect(changed).toHaveAttribute('data-kind', /.+/)
+      for (const id of ['step-started', 'step-finished']) await expect(changed.getByTestId(id)).toHaveCount(0)
+      for (const attribute of ['data-status', 'data-flagged', 'data-long-wait']) await expect(changed).not.toHaveAttribute(attribute, /.*/)
+      await expect(calm).toHaveAttribute('data-stale', 'true')
+      expect(await background(changed)).toBe(await background(calm))
+      expect(await background(changed)).not.toBe(warning)
+    } finally {
+      release()
+    }
+  })
+
   test('a syntax error keeps the other lines annotated and dimmed and leaves its own line empty', async ({ page }) => {
     await openText(page, MIXED_BUILD)
     await textarea(page).fill(MIXED_BUILD.replace(`${VILLAGER} x2`, 'frobnicate'))
@@ -272,6 +298,20 @@ test.describe('AoE4 compact view in the Text tab', () => {
     await expectNoBands(page)
 
     await page.keyboard.press('ArrowRight')
+    await expectBandEverywhere(page, result.steps[1])
+  })
+
+  test('a key release that leaves the caret in place re-shades the caret line after a hover left', async ({ page }) => {
+    const result = await openText(page, MIXED_BUILD)
+    await textarea(page).focus()
+    await clickLine(page, LINE_OF.spanning)
+    await expectBandEverywhere(page, result.steps[1])
+    await gutter(page, LINE_OF.instant).hover()
+    await expectBandEverywhere(page, result.steps[0])
+    await page.mouse.move(0, 0)
+    await expectNoBands(page)
+
+    await page.keyboard.press('Shift')
     await expectBandEverywhere(page, result.steps[1])
   })
 })
