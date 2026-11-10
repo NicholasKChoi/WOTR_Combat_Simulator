@@ -1,0 +1,2 @@
+# SGS-108 ticket 2 (re-spec 1)
+Folded the four gate fixes into tickets/SGS-108-step-run-cell.md: StepKindLegend testId prop and timeline imports (no duplicate map); stale case 1 data assertion; layout box wraps only the table; annotationToneClass export plus unit table for SGS-110. Also: reuse pin-compare `run` helper, warning tint as background-color out-specifying Bootstrap, optional :empty hide of start-row cell. Lint clean. No open questions.
