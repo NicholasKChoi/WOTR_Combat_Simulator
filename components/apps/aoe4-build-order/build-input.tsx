@@ -1,4 +1,3 @@
-import type { Ref } from 'react'
 import cn from 'classnames'
 
 import type { SaveBuildResponse } from '../../../lib/aoe4-build-order/saved-builds'
@@ -33,7 +32,6 @@ interface BuildInputProps {
     view: EditorView
     onViewChange: (view: EditorView) => void
     viewDisabled?: boolean
-    formRef?: Ref<HTMLFormElement>
 }
 
 const VIEWS: { view: EditorView; label: string }[] = [
@@ -41,10 +39,9 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ builds, selected, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, onSaved, onSubmit, view, onViewChange, viewDisabled = false, formRef }: BuildInputProps) {
+export function BuildInput({ builds, selected, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, onSaved, onSubmit, view, onViewChange, viewDisabled = false }: BuildInputProps) {
     return (
         <form
-            ref={formRef}
             data-testid="run-bar"
             className={cn(styles.runBar, 'd-flex flex-wrap align-items-end gap-3 py-2 mb-3 border-bottom border-info')}
             noValidate

@@ -1,18 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { SimulateResponse } from '../../../lib/aoe4-build-order/api'
 import type { StepTiming } from '../../../lib/aoe4-build-order/model'
-import { formatBuildStep, parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { buildAnnotations, alignSteps, finishedText, formatStepTime, formatWaitBreakdown, stepSpan, timelineRows, type AnnotationInput, type StepKind } from './step-annotations'
-
-const TEXT = [
-    'start -> sheep',
-    'produce villager from capital-town-center -> sheep',
-    'whenever gold runs out move all gold to gold#2',
-].join('\n')
+import { parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
+import { buildAnnotations, alignSteps, finishedText, formatStepTime, formatWaitBreakdown, stepKind, stepSpan, type AnnotationInput, type StepKind } from './step-annotations'
 
 const LANDMARKS = ['kings-palace']
-
-const rowsOf = (steps: StepTiming[], text: string) => timelineRows(steps, text, LANDMARKS)
 
 function timing(step: number, overrides: Partial<StepTiming> = {}): StepTiming {
     return {
@@ -28,65 +20,13 @@ function timing(step: number, overrides: Partial<StepTiming> = {}): StepTiming {
     }
 }
 
-describe('timelineRows', () => {
-    it('labels each row with the formatted parsed step and marks reactions', () => {
-        const parsed = parseBuildOrderText(TEXT)
+describe('stepKind', () => {
+    const kindOf = (line: string) => {
+        const parsed = parseBuildOrderText(`start -> sheep\n${line}`)
         if (!parsed.ok) throw new Error('fixture must parse')
-        const rows = rowsOf([timing(0), timing(1, { status: 'not-reached', waitingOn: 'trigger' })], TEXT)
-        expect(rows.map((r) => r.label)).toEqual(parsed.order.steps.slice(0, 2).map(formatBuildStep))
-        expect(rows.map((r) => r.reaction)).toEqual([false, true])
-        expect(rows[1].label).toMatch(/^whenever /)
-    })
+        return stepKind(parsed.order.steps[0], LANDMARKS)
+    }
 
-    it('flags only waiting and not-reached rows and passes waitingOn through', () => {
-        const statuses: StepTiming['status'][] = ['completed', 'in-progress', 'waiting', 'not-reached']
-        const rows = rowsOf(
-            statuses.map((status, i) => timing(i % 2, { status, waitingOn: status === 'waiting' ? 'prerequisite' : null })),
-            TEXT
-        )
-        expect(rows.map((r) => r.flagged)).toEqual([false, false, true, true])
-        expect(rows.map((r) => r.waitingOn)).toEqual([null, null, 'prerequisite', null])
-    })
-
-    it('lists non-zero wait reasons in the fixed order', () => {
-        const [row] = rowsOf(
-            [timing(0, { waitBreakdown: { prerequisite: 4, population: 0, resources: 2, villagers: 3 } })],
-            TEXT
-        )
-        expect(row.waitBreakdown).toEqual([
-            { reason: 'resources', seconds: 2 },
-            { reason: 'villagers', seconds: 3 },
-            { reason: 'prerequisite', seconds: 4 },
-        ])
-    })
-
-    it.each([
-        ['completed', { prerequisite: 4, resources: 2, villagers: 3 }, null, 'resources 0:02, villagers 0:03, prerequisite 0:04'],
-        ['completed', {}, null, ''],
-        ['in-progress', { villagers: 3 }, null, 'villagers 0:03'],
-        ['waiting', { resources: 2 }, 'prerequisite', 'resources 0:02, still waiting on prerequisite'],
-        ['waiting', {}, 'resources', 'still waiting on resources'],
-        ['not-reached', {}, 'trigger', 'not reached (trigger)'],
-        ['not-reached', {}, 'earlier-step', 'not reached (earlier-step)'],
-    ] as const)('blockedBy for a %s row with breakdown %j and waitingOn %s is %j', (status, waitBreakdown, waitingOn, expected) => {
-        const [row] = rowsOf([timing(0, { status, waitBreakdown, waitingOn })], TEXT)
-        expect(row.blockedBy).toBe(expected)
-    })
-
-    it('highlights a long wait from exactly 60 seconds', () => {
-        const rows = rowsOf([59.9, 60, 61].map((waitSeconds) => timing(0, { waitSeconds })), TEXT)
-        expect(rows.map((r) => r.longWait)).toEqual([false, true, true])
-    })
-
-    it('falls back to a 1-based step label for unparsable text or an index past the steps', () => {
-        expect(rowsOf([timing(0), timing(1)], 'start -> fly').map((r) => r.label)).toEqual(['step 1', 'step 2'])
-        const rows = rowsOf([timing(7)], TEXT)
-        expect(rows[0].label).toBe('step 8')
-        expect(rows[0].reaction).toBe(false)
-    })
-})
-
-describe('timelineRows kind', () => {
     it.each<[string, StepKind]>([
         ['build kings-palace from wood', 'age-up'],
         ['build barracks from wood', 'building'],
@@ -97,17 +37,11 @@ describe('timelineRows kind', () => {
         ['rally capital-town-center -> wood', 'economy'],
         ['pause capital-town-center', 'economy'],
     ])('classifies %j as %s', (line, kind) => {
-        const text = `start -> sheep\n${line}`
-        expect(rowsOf([timing(0)], text)[0].kind).toBe(kind)
+        expect(kindOf(line)).toBe(kind)
     })
 
-    it('maps a step missing from the parsed text to other', () => {
-        expect(rowsOf([timing(7)], TEXT)[0].kind).toBe('other')
-    })
-
-    it('reads the kind of the step each timing points at', () => {
-        const text = ['start -> sheep', 'build kings-palace from wood', 'research wheelbarrow'].join('\n')
-        expect(rowsOf([timing(1), timing(0)], text).map((r) => r.kind)).toEqual(['research', 'age-up'])
+    it('maps a missing step to other', () => {
+        expect(stepKind(undefined, LANDMARKS)).toBe('other')
     })
 })
 
@@ -239,6 +173,8 @@ describe('StepRun', () => {
 
     it.each<[StepTiming['status'], StepTiming['waitingOn'], StepTiming['waitBreakdown'], string, boolean]>([
         ['completed', null, { villagers: 3 }, 'villagers 0:03', false],
+        ['completed', null, { prerequisite: 4, population: 0, resources: 2, villagers: 3 }, 'resources 0:02, villagers 0:03, prerequisite 0:04', false],
+        ['completed', null, {}, '', false],
         ['in-progress', null, {}, '', false],
         ['waiting', 'prerequisite', { resources: 2 }, 'resources 0:02, still waiting on prerequisite', true],
         ['waiting', 'resources', {}, 'still waiting on resources', true],

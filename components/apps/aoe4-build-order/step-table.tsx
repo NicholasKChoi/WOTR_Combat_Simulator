@@ -46,6 +46,8 @@ interface StepTableProps {
     onOpenRowsChange: (next: boolean[]) => void
     disabled?: boolean
     annotations?: BuildAnnotations | null
+    activeStep?: number | null
+    onActiveStepChange?: (runStep: number | null) => void
 }
 
 type FieldDef = { name: string; kind: 'number' } | { name: string; kind: 'select'; choices: readonly string[] }
@@ -234,10 +236,11 @@ function ActionFields(props: { step: BuildStep; options: BuildOrderCatalog; expa
     )
 }
 
-function StartRow({ order, catalog, onChange, withRunCell }: { order: BuildOrder; catalog: BuildOrderCatalog; onChange: (next: BuildOrder) => void; withRunCell: boolean }) {
+function StartRow(props: { order: BuildOrder; catalog: BuildOrderCatalog; onChange: (next: BuildOrder) => void; withRunCell: boolean; onActiveStepChange: (runStep: number | null) => void }) {
+    const { order, catalog, onChange, withRunCell, onActiveStepChange } = props
     const pairs = startPairs(order)
     return (
-        <tr data-testid="step-start-row">
+        <tr data-testid="step-start-row" onPointerEnter={() => onActiveStepChange(null)} onFocus={() => onActiveStepChange(null)}>
             {withRunCell ? <td className={styles.startSpacer} /> : null}
             <td>
                 <span className="small text-muted me-2">Start</span>
@@ -293,12 +296,15 @@ function StartRow({ order, catalog, onChange, withRunCell }: { order: BuildOrder
     )
 }
 
-export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange, disabled = false, annotations = null }: StepTableProps) {
+export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange, disabled = false, annotations = null, activeStep = null, onActiveStepChange }: StepTableProps) {
     const { steps } = order
     const open = openFlags(openRows, steps)
     const commit = (next: BuildStep[], nextOpen: boolean[] = open) => {
         onOpenRowsChange(nextOpen)
         if (next !== steps) onChange({ ...order, steps: next })
+    }
+    const setActive = (runStep: number | null) => {
+        if (annotations !== null) onActiveStepChange?.(runStep)
     }
     const setOpen = (index: number, value: boolean) => onOpenRowsChange(open.map((was, i) => (i === index ? value : was)))
 
@@ -308,7 +314,7 @@ export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange
             <div data-testid="step-table-scroll" className={styles.scroll}>
                 <table className={cn(styles.table, 'table table-sm align-middle')}>
                     <tbody>
-                        <StartRow order={order} catalog={catalog} onChange={onChange} withRunCell={annotations !== null} />
+                        <StartRow order={order} catalog={catalog} onChange={onChange} withRunCell={annotations !== null} onActiveStepChange={setActive} />
                         {steps.map((step, index) => {
                             const edit = (next: BuildStep) => {
                                 if (next === step) return
@@ -316,6 +322,7 @@ export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange
                             }
                             const annotation = annotations?.steps[index]
                             const run = annotation?.run
+                            const isActive = activeStep !== null && run?.runStep === activeStep
                             return (
                                 <tr
                                     key={index}
@@ -326,6 +333,14 @@ export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange
                                     data-status={run?.status}
                                     data-flagged={run?.flagged ? 'true' : undefined}
                                     data-long-wait={run?.longWait ? 'true' : undefined}
+                                    data-active={isActive ? 'true' : undefined}
+                                    className={cn({ 'table-active': isActive })}
+                                    onPointerEnter={() => setActive(run?.runStep ?? null)}
+                                    onPointerLeave={() => setActive(null)}
+                                    onFocus={() => setActive(run?.runStep ?? null)}
+                                    onBlur={(e) => {
+                                        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setActive(null)
+                                    }}
                                 >
                                     {annotation === undefined ? null : <StepRunCell annotation={annotation} stale={annotations?.stale === true} />}
                                     <td>

@@ -118,7 +118,7 @@ describe('StepTable run cells', () => {
             { kind: 'building', run: run({ runStep: 1, waitSeconds: 59.9, longWait: false }) },
         ],
     }
-    const render = (props: { annotations?: BuildAnnotations | null }) =>
+    const render = (props: { annotations?: BuildAnnotations | null; activeStep?: number | null }) =>
         renderToStaticMarkup(createElement(StepTable, { order: parsed.order, catalog, onChange: () => {}, openRows: [], onOpenRowsChange: () => {}, ...props }))
     const rows = (html: string) => html.split('data-testid="step-row"').slice(1)
 
@@ -149,5 +149,16 @@ describe('StepTable run cells', () => {
         expect(start).not.toContain('step-run')
         expect(/^step-start-row"><td class="[^"]*"><\/td>/.test(start)).toBe(true)
         expect(html).toContain('data-testid="step-kind-legend"')
+    })
+
+    it.each<[string, number | null, (string | null)[]]>([
+        ['the second run step', 1, [null, null, 'true']],
+        ['the first run step', 0, ['true', null, null]],
+        ['no active step', null, [null, null, null]],
+        ['a run step no row has', 5, [null, null, null]],
+    ])('marks active only the row whose run step is %s', (_name, activeStep, expected) => {
+        const rowHtml = rows(render({ annotations, activeStep }))
+        expect(rowHtml.map((r) => (r.includes('data-active="true"') ? 'true' : null))).toEqual(expected)
+        expect(rowHtml.map((r) => (r.includes('table-active') ? 'true' : null))).toEqual(expected)
     })
 })

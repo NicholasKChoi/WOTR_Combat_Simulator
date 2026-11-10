@@ -1,126 +1,63 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openPage, showTab, waitForRun } from './helpers'
+import { SPLIT_VIEWPORT, TABS_VIEWPORT, WIDE_VIEWPORT, openPage, showTab, waitForRun } from './helpers'
 
-const WIDE = { width: 1800, height: 800 }
-const NARROW = { width: 1024, height: 768 }
-
-interface Rects {
-  timeline: DOMRect
-  legend: DOMRect
-  units: DOMRect
-  bar: DOMRect
-}
-
-const timelineStyle = (page: Page) =>
-  page.getByTestId('results-split').evaluate((el) => {
-    const column = getComputedStyle(el.firstElementChild!)
-    return { position: column.position, maxHeight: column.maxHeight }
-  })
-
-const rects = (page: Page) =>
-  page.evaluate(() => {
-    const rect = (id: string) => document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().toJSON()
-    return { timeline: rect('step-timeline-scroll'), legend: rect('step-timeline-legend'), units: rect('chart-units-produced'), bar: rect('run-bar') }
-  }) as Promise<Rects>
+const REMOVED_TIMELINE_IDS = ['step-timeline', 'step-timeline-scroll', 'step-timeline-legend', 'results-split'] as const
+const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources']
+const CHARTS_FILL_RATIO = 0.95
 
 async function openResults(page: Page) {
   await openPage(page)
   const response = await waitForRun(page, () => page.getByTestId('duration-seconds').fill('200'))
   expect(response.status()).toBe(200)
   await showTab(page, 'results')
-  await expect(page.getByTestId('step-timeline-scroll')).toBeVisible()
+  await expect(page.getByTestId('chart-units-produced')).toBeVisible()
 }
 
-async function expectTimelineBelowRunBar(page: Page) {
-  await expect
-    .poll(async () => {
-      const { legend, units, bar } = await rects(page)
-      return units.top < bar.bottom && legend.top >= bar.bottom - 1 && legend.top <= bar.bottom + 1
-    })
-    .toBe(true)
-}
-
-test.describe('AoE4 results split at 1800 px', () => {
-  test.use({ viewport: WIDE })
-
-  test('the timeline sits left of the charts', async ({ page }) => {
-    await openResults(page)
-    await expect
-      .poll(async () => {
-        const { timeline, legend, units } = await rects(page)
-        return timeline.right <= units.left && Math.abs(legend.top - units.top) <= 40
-      })
-      .toBe(true)
+const widths = (page: Page) =>
+  page.evaluate(() => {
+    const width = (id: string) => document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().width
+    return { units: width('chart-units-produced'), results: width('results-last-good'), page: document.documentElement.scrollWidth }
   })
 
-  test('a build with no steps keeps both columns, empty timeline first, and draws no timeline', async ({ page }) => {
+test.describe('AoE4 results take the full width', () => {
+  for (const [name, viewport] of [
+    ['wide', WIDE_VIEWPORT],
+    ['split', SPLIT_VIEWPORT],
+    ['tabs', TABS_VIEWPORT],
+  ] as const) {
+    test(`the charts fill the Results width and no timeline is drawn at the ${name} viewport`, async ({ page }) => {
+      await page.setViewportSize(viewport)
+      await openResults(page)
+      for (const id of REMOVED_TIMELINE_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
+      await expect.poll(async () => {
+        const { units, results } = await widths(page)
+        return units / results >= CHARTS_FILL_RATIO
+      }).toBe(true)
+      if (viewport === WIDE_VIEWPORT) {
+        await expect.poll(async () => (await widths(page)).page).toBeLessThanOrEqual(viewport.width)
+      }
+    })
+  }
+
+  test('the four charts are direct children of the results container and wrap no column', async ({ page }) => {
+    await page.setViewportSize(WIDE_VIEWPORT)
+    await openResults(page)
+    const children = await page.getByTestId('results-last-good').evaluate((el) => [...el.children].map((child) => child.getAttribute('data-testid')))
+    expect(children.filter((id) => id?.startsWith('chart-'))).toEqual(CHART_IDS)
+    expect(children.slice(-CHART_IDS.length)).toEqual(CHART_IDS)
+  })
+
+  test('a build with no steps still draws the charts and shows no step rows or legend', async ({ page }) => {
+    await page.setViewportSize(SPLIT_VIEWPORT)
     await openPage(page)
     await showTab(page, 'build')
     const response = await waitForRun(page, () => page.getByTestId('build-order-text').fill('start -> sheep'))
     expect(response.status()).toBe(200)
+    await page.getByTestId('editor-view-table').click()
     await showTab(page, 'results')
-    const columns = page.getByTestId('results-split').locator('> *')
-    await expect(columns).toHaveCount(2)
-    await expect(columns.nth(0)).not.toHaveAttribute('data-testid', /.*/)
-    await expect(columns.nth(1)).not.toHaveAttribute('data-testid', /.*/)
-    await expect(columns.nth(1).getByTestId('chart-units-produced')).toBeVisible()
-    await expect(page.getByTestId('step-timeline-scroll')).toHaveCount(0)
-  })
-
-  test('the timeline stays just below the run bar while the charts scroll', async ({ page }) => {
-    await openResults(page)
-    await page.getByTestId('chart-floating-resources').evaluate((el) => el.scrollIntoView({ block: 'end', behavior: 'instant' }))
-    await expectTimelineBelowRunBar(page)
-  })
-
-  test('the timeline stays below a run bar that wraps onto a second row', async ({ page }) => {
-    await openResults(page)
-    await page.getByTestId('chart-floating-resources').evaluate((el) => el.scrollIntoView({ block: 'end', behavior: 'instant' }))
-    await expectTimelineBelowRunBar(page)
-    await page.getByTestId('run-bar').evaluate((bar) => {
-      const filler = document.createElement('div')
-      filler.style.cssText = 'flex: 0 0 100%; height: 3rem'
-      bar.appendChild(filler)
-    })
-    await expectTimelineBelowRunBar(page)
-  })
-
-  test('the page does not scroll sideways', async ({ page }) => {
-    await openResults(page)
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(WIDE.width)
-  })
-})
-
-test.describe('AoE4 results split at 1024 px', () => {
-  test.use({ viewport: NARROW })
-
-  test('the timeline is stacked above the charts', async ({ page }) => {
-    await openResults(page)
-    await expect
-      .poll(async () => {
-        const { timeline, units } = await rects(page)
-        return timeline.bottom <= units.top
-      })
-      .toBe(true)
-  })
-})
-
-test.describe('AoE4 results split boundary', () => {
-  test('the timeline is stacked and unpinned at 1799 px and beside the charts and sticky at 1800 px', async ({ page }) => {
-    await openResults(page)
-    await page.setViewportSize({ width: WIDE.width - 1, height: WIDE.height })
-    await expect
-      .poll(async () => {
-        const { timeline, units } = await rects(page)
-        return { stacked: timeline.bottom <= units.top, ...(await timelineStyle(page)) }
-      })
-      .toEqual({ stacked: true, position: 'static', maxHeight: 'none' })
-    await page.setViewportSize(WIDE)
-    await expect
-      .poll(async () => {
-        const { timeline, units } = await rects(page)
-        return { beside: timeline.right <= units.left, position: (await timelineStyle(page)).position }
-      })
-      .toEqual({ beside: true, position: 'sticky' })
+    await expect(page.getByTestId('chart-units-produced')).toBeVisible()
+    await expect(page.getByTestId('step-row')).toHaveCount(0)
+    await expect(page.getByTestId('step-kind-legend')).toHaveCount(0)
+    for (const id of REMOVED_TIMELINE_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
   })
 })

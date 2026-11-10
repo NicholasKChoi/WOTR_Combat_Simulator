@@ -9,7 +9,7 @@ const FLOW_PASTE = [
 ].join('\n')
 
 test.describe('AoE4 build order M3 flow', () => {
-  test('edit a step in the table, run, see the depletion warning and timeline, pin and compare', async ({ page }) => {
+  test('edit a step in the table, run, see the depletion warning and step rows, pin and compare', async ({ page }) => {
     await openPage(page)
     const text = page.getByTestId('build-order-text')
     const pinnedResult = (await (await waitForRun(page, () => text.fill(FLOW_PASTE))).json()) as SimulationResult
@@ -44,17 +44,18 @@ test.describe('AoE4 build order M3 flow', () => {
     const message = warnings.locator('[data-testid="simulation-message"][data-code="node-depleted"][data-severity="warning"]')
     await expect(message).toHaveText(depleted?.message ?? '')
 
-    await expect(page.getByTestId('step-timeline')).toBeVisible()
-    const rows = page.getByTestId('step-timeline-row')
+    await showTab(page, 'build')
+    const rows = page.getByTestId('step-row')
     await expect(rows).toHaveCount(2)
     const first = rows.and(page.locator('[data-step="0"]'))
     await expect(first).toHaveAttribute('data-status', 'completed')
     await expect(first).not.toHaveAttribute('data-flagged', 'true')
-    await expect(first).toContainText('x5')
+    await expect(first.getByTestId('step-field-count')).toHaveValue('5')
     const late = rows.and(page.locator('[data-step="1"]'))
     await expect(late).toHaveAttribute('data-status', 'not-reached')
     await expect(late).toHaveAttribute('data-flagged', 'true')
 
+    await showTab(page, 'results')
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
     const keys = await page.getByTestId('compare-row').evaluateAll((els) => els.map((el) => el.getAttribute('data-key')))
     expect(keys).toEqual(expectedCompareKeys(result, pinnedResult))
@@ -70,23 +71,22 @@ test.describe('AoE4 build order M3 flow', () => {
     }
   })
 
-  test('the ENG 1TC gold reaction shows in the timeline and table, and its depletion is not a warning', async ({ page }) => {
+  test('the ENG 1TC gold reaction shows in the step table, and its depletion is not a warning', async ({ page }) => {
     await openPage(page)
     const response = await waitForRun(page, async () => {
       await page.getByTestId('duration-seconds').fill('3600')
       await page.getByTestId('build-order-select').selectOption({ label: 'ENG 1TC' })
     })
     expect(response.status()).toBe(200)
-    await showTab(page, 'results')
     const result = (await response.json()) as SimulationResult
     expect(result.depletions.find((d) => d.node === 'gold')).toMatchObject({ depletedAt: expect.any(Number) })
 
-    const lastTimeline = page.getByTestId('step-timeline-row').last()
-    await expect(lastTimeline).toHaveAttribute('data-reaction', 'true')
-    await expect(lastTimeline).toHaveAttribute('data-status', 'completed')
     await showTab(page, 'build')
     await showView(page, 'table')
-    await expect(page.getByTestId('step-row').last().getByTestId('step-field-reaction')).toBeChecked()
+    const last = page.getByTestId('step-row').last()
+    await expect(last).toHaveAttribute('data-status', 'completed')
+    await expect(last.getByTestId('step-field-reaction')).toBeChecked()
+    await showTab(page, 'results')
     await expect(page.getByTestId('simulation-warnings').getByTestId('simulation-message').filter({ hasText: /^gold ran out/ })).toHaveCount(0)
   })
 

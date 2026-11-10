@@ -879,11 +879,9 @@ issues. Server 400 issues take its place under the editor view, without lines, u
 Gold run-outs and other info notes are in the collapsed info list in Results.
 
 Narrow layout: under 768 px the step rows are cards (their selects and inputs shrink to the card), the run bar scrolls with the page and wraps onto several rows with the select and
-duration input at full width, and the step timeline and compare tables scroll sideways inside their own boxes. The
+duration input at full width, and the compare tables scroll sideways inside their own boxes. The
 page itself does not scroll sideways at 390 px on either tab, even with a long unbroken token in an issue message.
-At 1800 px and wider the step timeline sits in a column to the left of the charts and stays on screen just below the run
-bar while the charts scroll; it scrolls vertically inside that column, and sideways inside its own box when the table is
-wider than the column. Below 1800 px it is stacked above the charts and scrolls with the page.
+The charts are the only column at every width and take the full Results width.
 
 The page keeps one `text` state, and the step table is a view of it. The table renders
 `parseBuildOrderText(text)`: one row per step with a trigger kind select and its fields, an action select and
@@ -919,12 +917,12 @@ Once a result is shown, the table view adds a run cell as the first cell of ever
 villager, building, economy; any other step has a border with no colour and no badge), a kind badge, and, when the step
 lines up with a step of the shown run, its started and finished times (`m:ss`, `ongoing` for a step still under way, an
 en dash for one that never started), the time it waited and what blocked it. A step that waited on
-resources, villagers, population or a prerequisite lists each cause with its time; a `waiting` step adds
+resources, villagers, population or a prerequisite lists each cause with a non-zero time as `<cause> <m:ss>`, in that order, joined with `, `; a `waiting` step adds
 `still waiting on <cause>`, and a `not-reached` step reads `not reached (<cause>)`. A cell whose step is `waiting` or `not-reached`,
 or waited 60 s or longer, has a warning background. The start row has an empty first cell. Steps line up by their
 canonical text (`formatBuildStep`): the longest common run of identical steps at the top of the build and then at the
 bottom match the shown run's steps, and every step between them has no times. Editing one step leaves the other steps their
-times; choosing another build in the select, or opening one, leaves no step any times. A step with no times still shows its kind.
+times; choosing another build in the select, or opening one, leaves no step any times. A step with no times still shows its kind. The kind comes from the step alone: a `build` of a landmark is Age up (so a landmark of a later age than the current one still reads Age up), any other `build` is Building, a `research` is Research, a `produce` of a villager is Villager and of any other unit is Military, and a `move`, `rally` or `pause` is Economy; the colours are blue for age up, cyan for research, red for military, green for villager, grey for building and light grey for economy. The kind colour is independent of the warning background.
 
 A 200 draws four line charts, each with a series legend titled "Series" (one toggle button per series):
 
@@ -954,26 +952,7 @@ Those of severity `warning` appear in a warnings list. Those of severity `info` 
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
 message shows its `message` text only. With no message of a severity there is no list for it.
 
-A step timeline sits above the charts (beside them at 1800 px and wider) and below the message lists: one row per `steps` entry in step order, with
-the step's text, `startedAt` as `m:ss` (an en dash when null), `completedAt` as `m:ss` (`ongoing` for an
-`in-progress` step, an en dash for a `waiting` or `not-reached` step) and `waitSeconds` as `m:ss`. The columns are
-Started, Finished, Step, Waited and Blocked by, so reading down Started is the timeline. Each row has a step kind, shown
-as a coloured left border on the Started cell and a text badge at the start of the Step cell, with a legend above the
-table: Age up (a `build` of a landmark, bold; blue), Research (cyan), Military (a `produce` of any unit but the villager;
-red), Villager (green), Building (any other `build`; grey), and Economy (`move`, `rally`, `pause`; light grey). The
-kind comes from the step alone, so a landmark of a later age than the current one still reads Age up. A step missing from
-the pasted text has no kind. The kind colour is independent of the flagged and long-wait highlight. Blocked by lists the non-zero `waitBreakdown` reasons as
-`<reason> <m:ss>` in the order resources, villagers, population, prerequisite, joined with `, `. A `waiting` step
-adds `still waiting on <waitingOn>` (alone when the breakdown is empty) and a `not-reached` step reads
-`not reached (<waitingOn>)`. A `waiting` or `not-reached` row is flagged. A row whose `waitSeconds` is 60 or more is
-highlighted as a long wait (exactly 60 counts, 59.9 does not). A reaction step's row is marked. Pointing at a row or focusing it with the keyboard highlights the row and shades that
-step's span, from Started to Finished, on every chart; an `in-progress` step's span runs to the end of the run, a step
-whose start and finish are the same second shows as a single vertical line, and a `waiting` or `not-reached` step (no
-start) shows no band. Moving off the row, or running again, clears the highlight. The table scrolls
-horizontally inside its wrapper when it is wider than the page. The
-step text is the text of the shown result's input, so editing the text afterwards does not change the labels until
-the next run lands. A result with empty `steps` (a `start`-only paste) shows no timeline, and a 400
-shows none.
+The step table doubles as the annotated build order for the charts. Pointing at a row, or focusing a control in it, highlights the row and shades that step's span, from Started to Finished, on every chart; an in-progress step's span runs to the end of the run, a step that starts and finishes in the same second shows as one vertical line, and a waiting or not-reached step, or a row with no run times, shows no band. Pointing at or focusing the start row shades nothing. Moving off the row, or running again, clears the shading. Moving focus between controls of one row keeps it. While the result is stale, a row that still has its times still shades its span.
 
 Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown, unless its text and
 duration both equal the pinned run's) keeps the shown result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is

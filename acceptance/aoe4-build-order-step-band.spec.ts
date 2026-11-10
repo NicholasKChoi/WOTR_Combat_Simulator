@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult, StepTiming } from '../lib/aoe4-build-order/model'
-import { AOE4_PAGE, openPage, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, SIMULATE_PATH, openPage, showTab, showView, waitForRun } from './helpers'
 
 const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 const WIDE = { width: 1280, height: 800 }
@@ -9,8 +9,10 @@ const EDGE_TOLERANCE_PX = 1
 const INSTANT_STEP_BUILD = ['start 6 sheep -> sheep', 'produce villager from capital-town-center x2', 'pause capital-town-center', 'produce villager from capital-town-center x1'].join('\n')
 const NO_START_BUILD = ['start 6 sheep -> sheep', 'produce villager from capital-town-center x1', 'research bloomery', 'research admiralty'].join('\n')
 
-const row = (page: Page, step: number) => page.getByTestId('step-timeline-row').nth(step)
+const row = (page: Page, step: number) => page.getByTestId('step-row').nth(step)
 const bands = (page: Page) => page.getByTestId('chart-step-band')
+const activeRows = (page: Page) => page.locator('[data-active="true"]')
+const STALE_BUILD = ['start 6 sheep -> sheep', 'build house with 1 from sheep', 'build house with 1 from sheep', 'build house with 1 from sheep'].join('\n')
 
 interface Band {
   from: number
@@ -52,15 +54,17 @@ async function runPasted(page: Page, text: string, duration: number) {
     await page.getByTestId('duration-seconds').fill(String(duration))
   })
   const result = (await response.json()) as SimulationResult
+  await showView(page, 'table')
   await showTab(page, 'results')
-  await expect(page.getByTestId('step-timeline-scroll')).toBeVisible()
+  await expect(page.getByTestId('chart-units-produced')).toBeVisible()
   return result
 }
 
 async function runDefault(page: Page) {
   const result = (await (await waitForRun(page, () => page.goto(AOE4_PAGE))).json()) as SimulationResult
+  await showView(page, 'table')
   await showTab(page, 'results')
-  await expect(page.getByTestId('step-timeline-scroll')).toBeVisible()
+  await expect(page.getByTestId('chart-units-produced')).toBeVisible()
   return result
 }
 
@@ -99,17 +103,62 @@ test.describe('AoE4 step span band on the charts', () => {
     await expect(bands(page)).toHaveCount(0)
   })
 
-  test('keyboard focus shows the band, Tab moves it to the next row, and blur removes it', async ({ page }) => {
+  test('keyboard focus in a row shows the band, Tab moves it to the next row, and blur removes it', async ({ page }) => {
     const result = await runDefault(page)
     const [first, second] = result.steps.filter((s) => s.status === 'completed' && s.startedAt! < s.completedAt!)
     expect(second.step).toBe(first.step + 1)
-    await row(page, first.step).focus()
+    await row(page, first.step).getByTestId('step-delete').focus()
     await expectBandEverywhere(page, first.startedAt!, first.completedAt!)
+    await expect(row(page, first.step)).toHaveAttribute('data-active', 'true')
     await page.keyboard.press('Tab')
-    await expect(row(page, second.step)).toBeFocused()
+    await expect(row(page, second.step).getByTestId('step-trigger-kind')).toBeFocused()
     await expectBandEverywhere(page, second.startedAt!, second.completedAt!)
-    await row(page, second.step).blur()
+    await row(page, second.step).getByTestId('step-trigger-kind').blur()
     await expect(bands(page)).toHaveCount(0)
+  })
+
+  test('moving focus between controls of one row never removes the band, and leaving the row does', async ({ page }) => {
+    const result = await runDefault(page)
+    const timing = result.steps.find((s) => s.status === 'completed' && s.startedAt! < s.completedAt!)!
+    await page.evaluate((id) => {
+      const w = window as unknown as { bandRemovals: number }
+      w.bandRemovals = 0
+      const isBand = (n: Node) => n instanceof Element && (n.matches(`[data-testid="${id}"]`) || n.querySelector(`[data-testid="${id}"]`) !== null)
+      new MutationObserver((records) => {
+        for (const r of records) for (const n of r.removedNodes) if (isBand(n)) w.bandRemovals++
+      }).observe(document.body, { childList: true, subtree: true })
+    }, 'chart-step-band')
+    const target = row(page, timing.step)
+    await target.getByTestId('step-trigger-kind').focus()
+    await expectBandEverywhere(page, timing.startedAt!, timing.completedAt!)
+    await page.keyboard.press('Tab')
+    await expect(target.locator(':focus')).toHaveCount(1)
+    await expect(target.getByTestId('step-trigger-kind')).not.toBeFocused()
+    await expectBandEverywhere(page, timing.startedAt!, timing.completedAt!)
+    expect(await page.evaluate(() => (window as unknown as { bandRemovals: number }).bandRemovals)).toBe(0)
+    await page.getByTestId('duration-seconds').focus()
+    await expect(bands(page)).toHaveCount(0)
+    expect(await page.evaluate(() => (window as unknown as { bandRemovals: number }).bandRemovals)).toBeGreaterThan(0)
+  })
+
+  test('the start row clears a band set by the other input, hovering over a focused row and focusing under a hovered row', async ({ page }) => {
+    const result = await runDefault(page)
+    const timing = result.steps.find((s) => s.status === 'completed' && s.startedAt! < s.completedAt!)!
+    const start = page.getByTestId('step-start-row')
+    const expectNoBand = async () => {
+      await expect(bands(page)).toHaveCount(0)
+      await expect(activeRows(page)).toHaveCount(0)
+    }
+    await page.mouse.move(0, 0)
+    await row(page, timing.step).getByTestId('step-delete').focus()
+    await expect(bands(page)).toHaveCount(CHARTS.length)
+    await start.hover()
+    await expectNoBand()
+    await page.getByTestId('duration-seconds').focus()
+    await row(page, timing.step).hover()
+    await expect(bands(page)).toHaveCount(CHARTS.length)
+    await start.locator('button, select, input').first().focus()
+    await expectNoBand()
   })
 
   test('a zero-length step draws one visible vertical line per chart at its second', async ({ page }) => {
@@ -163,7 +212,7 @@ test.describe('AoE4 step span band on the charts', () => {
     }
   })
 
-  test('the hovered row looks active, on an unflagged row and on a flagged row that table-warning tints', async ({ page }) => {
+  test('the hovered row looks active, on an unflagged row and on a flagged row', async ({ page }) => {
     const result = await runPasted(page, NO_START_BUILD, 600)
     const plain = result.steps.find((s) => s.status === 'completed')!
     const flagged = result.steps.find((s) => s.status === 'waiting')!
@@ -194,5 +243,62 @@ test.describe('AoE4 step span band on the charts', () => {
     await expect(bands(page)).toHaveCount(0)
     await expect(page.locator('[data-active="true"]')).toHaveCount(0)
     expect(await target.evaluate((el) => el.matches(':hover'))).toBe(true)
+  })
+
+  test.describe('while a new result is pending', () => {
+    async function holdSimulate(page: Page) {
+      let release!: () => void
+      const gate = new Promise<void>((resolve) => (release = resolve))
+      let hit!: () => void
+      const hitOnce = new Promise<void>((resolve) => (hit = resolve))
+      await page.route(
+        (url) => url.pathname === SIMULATE_PATH,
+        async (route) => {
+          hit()
+          await gate
+          await route.continue()
+        }
+      )
+      return { release, hitOnce }
+    }
+
+    async function runStale(page: Page) {
+      const result = await runPasted(page, STALE_BUILD, 300)
+      expect(result.steps).toHaveLength(3)
+      for (const timing of result.steps) expect(timing.startedAt!).toBeLessThan(timing.completedAt!)
+      return result
+    }
+
+    test('hovering a row with no run while stale draws no band, and an unchanged earlier row still does', async ({ page }) => {
+      const result = await runStale(page)
+      const { release, hitOnce } = await holdSimulate(page)
+      await row(page, 2).getByTestId('step-field-builders').fill('3')
+      await hitOnce
+      await expect(row(page, 2).getByTestId('step-run')).toHaveAttribute('data-stale', 'true')
+      await expect(row(page, 2)).not.toHaveAttribute('data-run-step', /.*/)
+      await row(page, 2).hover()
+      await expect(bands(page)).toHaveCount(0)
+      await expect(activeRows(page)).toHaveCount(0)
+      await row(page, 0).hover()
+      await expectBandEverywhere(page, result.steps[0].startedAt!, result.steps[0].completedAt!)
+      await expect.poll(() => page.getByTestId('results-last-good').evaluate((el) => getComputedStyle(el).opacity)).toBe('0.5')
+      release()
+      await page.unroute((url) => url.pathname === SIMULATE_PATH)
+    })
+
+    test('an edit that unaligns the active row removes the band at once', async ({ page }) => {
+      const result = await runStale(page)
+      const { release, hitOnce } = await holdSimulate(page)
+      const builders = row(page, 1).getByTestId('step-field-builders')
+      await builders.focus()
+      await expectBandEverywhere(page, result.steps[1].startedAt!, result.steps[1].completedAt!)
+      await page.keyboard.type('3')
+      await hitOnce
+      await expect.poll(() => bands(page).count()).toBe(0)
+      await expect(activeRows(page)).toHaveCount(0)
+      await expect(builders).toBeFocused()
+      release()
+      await page.unroute((url) => url.pathname === SIMULATE_PATH)
+    })
   })
 })

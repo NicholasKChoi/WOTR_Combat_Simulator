@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
-import { openPage, postSimulate, showTab, waitForRun } from './helpers'
+import { openPage, postSimulate, showTab, showView, waitForRun } from './helpers'
 
 const BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
 const REACTION_COUNT = 6
@@ -17,19 +17,21 @@ test.describe('the knight/longbow build on the page', () => {
     })
     expect(response.status()).toBe(200)
     const result = (await response.json()) as SimulationResult
-    await showTab(page, 'results')
+    await showTab(page, 'build')
+    await showView(page, 'table')
 
-    await expect(page.getByTestId('step-timeline')).toBeVisible()
-    await expect(page.locator('[data-testid="step-timeline-row"][data-reaction="true"]')).toHaveCount(REACTION_COUNT)
-    await expect(page.getByTestId('step-timeline-row')).toHaveCount(knightLongbow.steps.length)
+    await expect(page.getByTestId('step-table')).toBeVisible()
+    await expect(page.getByTestId('step-field-reaction').and(page.locator(':checked'))).toHaveCount(REACTION_COUNT)
+    await expect(page.getByTestId('step-row')).toHaveCount(knightLongbow.steps.length)
 
     const palace = knightLongbow.steps.findIndex((s) => s.action === 'build' && s.building === 'kings-palace')
     const research = knightLongbow.steps.findIndex((s) => s.action === 'research')
     expect(palace).toBeGreaterThanOrEqual(0)
     expect(research).toBeGreaterThanOrEqual(0)
-    await expect(page.locator(`[data-testid="step-timeline-row"][data-step="${palace}"]`)).toHaveAttribute('data-kind', 'age-up')
-    await expect(page.locator(`[data-testid="step-timeline-row"][data-step="${research}"]`)).toHaveAttribute('data-kind', 'research')
-    await expect(page.getByTestId('step-timeline-legend')).toBeVisible()
+    await expect(page.locator(`[data-testid="step-row"][data-step="${palace}"]`)).toHaveAttribute('data-kind', 'age-up')
+    await expect(page.locator(`[data-testid="step-row"][data-step="${research}"]`)).toHaveAttribute('data-kind', 'research')
+    await expect(page.getByTestId('step-kind-legend')).toBeVisible()
+    await showTab(page, 'results')
 
     const warnings = page.locator('[data-testid="simulation-message"][data-severity="warning"]')
     await expect(warnings.filter({ hasText: /idle/i })).toHaveCount(0)
