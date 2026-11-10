@@ -155,8 +155,8 @@ and the charts get the horizontal room back.
 ### Exit criteria
 
 Set by the owner 2026-11-09 in chat. Owner decisions: the separate step timeline is dropped (it crowds the
-screen horizontally); the Text tab is the most compact view of a build, so either the Text tab gets the
-highlighting or the table rows collapse (open: board question); narrow screens are not a requirement for
+screen horizontally); the Text tab is the most compact view of a build, so the Text tab gets the highlighting
+(board Q20, 2026-11-10); design approved including charts dimming during the debounce (Q21); narrow screens are not a requirement for
 this milestone (M4.13 and M6.2's 390 px clause are waived for the new UI).
 
 | id | criterion | kind | covered by | status |
@@ -166,5 +166,6 @@ this milestone (M4.13 and M6.2's 390 px clause are waived for the new UI).
 | M7.3 | Hovering or focusing a row shades that step's span on every chart, as the timeline rows did | code | | open |
 | M7.4 | While the results are stale (an edit since the last run, or invalid text) the row annotations dim with the charts and never show times from a different build | code | | open |
 | M7.5 | The separate step timeline is removed from Results, and the charts use the freed width | code | | open |
-| M7.6 | Compact view: per the owner's board answer, either the Text tab shows the same kind colour and times per line, or the table rows collapse to a one-line summary that keeps the annotations | code | | open |
+| M7.6 | Compact view: the Text tab's line gutter shows each step line's kind colour and started and finished times, with waited and Blocked by on hover, dimmed when stale, and hovering or putting the caret on a line shades that step on the charts | code | | open |
 | M7.7 | `docs/aoe4-build-order.md` describes the annotated build order instead of the step timeline; Playwright covers the colours and times, the hover shading, the stale dimming, the compact view, and the timeline's absence; specs that drove the timeline are rewritten; no 390 px check is added for the new UI | code | | open |
+| M7.8 | Explicit `build house` steps no longer freeze production: auto-houses are not held off for the whole build by the last explicit house step (owner added from the backlog, Q22); the rule is documented and the build 259 case has a test | code | | open |
