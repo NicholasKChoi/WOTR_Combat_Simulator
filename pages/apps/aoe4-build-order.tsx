@@ -109,6 +109,7 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
         () => buildAnnotations({ result, shown, live: { text, duration, selected }, liveSteps, landmarks: catalog.landmarks, stale }),
         [result, shown, text, duration, selected, liveSteps, catalog.landmarks, stale],
     )
+    const onActiveStepChange = (step: number | null) => setActive(step === null || result === null ? null : { result, step })
     const activeStep =
         active !== null && active.result === result && annotations?.steps.some((s) => s.run?.runStep === active.step) ? active.step : null
     const clientIssues = conversion.ok ? [] : conversion.issues
@@ -251,7 +252,16 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                     build={
                         <>
                             {view === 'text' ? (
-                                <BuildTextEditor text={text} onChange={editText} errorLines={issueLines(clientIssues)} disabled={savedLoadInFlight} />
+                                <BuildTextEditor
+                                    text={text}
+                                    onChange={editText}
+                                    errorLines={issueLines(clientIssues)}
+                                    annotations={annotations}
+                                    lines={parsed.ok ? parsed.lines : parsed.partial.lines}
+                                    activeStep={activeStep}
+                                    onActiveStepChange={onActiveStepChange}
+                                    disabled={savedLoadInFlight}
+                                />
                             ) : parsed.ok === true ? (
                                 <StepTable
                                     order={parsed.order}
@@ -262,7 +272,7 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                                     disabled={savedLoadInFlight}
                                     annotations={annotations}
                                     activeStep={activeStep}
-                                    onActiveStepChange={(step) => setActive(step === null || result === null ? null : { result, step })}
+                                    onActiveStepChange={onActiveStepChange}
                                 />
                             ) : (
                                 <div data-testid="step-table-unavailable" className="alert alert-secondary">

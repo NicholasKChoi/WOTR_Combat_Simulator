@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { SimulateResponse } from '../../../lib/aoe4-build-order/api'
 import type { StepTiming } from '../../../lib/aoe4-build-order/model'
 import { parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { buildAnnotations, alignSteps, finishedText, formatStepTime, formatWaitBreakdown, stepKind, stepSpan, type AnnotationInput, type StepKind } from './step-annotations'
+import { annotationsByLine, buildAnnotations, alignSteps, finishedText, formatStepTime, formatWaitBreakdown, stepKind, stepSpan, type AnnotationInput, type StepAnnotation, type StepKind } from './step-annotations'
 
 const LANDMARKS = ['kings-palace']
 
@@ -200,5 +200,21 @@ describe('finishedText', () => {
         ['completed', null, '–'],
     ])('%s with completedAt %s reads %s', (status, completedAt, expected) => {
         expect(finishedText({ status, completedAt })).toBe(expected)
+    })
+})
+
+describe('annotationsByLine', () => {
+    const a = (kind: StepKind): StepAnnotation => ({ kind, run: null })
+    const [a0, a1] = [a('villager'), a('building')]
+    const annotations = { stale: false, steps: [a0, a1] }
+
+    it.each<[string, number[], number, (StepAnnotation | null)[]]>([
+        ['step lines 2 and 4 of 5', [2, 4], 5, [null, a0, null, a1, null]],
+        ['blank, comment and start lines between steps', [3, 6], 6, [null, null, a0, null, null, a1]],
+        ['a trailing blank line', [1, 2], 3, [a0, a1, null]],
+        ['a step line past the line count', [1, 9], 3, [a0, null, null]],
+        ['a step line of zero', [0, 2], 2, [null, a1]],
+    ])('%s', (_, stepLines, lineCount, expected) => {
+        expect(annotationsByLine(annotations, stepLines, lineCount)).toEqual(expected)
     })
 })

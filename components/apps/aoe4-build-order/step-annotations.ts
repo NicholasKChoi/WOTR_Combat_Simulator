@@ -158,3 +158,11 @@ export function buildAnnotations(input: AnnotationInput): BuildAnnotations | nul
         }),
     }
 }
+
+export function annotationsByLine(annotations: BuildAnnotations, stepLines: readonly number[], lineCount: number): (StepAnnotation | null)[] {
+    const byLine: (StepAnnotation | null)[] = Array.from({ length: lineCount }, () => null)
+    stepLines.forEach((line, i) => {
+        if (line >= 1 && line <= lineCount) byLine[line - 1] = annotations.steps[i] ?? null
+    })
+    return byLine
+}
