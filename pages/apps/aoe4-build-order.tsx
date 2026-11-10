@@ -10,8 +10,10 @@ import Layout from '../../components/layout'
 import { BuildInput, type EditorView, type PrebuiltBuild } from '../../components/apps/aoe4-build-order/build-input'
 import { BuildTextEditor } from '../../components/apps/aoe4-build-order/build-text-editor'
 import { IssueList } from '../../components/apps/aoe4-build-order/issue-list'
+import { statusDescribesResults } from '../../components/apps/aoe4-build-order/auto-run-status'
+import { buildAnnotations } from '../../components/apps/aoe4-build-order/step-annotations'
 import { issueLines } from '../../components/apps/aoe4-build-order/text-lines'
-import { type LiveInput, sameInput } from '../../components/apps/aoe4-build-order/auto-run'
+import { type LiveInput, resultsStale, sameInput } from '../../components/apps/aoe4-build-order/auto-run'
 import { pinName } from '../../components/apps/aoe4-build-order/pin-name'
 import { clearStoredPin, readStoredPin, writeStoredPin } from '../../components/apps/aoe4-build-order/pin-storage'
 import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
@@ -102,6 +104,12 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
     const shownTab = resultsEnabled ? tab : 'build'
     const split = useSplitLayout()
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
+    const liveSteps = parsed.ok ? parsed.order.steps : parsed.partial.order.steps
+    const stale = useMemo(() => resultsStale({ status, result, shown }, { text, duration, selected }), [status, result, shown, text, duration, selected])
+    const annotations = useMemo(
+        () => buildAnnotations({ result, shown, live: { text, duration, selected }, liveSteps, landmarks: catalog.landmarks, stale }),
+        [result, shown, text, duration, selected, liveSteps, catalog.landmarks, stale],
+    )
     const clientIssues = conversion.ok ? [] : conversion.issues
     const rejected = status === 'rejected'
 
@@ -263,6 +271,7 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                                     openRows={openRows}
                                     onOpenRowsChange={setOpenRows}
                                     disabled={savedLoadInFlight}
+                                    annotations={annotations}
                                 />
                             ) : (
                                 <div data-testid="step-table-unavailable" className="alert alert-secondary">
@@ -299,7 +308,8 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                                     pinned={pin?.result ?? null}
                                     text={run?.text ?? ''}
                                     landmarks={catalog.landmarks}
-                                    dimmed={status === 'invalid' || status === 'rejected' || status === 'failed'}
+                                    dimmed={stale}
+                                    describedByStatus={statusDescribesResults(stale, status, true)}
                                     infoExpanded={infoExpanded}
                                     onInfoToggle={() => setInfoExpanded((v) => !v)}
                                 />

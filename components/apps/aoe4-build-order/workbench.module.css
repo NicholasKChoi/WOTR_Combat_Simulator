@@ -38,11 +38,6 @@
     align-items: start;
 }
 
-/* The step table's minimum width can exceed a half-width column; it scrolls here instead of running under Results. */
-.workbenchSplit > :first-child {
-    overflow-x: auto;
-}
-
 .editor {
     display: flex;
     align-items: flex-start;

@@ -4,6 +4,8 @@ import { useState } from 'react'
 import type { BuildOrder, BuildStep, Trigger } from '../../../lib/aoe4-build-order/model'
 import { OPTIONAL_STEP_FIELDS, type BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
 import type { StepOptions } from '../../../lib/aoe4-build-order/step-options'
+import { StepKindLegend, StepRunCell } from './step-annotation'
+import type { BuildAnnotations } from './step-annotations'
 import styles from './step-table.module.css'
 import {
     ACTION_LABELS,
@@ -43,6 +45,7 @@ interface StepTableProps {
     openRows: readonly boolean[]
     onOpenRowsChange: (next: boolean[]) => void
     disabled?: boolean
+    annotations?: BuildAnnotations | null
 }
 
 type FieldDef = { name: string; kind: 'number' } | { name: string; kind: 'select'; choices: readonly string[] }
@@ -82,7 +85,7 @@ function actionFields(step: BuildStep, options: StepOptions): FieldDef[] {
 
 function Labeled({ field, children }: { field: string; children: React.ReactNode }) {
     return (
-        <label className="d-flex d-md-inline-flex align-items-center gap-1 me-2 mb-1">
+        <label className="d-flex d-md-inline-flex flex-wrap align-items-center gap-1 me-2 mb-1">
             <span className="small text-muted">{FIELD_LABELS[field]}</span>
             {children}
         </label>
@@ -231,10 +234,11 @@ function ActionFields(props: { step: BuildStep; options: BuildOrderCatalog; expa
     )
 }
 
-function StartRow({ order, catalog, onChange }: { order: BuildOrder; catalog: BuildOrderCatalog; onChange: (next: BuildOrder) => void }) {
+function StartRow({ order, catalog, onChange, withRunCell }: { order: BuildOrder; catalog: BuildOrderCatalog; onChange: (next: BuildOrder) => void; withRunCell: boolean }) {
     const pairs = startPairs(order)
     return (
         <tr data-testid="step-start-row">
+            {withRunCell ? <td className={styles.startSpacer} /> : null}
             <td>
                 <span className="small text-muted me-2">Start</span>
                 {order.start === undefined ? (
@@ -289,7 +293,7 @@ function StartRow({ order, catalog, onChange }: { order: BuildOrder; catalog: Bu
     )
 }
 
-export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange, disabled = false }: StepTableProps) {
+export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange, disabled = false, annotations = null }: StepTableProps) {
     const { steps } = order
     const open = openFlags(openRows, steps)
     const commit = (next: BuildStep[], nextOpen: boolean[] = open) => {
@@ -300,64 +304,79 @@ export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange
 
     return (
         <fieldset data-testid="step-table" disabled={disabled} aria-busy={disabled ? 'true' : undefined} className={cn('mb-3', styles.fieldset)}>
-            <table className={cn(styles.table, 'table table-sm align-middle')}>
-                <tbody>
-                    <StartRow order={order} catalog={catalog} onChange={onChange} />
-                    {steps.map((step, index) => {
-                        const edit = (next: BuildStep) => {
-                            if (next === step) return
-                            commit(replaceStep(steps, index, next), next.action === step.action ? open : open.map((was, i) => i !== index && was))
-                        }
-                        return (
-                            <tr key={index} data-testid="step-row" data-step={index}>
-                                <td>
-                                    <select
-                                        data-testid="step-trigger-kind"
-                                        aria-label="Trigger"
-                                        className="form-select form-select-sm w-auto mb-1"
-                                        value={step.trigger?.kind ?? 'none'}
-                                        onChange={(e) => edit(changeTriggerKind(step, e.target.value as Trigger['kind'] | 'none', catalog))}
-                                    >
-                                        {catalog.triggerKinds.map((kind) => (
-                                            <option key={kind} value={kind}>
-                                                {TRIGGER_KIND_LABELS[kind]}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <TriggerFields step={step} options={catalog} onEdit={edit} />
-                                </td>
-                                <td>
-                                    <select
-                                        data-testid="step-action"
-                                        aria-label="Action"
-                                        className="form-select form-select-sm w-auto mb-1"
-                                        value={step.action}
-                                        onChange={(e) => edit(changeAction(step, e.target.value as BuildStep['action'], catalog))}
-                                    >
-                                        {catalog.actions.map((action) => (
-                                            <option key={action} value={action}>
-                                                {ACTION_LABELS[action]}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <ActionFields step={step} options={catalog} expanded={open[index]} onToggle={() => setOpen(index, !open[index])} onEdit={edit} />
-                                </td>
-                                <td className="text-nowrap">
-                                    <button type="button" data-testid="step-move-up" aria-label="Move up" className="btn btn-sm btn-outline-secondary me-1" disabled={index === 0} onClick={() => commit(moveStep(steps, index, -1), moveStep(open, index, -1))}>
-                                        {'\u25B2'}
-                                    </button>
-                                    <button type="button" data-testid="step-move-down" aria-label="Move down" className="btn btn-sm btn-outline-secondary me-1" disabled={index === steps.length - 1} onClick={() => commit(moveStep(steps, index, 1), moveStep(open, index, 1))}>
-                                        {'\u25BC'}
-                                    </button>
-                                    <button type="button" data-testid="step-delete" aria-label="Delete step" className="btn btn-sm btn-outline-danger" onClick={() => commit(deleteStep(steps, index), deleteFlag(open, index))}>
-                                        {'\u2715'}
-                                    </button>
-                                </td>
-                            </tr>
-                        )
-                    })}
-                </tbody>
-            </table>
+            {annotations !== null && steps.length > 0 ? <StepKindLegend /> : null}
+            <div data-testid="step-table-scroll" className={styles.scroll}>
+                <table className={cn(styles.table, 'table table-sm align-middle')}>
+                    <tbody>
+                        <StartRow order={order} catalog={catalog} onChange={onChange} withRunCell={annotations !== null} />
+                        {steps.map((step, index) => {
+                            const edit = (next: BuildStep) => {
+                                if (next === step) return
+                                commit(replaceStep(steps, index, next), next.action === step.action ? open : open.map((was, i) => i !== index && was))
+                            }
+                            const annotation = annotations?.steps[index]
+                            const run = annotation?.run
+                            return (
+                                <tr
+                                    key={index}
+                                    data-testid="step-row"
+                                    data-step={index}
+                                    data-kind={annotation?.kind}
+                                    data-run-step={run?.runStep}
+                                    data-status={run?.status}
+                                    data-flagged={run?.flagged ? 'true' : undefined}
+                                    data-long-wait={run?.longWait ? 'true' : undefined}
+                                >
+                                    {annotation === undefined ? null : <StepRunCell annotation={annotation} stale={annotations?.stale === true} />}
+                                    <td>
+                                        <select
+                                            data-testid="step-trigger-kind"
+                                            aria-label="Trigger"
+                                            className="form-select form-select-sm w-auto mb-1"
+                                            value={step.trigger?.kind ?? 'none'}
+                                            onChange={(e) => edit(changeTriggerKind(step, e.target.value as Trigger['kind'] | 'none', catalog))}
+                                        >
+                                            {catalog.triggerKinds.map((kind) => (
+                                                <option key={kind} value={kind}>
+                                                    {TRIGGER_KIND_LABELS[kind]}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <TriggerFields step={step} options={catalog} onEdit={edit} />
+                                    </td>
+                                    <td>
+                                        <select
+                                            data-testid="step-action"
+                                            aria-label="Action"
+                                            className="form-select form-select-sm w-auto mb-1"
+                                            value={step.action}
+                                            onChange={(e) => edit(changeAction(step, e.target.value as BuildStep['action'], catalog))}
+                                        >
+                                            {catalog.actions.map((action) => (
+                                                <option key={action} value={action}>
+                                                    {ACTION_LABELS[action]}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <ActionFields step={step} options={catalog} expanded={open[index]} onToggle={() => setOpen(index, !open[index])} onEdit={edit} />
+                                    </td>
+                                    <td className="text-nowrap">
+                                        <button type="button" data-testid="step-move-up" aria-label="Move up" className="btn btn-sm btn-outline-secondary me-1" disabled={index === 0} onClick={() => commit(moveStep(steps, index, -1), moveStep(open, index, -1))}>
+                                            {'\u25B2'}
+                                        </button>
+                                        <button type="button" data-testid="step-move-down" aria-label="Move down" className="btn btn-sm btn-outline-secondary me-1" disabled={index === steps.length - 1} onClick={() => commit(moveStep(steps, index, 1), moveStep(open, index, 1))}>
+                                            {'\u25BC'}
+                                        </button>
+                                        <button type="button" data-testid="step-delete" aria-label="Delete step" className="btn btn-sm btn-outline-danger" onClick={() => commit(deleteStep(steps, index), deleteFlag(open, index))}>
+                                            {'\u2715'}
+                                        </button>
+                                    </td>
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                </table>
+            </div>
             <button
                 type="button"
                 data-testid="step-add"

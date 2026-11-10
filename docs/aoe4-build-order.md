@@ -846,7 +846,7 @@ holds the build select (the prebuilt builds, plus the saved build a `?b=` link o
 run status (`auto-run-status`) and the Save build button. There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
 Build and Results sit side by side in two equal columns, both always shown, with no tabs. Below 1200 px they are two
 tabs, Build and Results; Results is enabled while there is a result or a pinned run. No run selects a tab (one exception: opening a `?b=` link, see below), and
-the page never scrolls by itself. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so in the tabs layout the toggle is usable on the Build tab only; in the side-by-side layout the tab never disables it. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The layout follows the viewport width live, with no reload and no new run, and neither panel is remounted by a switch, so editor focus and text, an uncommitted table cell and the chart state carry across it. The tab selected before a resize to the side-by-side layout is kept, and the tabs layout shows it again after a resize back. When the page is opened directly, its first paint is the tabs layout and it switches to the side-by-side layout after it loads. In the side-by-side layout a Build panel wider than its column scrolls sideways inside the column. The Build panel shows one editor view
+the page never scrolls by itself. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so in the tabs layout the toggle is usable on the Build tab only; in the side-by-side layout the tab never disables it. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The layout follows the viewport width live, with no reload and no new run, and neither panel is remounted by a switch, so editor focus and text, an uncommitted table cell and the chart state carry across it. The tab selected before a resize to the side-by-side layout is kept, and the tabs layout shows it again after a resize back. When the page is opened directly, its first paint is the tabs layout and it switches to the side-by-side layout after it loads. In the side-by-side layout the step table wraps to fit the Build panel's column, a table that still cannot fit scrolls inside its own box (`step-table-scroll`), and the Build panel itself never scrolls sideways. The Build panel shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the
 step table. The view survives runs and tab switches but not a reload, and a reload starts on Build (except that after opening a `?b=` link, Results is selected after its first successful run when the page shows the Build and Results tabs).
@@ -854,7 +854,7 @@ Choosing a prebuilt build replaces the text with that build's paste text; editin
 leaves the select as it is.
 
 The input settles 500 ms (`AUTO_RUN_DEBOUNCE_MS`) after the last edit to the text, the step table or the duration,
-and the page then re-runs it; Enter in the duration field and choosing a prebuilt build settle the input at once.
+and the page then re-runs it; Enter in the duration field and choosing a build in the select settle the input at once.
 On load the default build settles and runs once; with a `?b=` link the opened build runs instead, once its load ends (the default build runs if the load fails). A settled input is converted with `textToBuildOrder` and the
 English catalog, and the checked `buildOrder` and `inputs.durationSeconds` are posted to the route only when the
 input is valid and differs from both the shown result's input and the one in flight; a newer request aborts the
@@ -866,7 +866,7 @@ one in flight, and only the newest response is shown. The duration is checked in
 run is in flight, nothing while the shown result matches the input, `The simulation failed.` after a failure, and
 for an invalid or rejected input `The charts show the last valid build.` when there is a result and
 `No valid build to simulate yet.` when there is none. An invalid, rejected (400) or failed input keeps the last
-good result on Results, dimmed, with the issues or the error beside the editor; a failure adds a `Try again`
+good result on Results, dimmed (see the dimming rule below), with the issues or the error beside the editor; a failure adds a `Try again`
 button (`simulation-retry`) that sends the same request again. The pin name is that of the shown result's input.
 
 The issues list under the open editor view tracks the settled input at all times: parse issues (and the length
@@ -875,7 +875,7 @@ parse are listed with the syntax issues at once, in line order with line-less is
 in check order. It adds `Did you mean <id>?` after the message where an issue
 has a near match, and marks each issue's line in the gutter. An edit never clears a shown result. The list starts
 with `Fix N issues to run the simulation.` (`Fix 1 issue to run the simulation.` for one), counting the settled
-issues. Server 400 issues take its place under the editor view, without lines, until the next settled input.
+issues. Server 400 issues take its place under the editor view, without lines, until a settled input changes the request.
 Gold run-outs and other info notes are in the collapsed info list in Results.
 
 Narrow layout: under 768 px the step rows are cards (their selects and inputs shrink to the card), the run bar scrolls with the page and wraps onto several rows with the select and
@@ -913,6 +913,18 @@ the editor view. Number fields take unsigned integers (`move` count also takes `
 whole seconds); clearing an optional number field omits it, while an empty or invalid entry in a required
 field leaves the step as it was. Bounds are checked when the input settles, not in the table. An edit while a run
 is in flight keeps the shown result until a newer run lands.
+
+Once a result is shown, the table view adds a run cell as the first cell of every step row, and a legend of the step kinds
+(`step-kind-legend`) above the table. The cell has a left border in the step's kind colour (age up, research, military,
+villager, building, economy; any other step has a border with no colour and no badge), a kind badge, and, when the step
+lines up with a step of the shown run, its started and finished times (`m:ss`, `ongoing` for a step still under way, an
+en dash for one that never started), the time it waited and what blocked it. A step that waited on
+resources, villagers, population or a prerequisite lists each cause with its time; a `waiting` step adds
+`still waiting on <cause>`, and a `not-reached` step reads `not reached (<cause>)`. A cell whose step is `waiting` or `not-reached`,
+or waited 60 s or longer, has a warning background. The start row has an empty first cell. Steps line up by their
+canonical text (`formatBuildStep`): the longest common run of identical steps at the top of the build and then at the
+bottom match the shown run's steps, and every step between them has no times. Editing one step leaves the other steps their
+times; choosing another build in the select, or opening one, leaves no step any times. A step with no times still shows its kind.
 
 A 200 draws four line charts, each with a series legend titled "Series" (one toggle button per series):
 
@@ -970,8 +982,11 @@ pinned) drops it. The pin stays through later runs, text and build edits, invali
 load. A stored value that is not valid, a text that no longer converts, or a response that is not ok (400 or 5xx)
 from the re-run drops it; only a failed request (the network) keeps it, and no pin is shown. A Pin or Unpin made before the re-run finishes wins. The label
 `pinned-label` reads `Pinned: <name>, <m:ss>`. The name comes from the shown result's input: the name of the select option whose text it equals exactly (for an opened build, `<name> (<id>)`), `<name> (edited)` (the build selected when that input was sent) otherwise,
-and `Custom build` when there are no prebuilt builds. The shown result is dimmed (`results-last-good`) while the
-input is invalid, rejected or failed.
+and `Custom build` when there are no prebuilt builds. The charts (`results-last-good`) and the step table's run cells dim together whenever the shown result no longer
+describes the live input: when its text or its duration differs from the live text or duration, and on `invalid`, `rejected` and
+`failed`. That includes the 500 ms before the input settles and while the page is `updating`; a change to the select alone does not
+dim. `results-last-good` carries `aria-describedby="auto-run-status"` only while it is dimmed and the status text is not
+empty, so it is absent while an edit to a current result waits the 500 ms to settle.
 
 With a pinned run, each chart also draws the pinned run's series dashed, in the same color as the
 current series with that key, with the name `<name> (pinned)` and the key `pinned:<key>`. The x axis covers
