@@ -55,23 +55,22 @@ describe('postSavedBuild', () => {
         expect(init.signal).toBe(signal)
     })
 
-    it.each([201, 200])('%s is a success with the response body', async (status) => {
-        stubFetch(() => Promise.resolve(new Response(JSON.stringify(saved), { status })))
-        expect(await postSavedBuild(request)).toStrictEqual({ ok: true, response: saved })
-    })
+    const ok = (status: number) => () => Promise.resolve(new Response(JSON.stringify(saved), { status }))
+    const notSave = (status: number) => () => Promise.resolve(new Response('{}', { status }))
 
-    it('maps 429 with Retry-After to minutes', async () => {
-        stubFetch(() => Promise.resolve(new Response('{}', { status: 429, headers: { 'Retry-After': '90' } })))
-        expect(await postSavedBuild(request)).toStrictEqual({ ok: false, message: 'Too many saves. Try again in 2 minutes.' })
-    })
-
-    it('maps a rejecting fetch to the network message', async () => {
-        stubFetch(() => Promise.reject(new TypeError('offline')))
-        expect(await postSavedBuild(request)).toStrictEqual({ ok: false, message: GENERIC })
-    })
-
-    it.each([201, 200])('treats a %s whose body is not a save response as a failure', async (status) => {
-        stubFetch(() => Promise.resolve(new Response('{}', { status })))
-        expect(await postSavedBuild(request)).toStrictEqual({ ok: false, message: GENERIC })
+    it.each<[string, () => Promise<Response>, Awaited<ReturnType<typeof postSavedBuild>>]>([
+        ['201 is a success with the response body', ok(201), { ok: true, response: saved }],
+        ['200 is a success with the response body', ok(200), { ok: true, response: saved }],
+        [
+            '429 with Retry-After maps to minutes',
+            () => Promise.resolve(new Response('{}', { status: 429, headers: { 'Retry-After': '90' } })),
+            { ok: false, message: 'Too many saves. Try again in 2 minutes.' },
+        ],
+        ['a rejecting fetch maps to the network message', () => Promise.reject(new TypeError('offline')), { ok: false, message: GENERIC }],
+        ['a 201 whose body is not a save response is a failure', notSave(201), { ok: false, message: GENERIC }],
+        ['a 200 whose body is not a save response is a failure', notSave(200), { ok: false, message: GENERIC }],
+    ])('%s', async (_label, respond, expected) => {
+        stubFetch(respond)
+        expect(await postSavedBuild(request)).toStrictEqual(expected)
     })
 })

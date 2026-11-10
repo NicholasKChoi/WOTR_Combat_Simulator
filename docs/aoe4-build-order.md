@@ -903,8 +903,8 @@ page itself does not scroll sideways at 390 px on either tab, even with a long u
 #### Saving a build and opening it by link
 
 Save build (`save-build`) is enabled only while the shown result matches the settled input (status `current`), and
-while no save and no `?b=` load is in flight. A save stores the parsed build order, not the raw text, with the name of the build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label and the duration, so comments and blank lines are not kept and the text
-reopens in canonical form. The same content gives the same link, and saving it again returns it.
+while no save and no `?b=` load is in flight. A save stores the parsed build order, not the raw text, and the duration, so comments and blank lines are not kept and the text
+reopens in canonical form. The saved name is that of the build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label. The same content gives the same link, and saving it again returns it.
 
 The link is the page's origin plus `?b=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
 (`copy-saved-link`) in the run bar, and focus moves to the link with its text selected. Copy reads `Copied` once
