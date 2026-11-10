@@ -917,12 +917,12 @@ Once a result is shown, the table view adds a run cell as the first cell of ever
 villager, building, economy; any other step has a border with no colour and no badge), a kind badge, and, when the step
 lines up with a step of the shown run, its started and finished times (`m:ss`, `ongoing` for a step still under way, an
 en dash for one that never started), the time it waited and what blocked it. A step that waited on
-resources, villagers, population or a prerequisite lists each cause with its time; a `waiting` step adds
+resources, villagers, population or a prerequisite lists each cause with a non-zero time as `<cause> <m:ss>`, in that order, joined with `, `; a `waiting` step adds
 `still waiting on <cause>`, and a `not-reached` step reads `not reached (<cause>)`. A cell whose step is `waiting` or `not-reached`,
 or waited 60 s or longer, has a warning background. The start row has an empty first cell. Steps line up by their
 canonical text (`formatBuildStep`): the longest common run of identical steps at the top of the build and then at the
 bottom match the shown run's steps, and every step between them has no times. Editing one step leaves the other steps their
-times; choosing another build in the select, or opening one, leaves no step any times. A step with no times still shows its kind. The kind comes from the step alone, so a landmark of a later age than the current one still reads Age up; the colours are blue for age up, cyan for research, red for military, green for villager, grey for building and light grey for economy. The kind colour is independent of the warning background.
+times; choosing another build in the select, or opening one, leaves no step any times. A step with no times still shows its kind. The kind comes from the step alone: a `build` of a landmark is Age up (so a landmark of a later age than the current one still reads Age up), any other `build` is Building, a `research` is Research, a `produce` of a villager is Villager and of any other unit is Military, and a `move`, `rally` or `pause` is Economy; the colours are blue for age up, cyan for research, red for military, green for villager, grey for building and light grey for economy. The kind colour is independent of the warning background.
 
 A 200 draws four line charts, each with a series legend titled "Series" (one toggle button per series):
 

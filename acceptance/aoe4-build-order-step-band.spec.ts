@@ -141,21 +141,24 @@ test.describe('AoE4 step span band on the charts', () => {
     expect(await page.evaluate(() => (window as unknown as { bandRemovals: number }).bandRemovals)).toBeGreaterThan(0)
   })
 
-  test('the start row clears the band, for hover and for focus', async ({ page }) => {
+  test('the start row clears a band set by the other input, hovering over a focused row and focusing under a hovered row', async ({ page }) => {
     const result = await runDefault(page)
     const timing = result.steps.find((s) => s.status === 'completed' && s.startedAt! < s.completedAt!)!
     const start = page.getByTestId('step-start-row')
-    await row(page, timing.step).hover()
-    await expect(bands(page)).toHaveCount(CHARTS.length)
-    await start.hover()
-    await expect(bands(page)).toHaveCount(0)
-    await expect(activeRows(page)).toHaveCount(0)
+    const expectNoBand = async () => {
+      await expect(bands(page)).toHaveCount(0)
+      await expect(activeRows(page)).toHaveCount(0)
+    }
     await page.mouse.move(0, 0)
     await row(page, timing.step).getByTestId('step-delete').focus()
     await expect(bands(page)).toHaveCount(CHARTS.length)
+    await start.hover()
+    await expectNoBand()
+    await page.getByTestId('duration-seconds').focus()
+    await row(page, timing.step).hover()
+    await expect(bands(page)).toHaveCount(CHARTS.length)
     await start.locator('button, select, input').first().focus()
-    await expect(bands(page)).toHaveCount(0)
-    await expect(activeRows(page)).toHaveCount(0)
+    await expectNoBand()
   })
 
   test('a zero-length step draws one visible vertical line per chart at its second', async ({ page }) => {
@@ -209,7 +212,7 @@ test.describe('AoE4 step span band on the charts', () => {
     }
   })
 
-  test('the hovered row looks active, on an unflagged row and on a flagged row that table-warning tints', async ({ page }) => {
+  test('the hovered row looks active, on an unflagged row and on a flagged row', async ({ page }) => {
     const result = await runPasted(page, NO_START_BUILD, 600)
     const plain = result.steps.find((s) => s.status === 'completed')!
     const flagged = result.steps.find((s) => s.status === 'waiting')!
