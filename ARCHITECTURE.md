@@ -21,6 +21,8 @@ This file says where things go. It does not list every file; use `git ls-files` 
 | App page | `pages/apps/<app>.tsx` | One page per app. Renders inside `Layout`. Its URL is `/apps/<app>`. |
 | App UI components | `components/apps/<app>/` | Used only by that app. |
 | App logic (simulation, rules, stats) | `lib/<app>/` | Plain TypeScript with no React or Next imports, so it can be tested and reused by API routes. |
+| AoE4 saved-build storage | `lib/aoe4-build-order/build-store.ts`, `blob-build-store.ts`, `save-rate-limit.ts` | `build-store.ts` owns the `BuildStore` seam, its memory and file stores, and `buildStoreFromEnv`, which picks the store from the environment. `blob-build-store.ts` is the Vercel Blob store and the only file that imports `@vercel/blob`; `buildStoreFromEnv` loads it through a dynamic `import()`, and only when `BUILDS_STORE_ID` is set. `save-rate-limit.ts` owns the per-client save limit, whose counter lives in the store. `VERCEL_ENV` (`production`, `preview`, anything else is `development`) is the first segment of every stored key. |
+| Local saved builds | `.builds-local/` | Git-ignored. The file store writes here when `BUILDS_STORE_ID` is unset; a non-empty `BUILDS_LOCAL_DIR` points it at another directory. |
 | App API route | `pages/api/<app>/<action>.ts` | A thin handler: validate input, call `lib/<app>/`, return JSON. Every file under `pages/api/` becomes a public route, so put only route handlers here. |
 | App static data (unit stats, map pools) | `data/<app>/` | Versioned data files. When the data comes from a game patch or season, label it with that. |
 | App design doc | `docs/<app>.md` | The app's purpose, the rules it implements, and its edge cases. Reviews judge behavior against it. |

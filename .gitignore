@@ -10,3 +10,4 @@ blob-report/
 playwright/.cache/
 next-env.d.ts
 /AGENTS.md
+.builds-local/
