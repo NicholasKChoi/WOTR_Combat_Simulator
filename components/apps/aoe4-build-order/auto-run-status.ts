@@ -17,3 +17,7 @@ export function autoRunStatusMessage(status: AutoRunStatus, hasResult: boolean):
             return 'The simulation failed.'
     }
 }
+
+export function statusDescribesResults(stale: boolean, status: AutoRunStatus, hasResult: boolean): boolean {
+    return stale && autoRunStatusMessage(status, hasResult) !== ''
+}

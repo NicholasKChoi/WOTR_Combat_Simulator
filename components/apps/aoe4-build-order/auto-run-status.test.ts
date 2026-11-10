@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AutoRunStatus } from './auto-run'
-import { autoRunStatusMessage } from './auto-run-status'
+import { autoRunStatusMessage, statusDescribesResults } from './auto-run-status'
 
 describe('autoRunStatusMessage', () => {
     it.each<[AutoRunStatus, boolean, string]>([
@@ -20,5 +20,25 @@ describe('autoRunStatusMessage', () => {
         ['failed', true, 'The simulation failed.'],
     ])('%s with hasResult %s reads %j', (status, hasResult, text) => {
         expect(autoRunStatusMessage(status, hasResult)).toBe(text)
+    })
+})
+
+describe('statusDescribesResults', () => {
+    const statuses: AutoRunStatus[] = ['loading', 'running', 'current', 'updating', 'invalid', 'rejected', 'failed']
+    const cases = statuses.flatMap((status) => [true, false].flatMap((hasResult) => [true, false].map((stale): [AutoRunStatus, boolean, boolean] => [status, hasResult, stale])))
+
+    it.each(cases)('%s with hasResult %s and stale %s', (status, hasResult, stale) => {
+        expect(statusDescribesResults(stale, status, hasResult)).toBe(stale && autoRunStatusMessage(status, hasResult) !== '')
+    })
+
+    it.each<[AutoRunStatus, boolean]>([
+        ['current', false],
+        ['updating', true],
+        ['invalid', true],
+        ['rejected', true],
+        ['failed', true],
+    ])('pins stale %s with a result to %s', (status, expected) => {
+        expect(statusDescribesResults(true, status, true)).toBe(expected)
+        expect(statusDescribesResults(false, status, true)).toBe(false)
     })
 })

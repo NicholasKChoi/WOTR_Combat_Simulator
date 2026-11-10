@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page, type Request, type Route } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
+import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { AOE4_PAGE, CHART_IDS, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
 
@@ -207,6 +208,45 @@ test.describe('AoE4 build order pin and compare', () => {
     const current = await box('food')
     const pinned = await box('pinned:food')
     expect(pinned.width).toBeGreaterThan(current.width * 2)
+  })
+
+  test('a pinned run that ends earlier shows run ends at on the pinned side of a military row the current run has', async ({ page }) => {
+    await openPage(page)
+    const short = await runOk(page, { duration: 300 })
+    await pin(page)
+    await runOk(page, { duration: 1200 })
+    expect(short.times).not.toContain(900)
+    const row = page.locator('[data-testid="compare-row"][data-key="military-900"]')
+    const cells = row.locator('td')
+    await expect(cells.nth(1)).toHaveText('run ends at 5:00')
+    await expect(cells.nth(2)).not.toHaveText(/run ends|not reached|—/)
+    await expect(cells.nth(3)).toHaveText(DASH)
+    await expect(row).not.toHaveAttribute('data-direction', /.*/)
+  })
+
+  test('age deltas read m:ss earlier or later with matching direction and colour', async ({ page }) => {
+    const loaded = await waitForRun(page, () => page.goto(AOE4_PAGE))
+    const first = (await loaded.json()) as SimulationResult
+    await showTab(page, 'results')
+    await pin(page)
+    let checked = 0
+    for (const build of listBuilds().slice(1)) {
+      const second = await runOk(page, { text: formatBuildOrderText(build) })
+      for (const age of second.ages) {
+        const other = first.ages.find((a) => a.age === age.age)
+        if (!other || other.reachedAt === age.reachedAt) continue
+        const delta = age.reachedAt - other.reachedAt
+        const row = page.locator(`[data-testid="compare-row"][data-key="age-${age.age}"]`)
+        await expect(row.locator('td').nth(1)).toHaveText(formatMinSec(other.reachedAt))
+        await expect(row.locator('td').nth(2)).toHaveText(formatMinSec(age.reachedAt))
+        await expect(row.locator('td').nth(3)).toHaveText(`${formatMinSec(Math.abs(delta))} ${delta < 0 ? 'earlier' : 'later'}`)
+        await expect(row).toHaveAttribute('data-direction', delta < 0 ? 'better' : 'worse')
+        await expect(row.locator('td').nth(3)).toHaveClass(delta < 0 ? /text-success/ : /text-danger/)
+        checked++
+      }
+      if (checked > 0) break
+    }
+    expect(checked).toBeGreaterThan(0)
   })
 
   test('the pin survives a text edit and a prebuilt change, and the overlay stays', async ({ page }) => {

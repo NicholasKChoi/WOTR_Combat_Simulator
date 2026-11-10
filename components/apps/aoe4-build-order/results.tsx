@@ -16,11 +16,12 @@ interface ResultsProps {
     text: string
     landmarks: readonly string[]
     dimmed: boolean
+    describedByStatus: boolean
     infoExpanded: boolean
     onInfoToggle: () => void
 }
 
-export function Results({ result, pinned, text, landmarks, dimmed, infoExpanded, onInfoToggle }: ResultsProps) {
+export function Results({ result, pinned, text, landmarks, dimmed, describedByStatus, infoExpanded, onInfoToggle }: ResultsProps) {
     const messages = resultMessages(result)
     const rows = useMemo(() => timelineRows(result.steps, text, landmarks), [result.steps, text, landmarks])
     const [active, setActive] = useState<{ result: SimulationResult; step: number } | null>(null)
@@ -30,7 +31,7 @@ export function Results({ result, pinned, text, landmarks, dimmed, infoExpanded,
     const [perVillager, setPerVillager] = useState(false)
     const gatherRateSeries = (run: SimulationResult) => (perVillager ? perVillagerSeries(run.gatherRates, run.gatherers) : resourceSeries(run.gatherRates))
     return (
-        <div data-testid="results-last-good" className={cn(dimmed && styles.dimmed)} aria-describedby={dimmed ? 'auto-run-status' : undefined}>
+        <div data-testid="results-last-good" className={cn(dimmed && styles.dimmed)} aria-describedby={describedByStatus ? 'auto-run-status' : undefined}>
             <WarningMessages messages={messages.warning} />
             <InfoMessages messages={messages.info} expanded={infoExpanded} onToggle={onInfoToggle} />
             <div data-testid="results-split" className={styles.resultsSplit}>
