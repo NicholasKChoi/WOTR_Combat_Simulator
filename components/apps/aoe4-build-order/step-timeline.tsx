@@ -2,9 +2,7 @@ import cn from 'classnames'
 
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import styles from './results.module.css'
-import { STEP_KINDS, formatStepTime, type StepKind, type TimelineRow } from './step-annotations'
-
-const finishedText = (row: TimelineRow): string => (row.status === 'in-progress' ? 'ongoing' : formatStepTime(row.completedAt))
+import { STEP_KINDS, finishedText, formatStepTime, type StepKind, type TimelineRow } from './step-annotations'
 
 const KIND_CLASS: Record<StepKind, string> = {
     'age-up': styles.kindAgeUp,
