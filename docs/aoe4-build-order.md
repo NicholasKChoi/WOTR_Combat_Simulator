@@ -1056,6 +1056,65 @@ now. Try again later.`, or `The build could not be saved. Try again.` for any ot
 limited it reads `Too many saves. Try again in <n> seconds.` below a minute and `Too many saves. Try again in <m>
 minutes.` from a minute on (rounded up), or `Too many saves. Try again later.` when the wait is unknown.
 
+#### Saving a build from a script
+
+A script or an agent saves a build with `POST <origin>/api/aoe4-build-order/builds`, `Content-Type:
+application/json` and the body `{ "buildOrder": <BuildOrder>, "durationSeconds": <integer> }`. `buildOrder` is the
+same JSON the simulate route takes (a file under `data/aoe4-build-order/builds/` is a valid source), and
+`durationSeconds` is an integer in the simulate route's bound (60 to 3600). The reply, as `docs/api/openapi.json`
+documents it:
+
+| status | meaning | what to do |
+|---|---|---|
+| 201 | created, body `{ id, path }` | print the link |
+| 200 | the same content was already saved, body `{ id, path }` | print the link |
+| 400 | rejected, body has `issues` | fix the build and send it again |
+| 413 | the saved record is too large | shorten the build |
+| 429 | too many saves from this client, `Retry-After` header | wait that many seconds, then send again |
+| 503 | storage is unavailable | try again later |
+
+The link to print is the deployment's origin plus `path` (`<origin><path>`). `path` is relative, so the script
+adds the origin it posted to. The same content always returns the same link.
+
+```bash
+curl -sS -X POST http://localhost:3000/api/aoe4-build-order/builds \
+  -H 'Content-Type: application/json' \
+  -d "{\"buildOrder\": $(cat data/aoe4-build-order/builds/english-1tc.json), \"durationSeconds\": 1200}"
+```
+
+The same save in Node, which prints the link:
+
+```bash
+node -e "const o='http://localhost:3000',b=JSON.parse(require('fs').readFileSync('data/aoe4-build-order/builds/english-1tc.json','utf8'));fetch(o+'/api/aoe4-build-order/builds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({buildOrder:b,durationSeconds:1200})}).then(r=>r.json()).then(({path})=>console.log(new URL(path,o).href))"
+```
+
+A preview deployment that has Vercel protection on also needs the header `x-vercel-protection-bypass: <secret>`,
+with the secret from the owner's "Protection Bypass for Automation" setting. Never print the secret.
+
+#### Checking a deployment with the smoke test
+
+`npm run smoke:preview -- https://<preview-host>` checks a deployment end to end. One-time setup: run `npm run
+acceptance:setup` (installs Chromium), enable "Protection Bypass for Automation" in the Vercel project settings,
+which creates `VERCEL_AUTOMATION_BYPASS_SECRET`, and export that variable in the shell. The script sends it as the
+header `x-vercel-protection-bypass` to the deployment's origin only, and never prints it.
+
+The run has four steps, in this order, and stops at the first failure:
+
+1. `save`: posts `data/aoe4-build-order/builds/english-1tc.json` with a duration of 1200 s and expects 201 or 200
+   with an `{ id, path }` body.
+2. `read back`: reads the build by its id and expects the same `buildOrder` and `durationSeconds`.
+3. `open`: opens `/apps/aoe4-build-order?b=<id>` in Chromium and expects the saved build selected, the run
+   current and the units-produced chart visible.
+4. `delete`: deletes the build, then expects reading it to give 404.
+
+Each step prints one line, `PASS <step>` or `FAIL <step>: <reason>`. The exit code is 0 when all four pass, 1 when a
+step failed, and 2 for a usage error or a missing secret (the first save answered 401 or 403 while the variable was
+unset). A run that fails after the save still deletes the build it saved. A second run saves the same content, so
+it reuses the same link. Each run costs one save of the rate limit.
+
+The script is for previews and local runs. Against production the delete is refused, the line is `FAIL production
+deployment: delete is disabled`, and the saved build stays.
+
 ## CivRules seams
 
 `CivRules` in `lib/aoe4-build-order/civ-rules.ts` is the set of per-civilization code hooks, all

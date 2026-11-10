@@ -33,6 +33,7 @@ This file says where things go. It does not list every file; use `git ls-files` 
 | Styles | `styles/` for global and shared modules; `<component>.module.css` next to a component. | |
 | Static assets | `public/` | Served from the site root. |
 | Acceptance tests | `acceptance/` | End-to-end tests that drive the running site over HTTP and through the browser. |
+| Scripts | `scripts/` | Node scripts run by hand or through an npm script (for example `npm run smoke:preview`). Not deployed and not imported by the app. A script is a plain `.mjs` run by Node, which `tsconfig.json` does not type-check, so it imports nothing from `lib/`, `components/` or `pages/`; a script that needs app code is written as a `.ts` file and gets its own ticket for how it runs. |
 
 ## Rules
 
