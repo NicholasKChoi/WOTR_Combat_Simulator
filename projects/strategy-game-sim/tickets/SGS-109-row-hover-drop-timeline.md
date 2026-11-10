@@ -107,3 +107,20 @@ none
 - Underspecified: the `formRef` prop and `runBar` ref, the m3-flow `x5` and reaction migration, the unit test file name, the CSS cleanup example, a start-row acceptance case, the tabs-viewport `showTab`, and the `StepKindLegend` `testId` that SGS-108 now adds.
 - Changed: Scope (page refs, deletions, specs), the removal grep, and three criteria tagged `(respec 1)`; all other criteria are unchanged.
 - Existing branch work: none yet; no branch work to keep.
+
+## Rework 1 - 2026-11-10 (review)
+
+Bounced by review 1 (reports/SGS-109-review-1.md) at 1469a85, base sgs-108-step-run-cell 5bda0f7. No earlier gate had passed this branch. The code is correct; the fixes are one test, one doc and one test title.
+
+### Findings
+
+- `acceptance/aoe4-build-order-step-band.spec.ts:144`: "the start row clears the band, for hover and for focus" cannot fail when the start row's `onPointerEnter`/`onFocus` (`step-table.tsx:451`) are removed, because leaving the previous row already clears the band. The handlers matter for mixed input (band set by focus, start row hovered; band set by hover, start row focused). Keep them.
+- `docs/aoe4-build-order.md:943`: the kind rule (`stepKind`) and the Blocked-by format and order were dropped from the doc, not moved into the step-table paragraph.
+- `acceptance/aoe4-build-order-step-band.spec.ts:212`: the title names `table-warning`, which step rows no longer use.
+
+### Required fixes
+
+- [x] Rewrite the start-row test as two mixed-input cases. Hover: focus `step-delete` in a completed row with the pointer at (0,0), then hover `step-start-row`. Focus: hover a completed row and leave the pointer there, then focus the first start-row control. After each, assert zero `chart-step-band` and zero `[data-active="true"]`. Each case must fail (4 bands) with the start-row handlers removed; check it and restore.
+- [x] (text) In `docs/aoe4-build-order.md`, replace "A step that waited on\nresources, villagers, population or a prerequisite lists each cause with its time;" with "A step that waited on\nresources, villagers, population or a prerequisite lists each cause with a non-zero time as `<cause> <m:ss>`, in that order, joined with `, `;"
+- [x] (text) In `docs/aoe4-build-order.md`, replace "The kind comes from the step alone, so a landmark of a later age than the current one still reads Age up;" with "The kind comes from the step alone: a `build` of a landmark is Age up (so a landmark of a later age than the current one still reads Age up), any other `build` is Building, a `research` is Research, a `produce` of a villager is Villager and of any other unit is Military, and a `move`, `rally` or `pause` is Economy;"
+- [x] (text) Retitle the test at `aoe4-build-order-step-band.spec.ts:212` to "the hovered row looks active, on an unflagged row and on a flagged row".
