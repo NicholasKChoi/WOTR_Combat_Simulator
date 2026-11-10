@@ -3,7 +3,7 @@ import { join } from 'path'
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import Ajv2020 from 'ajv/dist/2020'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
-import { CHART_IDS, INFINITE_NODES, buildOrderFrom, openPage, postSimulate, runSimulation, showTab } from './helpers'
+import { CHART_IDS, INFINITE_NODES, buildOrderFrom, openPage, postSimulate, showTab, waitForRun } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -93,7 +93,6 @@ test.describe('gathered in the OpenAPI document', () => {
 test.describe('Gathered resources chart', () => {
   test('is the third chart after a run, and its pinned overlay plots the pinned run, not the current one', async ({ page }) => {
     await openPage(page)
-    await runSimulation(page)
     await showTab(page, 'results')
 
     const ids = await page.locator(CHART_IDS.map((id) => `[data-testid="${id}"]`).join(', ')).evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
@@ -104,8 +103,7 @@ test.describe('Gathered resources chart', () => {
     await expect(chart.getByText('Gathered resources')).toBeVisible()
 
     await page.getByTestId('pin-run').click()
-    await page.getByTestId('duration-seconds').fill('300')
-    const second = await runSimulation(page)
+    const second = await waitForRun(page, () => page.getByTestId('duration-seconds').fill('300'))
     expect(second.status()).toBe(200)
 
     const food = chart.locator('path[data-series="food"]')

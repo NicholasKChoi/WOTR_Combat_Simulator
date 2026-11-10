@@ -3,6 +3,7 @@ import utilStyles from '../../styles/utils.module.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { GetStaticProps } from 'next'
 import Head from 'next/head'
+import { useRouter } from 'next/router'
 import cn from 'classnames'
 
 import Layout from '../../components/layout'
@@ -16,7 +17,8 @@ import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-pan
 import { Results } from '../../components/apps/aoe4-build-order/results'
 import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
 import { mergeExternalEdit } from '../../components/apps/aoe4-build-order/step-table-model'
-import { postSimulation, readRejection, simulationFailureMessage } from '../../components/apps/aoe4-build-order/simulate-client'
+import { postSimulation } from '../../components/apps/aoe4-build-order/simulate-client'
+import { useAutoRun } from '../../components/apps/aoe4-build-order/use-auto-run'
 import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-build-order/workbench-tabs'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { loadGameData } from '../../lib/aoe4-build-order/data'
@@ -50,11 +52,6 @@ interface Pin extends Run {
     result: SimulateResponse
 }
 
-function stickyBarHeight(bar: HTMLElement | null): string {
-    if (!bar || getComputedStyle(bar).position !== 'sticky') return '0px'
-    return `${bar.getBoundingClientRect().height}px`
-}
-
 function browserStorage(): Storage | null {
     try {
         return window.localStorage
@@ -63,45 +60,27 @@ function browserStorage(): Storage | null {
     }
 }
 
-async function errorMessages(response: Response): Promise<string[]> {
-    if (response.status === 400) {
-        const rejection = await readRejection(response)
-        if (rejection !== null) {
-            const messages = rejection.issues.map((issue) => issue.message)
-            if (rejection.omittedIssues > 0) messages.push(`${rejection.omittedIssues} more issues not shown.`)
-            return messages
-        }
-    }
-    return [simulationFailureMessage(response.status)]
-}
-
 export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
+    const router = useRouter()
     const [text, setText] = useState(builds[0]?.text ?? '')
     const [duration, setDuration] = useState(String(DEFAULT_DURATION_SECONDS))
-    const [result, setResult] = useState<SimulateResponse | null>(null)
-    const [run, setRun] = useState<Run | null>(null)
     const [pin, setPin] = useState<Pin | null>(null)
     const [selected, setSelected] = useState(builds[0]?.name ?? '')
-    const [issues, setIssues] = useState<string[]>([])
-    const [checked, setChecked] = useState(false)
-    const [rejection, setRejection] = useState<{ line: number | undefined } | null>(null)
-    const [running, setRunning] = useState(false)
     const [infoExpanded, setInfoExpanded] = useState(false)
     const [tab, setTab] = useState<WorkbenchTab>('build')
     const [view, setView] = useState<EditorView>('text')
     const [openRows, setOpenRows] = useState<boolean[]>([])
-    const [resultsShownCount, setResultsShownCount] = useState(0)
     const pinTouched = useRef(false)
-    const resultsTop = useRef<HTMLDivElement>(null)
     const pageSection = useRef<HTMLElement>(null)
     const runBar = useRef<HTMLFormElement>(null)
-    const editorBox = useRef<HTMLDivElement>(null)
-    const issuesBox = useRef<HTMLDivElement>(null)
+    const autoRun = useAutoRun({ text, duration, selected, catalog, hold: !router.isReady })
+    const { status, conversion, result, shown } = autoRun
+    const run: Run | null = shown === null ? null : { text: shown.text, durationSeconds: shown.durationSeconds, name: pinName(builds, shown.text, shown.selected) }
     const resultsEnabled = result !== null || pin !== null
     const shownTab = resultsEnabled ? tab : 'build'
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
-    const converted = useMemo(() => textToBuildOrder(text, catalog), [text, catalog])
-    const clientIssues = converted.ok || (converted.lines !== undefined && !checked) ? [] : converted.issues
+    const clientIssues = conversion.ok ? [] : conversion.issues
+    const rejected = status === 'rejected'
 
     useEffect(() => {
         let cancelled = false
@@ -141,69 +120,21 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         return () => observer.disconnect()
     }, [])
 
-    useEffect(() => {
-        const panel = resultsTop.current
-        if (resultsShownCount === 0 || !panel) return
-        panel.style.scrollMarginTop = stickyBarHeight(runBar.current)
-        panel.scrollIntoView()
-    }, [resultsShownCount])
-
-    useEffect(() => {
-        if (rejection === null) return
-        const marginTop = stickyBarHeight(runBar.current)
-        const { line } = rejection
-        const item = view === 'text' && line !== undefined ? editorBox.current?.querySelector(`[data-testid="build-order-line-number"][data-line="${line}"]`) : null
-        const target = item ?? issuesBox.current
-        if (!(target instanceof HTMLElement)) return
-        target.style.scrollMarginTop = marginTop
-        target.scrollIntoView({ block: 'center' })
-    }, [rejection])
-
     function editText(next: string) {
         const reparsed = parseBuildOrderText(next)
         if (reparsed.ok === true) setOpenRows((flags) => mergeExternalEdit(flags, reparsed.order.steps))
         setText(next)
     }
 
-    async function runSimulation() {
-        setChecked(true)
-        setIssues([])
-        const runText = text
-        if (converted.ok === false) {
-            setResult(null)
-            setRun(null)
-            setTab('build')
-            setRejection({ line: converted.issues[0].line })
-            return
-        }
-        setRejection(null)
-        setRunning(true)
-        try {
-            const response = await postSimulation(converted.order, Number(duration))
-            if (!response.ok) {
-                setResult(null)
-                setRun(null)
-                setTab('build')
-                setIssues(await errorMessages(response))
-                return
-            }
-            const body: SimulateResponse = await response.json()
-            setResult(body)
-            setRun({ text: runText, durationSeconds: Number(duration), name: pinName(builds, runText, selected) })
-            setTab('results')
-            setResultsShownCount((n) => n + 1)
-        } catch {
-            setResult(null)
-            setRun(null)
-            setTab('build')
-            setIssues([simulationFailureMessage(null)])
-        } finally {
-            setRunning(false)
-        }
+    function selectBuild(name: string) {
+        setSelected(name)
+        const build = builds.find((b) => b.name === name)
+        if (!build) return
+        editText(build.text)
+        autoRun.flush({ text: build.text, duration, selected: name })
     }
 
     const alreadyPinned = result !== null && run !== null && pin !== null && pin.text === run.text && pin.durationSeconds === run.durationSeconds
-    const stale = result !== null && run !== null && (text !== run.text || Number(duration) !== run.durationSeconds)
 
     function pinShownRun() {
         if (result === null || run === null) return
@@ -230,12 +161,13 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                 <BuildInput
                     builds={builds}
                     selected={selected}
-                    onSelectedChange={setSelected}
-                    onTextChange={editText}
+                    onBuildSelect={selectBuild}
                     duration={duration}
                     onDurationChange={setDuration}
-                    running={running}
-                    onRun={runSimulation}
+                    durationError={autoRun.durationError}
+                    status={status}
+                    hasResult={result !== null}
+                    onSubmit={() => autoRun.flush()}
                     view={view}
                     onViewChange={setView}
                     viewDisabled={shownTab === 'results'}
@@ -248,9 +180,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                     build={
                         <>
                             {view === 'text' ? (
-                                <div ref={editorBox}>
-                                    <BuildTextEditor text={text} onChange={editText} errorLines={issueLines(clientIssues)} />
-                                </div>
+                                <BuildTextEditor text={text} onChange={editText} errorLines={issueLines(clientIssues)} />
                             ) : parsed.ok === true ? (
                                 <StepTable
                                     order={parsed.order}
@@ -264,22 +194,21 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                                     {parsed.issues[0].message}
                                 </div>
                             )}
-                            <div ref={issuesBox}>
-                                <IssueList issues={clientIssues} rejected={rejection !== null} />
-                            </div>
-                            {issues.length > 0 ? (
-                                <div data-testid="simulation-error" role="alert" className="alert alert-danger">
-                                    <ul className="mb-0">
-                                        {issues.map((message, i) => (
-                                            <li key={i}>{message}</li>
-                                        ))}
-                                    </ul>
+                            <IssueList issues={rejected ? autoRun.serverIssues : clientIssues} omittedIssues={rejected ? autoRun.omittedIssues : 0} />
+                            {autoRun.errorMessage !== null ? (
+                                <div data-testid="simulation-error" role="alert" className="alert alert-danger mt-2">
+                                    <p className="mb-0">{autoRun.errorMessage}</p>
                                 </div>
+                            ) : null}
+                            {status === 'failed' ? (
+                                <button type="button" data-testid="simulation-retry" className="btn btn-outline-danger" onClick={autoRun.retry}>
+                                    Try again
+                                </button>
                             ) : null}
                         </>
                     }
                     results={
-                        <div ref={resultsTop}>
+                        <div>
                             <h2 className="border-bottom">Results</h2>
                             <ComparePanel
                                 current={result}
@@ -295,7 +224,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                                     pinned={pin?.result ?? null}
                                     text={run?.text ?? ''}
                                     landmarks={catalog.landmarks}
-                                    stale={stale}
+                                    dimmed={status === 'invalid' || status === 'rejected' || status === 'failed'}
                                     infoExpanded={infoExpanded}
                                     onInfoToggle={() => setInfoExpanded((v) => !v)}
                                 />

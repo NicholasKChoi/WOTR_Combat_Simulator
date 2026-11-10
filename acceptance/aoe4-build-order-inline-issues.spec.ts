@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
-import { INVALID_PASTE, SIMULATE_PATH, expectFlySyntaxIssue, openPage, runRejected, runSimulation, showTab, showView } from './helpers'
+import { AOE4_PAGE, INVALID_PASTE, SIMULATE_PATH, expectFlySyntaxIssue, expectInvalidNoRun, openPage, showTab, showView, waitForRun } from './helpers'
 
 const textarea = (page: Page) => page.getByTestId('build-order-text')
 const gutterItem = (page: Page, line: number) => page.locator(`[data-testid="build-order-line-number"][data-line="${line}"]`)
@@ -12,41 +12,13 @@ const TWO_UNKNOWN_IDS = ['start -> sheep', 'produce knigt from stable', 'produce
 const SYNTAX_AND_UNKNOWN_ID_PASTE = ['start -> sheep', 'produce knigt from stable', 'build hous'].join('\n')
 const FIXED_LINE_THREE_PASTE = ['start -> sheep', 'produce knigt from stable', 'produce villager from capital-town-center x3 -> sheep'].join('\n')
 const summary = (page: Page) => page.getByTestId('build-order-issues-summary')
-const LONG_PASTE = [
-  'start -> sheep',
-  ...Array.from({ length: 60 }, () => 'produce villager from capital-town-center x3 -> sheep'),
-  'at 8 vils fly capital-town-center',
-].join('\n')
 
 async function expectNoErrorMarks(page: Page) {
   await expect(page.locator('[data-testid="build-order-line-number"][data-error]')).toHaveCount(0)
 }
 
-// Scrolling is smooth: the target passes through the valid window on its way past, so a position only counts
-// once it has not moved for a while. Both rects are read in one evaluate.
-// The list can be taller than the room left below it at the bottom of the page, so only its top has to be visible.
-async function expectInViewBelowRunBar(page: Page, testId: string, line?: number) {
-  const selector = line === undefined ? `[data-testid="${testId}"]` : `[data-testid="${testId}"][data-line="${line}"]`
-  await expect
-    .poll(() =>
-      page.evaluate(async ({ sel, wholeItem }) => {
-        const target = document.querySelector(sel)!
-        const barBottom = document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect().bottom
-        const before = target.getBoundingClientRect().top
-        await new Promise((resolve) => setTimeout(resolve, 250))
-        const rect = target.getBoundingClientRect()
-        return rect.top === before && rect.top >= barBottom && rect.top < window.innerHeight && (!wholeItem || rect.bottom <= window.innerHeight)
-      }, { sel: selector, wholeItem: line !== undefined })
-    )
-    .toBe(true)
-}
-
-function scrollToTop(page: Page) {
-  return page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
-}
-
 test.describe('AoE4 build order live issues', () => {
-  test('a parse issue shows without a Run, marks its gutter line and has no suggestion', async ({ page }) => {
+  test('a parse issue shows once the text settles, marks its gutter line and has no suggestion', async ({ page }) => {
     await openPage(page)
     await textarea(page).fill(INVALID_PASTE)
     await expect(page.getByTestId('build-order-issues')).toBeVisible()
@@ -60,13 +32,10 @@ test.describe('AoE4 build order live issues', () => {
     await expectNoErrorMarks(page)
   })
 
-  test('check issues wait for the first Run, then track the text with a suggestion', async ({ page }) => {
+  test('check issues show once the text settles and track the text with a suggestion', async ({ page }) => {
     await openPage(page)
     await textarea(page).fill(UNKNOWN_ID_PASTE)
-    await expect(page.getByTestId('build-order-issues')).toHaveCount(0)
-    await expectNoErrorMarks(page)
-
-    await runRejected(page)
+    await expectInvalidNoRun(page)
     await expect(issues(page)).toHaveCount(1)
     await expect(issues(page)).toHaveAttribute('data-code', 'unknown-id')
     await expect(issues(page)).toHaveAttribute('data-line', '2')
@@ -99,7 +68,7 @@ test.describe('AoE4 build order live issues', () => {
       .toEqual({ errorWeight: '700', errorDiffers: true, normalWeight: '400' })
   })
 
-  test('a syntax error lists the other lines unknown-id issues without a Run until the line parses', async ({ page }) => {
+  test('a syntax error lists the other lines unknown-id issues, which stay once the line parses', async ({ page }) => {
     await openPage(page)
     await textarea(page).fill(SYNTAX_AND_UNKNOWN_ID_PASTE)
     await expect(issues(page)).toHaveCount(2)
@@ -111,46 +80,37 @@ test.describe('AoE4 build order live issues', () => {
     await expect(gutterItem(page, 3)).toHaveAttribute('data-error', 'true')
 
     await textarea(page).fill(FIXED_LINE_THREE_PASTE)
-    await expect(issues(page)).toHaveCount(0)
-    await expectNoErrorMarks(page)
-
-    await runRejected(page)
     await expect(issues(page)).toHaveCount(1)
     await expect(issues(page)).toHaveAttribute('data-code', 'unknown-id')
+    await expect(gutterItem(page, 3)).not.toHaveAttribute('data-error', /.*/)
+    await expectInvalidNoRun(page)
   })
 
-  test('a rejected Run summarises the issue count, tracks edits and goes away when the Run converts', async ({ page }) => {
+  test('the summary counts the settled issues, tracks edits and goes away when the text converts', async ({ page }) => {
     await openPage(page)
     await textarea(page).fill(UNKNOWN_ID_PASTE)
-    await expect(summary(page)).toHaveCount(0)
-    await runRejected(page)
     await expect(summary(page)).toHaveText('Fix 1 issue to run the simulation.')
 
     await textarea(page).fill(TWO_UNKNOWN_IDS)
     await expect(issues(page)).toHaveCount(2)
     await expect(summary(page)).toHaveText('Fix 2 issues to run the simulation.')
-    await runRejected(page)
-    await expect(summary(page)).toHaveText('Fix 2 issues to run the simulation.')
+    await expectInvalidNoRun(page)
 
     await textarea(page).fill(UNKNOWN_ID_PASTE)
     await expect(issues(page)).toHaveCount(1)
     await expect(summary(page)).toHaveText('Fix 1 issue to run the simulation.')
 
-    await textarea(page).fill(VALID_PASTE)
+    expect((await waitForRun(page, () => textarea(page).fill(VALID_PASTE))).status()).toBe(200)
     await expect(issues(page)).toHaveCount(0)
     await expect(summary(page)).toHaveCount(0)
-    expect((await runSimulation(page)).status()).toBe(200)
-    await showTab(page, 'build')
     await textarea(page).fill(UNKNOWN_ID_PASTE)
     await expect(issues(page)).toHaveCount(1)
-    await expect(summary(page)).toHaveCount(0)
+    await expect(summary(page)).toHaveText('Fix 1 issue to run the simulation.')
   })
 
-  test('a valid Run also starts the live check issues', async ({ page }) => {
+  test('check issues show after a valid run', async ({ page }) => {
     await openPage(page)
-    await textarea(page).fill(VALID_PASTE)
-    expect((await runSimulation(page)).status()).toBe(200)
-    await showTab(page, 'build')
+    expect((await waitForRun(page, () => textarea(page).fill(VALID_PASTE))).status()).toBe(200)
     await textarea(page).fill(UNKNOWN_ID_PASTE)
     await expect(issues(page)).toHaveCount(1)
     await expect(issues(page)).toHaveAttribute('data-code', 'unknown-id')
@@ -160,7 +120,7 @@ test.describe('AoE4 build order live issues', () => {
   test('every issue is listed in line order and marks its gutter line', async ({ page }) => {
     await openPage(page)
     await textarea(page).fill(TWO_UNKNOWN_IDS)
-    await runRejected(page)
+    await expectInvalidNoRun(page)
     await expect(issues(page)).toHaveCount(2)
     await expect(issues(page).nth(0)).toHaveAttribute('data-line', '2')
     await expect(issues(page).nth(1)).toHaveAttribute('data-line', '3')
@@ -171,7 +131,7 @@ test.describe('AoE4 build order live issues', () => {
   test('a check issue with no near match shows no suggestion', async ({ page }) => {
     await openPage(page)
     await textarea(page).fill(['start -> sheep', 'produce zzzzzzzzzz from stable'].join('\n'))
-    await runRejected(page)
+    await expectInvalidNoRun(page)
     await expect(issues(page)).toHaveCount(1)
     await expect(issues(page)).toHaveAttribute('data-code', 'unknown-id')
     await expect(page.getByTestId('build-order-issue-suggestion')).toHaveCount(0)
@@ -182,7 +142,7 @@ test.describe('AoE4 build order live issues', () => {
     await textarea(page).fill(
       ['start -> sheep', 'produce knigt from stable', 'produce villager from capital-town-center x3 -> sheep', 'produce spearmn from barracks', 'produce villager from capital-town-center x3 -> sheep'].join('\n')
     )
-    await runRejected(page)
+    await expectInvalidNoRun(page)
     await expect(issues(page)).toHaveCount(2)
     const marked = () =>
       page.evaluate(() =>
@@ -191,72 +151,27 @@ test.describe('AoE4 build order live issues', () => {
     await expect.poll(marked).toEqual(['2', '4'])
   })
 
-  test('a rejected Run scrolls the first issue line under the run bar', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 720 })
-    await openPage(page)
-    await textarea(page).fill(LONG_PASTE)
-    await runRejected(page)
-    await expectInViewBelowRunBar(page, 'build-order-line-number', 62)
-  })
-
-  test('a rejected Run whose issue has no line scrolls to the list', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 720 })
-    await openPage(page)
-    await textarea(page).fill(Array.from({ length: 201 }, () => 'x'.repeat(99)).join('\n'))
-    await expect(page.getByTestId('build-order-issues')).toBeVisible()
-    await scrollToTop(page)
-    expect(await page.getByTestId('build-order-issues').evaluate((el) => el.getBoundingClientRect().top > window.innerHeight)).toBe(true)
-    await runRejected(page)
-    await expectInViewBelowRunBar(page, 'build-order-issues')
-  })
-
-  test('rejecting the same text again scrolls to the issue again', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 720 })
-    await openPage(page)
-    await textarea(page).fill(LONG_PASTE)
-    await runRejected(page)
-    await expectInViewBelowRunBar(page, 'build-order-line-number', 62)
-    await scrollToTop(page)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
-    await runRejected(page)
-    await expectInViewBelowRunBar(page, 'build-order-line-number', 62)
-  })
-
-  test('an issue in the middle of the text lands below the run bar', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 720 })
-    await openPage(page)
-    const lines = Array.from({ length: 151 }, () => 'produce villager from capital-town-center x3 -> sheep')
-    lines[0] = 'start -> sheep'
-    lines[80] = 'produce knigt from stable'
-    await textarea(page).fill(lines.join('\n'))
-    await runRejected(page)
-    await expectInViewBelowRunBar(page, 'build-order-line-number', 81)
-  })
-
-  test('in table view a rejection scrolls the list and keeps the table view', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 720 })
+  test('in table view an invalid build shows the issue list and keeps the table view', async ({ page }) => {
     await openPage(page)
     await textarea(page).fill(
       ['start -> sheep', ...Array.from({ length: 30 }, () => 'produce villager from capital-town-center x3 -> sheep'), 'produce knigt from stable'].join('\n')
     )
     await showView(page, 'table')
     await expect(page.getByTestId('step-table')).toBeVisible()
-    await runRejected(page)
+    await expectInvalidNoRun(page)
+    await expect(page.getByTestId('build-order-issues')).toBeVisible()
     await expect(page.getByTestId('editor-view-table')).toHaveAttribute('aria-pressed', 'true')
-    await expectInViewBelowRunBar(page, 'build-order-issues')
   })
 
   test('a live issue never clears the shown result', async ({ page }) => {
     await openPage(page)
-    expect((await runSimulation(page)).status()).toBe(200)
-    await showTab(page, 'build')
     await textarea(page).fill(INVALID_PASTE)
     await expect(page.getByTestId('build-order-issues')).toBeVisible()
     await showTab(page, 'results')
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
   })
 
-  test('a server 400 stays in simulation-error and marks no gutter line', async ({ page }) => {
+  test('a server 400 lists its issues under the editor and marks no gutter line', async ({ page }) => {
     await page.route(`**${SIMULATE_PATH}`, (route) =>
       route.fulfill({
         status: 400,
@@ -264,10 +179,10 @@ test.describe('AoE4 build order live issues', () => {
         body: JSON.stringify({ error: 'server problem', issues: [{ code: 'out-of-range', message: 'server problem', line: 2 }] }),
       })
     )
-    await openPage(page)
-    expect((await runSimulation(page)).status()).toBe(400)
-    await expect(page.getByTestId('simulation-error')).toContainText('server problem')
-    await expect(page.getByTestId('build-order-issues')).toHaveCount(0)
+    await page.goto(AOE4_PAGE)
+    await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'rejected')
+    await expect(issues(page)).toHaveText(['server problem'])
+    await expect(page.getByTestId('simulation-error')).toHaveCount(0)
     await expectNoErrorMarks(page)
   })
 })
@@ -277,15 +192,17 @@ test.describe('AoE4 build order gold run-out info list', () => {
 
   test('lists the gold run-outs only in the collapsed info list', async ({ page }) => {
     await openPage(page)
-    await page.getByTestId('build-order-select').selectOption({ label: "ENG Knight/Longbow (King's Palace)" })
-    await page.getByTestId('duration-seconds').fill('1800')
-    const response = await runSimulation(page)
+    const response = await waitForRun(page, async () => {
+      await page.getByTestId('duration-seconds').fill('1800')
+      await page.getByTestId('build-order-select').selectOption({ label: "ENG Knight/Longbow (King's Palace)" })
+    })
     expect(response.status()).toBe(200)
     const result = (await response.json()) as SimulationResult
     const infos = [...result.warnings, ...result.notes].filter((m) => m.severity === 'info')
     const gold = infos.filter((m) => m.code === 'node-depleted' && /^gold(#2)? ran out/.test(m.message)).map((m) => m.message)
     expect(gold.length).toBeGreaterThanOrEqual(2)
 
+    await showTab(page, 'results')
     await expect(page.getByTestId('simulation-notes-list')).toHaveCount(0)
     await expect(page.getByTestId('simulation-notes-toggle')).toHaveText(`Show ${infos.length} info messages`)
     await page.getByTestId('simulation-notes-toggle').click()

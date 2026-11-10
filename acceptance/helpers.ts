@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
-import { expect, type APIRequestContext, type Page, type Request } from '@playwright/test'
+import { expect, type APIRequestContext, type Page, type Request, type Response } from '@playwright/test'
+import { AUTO_RUN_DEBOUNCE_MS, type AutoRunStatus } from '../components/apps/aoe4-build-order/auto-run'
 import { FINITE_GATHER_NODES, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { buildOrderCatalog, type BuildOrderCatalog } from '../lib/aoe4-build-order/schema'
 import { textToBuildOrder } from '../lib/aoe4-build-order/text-to-build'
@@ -101,6 +102,7 @@ export const AOE4_PAGE = '/apps/aoe4-build-order'
 export async function openPage(page: Page) {
   await page.goto(AOE4_PAGE)
   await page.waitForLoadState('networkidle')
+  await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'current')
 }
 
 export async function showTab(page: Page, tab: 'build' | 'results') {
@@ -111,28 +113,58 @@ export async function showView(page: Page, view: 'text' | 'table') {
   await page.getByTestId(`editor-view-${view}`).click()
 }
 
-export async function runSimulation(page: Page) {
-  const response = page.waitForResponse(
-    (r) => r.url().endsWith(SIMULATE_PATH) && r.request().method() === 'POST'
-  )
-  await page.getByTestId('run-simulation').click()
-  return response
+export function isSimulatePost(r: Request): boolean {
+  return r.url().endsWith(SIMULATE_PATH) && r.method() === 'POST'
 }
 
-// Clicks Run and expects the page to reject the text itself: issues appear under the editor and nothing is posted.
-export async function runRejected(page: Page): Promise<void> {
+// Registers the wait for the simulate response before `action`, so a response that lands during it is not missed.
+export async function waitForRun(page: Page, action?: () => Promise<unknown>, status: AutoRunStatus = 'current'): Promise<Response> {
+  const response = page.waitForResponse((r) => isSimulatePost(r.request()))
+  await action?.()
+  const done = await response
+  await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', status)
+  return done
+}
+
+export async function expectNoRun(page: Page, action?: () => Promise<unknown>): Promise<void> {
   const posted: string[] = []
   const onRequest = (r: Request) => {
-    if (r.url().endsWith(SIMULATE_PATH) && r.method() === 'POST') posted.push(r.url())
+    if (isSimulatePost(r)) posted.push(r.url())
   }
   page.on('request', onRequest)
   try {
-    await page.getByTestId('run-simulation').click()
-    await expect(page.getByTestId('build-order-issues')).toBeVisible()
+    await action?.()
+    await page.waitForTimeout(AUTO_RUN_DEBOUNCE_MS + 500)
   } finally {
     page.off('request', onRequest)
   }
   expect(posted).toEqual([])
+}
+
+// Sets the duration the way typing would, without Playwright scrolling the field into view first.
+export async function setDurationInPlace(page: Page, value: string): Promise<void> {
+  await page.getByTestId('duration-seconds').evaluate((el, next) => {
+    const input = el as HTMLInputElement
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, next)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }, value)
+}
+
+export async function scrollInstantly(page: Page, top: number): Promise<number> {
+  return page.evaluate((y) => {
+    window.scrollTo({ top: y, behavior: 'instant' })
+    return window.scrollY
+  }, top)
+}
+
+// Read after two frames in one evaluate, so a scroll started by the last render has moved the page.
+export function settledScrollY(page: Page): Promise<number> {
+  return page.evaluate(() => new Promise<number>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(window.scrollY)))))
+}
+
+export async function expectInvalidNoRun(page: Page): Promise<void> {
+  await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'invalid')
+  await expectNoRun(page)
 }
 
 export const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')

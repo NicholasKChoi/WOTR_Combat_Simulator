@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
-import { openPage, runRejected, runSimulation, showTab, showView } from './helpers'
+import { expectInvalidNoRun, openPage, showTab, showView, waitForRun } from './helpers'
 
 const PHONE = { width: 390, height: 844 }
 const KNIGHT_LONGBOW = "ENG Knight/Longbow (King's Palace)"
@@ -12,17 +12,16 @@ async function expectNoSidewaysScroll(page: Page) {
 }
 
 async function runOk(page: Page, duration: string) {
-  await page.getByTestId('duration-seconds').fill(duration)
-  const response = await runSimulation(page)
+  const response = await waitForRun(page, () => page.getByTestId('duration-seconds').fill(duration))
   expect(response.status()).toBe(200)
 }
 
 async function pinnedResults(page: Page) {
   await openPage(page)
   await runOk(page, '200')
+  await showTab(page, 'results')
   await page.getByTestId('pin-run').click()
   await runOk(page, '300')
-  await showTab(page, 'results')
   await expect(page.getByTestId('compare-scroll')).toBeVisible()
 }
 
@@ -67,7 +66,7 @@ test.describe('AoE4 build order at a 390 px screen', () => {
     const id = 'a'.repeat(3000)
     await openPage(page)
     await page.getByTestId('build-order-text').fill(`start -> sheep\nproduce ${id} from town-center`)
-    await runRejected(page)
+    await expectInvalidNoRun(page)
     const issues = page.getByTestId('build-order-issue')
     await expect(issues).toHaveCount(1)
     await expect(issues.first()).toHaveAttribute('data-code', 'unknown-id')

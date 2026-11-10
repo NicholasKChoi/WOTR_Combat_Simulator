@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult, StepTiming } from '../lib/aoe4-build-order/model'
-import { SIMULATE_PATH, openPage, runSimulation, showTab } from './helpers'
+import { AOE4_PAGE, openPage, showTab, waitForRun } from './helpers'
 
 const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 const WIDE = { width: 1280, height: 800 }
@@ -47,17 +47,18 @@ async function expectBandEverywhere(page: Page, from: number, to: number) {
 async function runPasted(page: Page, text: string, duration: number) {
   await openPage(page)
   await showTab(page, 'build')
-  await page.getByTestId('build-order-text').fill(text)
-  await page.getByTestId('duration-seconds').fill(String(duration))
-  const result = (await (await runSimulation(page)).json()) as SimulationResult
+  const response = await waitForRun(page, async () => {
+    await page.getByTestId('build-order-text').fill(text)
+    await page.getByTestId('duration-seconds').fill(String(duration))
+  })
+  const result = (await response.json()) as SimulationResult
   await showTab(page, 'results')
   await expect(page.getByTestId('step-timeline-scroll')).toBeVisible()
   return result
 }
 
 async function runDefault(page: Page) {
-  await openPage(page)
-  const result = (await (await runSimulation(page)).json()) as SimulationResult
+  const result = (await (await waitForRun(page, () => page.goto(AOE4_PAGE))).json()) as SimulationResult
   await showTab(page, 'results')
   await expect(page.getByTestId('step-timeline-scroll')).toBeVisible()
   return result
@@ -180,7 +181,7 @@ test.describe('AoE4 step span band on the charts', () => {
     await expect(page.locator('[data-active="true"]')).toHaveCount(1)
   })
 
-  test('a new Run clears the band and the active row although the pointer stays over the row', async ({ page }) => {
+  test('a new run clears the band and the active row although the pointer stays over the row', async ({ page }) => {
     const result = await runDefault(page)
     const timing = result.steps.find((s) => s.status === 'completed' && s.startedAt! < s.completedAt!)!
     const target = row(page, timing.step)
@@ -188,11 +189,7 @@ test.describe('AoE4 step span band on the charts', () => {
     await expect(bands(page)).toHaveCount(CHARTS.length)
     await expect(target).toHaveAttribute('data-active', 'true')
 
-    const run = page.getByTestId('run-simulation')
-    await run.focus()
-    const response = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH) && r.request().method() === 'POST')
-    await page.keyboard.press('Enter')
-    await response
+    await waitForRun(page, () => page.getByTestId('duration-seconds').fill('900'))
 
     await expect(bands(page)).toHaveCount(0)
     await expect(page.locator('[data-active="true"]')).toHaveCount(0)

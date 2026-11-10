@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { openPage, runSimulation, showTab } from './helpers'
+import { AOE4_PAGE, openPage, showTab, waitForRun } from './helpers'
 
 const LONG_WAIT_SECONDS = 60
 const EN_DASH = '–'
@@ -10,9 +10,18 @@ const rows = (page: Page) => page.getByTestId('step-timeline-row')
 
 async function runWith(page: Page, text: string, duration: number) {
   await showTab(page, 'build')
-  await page.getByTestId('build-order-text').fill(text)
-  await page.getByTestId('duration-seconds').fill(String(duration))
-  return (await (await runSimulation(page)).json()) as SimulationResult
+  const response = await waitForRun(page, async () => {
+    await page.getByTestId('build-order-text').fill(text)
+    await page.getByTestId('duration-seconds').fill(String(duration))
+  })
+  await showTab(page, 'results')
+  return (await response.json()) as SimulationResult
+}
+
+async function loadResult(page: Page) {
+  const response = await waitForRun(page, () => page.goto(AOE4_PAGE))
+  await showTab(page, 'results')
+  return (await response.json()) as SimulationResult
 }
 
 function mmss(seconds: number): string {
@@ -23,8 +32,7 @@ function mmss(seconds: number): string {
 test.describe('AoE4 build order timeline and compare display', () => {
   test('data-long-wait is set on exactly the steps that waited at least 60 s', async ({ page }) => {
     await openPage(page)
-    await page.getByTestId('build-order-text').fill(['start 6 sheep -> sheep', 'build barracks with 9 from sheep', 'produce villager from capital-town-center x1'].join('\n'))
-    const result = (await (await runSimulation(page)).json()) as SimulationResult
+    const result = await runWith(page, ['start 6 sheep -> sheep', 'build barracks with 9 from sheep', 'produce villager from capital-town-center x1'].join('\n'), 1200)
     const long = result.steps.filter((s) => s.waitSeconds >= LONG_WAIT_SECONDS)
     const short = result.steps.filter((s) => s.waitSeconds < LONG_WAIT_SECONDS)
     expect(long.length).toBeGreaterThan(0)
@@ -37,8 +45,7 @@ test.describe('AoE4 build order timeline and compare display', () => {
   })
 
   test('a not-reached step reads not reached with its cause and an en dash in Started and Finished', async ({ page }) => {
-    await openPage(page)
-    const result = (await (await runSimulation(page)).json()) as SimulationResult
+    const result = await loadResult(page)
     const timing = result.steps.find((s) => s.status === 'not-reached')!
     expect(timing).toBeDefined()
     const cells = rows(page).nth(timing.step).locator('td')
@@ -48,8 +55,7 @@ test.describe('AoE4 build order timeline and compare display', () => {
   })
 
   test('a completed step with no wait has an empty Blocked by cell', async ({ page }) => {
-    await openPage(page)
-    const result = (await (await runSimulation(page)).json()) as SimulationResult
+    const result = await loadResult(page)
     const timing = result.steps.find((s) => s.status === 'completed' && s.waitSeconds === 0)!
     expect(timing).toBeDefined()
     await expect(rows(page).nth(timing.step).locator('td').nth(4)).toHaveText('')
@@ -70,9 +76,8 @@ test.describe('AoE4 build order timeline and compare display', () => {
   })
 
   test('age deltas read m:ss earlier or later with matching direction and colour', async ({ page }) => {
-    await openPage(page)
     const builds = listBuilds()
-    const first = await runWith(page, formatBuildOrderText(builds[0]), 1200)
+    const first = await loadResult(page)
     await page.getByTestId('pin-run').click()
     let checked = 0
     for (const build of builds.slice(1)) {

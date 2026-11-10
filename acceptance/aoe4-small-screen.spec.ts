@@ -1,14 +1,9 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openPage, runSimulation, showTab, showView } from './helpers'
+import { AOE4_PAGE, SIMULATE_PATH, openPage, scrollInstantly, setDurationInPlace, settledScrollY, showTab, showView, waitForRun } from './helpers'
 
 const KNIGHT_LONGBOW = "ENG Knight/Longbow (King's Palace)"
 
 const barPosition = (page: Page) => page.getByTestId('run-bar').evaluate((el) => getComputedStyle(el).position)
-
-async function runOk(page: Page) {
-  const response = await runSimulation(page)
-  expect(response.status()).toBe(200)
-}
 
 for (const viewport of [
   { width: 320, height: 700 },
@@ -39,23 +34,18 @@ for (const viewport of [
 test.describe('run bar at 360x760', () => {
   test.use({ viewport: { width: 360, height: 760 } })
 
-  test('scrolls away with the page and a run scrolls the results heading into view', async ({ page }) => {
+  test('scrolls away with the page, and a run does not scroll the page by itself', async ({ page }) => {
     await openPage(page)
     expect(await barPosition(page)).toBe('static')
-    await runOk(page)
-    await expect(page.getByTestId('panel-results')).toBeVisible()
-    await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const heading = document.querySelector('[data-testid="panel-results"] > div')!
-          return { top: heading.getBoundingClientRect().top, margin: getComputedStyle(heading).scrollMarginTop }
-        }),
-      )
-      .toMatchObject({ margin: '0px' })
-    const heading = await page.evaluate(() => document.querySelector('[data-testid="panel-results"] > div')!.getBoundingClientRect().top)
-    expect(heading).toBeGreaterThanOrEqual(0)
-    expect(heading).toBeLessThan(760)
+    const before = await scrollInstantly(page, 400)
+    expect(before).toBeGreaterThan(0)
+    const response = await waitForRun(page, () => setDurationInPlace(page, '900'))
+    expect(response.status()).toBe(200)
+    expect(await settledScrollY(page)).toBe(before)
+    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
 
+    await showTab(page, 'results')
+    await expect(page.getByTestId('panel-results')).toBeVisible()
     await expect
       .poll(() =>
         page.evaluate(() => {
@@ -82,24 +72,19 @@ for (const viewport of [
   test.describe(`run bar at ${viewport.width} px`, () => {
     test.use({ viewport })
 
-    test('stays sticky at the top and offsets the results scroll by its height', async ({ page }) => {
+    test('stays sticky at the top', async ({ page }) => {
       await openPage(page)
       expect(await barPosition(page)).toBe('sticky')
-      await runOk(page)
+      await showTab(page, 'results')
       await expect(page.getByTestId('panel-results')).toBeVisible()
       await expect
         .poll(() =>
           page.evaluate(() => {
             window.scrollTo(0, 300)
-            const bar = document.querySelector('[data-testid="run-bar"]')!
-            const heading = document.querySelector('[data-testid="panel-results"] > div')!
-            return {
-              top: bar.getBoundingClientRect().top,
-              marginMatchesBar: Math.abs(parseFloat(getComputedStyle(heading).scrollMarginTop) - bar.getBoundingClientRect().height) < 0.5,
-            }
+            return { scrolled: window.scrollY > 0, top: document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect().top }
           }),
         )
-        .toEqual({ top: 0, marginMatchesBar: true })
+        .toEqual({ scrolled: true, top: 0 })
     })
   })
 }
@@ -107,8 +92,6 @@ for (const viewport of [
 test.describe('workbench tabs keyboard model', () => {
   test('arrow keys, Home and End move between tabs and focus follows', async ({ page }) => {
     await openPage(page)
-    await runOk(page)
-    await showTab(page, 'build')
     const select = async (key: string, tab: 'build' | 'results') => {
       await page.keyboard.press(key)
       await expect(page.getByTestId(`tab-${tab}`)).toHaveAttribute('aria-selected', 'true')
@@ -128,7 +111,7 @@ test.describe('workbench tabs keyboard model', () => {
 
   test('one tab stop: the selected tab has tabindex 0 and Tab leaves the tab list', async ({ page }) => {
     await openPage(page)
-    await runOk(page)
+    await showTab(page, 'results')
     await expect(page.getByTestId('tab-results')).toHaveAttribute('tabindex', '0')
     await expect(page.getByTestId('tab-build')).toHaveAttribute('tabindex', '-1')
     await page.getByTestId('tab-results').focus()
@@ -138,7 +121,9 @@ test.describe('workbench tabs keyboard model', () => {
   })
 
   test('with Results disabled every navigation key leaves Build selected and focused', async ({ page }) => {
-    await openPage(page)
+    await page.route(`**${SIMULATE_PATH}`, (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }))
+    await page.goto(AOE4_PAGE)
+    await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'failed')
     await expect(page.getByTestId('tab-results')).toBeDisabled()
     await page.getByTestId('tab-build').focus()
     for (const key of ['ArrowRight', 'ArrowLeft', 'Home', 'End']) {

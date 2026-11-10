@@ -2,7 +2,7 @@ import { test, expect, type Request } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, openPage, runSimulation, showTab } from './helpers'
+import { SIMULATE_PATH, openPage, showTab, waitForRun } from './helpers'
 
 test.describe.configure({ timeout: 90_000 })
 
@@ -21,12 +21,15 @@ test.describe('AoE4 build order M4 flow', () => {
     await expect(page.getByTestId('workbench-tabs')).toBeVisible()
     await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByTestId('panel-results')).toHaveAttribute('hidden', '')
-    await expect(page.getByTestId('tab-results')).toBeDisabled()
+    await expect(page.getByTestId('tab-results')).toBeEnabled()
 
-    await page.getByTestId('build-order-select').selectOption({ label: KNIGHT_LONGBOW })
-    await page.getByTestId('duration-seconds').fill('1800')
-    const result = (await (await runSimulation(page)).json()) as SimulationResult
-    await expect(page.getByTestId('tab-results')).toHaveAttribute('aria-selected', 'true')
+    const response = await waitForRun(page, async () => {
+      await page.getByTestId('duration-seconds').fill('1800')
+      await page.getByTestId('build-order-select').selectOption({ label: KNIGHT_LONGBOW })
+    })
+    const result = (await response.json()) as SimulationResult
+    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
+    await showTab(page, 'results')
     await expect(page.getByTestId('panel-results')).toBeVisible()
 
     const goldRunOuts = [...result.warnings, ...result.notes]
@@ -58,7 +61,10 @@ test.describe('AoE4 build order M4 flow', () => {
       await expect(page.locator('[data-testid="build-order-line-number"][data-line="2"]')).toHaveAttribute('data-error', 'true')
       await showTab(page, 'results')
       await expect(page.getByTestId('chart-units-produced')).toBeVisible()
-      await expect(page.getByTestId('results-stale')).toBeVisible()
+      await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'invalid')
+      await expect
+        .poll(() => page.getByTestId('results-last-good').evaluate((el) => Number(getComputedStyle(el).opacity)))
+        .toBeLessThanOrEqual(0.5)
       await showTab(page, 'build')
       expect(posted).toEqual([])
     } finally {
@@ -68,7 +74,8 @@ test.describe('AoE4 build order M4 flow', () => {
     await page.getByTestId('build-order-select').selectOption({ label: OTHER_BUILD })
     await page.getByTestId('build-order-select').selectOption({ label: KNIGHT_LONGBOW })
     await expect(page.getByTestId('build-order-text')).toHaveValue(textOf(KNIGHT_LONGBOW))
-    await runSimulation(page)
+    await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'current')
+    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
     await page.reload()
     await expect(page.getByTestId('tab-results')).toBeEnabled()
@@ -79,6 +86,9 @@ test.describe('AoE4 build order M4 flow', () => {
     await page.getByTestId('unpin-run').click()
     expect(await page.evaluate((key) => window.localStorage.getItem(key), PIN_KEY)).toBeNull()
     await page.reload()
-    await expect(page.getByTestId('tab-results')).toBeDisabled()
+    await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'current')
+    await showTab(page, 'results')
+    await expect(page.getByTestId('unpin-run')).toBeDisabled()
+    await expect(page.getByTestId('pinned-label')).toHaveCount(0)
   })
 })

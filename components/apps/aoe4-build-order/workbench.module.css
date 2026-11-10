@@ -89,9 +89,18 @@
 }
 
 .issues,
-.stale,
 .pinnedLabel {
     overflow-wrap: anywhere;
+}
+
+.dimmed {
+    opacity: 0.5;
+}
+
+.autoRunStatus {
+    margin: 0;
+    align-self: center;
+    color: var(--bs-secondary-color, #6c757d);
 }
 
 button.activeView:disabled {

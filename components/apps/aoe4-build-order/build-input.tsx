@@ -1,6 +1,8 @@
 import type { Ref } from 'react'
 import cn from 'classnames'
 
+import type { AutoRunStatus } from './auto-run'
+import { autoRunStatusMessage } from './auto-run-status'
 import styles from './workbench.module.css'
 
 export interface PrebuiltBuild {
@@ -13,12 +15,13 @@ export type EditorView = 'text' | 'table'
 interface BuildInputProps {
     builds: PrebuiltBuild[]
     selected: string
-    onSelectedChange: (name: string) => void
-    onTextChange: (text: string) => void
+    onBuildSelect: (name: string) => void
     duration: string
     onDurationChange: (duration: string) => void
-    running: boolean
-    onRun: () => void
+    durationError: string | null
+    status: AutoRunStatus
+    hasResult: boolean
+    onSubmit: () => void
     view: EditorView
     onViewChange: (view: EditorView) => void
     viewDisabled?: boolean
@@ -30,13 +33,7 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ builds, selected, onSelectedChange, onTextChange, duration, onDurationChange, running, onRun, view, onViewChange, viewDisabled = false, formRef }: BuildInputProps) {
-    function selectBuild(name: string) {
-        onSelectedChange(name)
-        const build = builds.find((b) => b.name === name)
-        if (build) onTextChange(build.text)
-    }
-
+export function BuildInput({ builds, selected, onBuildSelect, duration, onDurationChange, durationError, status, hasResult, onSubmit, view, onViewChange, viewDisabled = false, formRef }: BuildInputProps) {
     return (
         <form
             ref={formRef}
@@ -45,7 +42,7 @@ export function BuildInput({ builds, selected, onSelectedChange, onTextChange, d
             noValidate
             onSubmit={(e) => {
                 e.preventDefault()
-                onRun()
+                onSubmit()
             }}
         >
             <div className={styles.runField}>
@@ -55,7 +52,7 @@ export function BuildInput({ builds, selected, onSelectedChange, onTextChange, d
                     data-testid="build-order-select"
                     className="form-select"
                     value={selected}
-                    onChange={(e) => selectBuild(e.target.value)}
+                    onChange={(e) => onBuildSelect(e.target.value)}
                 >
                     {builds.map((b) => (
                         <option key={b.name} value={b.name}>{b.name}</option>
@@ -68,15 +65,19 @@ export function BuildInput({ builds, selected, onSelectedChange, onTextChange, d
                     type="number"
                     id="duration-seconds"
                     data-testid="duration-seconds"
-                    className="form-control"
+                    className={cn('form-control', durationError !== null && 'is-invalid')}
                     value={duration}
                     step={1}
+                    aria-invalid={durationError !== null ? 'true' : undefined}
+                    aria-describedby={durationError !== null ? 'duration-error' : undefined}
                     onChange={(e) => onDurationChange(e.target.value)}
                 />
+                {durationError !== null ? (
+                    <div id="duration-error" data-testid="duration-error" className="invalid-feedback">
+                        {durationError}
+                    </div>
+                ) : null}
             </div>
-            <button type="submit" data-testid="run-simulation" className="btn btn-primary" disabled={running}>
-                Run simulation
-            </button>
             <div className="btn-group" role="group" aria-label="Editor view">
                 {VIEWS.map(({ view: option, label }) => (
                     <button
@@ -92,6 +93,9 @@ export function BuildInput({ builds, selected, onSelectedChange, onTextChange, d
                     </button>
                 ))}
             </div>
+            <p id="auto-run-status" data-testid="auto-run-status" role="status" data-status={status} className={styles.autoRunStatus}>
+                {autoRunStatusMessage(status, hasResult)}
+            </p>
         </form>
     )
 }

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
-import { openPage, postSimulate, runSimulation } from './helpers'
+import { openPage, postSimulate, showTab, waitForRun } from './helpers'
 
 const BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
 const REACTION_COUNT = 6
@@ -11,12 +11,13 @@ test.describe.configure({ timeout: 90_000 })
 test.describe('the knight/longbow build on the page', () => {
   test('shows its six reactions and runs 1800 s with no idle-villager warning, listing the gold and sheep run-outs as info', async ({ page }) => {
     await openPage(page)
-    await page.getByTestId('build-order-select').selectOption({ label: BUILD_LABEL })
-    await page.getByTestId('duration-seconds').fill('1800')
-
-    const response = await runSimulation(page)
+    const response = await waitForRun(page, async () => {
+      await page.getByTestId('duration-seconds').fill('1800')
+      await page.getByTestId('build-order-select').selectOption({ label: BUILD_LABEL })
+    })
     expect(response.status()).toBe(200)
     const result = (await response.json()) as SimulationResult
+    await showTab(page, 'results')
 
     await expect(page.getByTestId('step-timeline')).toBeVisible()
     await expect(page.locator('[data-testid="step-timeline-row"][data-reaction="true"]')).toHaveCount(REACTION_COUNT)

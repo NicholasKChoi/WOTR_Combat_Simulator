@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult, SimWarning } from '../lib/aoe4-build-order/model'
-import { INVALID_PASTE, RESOURCE_CHARTS, expectedCompareKeys, openPage, runSimulation, showView, showTab } from './helpers'
+import { INVALID_PASTE, RESOURCE_CHARTS, expectedCompareKeys, openPage, showView, showTab, waitForRun } from './helpers'
 
 const FLOW_PASTE = [
   'start 6 sheep -> sheep',
@@ -12,7 +12,7 @@ test.describe('AoE4 build order M3 flow', () => {
   test('edit a step in the table, run, see the depletion warning and timeline, pin and compare', async ({ page }) => {
     await openPage(page)
     const text = page.getByTestId('build-order-text')
-    await text.fill(FLOW_PASTE)
+    const pinnedResult = (await (await waitForRun(page, () => text.fill(FLOW_PASTE))).json()) as SimulationResult
     await showView(page, 'table')
 
     await expect(page.getByTestId('step-table')).toBeVisible()
@@ -20,17 +20,16 @@ test.describe('AoE4 build order M3 flow', () => {
     const count = page.getByTestId('step-row').nth(0).getByTestId('step-field-count')
     await expect(count).toHaveValue('3')
 
-    const pinnedResult = (await (await runSimulation(page)).json()) as SimulationResult
+    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
 
     await showTab(page, 'build')
-    await count.fill('5')
+    const response = await waitForRun(page, () => count.fill('5'))
     await showView(page, 'text')
     await expect(text).toHaveValue(/produce villager from capital-town-center x5 -> sheep/)
     await showView(page, 'table')
     await expect(page.getByTestId('step-row')).toHaveCount(2)
 
-    const response = await runSimulation(page)
     expect(response.status()).toBe(200)
     const result = (await response.json()) as SimulationResult
     const depleted = result.warnings.find(
@@ -39,6 +38,7 @@ test.describe('AoE4 build order M3 flow', () => {
     expect(depleted).toMatchObject({ severity: 'warning' })
     expect(depleted?.idleVillagers).toBeGreaterThan(0)
 
+    await showTab(page, 'results')
     const warnings = page.getByTestId('simulation-warnings')
     await expect(warnings).toBeVisible()
     const message = warnings.locator('[data-testid="simulation-message"][data-code="node-depleted"][data-severity="warning"]')
@@ -72,11 +72,12 @@ test.describe('AoE4 build order M3 flow', () => {
 
   test('the ENG 1TC gold reaction shows in the timeline and table, and its depletion is not a warning', async ({ page }) => {
     await openPage(page)
-    await page.getByTestId('build-order-select').selectOption({ label: 'ENG 1TC' })
-    await page.getByTestId('duration-seconds').fill('3600')
-
-    const response = await runSimulation(page)
+    const response = await waitForRun(page, async () => {
+      await page.getByTestId('duration-seconds').fill('3600')
+      await page.getByTestId('build-order-select').selectOption({ label: 'ENG 1TC' })
+    })
     expect(response.status()).toBe(200)
+    await showTab(page, 'results')
     const result = (await response.json()) as SimulationResult
     expect(result.depletions.find((d) => d.node === 'gold')).toMatchObject({ depletedAt: expect.any(Number) })
 

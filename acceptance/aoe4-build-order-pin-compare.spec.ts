@@ -1,8 +1,8 @@
-import { test, expect, type Locator, type Page, type Request } from '@playwright/test'
+import { test, expect, type Locator, type Page, type Request, type Route } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { CHART_IDS, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, expectFlySyntaxIssue, expectedCompareKeys, hexToRgb, openPage, runRejected, runSimulation, showTab } from './helpers'
+import { AOE4_PAGE, CHART_IDS, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -10,19 +10,34 @@ const NOT_REACHED = 'not reached'
 const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
 
-async function run(page: Page, opts: { duration?: number; text?: string } = {}) {
-  if (opts.text !== undefined) {
-    await showTab(page, 'build')
-    await page.getByTestId('build-order-text').fill(opts.text)
-  }
-  if (opts.duration !== undefined) await page.getByTestId('duration-seconds').fill(String(opts.duration))
-  return await runSimulation(page)
+const LOAD_DURATION = 1200
+const status = (page: Page) => page.getByTestId('auto-run-status')
+const bodyDuration = (r: Request): unknown => r.postDataJSON()?.inputs?.durationSeconds
+const lastGoodOpacity = (page: Page) => page.getByTestId('results-last-good').evaluate((el) => Number(getComputedStyle(el).opacity))
+
+// Every call must change the text or the duration; an unchanged input posts nothing.
+async function runOk(page: Page, opts: { duration?: number; text?: string }) {
+  const response = await waitForRun(page, async () => {
+    if (opts.text !== undefined) {
+      await showTab(page, 'build')
+      await page.getByTestId('build-order-text').fill(opts.text)
+    }
+    if (opts.duration !== undefined) await page.getByTestId('duration-seconds').fill(String(opts.duration))
+  })
+  expect(response.status()).toBe(200)
+  if (opts.duration !== undefined) expect(bodyDuration(response.request())).toBe(opts.duration)
+  await showTab(page, 'results')
+  return (await response.json()) as SimulationResult
 }
 
-async function runOk(page: Page, opts: { duration?: number; text?: string } = {}) {
-  const response = await run(page, opts)
-  expect(response.status()).toBe(200)
-  return (await response.json()) as SimulationResult
+async function holdSimulate(page: Page, durationSeconds: number) {
+  let release = () => {}
+  const gate = new Promise<void>((resolve) => (release = resolve))
+  await page.route(`**${SIMULATE_PATH}`, async (route) => {
+    if (bodyDuration(route.request()) === durationSeconds) await gate
+    await route.continue().catch(() => {})
+  })
+  return release
 }
 
 const pin = (page: Page) => page.getByTestId('pin-run').click()
@@ -38,11 +53,15 @@ function militaryDelta(delta: number): string {
 }
 
 test.describe('AoE4 build order pin and compare', () => {
-  test('pin is disabled with no result, enabled after a run; unpin is disabled until a pin exists', async ({ page }) => {
-    await openPage(page)
+  test('pin is disabled with no result, enabled once the load run lands; unpin is disabled until a pin exists', async ({ page }) => {
+    const release = await holdSimulate(page, LOAD_DURATION)
+    await page.goto(AOE4_PAGE)
+    await expect(status(page)).toHaveAttribute('data-status', 'running')
     await expect(page.getByTestId('pin-run')).toBeDisabled()
     await expect(page.getByTestId('unpin-run')).toBeDisabled()
-    await runOk(page)
+    release()
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
+    await showTab(page, 'results')
     await expect(page.getByTestId('pin-run')).toBeEnabled()
     await expect(page.getByTestId('unpin-run')).toBeDisabled()
     await pin(page)
@@ -171,7 +190,7 @@ test.describe('AoE4 build order pin and compare', () => {
 
   test('a pinned 1200 s run against a 300 s run shows the run end for later military rows and a gap in current lines', async ({ page }) => {
     await openPage(page)
-    await runOk(page, { duration: 1200 })
+    await showTab(page, 'results')
     await pin(page)
     await runOk(page, { duration: 300 })
 
@@ -194,19 +213,17 @@ test.describe('AoE4 build order pin and compare', () => {
     await openPage(page)
     await runOk(page, { duration: 300 })
     await pin(page)
-    await showTab(page, 'build')
-    await page.getByTestId('build-order-text').fill(NO_MILITARY_PASTE)
+    await runOk(page, { text: NO_MILITARY_PASTE })
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
-    await showTab(page, 'results')
     await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
-    await page.getByTestId('build-order-select').selectOption({ index: 0 })
+    await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ index: 0 }))
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
     await runOk(page, { duration: 600, text: NO_MILITARY_PASTE })
     await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
   })
 
-  test('a rejected paste removes charts and table but keeps the pin; the next valid run restores both', async ({ page }) => {
+  test('an invalid paste dims charts and table and keeps the pin; the next valid run restores full opacity', async ({ page }) => {
     await openPage(page)
     await runOk(page, { duration: 300 })
     await pin(page)
@@ -215,14 +232,17 @@ test.describe('AoE4 build order pin and compare', () => {
 
     await showTab(page, 'build')
     await page.getByTestId('build-order-text').fill(INVALID_PASTE)
-    await runRejected(page)
     await expectFlySyntaxIssue(page)
-    await expect(page.getByTestId('compare-key-numbers')).toHaveCount(0)
-    for (const chart of CHART_IDS) await expect(page.getByTestId(chart)).toHaveCount(0)
+    await expectInvalidNoRun(page)
+    await showTab(page, 'results')
+    await expect.poll(() => lastGoodOpacity(page)).toBeLessThanOrEqual(0.5)
+    await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
+    for (const chart of CHART_IDS) await expect(page.getByTestId(chart)).toBeVisible()
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
-    await expect(page.getByTestId('pin-run')).toBeDisabled()
+    await expect(page.getByTestId('pin-run')).toBeEnabled()
 
     await runOk(page, { text: 'start -> sheep' })
+    await expect.poll(() => lastGoodOpacity(page)).toBe(1)
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
     await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
     // Same pin: its run was 300 s, so the pinned line still ends at 5:00 while the current one runs to 10:00.
@@ -276,7 +296,7 @@ test.describe('AoE4 build order pin and compare', () => {
 
   test('the compare table sits in a scroll wrapper', async ({ page }) => {
     await openPage(page)
-    await runOk(page)
+    await showTab(page, 'results')
     await pin(page)
     await expect(page.getByTestId('compare-scroll').getByTestId('compare-key-numbers')).toBeVisible()
     await expect(page.getByTestId('compare-scroll')).toHaveCSS('overflow-x', 'auto')
@@ -308,52 +328,46 @@ test.describe('AoE4 build order pin and compare', () => {
 
 const PIN_KEY = 'aoe4-build-order.pinned-run'
 const BUILDS = listBuilds().map((b) => ({ name: b.name, text: formatBuildOrderText(b) }))
-const STALE_TEXT = 'These results are from an earlier build or duration. Run again to update.'
 const label = (page: Page) => page.getByTestId('pinned-label')
 const storedPin = (page: Page) => page.evaluate((key) => window.localStorage.getItem(key), PIN_KEY)
 const storePin = (page: Page, value: unknown) =>
   page.evaluate(([key, raw]) => window.localStorage.setItem(key, raw), [PIN_KEY, typeof value === 'string' ? value : JSON.stringify(value)])
-const validStored = { version: 1, name: BUILDS[0].name, text: DEFAULT_PASTE, durationSeconds: 1200 }
+const validStored = { version: 1, name: BUILDS[0].name, text: DEFAULT_PASTE, durationSeconds: LOAD_DURATION }
+// A duration the load run never uses, so the restore request can be told apart from it by body.
+const RESTORE_DURATION = 900
+const restoreStored = { ...validStored, durationSeconds: RESTORE_DURATION }
+// Only for loads with no edit, where every other post is the load run.
+const isRestore = (r: Request) => isSimulatePost(r) && bodyDuration(r) !== LOAD_DURATION
 
-function trackPosts(page: Page): Request[] {
+function trackPosts(page: Page, keep: (r: Request) => boolean): Request[] {
   const posts: Request[] = []
   page.on('request', (r) => {
-    if (r.url().endsWith(SIMULATE_PATH) && r.method() === 'POST') posts.push(r)
+    if (keep(r)) posts.push(r)
   })
   return posts
 }
 
-async function holdFirstSimulate(page: Page) {
-  let release = () => {}
-  const gate = new Promise<void>((resolve) => (release = resolve))
-  let first = true
-  await page.route(`**${SIMULATE_PATH}`, async (route) => {
-    if (first) {
-      first = false
-      await gate
-    }
-    await route.continue()
-  })
-  return release
-}
+const routeRestore = (page: Page, answer: (route: Route) => Promise<void>) =>
+  page.route(`**${SIMULATE_PATH}`, (route) => (bodyDuration(route.request()) === RESTORE_DURATION ? answer(route) : route.continue()))
 
 async function expectNoPin(page: Page) {
-  await expect(page.getByTestId('tab-results')).toBeDisabled()
+  await expect(status(page)).toHaveAttribute('data-status', 'current')
+  await expect(page.getByTestId('unpin-run')).toBeDisabled()
   await expect(label(page)).toHaveCount(0)
   await expect(page.getByTestId('simulation-error')).toHaveCount(0)
 }
 
 test.describe('AoE4 build order pin persistence and label', () => {
-  test('a reload keeps the pin and re-runs it without a Run', async ({ page }) => {
+  test('a reload keeps the pin and re-runs it on load', async ({ page }) => {
     const warnings: string[] = []
     page.on('console', (m) => {
       if (/hydrat|did not match/i.test(m.text())) warnings.push(m.text())
     })
     await openPage(page)
-    await runOk(page, { duration: 1200 })
+    await showTab(page, 'results')
     await pin(page)
 
-    const posts = trackPosts(page)
+    const posts = trackPosts(page, isSimulatePost)
     await page.reload()
     await expect(page.getByTestId('tab-results')).toBeEnabled()
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
@@ -361,10 +375,12 @@ test.describe('AoE4 build order pin persistence and label', () => {
     await showTab(page, 'results')
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
     await expect(page.getByTestId('build-order-text')).toHaveValue(DEFAULT_PASTE)
-    expect(posts).toHaveLength(1)
-    const body = posts[0].postDataJSON()
-    expect(body.buildOrder).toBeDefined()
-    expect(body.inputs.durationSeconds).toBe(1200)
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
+    await expect.poll(() => posts.length).toBe(2)
+    for (const post of posts) {
+      expect(post.postDataJSON().buildOrder).toBeDefined()
+      expect(bodyDuration(post)).toBe(LOAD_DURATION)
+    }
     expect(warnings).toEqual([])
 
     await runOk(page, { duration: 600 })
@@ -375,7 +391,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
   test('the label names the prebuilt, marks an edit, and is fixed when pinned', async ({ page }) => {
     expect(BUILDS.length).toBeGreaterThan(1)
     await openPage(page)
-    await runOk(page, { duration: 1200 })
+    await showTab(page, 'results')
     await pin(page)
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
 
@@ -386,7 +402,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
     await page.getByTestId('unpin-run').click()
     await showTab(page, 'build')
-    await page.getByTestId('build-order-select').selectOption({ index: 1 })
+    await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ index: 1 }))
     await runOk(page, { text: DEFAULT_PASTE })
     await pin(page)
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
@@ -416,14 +432,12 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
   test('pin is disabled while the shown run equals the pin', async ({ page }) => {
     await openPage(page)
-    await runOk(page, { duration: 1200 })
+    await showTab(page, 'results')
     await pin(page)
     await expect(page.getByTestId('pin-run')).toBeDisabled()
 
-    await showTab(page, 'build')
-    await page.getByTestId('build-order-text').fill(NO_MILITARY_PASTE)
-    await showTab(page, 'results')
-    await expect(page.getByTestId('pin-run')).toBeDisabled()
+    await runOk(page, { text: NO_MILITARY_PASTE })
+    await expect(page.getByTestId('pin-run')).toBeEnabled()
 
     await runOk(page, { text: DEFAULT_PASTE })
     await expect(page.getByTestId('pin-run')).toBeDisabled()
@@ -442,28 +456,29 @@ test.describe('AoE4 build order pin persistence and label', () => {
     await expect(page.getByTestId('pin-run')).toBeEnabled()
   })
 
-  test('results are marked stale when the text or duration changes, and a Run clears it', async ({ page }) => {
-    const stale = page.getByTestId('results-stale')
+  test('results dim when the text or duration turns invalid, and the next settled valid input restores them', async ({ page }) => {
     await openPage(page)
-    await runOk(page)
-    await expect(stale).toHaveCount(0)
+    await showTab(page, 'results')
+    await expect.poll(() => lastGoodOpacity(page)).toBe(1)
 
     await showTab(page, 'build')
-    await page.getByTestId('build-order-text').fill(NO_MILITARY_PASTE)
+    await page.getByTestId('build-order-text').fill(INVALID_PASTE)
     await showTab(page, 'results')
-    await expect(stale).toBeVisible()
-    await expect(stale).toHaveText(STALE_TEXT)
+    await expect(status(page)).toHaveAttribute('data-status', 'invalid')
+    await expect.poll(() => lastGoodOpacity(page)).toBeLessThanOrEqual(0.5)
     await expect(page.getByTestId('chart-gather-rates')).toBeVisible()
 
     await showTab(page, 'build')
     await page.getByTestId('build-order-text').fill(DEFAULT_PASTE)
     await showTab(page, 'results')
-    await expect(stale).toHaveCount(0)
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
+    await expect.poll(() => lastGoodOpacity(page)).toBe(1)
 
-    await page.getByTestId('duration-seconds').fill('600')
-    await expect(stale).toBeVisible()
-    await runOk(page)
-    await expect(stale).toHaveCount(0)
+    await page.getByTestId('duration-seconds').fill('59')
+    await expect(status(page)).toHaveAttribute('data-status', 'invalid')
+    await expect.poll(() => lastGoodOpacity(page)).toBeLessThanOrEqual(0.5)
+    await runOk(page, { duration: 600 })
+    await expect.poll(() => lastGoodOpacity(page)).toBe(1)
   })
 
   test('pin and unpin write through to localStorage', async ({ page }) => {
@@ -487,13 +502,13 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
   for (const [name, stored] of [
     ['invalid JSON', '{nope'],
-    ['version 2', { ...validStored, version: 2 }],
+    ['version 2', { ...restoreStored, version: 2 }],
     ['a missing field', { version: 1, name: 'x', text: DEFAULT_PASTE }],
   ] as const) {
     test(`a stored pin with ${name} is dropped`, async ({ page }) => {
       await openPage(page)
       await storePin(page, stored)
-      const posts = trackPosts(page)
+      const posts = trackPosts(page, isRestore)
       await page.reload()
       await expectNoPin(page)
       await expect.poll(() => storedPin(page)).toBeNull()
@@ -503,8 +518,8 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
   test('a stored text that does not convert is dropped without a request', async ({ page }) => {
     await openPage(page)
-    await storePin(page, { ...validStored, text: INVALID_PASTE })
-    const posts = trackPosts(page)
+    await storePin(page, { ...restoreStored, text: INVALID_PASTE })
+    const posts = trackPosts(page, isRestore)
     await page.reload()
     await expectNoPin(page)
     await expect.poll(() => storedPin(page)).toBeNull()
@@ -514,11 +529,11 @@ test.describe('AoE4 build order pin persistence and label', () => {
   for (const [status] of [[400], [500]] as const) {
     test(`a restore answered with ${status} drops the stored pin and shows no pin`, async ({ page }) => {
       await openPage(page)
-      await storePin(page, validStored)
-      await page.route(`**${SIMULATE_PATH}`, (route) =>
+      await storePin(page, restoreStored)
+      await routeRestore(page, (route) =>
         route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ issues: [{ message: 'bad' }] }) })
       )
-      const answered = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH))
+      const answered = page.waitForResponse((r) => isRestore(r.request()))
       await page.reload()
       await answered
       await expectNoPin(page)
@@ -528,14 +543,14 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
   test('after a dropped restore the next load makes no restore request', async ({ page }) => {
     await openPage(page)
-    await storePin(page, validStored)
-    await page.route(`**${SIMULATE_PATH}`, (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }))
-    const answered = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH))
+    await storePin(page, restoreStored)
+    await routeRestore(page, (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }))
+    const answered = page.waitForResponse((r) => isRestore(r.request()))
     await page.reload()
     await answered
     await expect.poll(() => storedPin(page)).toBeNull()
     await page.unroute(`**${SIMULATE_PATH}`)
-    const posts = trackPosts(page)
+    const posts = trackPosts(page, isRestore)
     await page.reload()
     await expectNoPin(page)
     expect(posts).toHaveLength(0)
@@ -543,9 +558,9 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
   test('a restore whose request fails keeps the stored pin and shows no pin', async ({ page }) => {
     await openPage(page)
-    await storePin(page, validStored)
-    await page.route(`**${SIMULATE_PATH}`, (route) => route.abort())
-    const failed = page.waitForEvent('requestfailed', (r) => r.url().endsWith(SIMULATE_PATH))
+    await storePin(page, restoreStored)
+    await routeRestore(page, (route) => route.abort())
+    const failed = page.waitForEvent('requestfailed', isRestore)
     await page.reload()
     await failed
     await expectNoPin(page)
@@ -554,17 +569,15 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
   test('a Pin made while the restore is in flight keeps the user pin when the restore fails', async ({ page }) => {
     await openPage(page)
-    await storePin(page, validStored)
+    await storePin(page, restoreStored)
     let release = () => {}
     const gate = new Promise<void>((resolve) => (release = resolve))
-    let restore = true
-    await page.route(`**${SIMULATE_PATH}`, async (route) => {
-      if (!restore) return route.continue()
-      restore = false
+    await routeRestore(page, async (route) => {
       await gate
       await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
     })
     await page.reload()
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
     await runOk(page, { duration: 300 })
     await pin(page)
     const stored = await storedPin(page)
@@ -574,7 +587,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
     expect(await storedPin(page)).toBe(stored)
   })
 
-  test('with localStorage unavailable, Run and Pin still work and nothing persists', async ({ page }) => {
+  test('with localStorage unavailable, runs and Pin still work and nothing persists', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     await page.addInitScript(() => {
@@ -585,7 +598,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
       })
     })
     await openPage(page)
-    await runOk(page)
+    await showTab(page, 'results')
     await pin(page)
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
     await expect(page.getByTestId('simulation-error')).toHaveCount(0)
@@ -595,11 +608,12 @@ test.describe('AoE4 build order pin persistence and label', () => {
     expect(errors).toEqual([])
   })
 
-  test('a Run that finishes before the restore lands keeps its result; then only the pin appears', async ({ page }) => {
+  test('a run that finishes before the restore lands keeps its result; then only the pin appears', async ({ page }) => {
     await openPage(page)
     await storePin(page, validStored)
-    const release = await holdFirstSimulate(page)
+    const release = await holdSimulate(page, LOAD_DURATION)
     await page.reload()
+    await expect(status(page)).toHaveAttribute('data-status', 'running')
     const result = await runOk(page, { duration: 600 })
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
     await expect(label(page)).toHaveCount(0)
@@ -607,7 +621,8 @@ test.describe('AoE4 build order pin persistence and label', () => {
     release()
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
-    await expect(page.getByTestId('results-stale')).toHaveCount(0)
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
+    await expect.poll(() => lastGoodOpacity(page)).toBe(1)
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
     expect(result.durationSeconds).toBe(600)
     await expect(page.getByTestId('pin-run')).toBeEnabled()
@@ -618,11 +633,12 @@ test.describe('AoE4 build order pin persistence and label', () => {
   test('a Pin before the restore lands wins over the restore', async ({ page }) => {
     await openPage(page)
     await storePin(page, validStored)
-    const release = await holdFirstSimulate(page)
+    const release = await holdSimulate(page, LOAD_DURATION)
     await page.reload()
+    await expect(status(page)).toHaveAttribute('data-status', 'running')
     await runOk(page, { duration: 600 })
     await pin(page)
-    const landed = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH))
+    const landed = page.waitForResponse((r) => isSimulatePost(r.request()) && bodyDuration(r.request()) === LOAD_DURATION)
     release()
     await landed
     await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)))
@@ -633,12 +649,13 @@ test.describe('AoE4 build order pin persistence and label', () => {
   test('an Unpin before the restore lands wins over the restore', async ({ page }) => {
     await openPage(page)
     await storePin(page, validStored)
-    const release = await holdFirstSimulate(page)
+    const release = await holdSimulate(page, LOAD_DURATION)
     await page.reload()
+    await expect(status(page)).toHaveAttribute('data-status', 'running')
     await runOk(page, { duration: 600 })
     await pin(page)
     await page.getByTestId('unpin-run').click()
-    const landed = page.waitForResponse((r) => r.url().endsWith(SIMULATE_PATH))
+    const landed = page.waitForResponse((r) => isSimulatePost(r.request()) && bodyDuration(r.request()) === LOAD_DURATION)
     release()
     await landed
     await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)))
@@ -648,15 +665,15 @@ test.describe('AoE4 build order pin persistence and label', () => {
   })
 
   for (const [name, stored, requests] of [
-    ['a numeric name', { ...validStored, name: 7 }, 0],
-    ['a null duration', { ...validStored, durationSeconds: null }, 0],
-    ['a text over the length cap', { ...validStored, text: 'start -> sheep\n'.repeat(2000) }, 0],
-    ['a duration the route rejects', { ...validStored, durationSeconds: 99_999_999 }, 1],
+    ['a numeric name', { ...restoreStored, name: 7 }, 0],
+    ['a null duration', { ...restoreStored, durationSeconds: null }, 0],
+    ['a text over the length cap', { ...restoreStored, text: 'start -> sheep\n'.repeat(2000) }, 0],
+    ['a duration the route rejects', { ...restoreStored, durationSeconds: 99_999_999 }, 1],
   ] as const) {
     test(`a stored pin with ${name} is dropped and shows no pin`, async ({ page }) => {
       await openPage(page)
       await storePin(page, stored)
-      const posts = trackPosts(page)
+      const posts = trackPosts(page, isRestore)
       await page.reload()
       await expectNoPin(page)
       await expect.poll(() => storedPin(page)).toBeNull()
@@ -664,7 +681,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
     })
   }
 
-  test('with every localStorage method throwing, Run and Pin still work and nothing persists', async ({ page }) => {
+  test('with every localStorage method throwing, runs and Pin still work and nothing persists', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     await page.addInitScript(() => {
@@ -675,7 +692,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
       }
     })
     await openPage(page)
-    await runOk(page)
+    await showTab(page, 'results')
     await pin(page)
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
     await page.getByTestId('unpin-run').click()
