@@ -986,7 +986,7 @@ and `Custom build` when there are no prebuilt builds. The charts (`results-last-
 describes the live input: when its text or its duration differs from the live text or duration, and on `invalid`, `rejected` and
 `failed`. That includes the 500 ms before the input settles and while the page is `updating`; a change to the select alone does not
 dim. `results-last-good` carries `aria-describedby="auto-run-status"` only while it is dimmed and the status text is not
-empty, so not during the 500 ms before the input settles.
+empty, so it is absent while an edit to a current result waits the 500 ms to settle.
 
 With a pinned run, each chart also draws the pinned run's series dashed, in the same color as the
 current series with that key, with the name `<name> (pinned)` and the key `pinned:<key>`. The x axis covers

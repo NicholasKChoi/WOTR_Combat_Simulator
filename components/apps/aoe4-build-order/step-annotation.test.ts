@@ -34,6 +34,7 @@ describe('annotationToneClass', () => {
         expect(typeof styles.warn).toBe('string')
         expect(typeof styles.stale).toBe('string')
         expect(styles.warn).not.toBe('')
+        expect(styles.stale).not.toBe('')
         expect(styles.warn).not.toBe(styles.stale)
     })
 
@@ -107,13 +108,14 @@ describe('StepRunCell', () => {
 
 describe('StepTable run cells', () => {
     const catalog = buildOrderCatalog(loadGameData('english'))
-    const parsed = parseBuildOrderText('start -> sheep\nproduce villager from capital-town-center -> sheep\nbuild house with 1 from sheep')
+    const parsed = parseBuildOrderText('start -> sheep\nproduce villager from capital-town-center -> sheep\nbuild house with 1 from sheep\nbuild house with 1 from sheep')
     if (!parsed.ok) throw new Error('fixture must parse')
     const annotations: BuildAnnotations = {
         stale: false,
         steps: [
             { kind: 'villager', run: run({ runStep: 0, longWait: true, waitSeconds: 60 }) },
             { kind: 'building', run: null },
+            { kind: 'building', run: run({ runStep: 1, waitSeconds: 59.9, longWait: false }) },
         ],
     }
     const render = (props: { annotations?: BuildAnnotations | null }) =>
@@ -129,7 +131,7 @@ describe('StepTable run cells', () => {
     })
 
     it('puts a run cell first in each row and marks only the long wait', () => {
-        const [first, second] = rows(render({ annotations }))
+        const [first, second, third] = rows(render({ annotations }))
         expect(first).toContain('data-long-wait="true"')
         expect(first).toContain('data-run-step="0"')
         expect(first.indexOf('step-run')).toBeLessThan(first.indexOf('step-trigger-kind'))
@@ -137,6 +139,8 @@ describe('StepTable run cells', () => {
         expect(second).not.toContain('data-status')
         expect(second).not.toContain('data-long-wait')
         expect(second).not.toContain('step-started')
+        expect(third).toContain('data-run-step="1"')
+        expect(third).not.toContain('data-long-wait')
     })
 
     it('keeps the start row cell empty and shows the legend', () => {
