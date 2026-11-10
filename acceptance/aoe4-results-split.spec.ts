@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { openPage, showTab, waitForRun } from './helpers'
 
-const WIDE = { width: 1280, height: 800 }
+const WIDE = { width: 1800, height: 800 }
 const NARROW = { width: 1024, height: 768 }
 
 interface Rects {
@@ -10,6 +10,12 @@ interface Rects {
   units: DOMRect
   bar: DOMRect
 }
+
+const timelineStyle = (page: Page) =>
+  page.getByTestId('results-split').evaluate((el) => {
+    const column = getComputedStyle(el.firstElementChild!)
+    return { position: column.position, maxHeight: column.maxHeight }
+  })
 
 const rects = (page: Page) =>
   page.evaluate(() => {
@@ -34,7 +40,7 @@ async function expectTimelineBelowRunBar(page: Page) {
     .toBe(true)
 }
 
-test.describe('AoE4 results split at 1280 px', () => {
+test.describe('AoE4 results split at 1800 px', () => {
   test.use({ viewport: WIDE })
 
   test('the timeline sits left of the charts', async ({ page }) => {
@@ -96,5 +102,25 @@ test.describe('AoE4 results split at 1024 px', () => {
         return timeline.bottom <= units.top
       })
       .toBe(true)
+  })
+})
+
+test.describe('AoE4 results split boundary', () => {
+  test('the timeline is stacked and unpinned at 1799 px and beside the charts and sticky at 1800 px', async ({ page }) => {
+    await openResults(page)
+    await page.setViewportSize({ width: WIDE.width - 1, height: WIDE.height })
+    await expect
+      .poll(async () => {
+        const { timeline, units } = await rects(page)
+        return { stacked: timeline.bottom <= units.top, ...(await timelineStyle(page)) }
+      })
+      .toEqual({ stacked: true, position: 'static', maxHeight: 'none' })
+    await page.setViewportSize(WIDE)
+    await expect
+      .poll(async () => {
+        const { timeline, units } = await rects(page)
+        return { beside: timeline.right <= units.left, position: (await timelineStyle(page)).position }
+      })
+      .toEqual({ beside: true, position: 'sticky' })
   })
 })

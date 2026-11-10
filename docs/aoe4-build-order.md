@@ -861,9 +861,10 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 
 The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls; below that it scrolls with the page. It
 holds the prebuilt build select, the `durationSeconds` number input (default 1200), a text/table toggle and the
-run status (`auto-run-status`). There is no run button: the page re-runs the simulation on edit. Below the bar are
-two tabs, Build and Results. Results is enabled while there is a result or a pinned run. No run selects a tab, and
-the page never scrolls by itself. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so the toggle is usable on the Build tab only. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The Build tab shows one editor view
+run status (`auto-run-status`). There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
+Build and Results sit side by side in two equal columns, both always shown, with no tabs. Below 1200 px they are two
+tabs, Build and Results; Results is enabled while there is a result or a pinned run. No run selects a tab, and
+the page never scrolls by itself. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so in the tabs layout the toggle is usable on the Build tab only; in the side-by-side layout the tab never disables it. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The layout follows the viewport width live, with no reload and no new run, and neither panel is remounted by a switch, so editor focus and text, an uncommitted table cell and the chart state carry across it. The tab selected before a resize to the side-by-side layout is kept, and the tabs layout shows it again after a resize back. The first paint is the tabs layout; the page switches to the side-by-side layout after it loads. In the side-by-side layout a Build panel wider than its column scrolls sideways inside the column. The Build panel shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the
 step table. The view survives runs and tab switches but not a reload, and a reload starts on Build.
@@ -898,8 +899,8 @@ Gold run-outs and other info notes are in the collapsed info list in Results.
 Narrow layout: under 768 px the step rows are cards (their selects and inputs shrink to the card), the run bar scrolls with the page and wraps onto several rows with the select and
 duration input at full width, and the step timeline and compare tables scroll sideways inside their own boxes. The
 page itself does not scroll sideways at 390 px on either tab, even with a long unbroken token in an issue message.
-At 1200 px and wider the step timeline sits in a column to the left of the charts and stays on screen just below the run
-bar while the charts scroll; it scrolls vertically inside that column, and sideways inside its own box when the table is
+At 1800 px and wider the step timeline sits in a column to the left of the charts and stays on screen just below the run
+bar while the charts scroll; below 1800 px it is stacked above the charts and scrolls with the page; it scrolls vertically inside that column, and sideways inside its own box when the table is
 wider than the column.
 
 The page keeps one `text` state, and the step table is a view of it. The table renders
@@ -959,7 +960,7 @@ Those of severity `warning` appear in a warnings list. Those of severity `info` 
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
 message shows its `message` text only. With no message of a severity there is no list for it.
 
-A step timeline sits above the charts (beside them at 1200 px and wider) and below the message lists: one row per `steps` entry in step order, with
+A step timeline sits above the charts (beside them at 1800 px and wider) and below the message lists: one row per `steps` entry in step order, with
 the step's text, `startedAt` as `m:ss` (an en dash when null), `completedAt` as `m:ss` (`ongoing` for an
 `in-progress` step, an en dash for a `waiting` or `not-reached` step) and `waitSeconds` as `m:ss`. The columns are
 Started, Finished, Step, Waited and Blocked by, so reading down Started is the timeline. Each row has a step kind, shown

@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page, type Request, type Route } from 
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { AOE4_PAGE, CHART_IDS, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, CHART_IDS, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -358,34 +358,38 @@ async function expectNoPin(page: Page) {
 }
 
 test.describe('AoE4 build order pin persistence and label', () => {
-  test('a reload keeps the pin and re-runs it on load', async ({ page }) => {
-    const warnings: string[] = []
-    page.on('console', (m) => {
-      if (/hydrat|did not match/i.test(m.text())) warnings.push(m.text())
+  test.describe('a reload keeps the pin in the tabs layout', () => {
+    test.use({ viewport: TABS_VIEWPORT })
+
+    test('a reload keeps the pin and re-runs it on load', async ({ page }) => {
+      const warnings: string[] = []
+      page.on('console', (m) => {
+        if (/hydrat|did not match/i.test(m.text())) warnings.push(m.text())
+      })
+      await openPage(page)
+      await showTab(page, 'results')
+      await pin(page)
+
+      const posts = trackPosts(page, isSimulatePost)
+      await page.reload()
+      await expect(page.getByTestId('tab-results')).toBeEnabled()
+      await expect(page.getByTestId('unpin-run')).toBeEnabled()
+      await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
+      await showTab(page, 'results')
+      await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+      await expect(page.getByTestId('build-order-text')).toHaveValue(DEFAULT_PASTE)
+      await expect(status(page)).toHaveAttribute('data-status', 'current')
+      await expect.poll(() => posts.length).toBe(2)
+      for (const post of posts) {
+        expect(post.postDataJSON().buildOrder).toBeDefined()
+        expect(bodyDuration(post)).toBe(LOAD_DURATION)
+      }
+      expect(warnings).toEqual([])
+
+      await runOk(page, { duration: 600 })
+      await expect(page.getByTestId('pin-run')).toBeEnabled()
+      await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
     })
-    await openPage(page)
-    await showTab(page, 'results')
-    await pin(page)
-
-    const posts = trackPosts(page, isSimulatePost)
-    await page.reload()
-    await expect(page.getByTestId('tab-results')).toBeEnabled()
-    await expect(page.getByTestId('unpin-run')).toBeEnabled()
-    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
-    await showTab(page, 'results')
-    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
-    await expect(page.getByTestId('build-order-text')).toHaveValue(DEFAULT_PASTE)
-    await expect(status(page)).toHaveAttribute('data-status', 'current')
-    await expect.poll(() => posts.length).toBe(2)
-    for (const post of posts) {
-      expect(post.postDataJSON().buildOrder).toBeDefined()
-      expect(bodyDuration(post)).toBe(LOAD_DURATION)
-    }
-    expect(warnings).toEqual([])
-
-    await runOk(page, { duration: 600 })
-    await expect(page.getByTestId('pin-run')).toBeEnabled()
-    await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
   })
 
   test('the label names the prebuilt, marks an edit, and is fixed when pinned', async ({ page }) => {

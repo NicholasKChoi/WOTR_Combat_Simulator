@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
-import { expectInvalidNoRun, openPage, showTab, showView, waitForRun } from './helpers'
+import { WIDE_VIEWPORT, expectInvalidNoRun, openPage, showTab, showView, waitForRun } from './helpers'
 
 const PHONE = { width: 390, height: 844 }
 const KNIGHT_LONGBOW = "ENG Knight/Longbow (King's Palace)"
@@ -75,8 +75,8 @@ test.describe('AoE4 build order at a 390 px screen', () => {
   })
 })
 
-test.describe('AoE4 build order at a 1280 px screen', () => {
-  test.use({ viewport: { width: 1280, height: 720 } })
+test.describe('AoE4 build order at a 1800 px screen', () => {
+  test.use({ viewport: WIDE_VIEWPORT })
 
   test('the compare table fits its box', async ({ page }) => {
     await pinnedResults(page)

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { AOE4_PAGE, SIMULATE_PATH, openPage, scrollInstantly, setDurationInPlace, settledScrollY, showTab, showView, waitForRun } from './helpers'
+import { AOE4_PAGE, SIMULATE_PATH, TABS_VIEWPORT, openPage, scrollInstantly, setDurationInPlace, settledScrollY, showTab, showView, waitForRun } from './helpers'
 
 const KNIGHT_LONGBOW = "ENG Knight/Longbow (King's Palace)"
 
@@ -90,6 +90,8 @@ for (const viewport of [
 }
 
 test.describe('workbench tabs keyboard model', () => {
+  test.use({ viewport: TABS_VIEWPORT })
+
   test('arrow keys, Home and End move between tabs and focus follows', async ({ page }) => {
     await openPage(page)
     const select = async (key: string, tab: 'build' | 'results') => {

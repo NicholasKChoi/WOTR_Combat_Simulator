@@ -2,7 +2,7 @@ import { test, expect, type Request } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, openPage, showTab, waitForRun } from './helpers'
+import { SIMULATE_PATH, TABS_VIEWPORT, openPage, showTab, waitForRun } from './helpers'
 
 test.describe.configure({ timeout: 90_000 })
 
@@ -16,6 +16,8 @@ const textOf = (name: string) => {
 }
 
 test.describe('AoE4 build order M4 flow', () => {
+  test.use({ viewport: TABS_VIEWPORT })
+
   test('tabs, info list, inline error with suggestion, and a pin that survives a reload', async ({ page }) => {
     await openPage(page)
     await expect(page.getByTestId('workbench-tabs')).toBeVisible()

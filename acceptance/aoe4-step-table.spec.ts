@@ -4,7 +4,7 @@ import { loadGameData } from "../lib/aoe4-build-order/data";
 import { formatBuildOrderText } from "../lib/aoe4-build-order/parse-text";
 import { buildOrderCatalog } from "../lib/aoe4-build-order/schema";
 import { AUTO_RUN_DEBOUNCE_MS } from "../components/apps/aoe4-build-order/auto-run";
-import { buildOrderFrom, isSimulatePost, openPage, showTab, showView, waitForRun } from "./helpers";
+import { TABS_VIEWPORT, WIDE_VIEWPORT, buildOrderFrom, isSimulatePost, openPage, showTab, showView, waitForRun } from "./helpers";
 
 const row = (page: Page, i: number) => page.getByTestId("step-row").nth(i);
 const field = (page: Page, i: number, name: string) =>
@@ -488,7 +488,7 @@ test.describe("AoE4 step table", () => {
     const stepRow = '[data-testid="step-row"]';
     const startRow = '[data-testid="step-start-row"]';
 
-    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.setViewportSize(WIDE_VIEWPORT);
     await expect(async () => {
       const [trigger, action] = await tops(stepRow, ["step-trigger-kind", "step-action"]);
       expect(Math.abs(trigger.y - action.y)).toBeLessThan(4);
@@ -534,7 +534,7 @@ test.describe("AoE4 step table", () => {
       expect(new Set(tops).size).toBe(tops.length);
     }).toPass();
 
-    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.setViewportSize(TABS_VIEWPORT);
     await expect(async () => {
       const tops = await labelTops();
       expect(new Set(tops).size).toBeLessThan(tops.length);
@@ -694,34 +694,38 @@ test.describe("AoE4 step table", () => {
     await expect(more(page, 2)).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("the Text and Table buttons are disabled while Results is shown", async ({
-    page,
-  }) => {
-    await openWith(page, OPEN_STATE_BUILD);
-    await showTab(page, "results");
-    await expect(page.getByTestId("panel-results")).toBeVisible();
-    for (const view of ["text", "table"]) {
-      await expect(page.getByTestId(`editor-view-${view}`)).toBeDisabled();
-    }
-    await page.getByTestId("editor-view-text").click({ force: true });
-    await expect(page.getByTestId("tab-results")).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByTestId("panel-results")).toBeVisible();
-    await expect(page.getByTestId("editor-view-table")).toHaveAttribute("aria-pressed", "true");
-    await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const bg = (view: string) =>
-            getComputedStyle(document.querySelector(`[data-testid="editor-view-${view}"]`)!)
-              .backgroundColor;
-          return bg("table") !== bg("text");
-        }),
-      )
-      .toBe(true);
+  test.describe("the view toggle in the tabs layout", () => {
+    test.use({ viewport: TABS_VIEWPORT });
 
-    await showTab(page, "build");
-    await showView(page, "text");
-    await expect(textarea(page)).toBeVisible();
-    await showView(page, "table");
-    await expect(page.getByTestId("step-table")).toBeVisible();
+    test("the Text and Table buttons are disabled while Results is shown", async ({
+      page,
+    }) => {
+      await openWith(page, OPEN_STATE_BUILD);
+      await showTab(page, "results");
+      await expect(page.getByTestId("panel-results")).toBeVisible();
+      for (const view of ["text", "table"]) {
+        await expect(page.getByTestId(`editor-view-${view}`)).toBeDisabled();
+      }
+      await page.getByTestId("editor-view-text").click({ force: true });
+      await expect(page.getByTestId("tab-results")).toHaveAttribute("aria-selected", "true");
+      await expect(page.getByTestId("panel-results")).toBeVisible();
+      await expect(page.getByTestId("editor-view-table")).toHaveAttribute("aria-pressed", "true");
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const bg = (view: string) =>
+              getComputedStyle(document.querySelector(`[data-testid="editor-view-${view}"]`)!)
+                .backgroundColor;
+            return bg("table") !== bg("text");
+          }),
+        )
+        .toBe(true);
+
+      await showTab(page, "build");
+      await showView(page, "text");
+      await expect(textarea(page)).toBeVisible();
+      await showView(page, "table");
+      await expect(page.getByTestId("step-table")).toBeVisible();
+    });
   });
 });

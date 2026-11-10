@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { AOE4_PAGE, SIMULATE_PATH, openPage, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, SIMULATE_PATH, TABS_VIEWPORT, openPage, showTab, waitForRun } from './helpers'
 
 const errorBox = (page: Page) => page.getByTestId('simulation-error')
 const status = (page: Page) => page.getByTestId('auto-run-status')
@@ -10,6 +10,8 @@ async function loadWithStatus(page: Page, expected: string) {
 }
 
 test.describe('AoE4 build order page run outcomes', () => {
+  test.use({ viewport: TABS_VIEWPORT })
+
   test('a successful run posts the request body to the simulate path and enables the results tab', async ({ page }) => {
     await openPage(page)
     const response = await waitForRun(page, () => page.getByTestId('duration-seconds').fill('300'))
