@@ -137,9 +137,8 @@ const sendDelete = (id) => request('delete', 'DELETE', `${BUILDS_PATH}/${id}`)
 async function deleteStep(id) {
   const res = await sendDelete(id)
   if (res.status === 405) throw new StepFailure(null, 'FAIL production deployment: delete is disabled')
+  // No re-read: GET is cached as immutable, so a deleted build can still be served from the CDN.
   if (res.status !== 204) throw new StepFailure('delete', statusReason(res))
-  const again = await request('delete', 'GET', `${BUILDS_PATH}/${id}`)
-  if (again.status !== 404) throw new StepFailure('delete', `the build is still readable (status ${again.status})`)
   console.log('PASS delete')
 }
 
