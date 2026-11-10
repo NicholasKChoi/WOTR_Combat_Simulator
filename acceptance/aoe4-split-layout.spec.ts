@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { AOE4_PAGE, CHART_IDS, SPLIT_MIN_WIDTH, SPLIT_VIEWPORT, TABS_VIEWPORT, expectNoRun, openPage, showTab, showView, waitForRun } from './helpers'
+import { CHART_IDS, SPLIT_MIN_WIDTH, SPLIT_VIEWPORT, TABS_VIEWPORT, expectNoRun, openPage, showTab, showView, waitForRun } from './helpers'
 
 const tablist = (page: Page) => page.getByTestId('workbench-tabs')
 const scrollWidth = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth)
@@ -162,9 +162,7 @@ test.describe('AoE4 workbench split layout', () => {
     for (const { name, start, sizes } of cases) {
       test(`every chart has a width after showing Results: ${name}`, async ({ page }) => {
         await page.setViewportSize(start)
-        await page.goto(AOE4_PAGE)
-        await page.waitForLoadState('networkidle')
-        await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'current')
+        await openPage(page)
         for (const size of sizes) await page.setViewportSize(size)
         const final = sizes[sizes.length - 1]
         await showTab(page, 'results')

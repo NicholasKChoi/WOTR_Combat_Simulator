@@ -11,7 +11,7 @@ function subscribe(onChange: () => void): () => void {
 const getSnapshot = () => window.matchMedia(WORKBENCH_SPLIT_QUERY).matches
 const getServerSnapshot = () => false
 
-// False on the server and on the first client render, so hydration matches the static HTML.
+// False on the server and during hydration, so the first render matches the static HTML.
 export function useSplitLayout(): boolean {
     return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }
