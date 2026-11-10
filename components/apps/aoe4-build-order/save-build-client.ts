@@ -61,6 +61,6 @@ export async function postSavedBuild(request: SaveBuildRequest, signal?: AbortSi
         return { ok: false, message: saveFailureMessage(null, null, undefined) }
     }
     const body = await readJson(response)
-    if ((response.status === 201 || response.status === 200) && isSaveBuildResponse(body)) return { ok: true, response: { id: body.id, path: body.path } }
+    if ((response.status === 201 || response.status === 200) && isSaveBuildResponse(body)) return { ok: true, response: body }
     return { ok: false, message: saveFailureMessage(response.status, response.headers.get('Retry-After'), body) }
 }
