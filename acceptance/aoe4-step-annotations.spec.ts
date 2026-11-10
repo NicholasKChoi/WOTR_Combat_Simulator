@@ -240,5 +240,6 @@ test.describe('AoE4 step table layout beside Results', () => {
         }),
       )
       .toBe(true)
+    await expect(page.getByTestId('panel-build')).toHaveCSS('overflow-x', 'visible')
   })
 })
