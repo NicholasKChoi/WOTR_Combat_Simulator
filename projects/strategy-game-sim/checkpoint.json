@@ -1,13 +1,17 @@
 {
-    "lastBaseSha": "1e6d6c2d0acfbfbd4a400905b613d62cac3cb189",
-    "openPRs": [],
-    "retro": {
-        "lastRun": "2026-11-02",
-        "stateSha": "345573b"
-    },
-    "milestone": {
-        "id": "M7",
-        "step": "1 design",
-        "waiting": []
-    }
+  "lastBaseSha": "1e6d6c2d0acfbfbd4a400905b613d62cac3cb189",
+  "openPRs": [],
+  "retro": {
+    "lastRun": "2026-11-02",
+    "stateSha": "345573b"
+  },
+  "milestone": {
+    "id": "M7",
+    "step": "1b design approval",
+    "waiting": [
+      "Q20",
+      "Q21",
+      "Q22"
+    ]
+  }
 }
