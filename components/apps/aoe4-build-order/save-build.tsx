@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { SaveBuildResponse } from '../../../lib/aoe4-build-order/saved-builds'
 import type { TextToBuildResult } from '../../../lib/aoe4-build-order/text-to-build'
-import type { AutoRunStatus, LiveInput } from './auto-run'
+import { type AutoRunStatus, type LiveInput, sameInput } from './auto-run'
 import type { PrebuiltBuild } from './build-input'
 import { savedBuildName } from './pin-name'
 import { postSavedBuild } from './save-build-client'
@@ -19,8 +19,6 @@ interface SaveBuildProps {
 }
 
 type CopyState = 'idle' | 'copied' | 'failed'
-
-const sameInput = (a: LiveInput, b: LiveInput) => a.text === b.text && a.duration === b.duration && a.selected === b.selected
 
 export function SaveBuild({ status, settled, conversion, builds, busy, onSaved }: SaveBuildProps) {
     const [saving, setSaving] = useState(false)

@@ -77,7 +77,7 @@ function settledFields(settled: LiveInput, catalog: BuildOrderCatalog): SettledF
     return { settled, conversion, durationError: error, request }
 }
 
-function sameInput(a: LiveInput, b: LiveInput): boolean {
+export function sameInput(a: LiveInput, b: LiveInput): boolean {
     return a.text === b.text && a.duration === b.duration && a.selected === b.selected
 }
 

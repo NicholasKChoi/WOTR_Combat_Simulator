@@ -11,7 +11,7 @@ import { BuildInput, type EditorView, type PrebuiltBuild } from '../../component
 import { BuildTextEditor } from '../../components/apps/aoe4-build-order/build-text-editor'
 import { IssueList } from '../../components/apps/aoe4-build-order/issue-list'
 import { issueLines } from '../../components/apps/aoe4-build-order/text-lines'
-import type { LiveInput } from '../../components/apps/aoe4-build-order/auto-run'
+import { type LiveInput, sameInput } from '../../components/apps/aoe4-build-order/auto-run'
 import { pinName } from '../../components/apps/aoe4-build-order/pin-name'
 import { clearStoredPin, readStoredPin, writeStoredPin } from '../../components/apps/aoe4-build-order/pin-storage'
 import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
@@ -60,8 +60,6 @@ const LOAD_ERRORS = {
     'not-found': 'That saved build was not found. Showing the default build.',
     failed: 'That saved build could not be loaded. Showing the default build.',
 }
-
-const sameInput = (a: LiveInput, b: LiveInput) => a.text === b.text && a.duration === b.duration && a.selected === b.selected
 
 function firstQueryValue(value: string | string[] | undefined): string | undefined {
     const first = Array.isArray(value) ? value[0] : value
