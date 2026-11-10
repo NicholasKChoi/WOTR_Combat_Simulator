@@ -329,9 +329,9 @@ are not order payments: they ignore a waiting step's resource reservation, and n
 zero.
 
 With `autoHouses` on, auto-houses plan from the start whether or not the order has `build house` steps.
-Explicit `build house` steps start as ordered and add houses on top. The planner counts a house under
-construction in its headroom whichever kind it is, so an explicit step that starts after auto-houses already
-cover the demand adds a surplus house. With `autoHouses: false` no auto-house is built, and production blocks
+Explicit `build house` steps start as ordered and add houses on top. Whichever kind it is, a house under
+construction that finishes within the lead counts toward the planner's headroom, so an explicit step that
+starts after auto-houses already cover the demand adds a surplus house. With `autoHouses: false` no auto-house is built, and production blocks
 at supply until a `build house` step adds more. No warning reports production held at the supply limit.
 
 **Farms and mill coverage.** A farm costs its snapshot cost. The simulation lets one villager gather per
