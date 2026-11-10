@@ -899,34 +899,6 @@ Gold run-outs and other info notes are in the collapsed info list in Results.
 Narrow layout: under 768 px the step rows are cards (their selects and inputs shrink to the card), the run bar scrolls with the page and wraps onto several rows with the select and
 duration input at full width, and the step timeline and compare tables scroll sideways inside their own boxes. The
 page itself does not scroll sideways at 390 px on either tab, even with a long unbroken token in an issue message.
-
-#### Saving a build and opening it by link
-
-Save build (`save-build`) is enabled only while the shown result matches the settled input (status `current`), and
-while no save and no `?b=` load is in flight. A save stores the parsed build order, not the raw text, and the duration, so comments and blank lines are not kept and the text
-reopens in canonical form. The saved name is that of the build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label. The same content gives the same link, and saving it again returns it.
-
-The link is the page's origin plus `?b=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
-(`copy-saved-link`) in the run bar, and focus moves to the link with its text selected. Copy reads `Copied` once
-the clipboard accepts the link; when the browser refuses it, the link stays selected and the page says `Could not
-copy. Select the link and copy it by hand.` Escape in the link panel hides it and returns focus to Save build.
-The link, any save error and the `b` in the address bar go away on the first settled change of the text, the
-duration or the selected build (not while the edit is still inside the pause), and a save puts `b` back. A save
-answered after the settled input changed shows no link.
-
-Opening `/apps/aoe4-build-order?b=<id>` loads that build into the editor and runs it: the select gains an option
-`<name> (<id>)` that is selected, the duration is the saved one, and the select, duration, text editor, step
-table and Save build are disabled while the build loads, with no run until it ends. When the page shows the Build and Results tabs, Results is selected after the first successful run. The first `b` in the address is the only one read, and a later change of `b`
-(back or forward) loads nothing. An unknown or malformed id shows `That saved build was not found. Showing the
-default build.`, and a load that failed shows `That saved build could not be loaded. Showing the default build.`;
-either runs the default build. A saved build whose text no longer converts opens as text with its issues and does
-not run.
-
-A failed save shows one message (`save-build-error`) and leaves Save build enabled: the first issue for a rejected
-build (`The build could not be saved: <issue>`), `The build is too large to save.`, `Saving is unavailable right
-now. Try again later.`, or `The build could not be saved. Try again.` for any other failure. When saves are
-limited it reads `Too many saves. Try again in <n> seconds.` below a minute and `Too many saves. Try again in <m>
-minutes.` from a minute on (rounded up), or `Too many saves. Try again later.` when the wait is unknown.
 At 1800 px and wider the step timeline sits in a column to the left of the charts and stays on screen just below the run
 bar while the charts scroll; it scrolls vertically inside that column, and sideways inside its own box when the table is
 wider than the column. Below 1800 px it is stacked above the charts and scrolls with the page.
@@ -1055,6 +1027,34 @@ with a `whenever gold runs out move all gold to gold#2` reaction.
 
 The three prebuilt builds are `ENG 1TC`, `ENG Knight/Longbow (King's Palace)` and `ENG Spear/Longbow into
 MAA/Crossbow`.
+
+#### Saving a build and opening it by link
+
+Save build (`save-build`) is enabled only while the shown result matches the settled input (status `current`), and
+while no save and no `?b=` load is in flight. A save stores the parsed build order, not the raw text, and the duration, so comments and blank lines are not kept and the text
+reopens in canonical form. The saved name is that of the build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label. The same content gives the same link, and saving it again returns it.
+
+The link is the page's origin plus `?b=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
+(`copy-saved-link`) in the run bar, and focus moves to the link with its text selected. Copy reads `Copied` once
+the clipboard accepts the link; when the browser refuses it, the link stays selected and the page says `Could not
+copy. Select the link and copy it by hand.` Escape in the link panel hides it and returns focus to Save build.
+The link, any save error and the `b` in the address bar go away on the first settled change of the text, the
+duration or the selected build (not while the edit is still inside the pause), and a save puts `b` back. A save
+answered after the settled input changed shows no link.
+
+Opening `/apps/aoe4-build-order?b=<id>` loads that build into the editor and runs it: the select gains an option
+`<name> (<id>)` that is selected, the duration is the saved one, and the select, duration, text editor, step
+table and Save build are disabled while the build loads, with no run until it ends. When the page shows the Build and Results tabs, Results is selected after the first successful run. The first `b` in the address is the only one read, and a later change of `b`
+(back or forward) loads nothing. An unknown or malformed id shows `That saved build was not found. Showing the
+default build.`, and a load that failed shows `That saved build could not be loaded. Showing the default build.`;
+either runs the default build. A saved build whose text no longer converts opens as text with its issues and does
+not run.
+
+A failed save shows one message (`save-build-error`) and leaves Save build enabled: the first issue for a rejected
+build (`The build could not be saved: <issue>`), `The build is too large to save.`, `Saving is unavailable right
+now. Try again later.`, or `The build could not be saved. Try again.` for any other failure. When saves are
+limited it reads `Too many saves. Try again in <n> seconds.` below a minute and `Too many saves. Try again in <m>
+minutes.` from a minute on (rounded up), or `Too many saves. Try again later.` when the wait is unknown.
 
 ## CivRules seams
 
