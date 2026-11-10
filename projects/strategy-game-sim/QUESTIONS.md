@@ -23,18 +23,3 @@ Detail goes in the research report. Each item has this shape:
     <the owner's answer; empty while open>
 
 next: Q26
-
-## Q23: M7.8: which house rule replaces the auto-house gate?
-kind: decision
-blocks: M7 (The build order is the step timeline)
-options: A) Drop the gate: auto-houses always plan, explicit house steps add on top; 2 warnings removed | B) Auto-houses yield only while an explicit house step is reached but not started | C) Keep the gate but open it whenever supply blocks production | D) Per-build setting
-recommendation: A: simplest rule, matches the no-house-steps result, autoHouses:false still gives full manual control
-research: reports/M7-planner-1.md
-thread: 1569644163677294752
-
-M7.8 (explicit build-house steps freeze production, build 259) needs a new house rule; the design does not state one.
-- Today auto-houses stay off until the LAST explicit build-house step starts; build 259 froze villager production behind it.
-- Without house steps the same build reached 20 villagers and 10 longbows by 7:30.
-- A removes warnings auto-houses-never-start and auto-houses-held (OpenAPI change) and shifts english-1tc / knight-longbow timings.
-
-### Answer

@@ -7,9 +7,7 @@
   },
   "milestone": {
     "id": "M7",
-    "step": "2b design questions",
-    "waiting": [
-      "Q23"
-    ]
+    "step": "3 tickets",
+    "waiting": []
   }
 }
