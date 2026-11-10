@@ -1,5 +1,6 @@
 // Prebuilt build orders. A new build is one JSON file in data/aoe4-build-order/builds/ plus one entry here.
 import english1tc from '../../data/aoe4-build-order/builds/english-1tc.json';
+import english1tcCouncilHall from '../../data/aoe4-build-order/builds/english-1tc-council-hall.json';
 import englishKnightLongbow from '../../data/aoe4-build-order/builds/english-knight-longbow.json';
 import englishSpearLongbowMaaCrossbow from '../../data/aoe4-build-order/builds/english-spear-longbow-maa-crossbow.json';
 import type { BuildOrder } from './model';
@@ -8,6 +9,7 @@ const BUILDS: readonly BuildOrder[] = [
   english1tc as unknown as BuildOrder,
   englishSpearLongbowMaaCrossbow as unknown as BuildOrder,
   englishKnightLongbow as unknown as BuildOrder,
+  english1tcCouncilHall as unknown as BuildOrder,
 ];
 
 export function listBuilds(): BuildOrder[] {

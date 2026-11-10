@@ -998,11 +998,11 @@ at 3600 s no step is `waiting`, every non-reaction step has started, and a `not-
 whose `startedAt` is its `depletedAt`, and no gold warning has severity `warning`; and no `farm-idle` warning
 appears at 1200 s, 1800 s or 3600 s. Each also meets its production floors and floating cap at 1200 s:
 villager and unit counts and a food rate at least the build's row in
-`lib/aoe4-build-order/production-floors.ts`, and each floating resource at most that file's cap. ENG 1TC ends
-with a `whenever gold runs out move all gold to gold#2` reaction.
+`lib/aoe4-build-order/production-floors.ts`, and each floating resource at most that file's cap. Each build
+named with `1TC` has a `whenever gold runs out move all gold to gold#2` reaction as its first reaction.
 
-The three prebuilt builds are `ENG 1TC`, `ENG Knight/Longbow (King's Palace)` and `ENG Spear/Longbow into
-MAA/Crossbow`.
+The four prebuilt builds are `ENG 1TC`, `ENG Knight/Longbow (King's Palace)`, `ENG Spear/Longbow into
+MAA/Crossbow` and `ENG 1TC Council Hall`.
 
 #### Saving a build and opening it by link
 

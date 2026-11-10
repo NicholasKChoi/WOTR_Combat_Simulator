@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
+import english1tcCouncilHall from '../data/aoe4-build-order/builds/english-1tc-council-hall.json'
 import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
 import spearLongbow from '../data/aoe4-build-order/builds/english-spear-longbow-maa-crossbow.json'
 import { MAX_FLOATING_AT_1200, PRODUCTION_FLOORS } from '../lib/aoe4-build-order/production-floors'
@@ -20,6 +21,7 @@ const builds = [
   { name: 'English 1TC', build: english1tc },
   { name: 'knight/longbow', build: knightLongbow },
   { name: 'spear/longbow into men-at-arms/crossbow', build: spearLongbow },
+  { name: 'English 1TC Council Hall', build: english1tcCouncilHall },
 ]
 
 test.describe.configure({ timeout: 60_000 })
