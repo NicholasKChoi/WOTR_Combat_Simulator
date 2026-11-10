@@ -24,19 +24,6 @@ Detail goes in the research report. Each item has this shape:
 
 next: Q35
 
-## Q27: Retro P2: a visible defect in UI the diff adds is blocking (NEEDS_SPEC if it conflicts with spec)
-kind: confirmation
-blocks: retro-20261110
-options: A) approve | B) change: say what | C) reject
-recommendation: A: evidence in the retro report
-research: reports/retro-20261110.md
-thread: 1569830098314731612
-
-Retro 2026-11-10 proposal 2 (engine layer). Approve to apply; engine edits go to an agent in the code-factory repo.
-- SGS-108 note on mid-word badge wrap shipped; seen again in M7 validation
-
-### Answer
-
 ## Q28: Retro P3: launch prompts state the report path is the requested deliverable to write with Write
 kind: confirmation
 blocks: retro-20261110
@@ -44,11 +31,13 @@ options: A) approve | B) change: say what | C) reject
 recommendation: A: evidence in the retro report
 research: reports/retro-20261110.md
 thread: 1569830103066611872
+answered: 2026-11-10T21:46Z discord
 
 Retro 2026-11-10 proposal 3 (engine layer). Approve to apply; engine edits go to an agent in the code-factory repo.
 - 16 agents returned without writing their report (was 2)
 
 ### Answer
+A) approve
 
 ## Q29: Retro P4: never overwrite a report; take next free n; name batch reports by ticket range
 kind: confirmation
