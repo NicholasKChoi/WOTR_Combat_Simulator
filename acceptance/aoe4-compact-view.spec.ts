@@ -4,7 +4,6 @@ import { parseBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { SIMULATE_PATH, SPLIT_VIEWPORT, openPage, showView, waitForRun } from './helpers'
 
 const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
-const DURATION = 1200
 const EN_DASH = '–'
 const VILLAGER = 'produce villager from capital-town-center'
 
@@ -32,7 +31,7 @@ function stepLinesOf(text: string): number[] {
 }
 
 const STEP_LINES = stepLinesOf(MIXED_BUILD)
-const LINE_OF = { instant: 4, spanning: 5, waiting: 6, notReached: 10, blank: 8, comment: 9 }
+const LINE_OF = { instant: 4, spanning: 5, waiting: 6, notReached: 10, blank: 8 }
 
 const gutter = (page: Page, line: number) => page.locator(`[data-testid="build-order-line-annotation"][data-line="${line}"]`)
 const annotations = (page: Page) => page.getByTestId('build-order-annotations')

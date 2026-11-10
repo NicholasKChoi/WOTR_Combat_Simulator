@@ -3,6 +3,7 @@ import type { SyntheticEvent } from 'react'
 
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import type { BuildOrderLines } from '../../../lib/aoe4-build-order/model'
+import annotationStyles from './step-annotation.module.css'
 import { KIND_CLASS, StepKindLegend, StepTimes, annotationToneClass } from './step-annotation'
 import { annotationsByLine, type BuildAnnotations, type StepAnnotation } from './step-annotations'
 import { lineCount } from './text-lines'
@@ -40,7 +41,7 @@ function AnnotationLine({ line, annotation, stale, active, onActiveStepChange }:
             data-stale={annotation !== null && stale ? 'true' : undefined}
             data-gutter-active={active ? 'true' : undefined}
             title={run === null ? undefined : `Waited ${formatMinSec(run.waitSeconds)}. Blocked by: ${run.blockedBy === '' ? 'nothing' : run.blockedBy}`}
-            className={cn(annotation !== null && [styles.annotation, KIND_CLASS[annotation.kind], annotationToneClass(run ?? undefined, stale)])}
+            className={cn(annotation !== null && [annotationStyles.kindBorder, KIND_CLASS[annotation.kind], annotationToneClass(run ?? undefined, stale)])}
             onPointerEnter={() => onActiveStepChange(run?.runStep ?? null)}
             onPointerLeave={() => onActiveStepChange(null)}
         >
@@ -53,7 +54,7 @@ export function BuildTextEditor({ text, onChange, errorLines, annotations, lines
     const rowCount = lineCount(text)
     const byLine = annotations === null ? null : annotationsByLine(annotations, lines.steps, rowCount)
     const onCaret = (e: SyntheticEvent<HTMLTextAreaElement>) => {
-        const caretLine = e.currentTarget.value.slice(0, e.currentTarget.selectionStart).split('\n').length
+        const caretLine = lineCount(e.currentTarget.value.slice(0, e.currentTarget.selectionStart))
         onActiveStepChange(byLine?.[caretLine - 1]?.run?.runStep ?? null)
     }
     return (

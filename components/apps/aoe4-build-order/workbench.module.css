@@ -65,10 +65,6 @@
     font-variant-numeric: tabular-nums;
 }
 
-.annotations li.annotation {
-    border-left: 4px solid var(--kind-color, transparent);
-}
-
 .annotations li[data-gutter-active='true'] {
     box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
 }
