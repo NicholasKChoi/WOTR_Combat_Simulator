@@ -45,6 +45,7 @@ blocks: M7 (The build order is the step timeline)
 options: A) approve | B) approve, but keep charts undimmed during the debounce (only annotations dim) | C) change: <what>
 recommendation: A: dimming everything together avoids showing old times next to a new build
 thread: 1569588052148621352
+answered: 2026-11-10T05:43Z discord
 
 Approve the M7 design (design/M7.md) so the planner can cut tickets.
 - One per-step annotation model (step-annotations.ts) feeds the step table and the compact view; the step timeline component goes away and the charts take its width.
@@ -53,6 +54,7 @@ Approve the M7 design (design/M7.md) so the planner can cut tickets.
 - Hover/focus on a row shades the step's span on the charts, as the timeline did.
 
 ### Answer
+A) approve
 
 ## Q22: Which backlog items go into M7?
 kind: decision
@@ -60,6 +62,7 @@ blocks: M7 (The build order is the step timeline)
 options: A) The sideways-scroll layout item and the two doc wording fixes | B) A plus the house-gate production freeze | C) None; keep M7 to its criteria
 recommendation: A: they touch the same pane and doc section M7 rewrites; the house gate is a simulator change better as its own ticket
 thread: 1569588055264993320
+answered: 2026-11-10T05:43Z discord
 
 36 backlog items exist (BACKLOG.md). Which should go into M7 as tickets?
 - Closest to M7: workbench.module.css:42-44 sideways scroll covers the whole ~9100 px Build pane in the split layout (layout work M7 touches anyway).
@@ -68,3 +71,4 @@ thread: 1569588055264993320
 - The rest are test, store and route cleanups unrelated to M7.
 
 ### Answer
+B) A plus the house-gate production freeze
