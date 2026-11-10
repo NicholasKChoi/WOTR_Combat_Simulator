@@ -32,10 +32,14 @@ export function isSavedBuildId(value: unknown): value is string {
   return typeof value === 'string' && SAVED_BUILD_ID_PATTERN.test(value);
 }
 
-export async function savedBuildId(record: SavedBuild): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(record)));
+export async function base64UrlSha256(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   const base64 = btoa(String.fromCharCode(...new Uint8Array(digest)));
-  return base64.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '').slice(0, ID_LENGTH);
+  return base64.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+}
+
+export async function savedBuildId(record: SavedBuild): Promise<string> {
+  return (await base64UrlSha256(JSON.stringify(record))).slice(0, ID_LENGTH);
 }
 
 export function storageEnv(vercelEnv: string | undefined): string {

@@ -2,17 +2,12 @@
 // instances share no memory.
 import type { IncomingHttpHeaders } from 'node:http';
 import type { BuildStore } from './build-store';
+import { base64UrlSha256 } from './saved-builds';
 
 export const SAVE_RATE_LIMIT = Object.freeze({ maxSaves: 30, windowSeconds: 3600 });
 
 const CLIENT_KEY_LENGTH = 16;
 const WINDOW_MS = SAVE_RATE_LIMIT.windowSeconds * 1000;
-
-async function base64UrlSha256(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(digest)));
-  return base64.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
-}
 
 export async function clientKey(req: { headers: IncomingHttpHeaders; socket: { remoteAddress?: string } }): Promise<string> {
   const forwarded = req.headers['x-forwarded-for'];
