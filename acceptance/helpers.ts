@@ -105,6 +105,11 @@ export async function openPage(page: Page) {
   await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'current')
 }
 
+export async function openSavedBuild(page: Page, id: string) {
+  await page.goto(`${AOE4_PAGE}?b=${id}`)
+  await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'current')
+}
+
 export const SPLIT_MIN_WIDTH = 1200
 export const TABS_VIEWPORT = { width: 1024, height: 768 }
 export const SPLIT_VIEWPORT = { width: 1280, height: 800 }

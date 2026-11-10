@@ -860,20 +860,20 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 ### Page
 
 The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls; below that it scrolls with the page. It
-holds the prebuilt build select, the `durationSeconds` number input (default 1200), a text/table toggle and the
-run status (`auto-run-status`). There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
+holds the build select (the prebuilt builds, plus the saved build a `?b=` link opened), the `durationSeconds` number input (default 1200), a text/table toggle and the
+run status (`auto-run-status`) and the Save build button. There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
 Build and Results sit side by side in two equal columns, both always shown, with no tabs. Below 1200 px they are two
-tabs, Build and Results; Results is enabled while there is a result or a pinned run. No run selects a tab, and
+tabs, Build and Results; Results is enabled while there is a result or a pinned run. No run selects a tab (one exception: opening a `?b=` link, see below), and
 the page never scrolls by itself. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so in the tabs layout the toggle is usable on the Build tab only; in the side-by-side layout the tab never disables it. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The layout follows the viewport width live, with no reload and no new run, and neither panel is remounted by a switch, so editor focus and text, an uncommitted table cell and the chart state carry across it. The tab selected before a resize to the side-by-side layout is kept, and the tabs layout shows it again after a resize back. When the page is opened directly, its first paint is the tabs layout and it switches to the side-by-side layout after it loads. In the side-by-side layout a Build panel wider than its column scrolls sideways inside the column. The Build panel shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the
-step table. The view survives runs and tab switches but not a reload, and a reload starts on Build.
+step table. The view survives runs and tab switches but not a reload, and a reload starts on Build (except that after opening a `?b=` link, Results is selected after its first successful run when the page shows the Build and Results tabs).
 Choosing a prebuilt build replaces the text with that build's paste text; editing the text
 leaves the select as it is.
 
 The input settles 500 ms (`AUTO_RUN_DEBOUNCE_MS`) after the last edit to the text, the step table or the duration,
 and the page then re-runs it; Enter in the duration field and choosing a prebuilt build settle the input at once.
-On load the default build settles and runs once. A settled input is converted with `textToBuildOrder` and the
+On load the default build settles and runs once; with a `?b=` link the opened build runs instead, once its load ends (the default build runs if the load fails). A settled input is converted with `textToBuildOrder` and the
 English catalog, and the checked `buildOrder` and `inputs.durationSeconds` are posted to the route only when the
 input is valid and differs from both the shown result's input and the one in flight; a newer request aborts the
 one in flight, and only the newest response is shown. The duration is checked in the browser: an empty field reads
@@ -987,8 +987,7 @@ pinned) drops it. The pin stays through later runs, text and build edits, invali
 `aoe4-build-order.pinned-run` as the build text, duration and name (not the result), and the page re-runs it on
 load. A stored value that is not valid, a text that no longer converts, or a response that is not ok (400 or 5xx)
 from the re-run drops it; only a failed request (the network) keeps it, and no pin is shown. A Pin or Unpin made before the re-run finishes wins. The label
-`pinned-label` reads `Pinned: <name>, <m:ss>`. The name comes from the shown result's input: the prebuilt build's
-name when its text equals one exactly, `<name> (edited)` (the build selected when that input was sent) otherwise,
+`pinned-label` reads `Pinned: <name>, <m:ss>`. The name comes from the shown result's input: the name of the select option whose text it equals exactly (for an opened build, `<name> (<id>)`), `<name> (edited)` (the build selected when that input was sent) otherwise,
 and `Custom build` when there are no prebuilt builds. The shown result is dimmed (`results-last-good`) while the
 input is invalid, rejected or failed.
 
@@ -1028,6 +1027,34 @@ with a `whenever gold runs out move all gold to gold#2` reaction.
 
 The three prebuilt builds are `ENG 1TC`, `ENG Knight/Longbow (King's Palace)` and `ENG Spear/Longbow into
 MAA/Crossbow`.
+
+#### Saving a build and opening it by link
+
+Save build (`save-build`) is enabled only while the shown result matches the settled input (status `current`), and
+while no save and no `?b=` load is in flight. A save stores the parsed build order, not the raw text, and the duration, so comments and blank lines are not kept and the text
+reopens in canonical form. The saved name is that of the build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label. The same content gives the same link, and saving it again returns it.
+
+The link is the page's origin plus `?b=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
+(`copy-saved-link`) in the run bar, and focus moves to the link with its text selected. Copy reads `Copied` once
+the clipboard accepts the link; when the browser refuses it, the link stays selected and the page says `Could not
+copy. Select the link and copy it by hand.` Escape in the link panel hides it and returns focus to Save build.
+The link, any save error and the `b` in the address bar go away on the first settled change of the text, the
+duration or the selected build (not while the edit is still inside the pause), and a save puts `b` back. A save
+answered after the settled input changed shows no link.
+
+Opening `/apps/aoe4-build-order?b=<id>` loads that build into the editor and runs it: the select gains an option
+`<name> (<id>)` that is selected, the duration is the saved one, and the select, duration, text editor, step
+table and Save build are disabled while the build loads, with no run until it ends. When the page shows the Build and Results tabs, Results is selected after the first successful run. The first `b` in the address is the only one read, and a later change of `b`
+(back or forward) loads nothing. An unknown or malformed id shows `That saved build was not found. Showing the
+default build.`, and a load that failed shows `That saved build could not be loaded. Showing the default build.`;
+either runs the default build. A saved build whose text no longer converts opens as text with its issues and does
+not run.
+
+A failed save shows one message (`save-build-error`) and leaves Save build enabled: the first issue for a rejected
+build (`The build could not be saved: <issue>`), `The build is too large to save.`, `Saving is unavailable right
+now. Try again later.`, or `The build could not be saved. Try again.` for any other failure. When saves are
+limited it reads `Too many saves. Try again in <n> seconds.` below a minute and `Too many saves. Try again in <m>
+minutes.` from a minute on (rounded up), or `Too many saves. Try again later.` when the wait is unknown.
 
 ## CivRules seams
 

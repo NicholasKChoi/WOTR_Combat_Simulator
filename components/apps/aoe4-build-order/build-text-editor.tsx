@@ -7,9 +7,10 @@ interface BuildTextEditorProps {
     text: string
     onChange: (text: string) => void
     errorLines: readonly number[]
+    disabled?: boolean
 }
 
-export function BuildTextEditor({ text, onChange, errorLines }: BuildTextEditorProps) {
+export function BuildTextEditor({ text, onChange, errorLines, disabled = false }: BuildTextEditorProps) {
     const lines = lineCount(text)
     return (
         <div className="mb-3">
@@ -35,6 +36,8 @@ export function BuildTextEditor({ text, onChange, errorLines }: BuildTextEditorP
                     wrap="off"
                     spellCheck={false}
                     value={text}
+                    disabled={disabled}
+                    aria-busy={disabled ? 'true' : undefined}
                     onChange={(e) => onChange(e.target.value)}
                 />
             </div>
