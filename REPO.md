@@ -95,6 +95,12 @@ status `Vercel – wotr-combat-simulator` (project `nicholas-chois-projects/wotr
 - No ESLint config at the root and no `lint`/`test`/`build` scripts in the root `package.json` (only `dev`).
 - `golang/frontend/` is a separate create-react-app with its own package.json (`npm test` via react-scripts);
   it is not deployed and not wired to the Next.js app.
+- Sandbox: `.git/worktrees/*` are read-only bind mounts, so `git worktree remove|prune` fails EBUSY for
+  worktrees created in this session. Leave them; the next run start (unsandboxed `git worktree prune`)
+  cleans up. Not an issue line. `git push -u` failing to write upstream to .git/config is harmless;
+  push with an explicit `origin HEAD:refs/heads/<branch>`.
+- npm and Playwright caches: use the allowlisted ~/.npm and ~/.cache/ms-playwright; if EROFS persists,
+  set `npm_config_cache=$TMPDIR/npm` for lint only.
 
 ## Review checklist
 
