@@ -35,3 +35,8 @@ pull from here; triage moves an item into a milestone or deletes it.
 - `lib/aoe4-build-order/builds-routes.ts`: `savedBuildId` sits inside the try, so a crypto failure maps to 503 rather than 500. (SGS-103 review 1)
 - `lib/aoe4-build-order/builds-routes.ts:51-54`: an unset `VERCEL_ENV` maps to development, so a production deploy missing it would allow unauthenticated DELETE and save under the `development/` prefix; consider failing closed when `VERCEL` is set but `VERCEL_ENV` is not. (SGS-103 tech-lead batch 8)
 - `lib/aoe4-build-order/save-rate-limit.ts`: a refused save still writes the Blob counter, so a client over the limit keeps causing Blob operations; and Blob SDK retries (up to 10) multiply with the 3 compare-and-swap attempts during an outage. (SGS-101 tech-lead batch 8)
+- `acceptance/aoe4-auto-run.spec.ts:203`: the invalid-duration case never asserts `duration-error` is visible; add `toBeVisible()` to catch a lost `is-invalid` class. (SGS-102 review 1)
+- `use-auto-run.ts`: `firstPaintState` repeats the controller's request expression; export `settledFields` from the SGS-100 controller and reuse it. (SGS-102 review 1)
+- `acceptance/aoe4-auto-run.spec.ts:309`: the open-rows test never asserts the two builds differ, so it could go vacuous. (SGS-102 review 1)
+- `acceptance/aoe4-auto-run.spec.ts:189`: two chart ids listed by hand instead of `CHART_IDS`. (SGS-102 review 1)
+- `docs/aoe4-build-order.md:878`: "until the next settled input" is loose; an edit that leaves the request unchanged keeps the 400 issues. Suggested text in reports/SGS-102-review-1.md. (SGS-102 review 1)
