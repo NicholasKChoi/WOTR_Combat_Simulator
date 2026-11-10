@@ -714,6 +714,23 @@ checked then, and `inputs` still is. A body with no `buildOrder` is one `syntax`
 `docs/api/openapi.json` is the authoritative request and response contract, with schema names equal to the
 TypeScript names in `lib/aoe4-build-order/api.ts` and `model.ts`; this doc does not copy its field lists.
 
+### Builds routes
+
+`POST /api/aoe4-build-order/builds` (`operationId: saveBuild`) saves a build order, and `GET` and `DELETE`
+`/api/aoe4-build-order/builds/{id}` (`getSavedBuild`, `deleteSavedBuild`) read and remove one. Their logic is in
+`lib/aoe4-build-order/builds-routes.ts`; the files under `pages/api/aoe4-build-order/builds/` only adapt the
+request and response.
+
+- A save is validated before it costs a rate-limit slot or a store call, so an invalid body never counts
+  against the limit. The 400 and 413 checks need no storage and run first.
+- The id is content-addressed, so saving the same build again returns the same id with 200 instead of 201.
+  A repeat save still takes a rate-limit slot.
+- `GET` sends `Cache-Control: public, max-age=31536000, immutable`, because a saved build never changes. An id
+  that is malformed and an id with no build give the same 404.
+- `DELETE` exists outside production only; in production the route answers it with 405.
+- The storage comes from `buildStoreFromEnv` in `build-store.ts`, and the per-client limit is
+  `SAVE_RATE_LIMIT` in `save-rate-limit.ts`. A 429 carries `Retry-After`.
+
 ## Outputs
 
 A `SimulationResult` holds:

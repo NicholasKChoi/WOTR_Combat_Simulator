@@ -217,7 +217,7 @@ test.describe('bounds match SIM_INPUT_BOUNDS', () => {
   const locations: Record<keyof typeof SIM_INPUT_BOUNDS, () => Record<string, unknown>[]> = {
     textChars: () => [],
     steps: () => [],
-    durationSeconds: () => [overrides.durationSeconds],
+    durationSeconds: () => [overrides.durationSeconds, schemas.SaveBuildRequest.properties.durationSeconds],
     triggerSeconds: () => [trigger('time').properties.seconds],
     triggerCount: () => [trigger('villagers').properties.count],
     triggerAtLeast: () => [trigger('bank').properties.atLeast],
@@ -280,7 +280,7 @@ test.describe('examples', () => {
     ).toBe(true)
   })
 
-  for (const name of ['goldRunOut']) {
+  for (const name of Object.keys(requestExamples)) {
     test(`the ${name} request example returns the documented 200 body`, async ({ request }) => {
       expect(await expect200(request, requestExamples[name].value)).toEqual(okExamples[name].value)
     })

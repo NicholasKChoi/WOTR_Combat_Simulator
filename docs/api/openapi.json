@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Strategy Game Simulator API",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "description": "HTTP API of the strategy game simulator site."
   },
   "paths": {
@@ -331,7 +331,7 @@
                             2,
                             2,
                             2,
-                            2
+                            3
                           ]
                         }
                       ],
@@ -345,11 +345,11 @@
                           259.3659942363112,
                           259.3659942363112,
                           259.3659942363112,
-                          259.3659942363112,
-                          259.3659942363112,
-                          259.3659942363112,
-                          259.3659942363112,
-                          259.3659942363112
+                          222.3137093454096,
+                          222.3137093454096,
+                          222.3137093454096,
+                          222.3137093454096,
+                          222.3137093454096
                         ],
                         "wood": [
                           0,
@@ -407,11 +407,11 @@
                           7,
                           7,
                           7,
-                          7,
-                          7,
-                          7,
-                          7,
-                          7
+                          6,
+                          6,
+                          6,
+                          6,
+                          6
                         ],
                         "wood": [
                           0,
@@ -469,11 +469,11 @@
                           192.630712227254,
                           214.24454508027995,
                           235.8583779333059,
-                          257.4722107863318,
-                          279.08604363935774,
-                          300.6998764923837,
-                          322.3137093454096,
-                          343.92754219843556
+                          207.4722107863318,
+                          225.9983532317826,
+                          244.5244956772334,
+                          263.0506381226842,
+                          231.57678056813495
                         ],
                         "wood": [
                           200,
@@ -484,11 +484,11 @@
                           200,
                           200,
                           200,
-                          200,
-                          200,
-                          202.58353427488805,
-                          205.1670685497761,
-                          207.75060282466416
+                          150,
+                          150,
+                          152.58353427488805,
+                          155.1670685497761,
+                          157.75060282466416
                         ],
                         "gold": [
                           100,
@@ -532,10 +532,10 @@
                           114.24454508027992,
                           135.85837793330586,
                           157.4722107863318,
-                          179.08604363935774,
-                          200.69987649238368,
-                          222.31370934540962,
-                          243.92754219843556
+                          175.9983532317826,
+                          194.5244956772334,
+                          213.0506381226842,
+                          231.576780568135
                         ],
                         "wood": [
                           0,
@@ -593,11 +593,11 @@
                           100,
                           100,
                           100,
-                          100,
-                          100,
-                          100,
-                          100,
-                          100
+                          150,
+                          150,
+                          150,
+                          150,
+                          200
                         ],
                         "military": [
                           0,
@@ -623,11 +623,11 @@
                           0,
                           0,
                           0,
-                          0,
-                          0,
-                          0,
-                          0,
-                          0
+                          50,
+                          50,
+                          50,
+                          50,
+                          50
                         ],
                         "research": [
                           0,
@@ -658,7 +658,7 @@
                         9,
                         9,
                         9,
-                        9
+                        10
                       ],
                       "populationCapReachedAt": null,
                       "steps": [
@@ -1848,6 +1848,479 @@
                 },
                 "example": {
                   "error": "method GET is not allowed; use POST"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/aoe4-build-order/builds": {
+      "post": {
+        "operationId": "saveBuild",
+        "summary": "Save a build order under a short id.",
+        "description": "Validates a build order and stores it under a content-addressed id, so saving the same build again returns the same id. The first save of a build answers 201; a repeat save answers 200 with the same body and changes nothing stored. A repeat save still counts against the rate limit, which is per client and per window; the 429 response carries Retry-After. A save is validated before it costs a rate-limit slot or a storage call, so an invalid body never counts. A body that is not a JSON object gives one syntax issue; otherwise the order is checked like the simulate route checks buildOrder, durationSeconds must be an integer in range, and name at most 100 characters; the issues are listed as in the simulate route. A record over 65536 bytes is a 413 with a BuildsError. Two framework responses have no schema and happen before the handler runs: a body that is not valid JSON is a 400 with the plain-text body Invalid JSON, and a body over the 128 kb body limit is a 413 with a plain-text body.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveBuildRequest"
+              },
+              "examples": {
+                "buildOrder": {
+                  "summary": "a small build order saved for a 300 second horizon",
+                  "value": {
+                    "buildOrder": {
+                      "civ": "english",
+                      "name": "Rally opener",
+                      "start": {
+                        "villagers": {
+                          "sheep": 6
+                        },
+                        "rally": "sheep"
+                      },
+                      "steps": [
+                        {
+                          "action": "produce",
+                          "producer": "capital-town-center",
+                          "unit": "villager",
+                          "count": 2
+                        },
+                        {
+                          "trigger": {
+                            "kind": "time",
+                            "seconds": 30
+                          },
+                          "action": "rally",
+                          "producer": "capital-town-center",
+                          "to": "wood"
+                        }
+                      ]
+                    },
+                    "durationSeconds": 300
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The same build was saved before; nothing changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveBuildResponse"
+                },
+                "examples": {
+                  "exists": {
+                    "summary": "the repeat save of the request example",
+                    "value": {
+                      "id": "Mp3W3nzWigC",
+                      "path": "/apps/aoe4-build-order?b=Mp3W3nzWigC"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "The build was stored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaveBuildResponse"
+                },
+                "examples": {
+                  "created": {
+                    "summary": "the first save of the request example",
+                    "value": {
+                      "id": "Mp3W3nzWigC",
+                      "path": "/apps/aoe4-build-order?b=Mp3W3nzWigC"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was rejected; nothing was stored. A body that is not valid JSON is rejected by the framework with status 400 and the plain-text body Invalid JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulateError"
+                },
+                "examples": {
+                  "notAnObject": {
+                    "summary": "a body that is not a JSON object",
+                    "value": {
+                      "error": "request body: must be a JSON object",
+                      "issues": [
+                        {
+                          "code": "syntax",
+                          "message": "request body: must be a JSON object"
+                        }
+                      ]
+                    }
+                  },
+                  "unknownUnit": {
+                    "summary": "an unknown unit id",
+                    "value": {
+                      "error": "steps[0]: unknown unit \"knigt\" in unit",
+                      "issues": [
+                        {
+                          "code": "unknown-id",
+                          "message": "steps[0]: unknown unit \"knigt\" in unit",
+                          "step": 0,
+                          "suggestion": "knight"
+                        }
+                      ]
+                    }
+                  },
+                  "durationOutOfRange": {
+                    "summary": "durationSeconds 59, below the minimum",
+                    "value": {
+                      "error": "durationSeconds: 59 is outside 60..3600",
+                      "issues": [
+                        {
+                          "code": "out-of-range",
+                          "message": "durationSeconds: 59 is outside 60..3600"
+                        }
+                      ]
+                    }
+                  },
+                  "nameTooLong": {
+                    "summary": "a name of 101 characters",
+                    "value": {
+                      "error": "name: 101 characters, more than 100",
+                      "issues": [
+                        {
+                          "code": "out-of-range",
+                          "message": "name: 101 characters, more than 100"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not POST.",
+            "headers": {
+              "Allow": {
+                "description": "The only allowed method.",
+                "schema": {
+                  "type": "string",
+                  "const": "POST"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "getOnSave": {
+                    "summary": "GET on the save route",
+                    "value": {
+                      "error": "method GET is not allowed; use POST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The saved record is over 65536 bytes. A body over the 128 kb body limit is a 413 with a plain-text body, from the framework, with no schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "recordTooLarge": {
+                    "summary": "a valid order whose source is 30000 three-byte characters",
+                    "value": {
+                      "error": "saved build: 90345 bytes, more than 65536"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "This client saved too often in the current window. Retry-After says when to try again.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the client may save again, 1..3600.",
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "tooManySaves": {
+                    "summary": "the 31st save of one client in one window",
+                    "value": {
+                      "error": "too many saves from this client; try again later"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "storageUnavailable": {
+                    "summary": "the storage did not answer",
+                    "value": {
+                      "error": "storage is unavailable; try again later"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/aoe4-build-order/builds/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "The id a save returned.",
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{11}$"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getSavedBuild",
+        "summary": "Read a saved build order by id.",
+        "description": "Returns the stored record and its id. An id that is not 11 URL-safe characters and an id nothing was saved under both give the same 404, so a caller cannot tell them apart. The body is the record as stored: a build saved before a game-data change still loads.",
+        "responses": {
+          "200": {
+            "description": "The saved build.",
+            "headers": {
+              "Cache-Control": {
+                "description": "A saved build never changes, so it may be cached for a year.",
+                "schema": {
+                  "type": "string",
+                  "const": "public, max-age=31536000, immutable"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedBuildWithId"
+                },
+                "examples": {
+                  "saved": {
+                    "summary": "the build the save request example stored",
+                    "value": {
+                      "version": 1,
+                      "buildOrder": {
+                        "civ": "english",
+                        "name": "Rally opener",
+                        "start": {
+                          "villagers": {
+                            "sheep": 6
+                          },
+                          "rally": "sheep"
+                        },
+                        "steps": [
+                          {
+                            "action": "produce",
+                            "producer": "capital-town-center",
+                            "unit": "villager",
+                            "count": 2
+                          },
+                          {
+                            "trigger": {
+                              "kind": "time",
+                              "seconds": 30
+                            },
+                            "action": "rally",
+                            "producer": "capital-town-center",
+                            "to": "wood"
+                          }
+                        ]
+                      },
+                      "durationSeconds": 300,
+                      "id": "Mp3W3nzWigC"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No build is saved under that id, or the id is malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "notFound": {
+                    "summary": "an id with no saved build",
+                    "value": {
+                      "error": "no saved build with that id"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not GET or DELETE; in production only GET is allowed.",
+            "headers": {
+              "Allow": {
+                "description": "The allowed methods: GET and DELETE, or only GET in production.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "GET, DELETE",
+                    "GET"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "putOnId": {
+                    "summary": "PUT on the id route outside production",
+                    "value": {
+                      "error": "method PUT is not allowed; use GET or DELETE"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The stored value is not a saved build. Saves never write one; this is a guard.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "unreadableBuild": {
+                    "summary": "a stored value that fails the record schema",
+                    "value": {
+                      "error": "the stored build could not be read"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "storageUnavailable": {
+                    "summary": "the storage did not answer",
+                    "value": {
+                      "error": "storage is unavailable; try again later"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteSavedBuild",
+        "summary": "Delete a saved build order by id (outside production only).",
+        "description": "Removes the build, so a following read gives 404. Deleting an id with no build also answers 204. The DELETE method is answered with 405 in production, where saved builds are never deleted.",
+        "responses": {
+          "204": {
+            "description": "The build is gone, or was never there."
+          },
+          "404": {
+            "description": "The id is malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "notFound": {
+                    "summary": "a malformed id",
+                    "value": {
+                      "error": "no saved build with that id"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not allowed: DELETE in production, or any method but GET and DELETE.",
+            "headers": {
+              "Allow": {
+                "description": "The allowed methods: GET and DELETE, or only GET in production.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "GET, DELETE",
+                    "GET"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "storageUnavailable": {
+                    "summary": "the storage did not answer",
+                    "value": {
+                      "error": "storage is unavailable; try again later"
+                    }
+                  }
                 }
               }
             }
@@ -3765,6 +4238,105 @@
             "type": "number",
             "minimum": 0,
             "description": "Game time in seconds the age was reached or the research completed."
+          }
+        }
+      },
+      "SaveBuildRequest": {
+        "type": "object",
+        "description": "The request to save a build order: the order and the simulated horizon the page shows it for. Unknown extra keys are ignored.",
+        "required": [
+          "buildOrder",
+          "durationSeconds"
+        ],
+        "properties": {
+          "buildOrder": {
+            "$ref": "#/components/schemas/BuildOrder",
+            "description": "The build order to save. It is checked like the simulate route checks buildOrder, and its name is at most 100 characters."
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "minimum": 60,
+            "maximum": 3600,
+            "description": "The simulated horizon in seconds, 60..3600."
+          }
+        }
+      },
+      "SavedBuild": {
+        "type": "object",
+        "description": "A stored build order. It is open so that SavedBuildWithId can compose it with an id.",
+        "required": [
+          "version",
+          "buildOrder",
+          "durationSeconds"
+        ],
+        "properties": {
+          "version": {
+            "const": 1,
+            "description": "The record format version; always 1."
+          },
+          "buildOrder": {
+            "$ref": "#/components/schemas/BuildOrder",
+            "description": "The saved build order."
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "description": "The simulated horizon in seconds that was saved with the order. A read applies no bounds, so it succeeds whatever the bounds are later."
+          }
+        }
+      },
+      "SavedBuildWithId": {
+        "description": "The body of a successful read: the stored record and its id. It is closed.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SavedBuild"
+          },
+          {
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{11}$",
+                "description": "The id of the saved build, 11 URL-safe characters."
+              }
+            },
+            "required": [
+              "id"
+            ]
+          }
+        ],
+        "unevaluatedProperties": false
+      },
+      "SaveBuildResponse": {
+        "type": "object",
+        "description": "Where a saved build can be opened.",
+        "required": [
+          "id",
+          "path"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{11}$",
+            "description": "The content-addressed id: the same build always gets the same id."
+          },
+          "path": {
+            "type": "string",
+            "description": "The page path that opens the build, for example /apps/aoe4-build-order?b=<id>. A path, not an absolute URL: prefix it with the site origin."
+          }
+        }
+      },
+      "BuildsError": {
+        "type": "object",
+        "description": "Error body of the builds routes, for every status except a 400 for an invalid save request (SimulateError).",
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What went wrong, in one lower-case sentence."
           }
         }
       }

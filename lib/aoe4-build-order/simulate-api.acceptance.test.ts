@@ -6,10 +6,13 @@ import { loadGameData } from './data'
 import { simulateBuildOrder } from './simulate'
 import { inputsFor } from './test-helpers'
 
-function post(body: unknown): { status: number; body: unknown } {
-    const sent = { status: 0, body: undefined as unknown }
+function send(method: string, body: unknown): { status: number; headers: Record<string, string>; body: unknown } {
+    const sent = { status: 0, headers: {} as Record<string, string>, body: undefined as unknown }
     const res = {
-        setHeader: () => res,
+        setHeader: (name: string, value: string) => {
+            sent.headers[name] = value
+            return res
+        },
         status: (code: number) => {
             sent.status = code
             return res
@@ -18,9 +21,11 @@ function post(body: unknown): { status: number; body: unknown } {
             sent.body = payload
         },
     }
-    handler({ method: 'POST', body } as NextApiRequest, res as unknown as NextApiResponse)
+    handler({ method, body } as NextApiRequest, res as unknown as NextApiResponse)
     return sent
 }
+
+const post = (body: unknown) => send('POST', body)
 
 describe.each(listBuilds().map((build) => [build.name, build] as const))('simulate API with the shipped build %s', (_, build) => {
     it('answers 200 with exactly what the engine produces for the default inputs', () => {
@@ -40,5 +45,17 @@ describe('simulate API with an order the engine would reject', () => {
         const build = listBuilds()[0]
         const sent = post({ buildOrder: { ...build, start: {} } })
         expect(sent.status).toBe(400)
+    })
+})
+
+describe('simulate API route answers', () => {
+    it('answers GET with 405, Allow: POST and the method text', () => {
+        expect(send('GET', undefined)).toStrictEqual({ status: 405, headers: { Allow: 'POST' }, body: { error: 'method GET is not allowed; use POST' } })
+    })
+
+    it('answers a body that is an array with the not-an-object 400', () => {
+        const sent = post([])
+        expect(sent.status).toBe(400)
+        expect(sent.body).toStrictEqual({ error: 'request body: must be a JSON object', issues: [{ code: 'syntax', message: 'request body: must be a JSON object' }] })
     })
 })
