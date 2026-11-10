@@ -24,34 +24,6 @@ Detail goes in the research report. Each item has this shape:
 
 next: Q35
 
-## Q28: Retro P3: launch prompts state the report path is the requested deliverable to write with Write
-kind: confirmation
-blocks: retro-20261110
-options: A) approve | B) change: say what | C) reject
-recommendation: A: evidence in the retro report
-research: reports/retro-20261110.md
-thread: 1569830103066611872
-answered: 2026-11-10T21:46Z discord
-
-Retro 2026-11-10 proposal 3 (engine layer). Approve to apply; engine edits go to an agent in the code-factory repo.
-- 16 agents returned without writing their report (was 2)
-
-### Answer
-A) approve
-
-## Q29: Retro P4: never overwrite a report; take next free n; name batch reports by ticket range
-kind: confirmation
-blocks: retro-20261110
-options: A) approve | B) change: say what | C) reject
-recommendation: A: evidence in the retro report
-research: reports/retro-20261110.md
-thread: 1569830106128588801
-
-Retro 2026-11-10 proposal 4 (engine layer). Approve to apply; engine edits go to an agent in the code-factory repo.
-- suite overwrote batch10-suite-1.md
-
-### Answer
-
 ## Q30: Retro P5: spec-gate and ticket read code at origin/<base> after git fetch, not the main checkout
 kind: confirmation
 blocks: retro-20261110
