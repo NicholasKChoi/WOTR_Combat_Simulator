@@ -88,6 +88,7 @@ test.describe('AoE4 build order auto-run', () => {
 
     const posts = trackPosts(page)
     await textarea(page).fill(VALID_A)
+    await page.clock.runFor(AUTO_RUN_DEBOUNCE_MS / 2)
     await textarea(page).fill(VALID_B)
     await page.clock.runFor(AUTO_RUN_DEBOUNCE_MS - 1)
     await expect(status(page)).not.toHaveAttribute('data-status', 'running')
