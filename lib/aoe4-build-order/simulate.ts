@@ -579,10 +579,7 @@ function orderNeed(cost: Resources, reserve: Readonly<Resources> | undefined): R
 function payOrder(engine: Engine, instance: BuildingInstance): void {
   const order = instance.order!;
   const entry = resolveUnitEntry(order.unit, engine);
-  if (!entry || entry.age > engine.age || defaultVillagersDone(engine, order)) {
-    return;
-  }
-  if (engine.population + entry.costs.popcap > engine.supply) {
+  if (!entry || entry.age > engine.age || defaultVillagersDone(engine, order) || engine.population + entry.costs.popcap > engine.supply) {
     return;
   }
   const need = orderNeed(costOf(entry, 1), entry.baseId === VILLAGER_ID ? undefined : engine.reserve);
