@@ -108,16 +108,17 @@ engine or the build is tuned, and the page shows them for any run.
   The opening is the ENG 1TC economy, with Feudal reached through `abbey-of-kings` (the same landmark as ENG
   1TC, so the first five minutes are the already-tuned opening) and Castle through `build kings-palace`. The
   5:30 rally to gold waits behind the 5:15 farm block, so it fires after 5:30 and new villagers go to gold
-  then, so the King's Palace's 600 gold is paid without moving gatherers; they stay on gold after the palace
-  starts, because the knights need it, and go to wood from 12:00. The King's Palace is rallied to wood. Three stables and two archery ranges;
+  then, so the King's Palace's 600 gold is paid without moving gatherers; once the palace starts, new villagers
+  go to wood (the 12:00 rally to wood repeats it). The King's Palace is rallied to wood. Three stables and two archery ranges;
   the second `produce longbowman` step comes after the second range is built, because a `produce` step only
   orders the producers that exist when it starts. Explicit `build house` steps come early and in a block just
-  before the King's Palace. Auto-houses stay off until the last `build house` step has started, so the run can
-  carry an `auto-houses-held` warning while production waits at the supply limit before that step starts.
+  before the King's Palace. Auto-houses plan from the start as well, so the explicit houses add supply on top
+  of them.
   Farms are added in blocks of four at 10:00, 14:00, 16:00 and 18:00 (`time` 600, 840, 960 and 1080), each
   built by wood gatherers who farm them; the 10:00 block sits after the third stable and the 10:34 pair in the
   list, so it waits for both of them to start. Smaller groups of wood-and-return farms come at `time` 563
-  (four), 634 (two), 722 (one) and 942 (four). The groups are placed ahead of the villagers sent to farm by
+  (four) and 634 (two); the farm at `time` 740 (one) and the group at 942 (four) are built by wood gatherers
+  who farm them. The groups are placed ahead of the villagers sent to farm by
   the Town Center rally to farm and by the sheep reaction, so each of them finds a built farm. The four
   blacksmith techs (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after
   `build kings-palace` in the list, so they queue behind the landmark instead of taking its gold first;

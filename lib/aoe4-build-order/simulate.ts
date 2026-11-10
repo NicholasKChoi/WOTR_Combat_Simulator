@@ -146,11 +146,6 @@ interface Engine extends EngineState {
   readonly runOuts: FiniteNodeRef[];
   // Auto-house fallback candidates: every node ref but the deposits the order never names.
   readonly houseSources: readonly NodeRef[];
-  // Production was refused for lack of supply in the final pass of the latest runInstant.
-  supplyBlocked: boolean;
-  // First instant, and total seconds, that production sat at the supply limit while the house gate kept auto-houses off.
-  heldAt: number | null;
-  heldSeconds: number;
 }
 
 function ruleContext(state: EngineState): CivRuleContext {
@@ -523,7 +518,6 @@ function offerStep(engine: Engine, index: number): StepStart | null {
   const outcome: StepStart = handler ? handler(step, index, engine) : { started: false, waitingOn: 'prerequisite' };
   if (outcome.started === false) {
     timing.waitingOn = outcome.waitingOn;
-    engine.supplyBlocked ||= outcome.waitingOn === 'population';
     return outcome;
   }
   timing.waitingOn = null;
@@ -585,11 +579,7 @@ function orderNeed(cost: Resources, reserve: Readonly<Resources> | undefined): R
 function payOrder(engine: Engine, instance: BuildingInstance): void {
   const order = instance.order!;
   const entry = resolveUnitEntry(order.unit, engine);
-  if (!entry || entry.age > engine.age || defaultVillagersDone(engine, order)) {
-    return;
-  }
-  if (engine.population + entry.costs.popcap > engine.supply) {
-    engine.supplyBlocked = true;
+  if (!entry || entry.age > engine.age || defaultVillagersDone(engine, order) || engine.population + entry.costs.popcap > engine.supply) {
     return;
   }
   const need = orderNeed(costOf(entry, 1), entry.baseId === VILLAGER_ID ? undefined : engine.reserve);
@@ -656,17 +646,6 @@ function houseDemand(engine: Engine): HouseDemand {
   return { pending, populationPerSecond };
 }
 
-function lastHouseStep(order: BuildOrder): number | null {
-  const index = order.steps.findLastIndex((step) => step.action === 'build' && step.building === HOUSE_ID);
-  return index === -1 ? null : index;
-}
-
-// Closed until the order's last build-house step has started; open throughout without one.
-function houseGateOpen(engine: Engine): boolean {
-  const last = lastHouseStep(engine.order);
-  return last === null || engine.steps[last].startedAt !== null;
-}
-
 // The source is picked by gatherers only; at a building-created node, startConstruction takes waiting idle villagers first.
 function houseBuilderSource(engine: Engine): NodeRef | undefined {
   const { gatherers, inputs } = engine;
@@ -680,7 +659,7 @@ function houseBuilderSource(engine: Engine): NodeRef | undefined {
 // Not an order payment: a waiting step's reserve does not hold houses back.
 function startAutoHouses(engine: Engine): void {
   const house = engine.data.byBaseId.get(HOUSE_ID)?.[0];
-  if (!engine.inputs.autoHouses || !house || !houseGateOpen(engine)) {
+  if (!engine.inputs.autoHouses || !house) {
     return;
   }
   const cost = costOf(house, 1);
@@ -721,7 +700,6 @@ function runInstant(engine: Engine): void {
   offerSteps(engine);
   applyDueEvents(engine);
   // A step refused for supply in the first pass is offered again after this instant's houses complete.
-  engine.supplyBlocked = false;
   offerSteps(engine);
   startProduction(engine);
   startAutoHouses(engine);
@@ -907,9 +885,6 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     runOuts: [],
     houseSources: NODE_REFS.filter((ref) => nodeKindOf(ref) === ref || named.has(ref)),
     markers: [],
-    supplyBlocked: false,
-    heldAt: null,
-    heldSeconds: 0,
   };
   engine.population = aliveVillagers(engine) + units;
   engine.spawnedPopulation = aliveVillagers(engine) + startUnitPopulation(data, start.units.value);
@@ -948,43 +923,6 @@ function stepStuckWarning(timing: StepTiming, engine: Engine): SimWarning {
     waitingOn: waitingOn!,
     at: armedAt!,
   };
-}
-
-// Judged after the instant's steps ran, so a gate that opens within the instant does not count.
-function accrueHeld(engine: Engine, seconds: number): void {
-  const held = engine.inputs.autoHouses && engine.supplyBlocked && !houseGateOpen(engine) && engine.supply < engine.data.base.maxPopCap.value;
-  if (held) {
-    engine.heldAt ??= engine.time;
-    engine.heldSeconds += seconds;
-  }
-}
-
-function houseWarnings(engine: Engine): SimWarning[] {
-  const last = lastHouseStep(engine.order);
-  if (!engine.inputs.autoHouses || last === null) {
-    return [];
-  }
-  const warnings: SimWarning[] = [];
-  if (isReaction(engine.order.steps[last]) && engine.steps[last].armedAt === null) {
-    warnings.push({
-      code: 'auto-houses-never-start',
-      severity: 'warning',
-      message: `auto-houses never start: they wait for step ${last + 1} (build house), a reaction that did not fire by ${formatMinSec(engine.inputs.durationSeconds)}, so no auto-house is built.`,
-      step: last,
-      at: 0,
-    });
-  }
-  if (engine.heldAt !== null && engine.heldSeconds > 0) {
-    warnings.push({
-      code: 'auto-houses-held',
-      severity: 'warning',
-      message: `production was held at the supply limit for ${formatMinSec(engine.heldSeconds)} from ${formatMinSec(engine.heldAt)} while auto-houses waited for step ${last + 1} (build house) to start.`,
-      step: last,
-      at: engine.heldAt,
-      seconds: engine.heldSeconds,
-    });
-  }
-  return warnings;
 }
 
 function finalStatus(timing: StepTiming): StepTiming['status'] {
@@ -1061,7 +999,6 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     const next = nextWake(engine, income, rateOf, times[sample]);
     creditIncome(engine, rateOf, next - engine.time);
     accrueWait(engine, waitingSteps(engine), next - engine.time);
-    accrueHeld(engine, next - engine.time);
     engine.time = next;
   }
   engine.steps.forEach((timing) => {
@@ -1072,7 +1009,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
   });
   const nodeResults = depletionResults(engine.stock);
   const stuck = engine.steps.filter((timing) => timing.status === 'waiting').map((timing) => stepStuckWarning(timing, engine));
-  const warnings = sortWarnings([...nodeResults.warnings, ...stuck, ...houseWarnings(engine), ...farmIdleWarnings(engine.farmIdle)]);
+  const warnings = sortWarnings([...nodeResults.warnings, ...stuck, ...farmIdleWarnings(engine.farmIdle)]);
   const { depletions } = nodeResults;
   return {
     civ: order.civ,

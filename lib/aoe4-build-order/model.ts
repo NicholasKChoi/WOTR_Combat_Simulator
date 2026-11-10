@@ -160,9 +160,7 @@ export type SimWarning =
   | { code: 'node-depleted'; severity: Severity; message: string; node: FiniteNodeRef; at: number; idleVillagers: number }
   | { code: 'idle-arrival'; severity: Severity; message: string; node: FiniteNodeRef; at: number; idleVillagers: number }
   | { code: 'farm-idle'; severity: Severity; message: string; at: number; idleVillagers: number }
-  | { code: 'step-stuck'; severity: Severity; message: string; step: number; waitingOn: StepWait; at: number }
-  | { code: 'auto-houses-never-start'; severity: Severity; message: string; step: number; at: number }
-  | { code: 'auto-houses-held'; severity: Severity; message: string; step: number; at: number; seconds: number };
+  | { code: 'step-stuck'; severity: Severity; message: string; step: number; waitingOn: StepWait; at: number };
 
 export interface BuildOrderIssue {
   code: 'syntax' | 'unknown-trigger-kind' | 'unknown-id' | 'unsupported-tech' | 'unknown-tech-effect' | 'out-of-range' | 'invalid';
