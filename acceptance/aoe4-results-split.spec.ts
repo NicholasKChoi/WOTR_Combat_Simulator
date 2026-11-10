@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { SPLIT_VIEWPORT, TABS_VIEWPORT, WIDE_VIEWPORT, openPage, showTab, waitForRun } from './helpers'
 
 const REMOVED_TIMELINE_IDS = ['step-timeline', 'step-timeline-scroll', 'step-timeline-legend', 'results-split'] as const
+const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources']
 const CHARTS_FILL_RATIO = 0.95
 
 async function openResults(page: Page) {
@@ -37,6 +38,14 @@ test.describe('AoE4 results take the full width', () => {
       }
     })
   }
+
+  test('the four charts are direct children of the results container and wrap no column', async ({ page }) => {
+    await page.setViewportSize(WIDE_VIEWPORT)
+    await openResults(page)
+    const children = await page.getByTestId('results-last-good').evaluate((el) => [...el.children].map((child) => child.getAttribute('data-testid')))
+    expect(children.filter((id) => id?.startsWith('chart-'))).toEqual(CHART_IDS)
+    expect(children.slice(-CHART_IDS.length)).toEqual(CHART_IDS)
+  })
 
   test('a build with no steps still draws the charts and shows no step rows or legend', async ({ page }) => {
     await page.setViewportSize(SPLIT_VIEWPORT)
