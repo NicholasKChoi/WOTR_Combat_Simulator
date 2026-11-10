@@ -145,3 +145,26 @@ keep the last good run, dimmed.
 | M6.7 | `npm run smoke:preview -- <url>` saves a build to a deployment, reads it back, opens its link and deletes it | code | SGS-106 | done |
 | M6.8 | The owner runs M6.7 on the M6 PR's preview deployment before merge | evidence | owner smoke run on SGS-106 preview | done (owner, 2026-11-09: save, read back, open PASS on #115 preview; delete 204 but re-read hit cache; owner waived) |
 | M6.9 | `docs/aoe4-build-order.md` covers re-run on edit, save and open by link, and how an agent saves a build and prints its link; Playwright covers re-run on edit, the split layout, and save then open by link against the local stand-in; specs that clicked Run are rewritten | code | SGS-102, SGS-104, SGS-105, SGS-106 | done |
+
+## M7: The build order is the step timeline
+
+**Outcome:** After a run, the build order itself shows what happened to each step (kind colour, when it
+started and finished, how long it waited and on what), so the separate step timeline in Results goes away
+and the charts get the horizontal room back.
+
+### Exit criteria
+
+Set by the owner 2026-11-09 in chat. Owner decisions: the separate step timeline is dropped (it crowds the
+screen horizontally); the Text tab is the most compact view of a build, so either the Text tab gets the
+highlighting or the table rows collapse (open: board question); narrow screens are not a requirement for
+this milestone (M4.13 and M6.2's 390 px clause are waived for the new UI).
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M7.1 | After a run, each step-table row shows its timeline kind colour (age-up, research, military, villager, building, economy, other) and its started and finished times; a step that was never reached or is still waiting is marked as such | code | | open |
+| M7.2 | Each row carries what the timeline showed: waited time, the Blocked by reasons, and the flagged and long-wait (60 s or more) highlights | code | | open |
+| M7.3 | Hovering or focusing a row shades that step's span on every chart, as the timeline rows did | code | | open |
+| M7.4 | While the results are stale (an edit since the last run, or invalid text) the row annotations dim with the charts and never show times from a different build | code | | open |
+| M7.5 | The separate step timeline is removed from Results, and the charts use the freed width | code | | open |
+| M7.6 | Compact view: per the owner's board answer, either the Text tab shows the same kind colour and times per line, or the table rows collapse to a one-line summary that keeps the annotations | code | | open |
+| M7.7 | `docs/aoe4-build-order.md` describes the annotated build order instead of the step timeline; Playwright covers the colours and times, the hover shading, the stale dimming, the compact view, and the timeline's absence; specs that drove the timeline are rewritten; no 390 px check is added for the new UI | code | | open |
