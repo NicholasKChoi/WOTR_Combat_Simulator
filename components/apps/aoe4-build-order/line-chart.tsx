@@ -15,7 +15,7 @@ import {
     toggleHidden,
 } from './chart-rows'
 import { MarkerLegend, SeriesLegend } from './chart-legend'
-import type { StepSpan } from './step-timeline-rows'
+import type { StepSpan } from './step-annotations'
 import styles from './results.module.css'
 
 const LABEL_LINE_HEIGHT = 14
