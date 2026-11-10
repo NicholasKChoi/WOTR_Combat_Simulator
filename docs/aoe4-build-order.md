@@ -1100,8 +1100,7 @@ header `x-vercel-protection-bypass` to the deployment's origin only, and never p
 
 The run has four steps, in this order, and stops at the first failure:
 
-1. `save`: posts `data/aoe4-build-order/builds/english-1tc.json` with a duration of 1200 s and expects 201 or 200
-   with an `{ id, path }` body.
+1. `save`: posts `data/aoe4-build-order/builds/english-1tc.json` with a duration of 1200 s and expects 201 or 200 with a body whose `id` is a valid build id.
 2. `read back`: reads the build by its id and expects the same `buildOrder` and `durationSeconds`.
 3. `open`: opens `/apps/aoe4-build-order?b=<id>` in Chromium and expects the saved build selected, the run
    current and the units-produced chart visible.
