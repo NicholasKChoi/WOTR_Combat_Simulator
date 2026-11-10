@@ -1,0 +1,13 @@
+# SGS-111 ticket report 1
+
+File: `tickets/SGS-111-drop-house-gate.md` (lint clean). Branch for the header: `sgs-111-drop-house-gate` (the template has no branch field, so it is not in the file).
+
+Summary: "Drop the auto-house gate and remove the two house-gate warnings". Component aoe4-build-order, milestone M7 / M7.8, risk high (changes what a run computes; removes two codes from the public `SimWarning` schema and OpenAPI), depends on none, On merge none. Size about -70 business logic lines (net deletion) plus tests, docs and JSON edits. Source: `design/M7.md` Auto-houses (M7.8) rules and Removed contracts, `reports/M7-designer-3.md`, outline E.
+
+Scope covers: `startAutoHouses` loses the `houseGateOpen` condition; delete `lastHouseStep`, `houseGateOpen`, `accrueHeld`, `houseWarnings`, `heldAt`/`heldSeconds`, and `supplyBlocked` if nothing else reads it (I found its only reader is `accrueHeld`); two `SimWarning` variants; the `depletion.ts` `tieRank` branch and comment; OpenAPI variants and `warnings` description; `docs/aoe4-build-order.md` (Houses and supply, sort sentence, Severity table, `warnings` field); `data/aoe4-build-order/README.md` sentence; tests (`simulate-house-warnings.test.ts` rewritten and renamed, `depletion.test.ts` `sortWarnings`, contract spec, house-warnings acceptance spec rewritten and renamed); timing shift for `english-1tc` and `english-knight-longbow` (rerun specs, update pins to engine values, retune data only if a bar breaks; spear-longbow unchanged). Test uses the reduced fixture (early house plus late house behind `at(600)`), first proving the case with an `autoHouses: false` run that is blocked at supply, then asserting production continues and no `auto-houses*` code. Build 259 file not added (out of scope, stated).
+
+Criteria: 13, including mutation checks (restore the gate; swap `farm-idle` and `step-stuck` ranks), a grep end-state criterion (no match for the removed names), A3 determinism, and the prebuilt-build bar. I did not run the grep or mutation checks as commands against a checkout; I ran the grep against `origin/main` to confirm Scope lists every match (matches are only in `simulate.ts`, `model.ts`, `depletion.ts`, `depletion.test.ts`, `simulate-house-warnings.test.ts`, `openapi.json`, the contract spec, the house-warnings acceptance spec, `docs/aoe4-build-order.md` and the data README). Mutation checks were not applied in a worktree because the code under test is the code the ticket rewrites.
+
+Diagram: one Mermaid flowchart of `runInstant` grouped read, act, record.
+
+Open questions: none. Overlap: none with existing tickets (M7 outlines A to D touch the UI only). Noted in passing: the doc-line numbers in the design (~331, ~430, ~443, ~793) match `origin/main` as of this run.
