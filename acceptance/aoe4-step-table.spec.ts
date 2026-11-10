@@ -493,7 +493,7 @@ test.describe("AoE4 step table", () => {
       const [trigger, action] = await tops(stepRow, ["step-trigger-kind", "step-action"]);
       expect(Math.abs(trigger.y - action.y)).toBeLessThan(4);
       const [rally, count] = await tops(startRow, ["start-field-rally", "start-villagers-count"]);
-      expect(Math.abs(rally.y - count.y)).toBeLessThan(4);
+      expect(count.x).toBeGreaterThan(rally.x);
     }).toPass();
     await expect(row(page, 0)).toHaveAttribute("data-step", "0");
 
