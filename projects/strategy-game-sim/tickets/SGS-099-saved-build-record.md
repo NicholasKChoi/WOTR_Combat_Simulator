@@ -108,24 +108,24 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `saved-builds.ts` exports each name in Scope item 1 with the stated signatures. The match for node, React or Next imports is empty:
+- [x] `saved-builds.ts` exports each name in Scope item 1 with the stated signatures. The match for node, React or Next imports is empty:
       `git grep -nE "from '(node:|react|next)" -- lib/aoe4-build-order/saved-builds.ts`.
-- [ ] `savedBuildId`: every id for a table of different records is exactly 11 characters matching
+- [x] `savedBuildId`: every id for a table of different records is exactly 11 characters matching
       `SAVED_BUILD_ID_PATTERN`. Test cases pin: the same record gives the same id twice; the same record built
       with its fields in a different object-literal order, passed through `savedBuildSchema.parse`, gives the
       same id; changing `durationSeconds`, `buildOrder.name` or one step each gives a different id. A
       `savedBuildId` that hashes a different serialization (for example, of the unparsed input) fails the
       key-order case.
-- [ ] `isSavedBuildId` table: `'Zx3_k9-QaB0'` true; `'abc'`, a 10-character, a 12-character string, and 11
+- [x] `isSavedBuildId` table: `'Zx3_k9-QaB0'` true; `'abc'`, a 10-character, a 12-character string, and 11
       characters containing each of `.`, `/` and `=` false; `undefined`, `null`, a number and an array false;
       an 11-character string followed by `\n` false (pins that the pattern is anchored).
-- [ ] `storageEnv` table: `'production'` and `'preview'` return themselves; `'development'`, `undefined`,
+- [x] `storageEnv` table: `'production'` and `'preview'` return themselves; `'development'`, `undefined`,
       `''`, `'Production'` and `'staging'` return `'development'`.
-- [ ] Key tables: `savedBuildKey('preview', 'Zx3_k9-QaB0')` is `preview/builds/Zx3_k9-QaB0.json`;
+- [x] Key tables: `savedBuildKey('preview', 'Zx3_k9-QaB0')` is `preview/builds/Zx3_k9-QaB0.json`;
       `rateCounterKey('development', 'AbCdEfGhIjKlMnOp')` is
       `development/rate-limit/AbCdEfGhIjKlMnOp.json`; `savedBuildPath('Zx3_k9-QaB0')` is
       `/apps/aoe4-build-order?b=Zx3_k9-QaB0`.
-- [ ] `checkSaveBuildRequest` has one test row per C3 400 or 413 row, each asserting `status` and the
+- [x] `checkSaveBuildRequest` has one test row per C3 400 or 413 row, each asserting `status` and the
       response shape:
       - `[]`, `null` and `'x'` give 400, `error` `request body: must be a JSON object`, and one `syntax`
         issue.
@@ -141,12 +141,12 @@ Single-component change outside the core control loop; no diagram required.
         413). (respec 2)
       - A valid order and `durationSeconds` of 60 and 3600 give `ok: true`, `record.version` is 1, and
         `json === JSON.stringify(record)`.
-- [ ] Issue-order test: a body with an invalid order and an invalid `durationSeconds` returns the order issues
+- [x] Issue-order test: a body with an invalid order and an invalid `durationSeconds` returns the order issues
       first, then the duration issue; an order that is invalid and a 101-character name returns no name issue
       (name is checked only for a valid order); a valid order with both a bad duration and a long name returns
       the duration issue before the name issue. With more than `MAX_REPORTED_ISSUES` order issues, `issues` is
       capped, `omittedIssues` is the remainder, and `error` equals `issues[0].message`.
-- [ ] Round-trip test cases:
+- [x] Round-trip test cases:
       - A valid shipped build (every entry of `listBuilds()`, as a loop) gives `ok: true`.
       - A valid order (so the order checks pass) with the same `vi.mock` of `formatBuildOrderText` as the guard
         test, its mock returning a 20001-character text once, gives 400 with the single issue `text: 20001
@@ -162,10 +162,10 @@ Single-component change outside the core control loop; no diagram required.
         `steps`), and `checkSaveBuildRequest` returns 400 with the single `invalid` issue. A second case
         returns the order's own text and gives `ok: true`, so the test fails if the compare is dropped or
         always fires. No test-only export is added to `saved-builds.ts`. (respec 1)
-- [ ] `lib/aoe4-build-order/api.ts` exports `BuildsError` and the three re-exported types, and its header
+- [x] `lib/aoe4-build-order/api.ts` exports `BuildsError` and the three re-exported types, and its header
       comment covers the builds API types; `npx tsc --noEmit`
       and `npm run lint:dup` pass with no new duplication flagged against `simulate.ts` or `schema.ts`.
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -182,3 +182,14 @@ None.
 - Underspecified: the over-20000-character round-trip row had no buildable input (no valid order reaches it), the 413 row named `name` (capped, cannot reach 413), and the export criterion was a closed list.
 - Changed: the 20000 row now uses the `formatBuildOrderText` mock; the 413 test uses a multi-byte `source`; step 7 states `error` for both 400 branches; the `api.ts` header comment is updated; the export criterion says "each C1 name" with the import grep (design pass 4, item 2).
 - Existing branch work: none (no branch yet).
+
+## Rework 1 - 2026-11-09 (review)
+
+Bounced by review 1 (`reports/SGS-099-review-1.md`) at tip eb3212ea03f44ca8191859c016680692ec628e41. No earlier gate had passed the task. Production code had no defect; one test is too weak. The criterion ("`omittedIssues` is the remainder") is unchanged.
+
+Findings:
+- `lib/aoe4-build-order/saved-builds.test.ts:187-193`: `caps the issues and counts the rest` asserts only `omittedIssues > 0`. Changing `saved-builds.ts:66` to report `omittedIssues + 1` leaves all 51 tests passing.
+
+Required fixes:
+- [x] Take the uncapped issue count from `checkBuildOrder` on the same input and assert `omittedIssues === total - MAX_REPORTED_ISSUES` (and `issues.length === MAX_REPORTED_ISSUES`).
+- [x] Confirm the mutation: with `saved-builds.ts:66` reporting `omittedIssues + 1`, the test fails.

@@ -206,25 +206,25 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] `api-route.ts` exports exactly six names (`RouteReply`, `ReplyTarget`, `isPlainObject`,
+- [x] `api-route.ts` exports exactly six names (`RouteReply`, `ReplyTarget`, `isPlainObject`,
       `methodNotAllowed`, `notAnObjectError`, `sendReply`; no `englishCatalog`) and `builds-routes.ts` exactly
       `saveBuildReply` and `savedBuildReply`. `git grep -nE "from '(next|react|node:)"
       -- lib/aoe4-build-order/api-route.ts lib/aoe4-build-order/builds-routes.ts` has no match, and
       `git grep -nE "from '.*data'" -- lib/aoe4-build-order/api-route.ts` has no match (no `data.ts` import).
       `english-catalog.ts` exports `englishCatalog`, and `simulate.ts` and `builds/index.ts` import it from
       there.
-- [ ] One source for the shared handling: every match of `git grep -nE "function isPlainObject" -- pages lib` is
+- [x] One source for the shared handling: every match of `git grep -nE "function isPlainObject" -- pages lib` is
       in `lib/aoe4-build-order/api-route.ts` or `pages/api/fight.ts`; every match of
       `git grep -n "request body: must be a JSON object" -- lib pages ':!*.test.ts'` is in `api-route.ts` (the exact text, so `pages/api/fight.ts`'s `request body must be a JSON object` does not match; so
       `saved-builds.ts` holds no private copy of `isPlainObject` or the 400 body and imports both from
       `./api-route`); every match of
       `git grep -n "is not allowed; use" -- lib pages ':!*.test.ts'` is in `api-route.ts` or `pages/api/fight.ts`.
-- [ ] Simulate route unchanged: the simulate contract spec (`aoe4-simulate-api-contract.spec.ts`) and
+- [x] Simulate route unchanged: the simulate contract spec (`aoe4-simulate-api-contract.spec.ts`) and
       `simulate-api.acceptance.test.ts` pass with no edit to an existing expected value. New unit cases pin the
       handler's GET 405 (status 405, header `Allow: POST`, body `{ error: 'method GET is not allowed; use POST' }`)
       and the `[]` body 400 (the `notAnObjectError()` body). A handler that changes the 405 header or text, or
       the 400 body, fails them.
-- [ ] `saveBuildReply`, one test case per row, each asserting status, headers and body:
+- [x] `saveBuildReply`, one test case per row, each asserting status, headers and body:
       - Row 1: `GET` gives 405, `Allow: POST`, `{ error: 'method GET is not allowed; use POST' }`, and the store
         getter is not called.
       - Rows 2 and 3: `[]`, a body with an unknown unit id, `durationSeconds` 59 and a 101-character `name` give
@@ -245,7 +245,7 @@ Single-component change outside the core control loop; no diagram required.
         `await savedBuildId(record)`, `path` equals `savedBuildPath(id)`, and `store.getBuild(id)` then returns
         the record; the same body again gives 200 with the same body and does not change the stored value, and it
         consumed a rate-limit slot (30 repeats then a 31st gives 429).
-- [ ] `savedBuildReply`, one test case per row: the 405 for `PUT` in `'development'` and `'preview'` has
+- [x] `savedBuildReply`, one test case per row: the 405 for `PUT` in `'development'` and `'preview'` has
       `Allow: GET, DELETE` and the text `method PUT is not allowed; use GET or DELETE`; `DELETE` with `env`
       `'production'` gives 405, `Allow: GET`, the text `method DELETE is not allowed; use GET`, and deletes
       nothing (a stored build is still returned by GET afterwards). `abc`, a 12-character id, `undefined` and an
@@ -255,13 +255,13 @@ Single-component change outside the core control loop; no diagram required.
       stored valid record gives 200, `Cache-Control: public, max-age=31536000, immutable`, and a body equal to
       the record plus `id`. `DELETE` of a stored id gives 204 with no body (`json` not called, `end` called
       through `sendReply`) and a following GET gives 404; `DELETE` of an absent valid id gives 204.
-- [ ] `sendReply` unit test: with a recording target, headers are set before the body is sent, a defined body
+- [x] `sendReply` unit test: with a recording target, headers are set before the body is sent, a defined body
       uses `json` once and never `end`, and an undefined body uses `end` once and never `json`.
-- [ ] Route files: `git grep -nE "\bif\b|\bswitch\b| \? " -- pages/api/aoe4-build-order/builds` has no match
+- [x] Route files: `git grep -nE "\bif\b|\bswitch\b| \? " -- pages/api/aoe4-build-order/builds` has no match
       (no branch in either file); each file's default export is one `sendReply` call.
       `pages/api/aoe4-build-order/builds/index.ts` exports a literal `config` with `bodyParser.sizeLimit` `'128kb'`.
       `git grep -n "Date.now" -- pages lib ':!*.test.ts'` has no match outside `builds/index.ts`.
-- [ ] Live specs (`aoe4-builds-api.spec.ts`), each asserting status and body shape against the schema:
+- [x] Live specs (`aoe4-builds-api.spec.ts`), each asserting status and body shape against the schema:
       - A valid build posted with a fresh client gives 201 `SaveBuildResponse` and the same body again gives
         200 with the same id (the order carries a per-run unique `name`, so the first post is a new build).
       - GET of that id gives 200 with the same `buildOrder` and `durationSeconds` that were sent, `version`
@@ -280,7 +280,7 @@ Single-component change outside the core control loop; no diagram required.
         `git grep -n "BUILDS_PATH" -- acceptance` shows posts only through `postBuild` or `postBuildRaw`, and
         `git grep -nE "(request|page)\.post\(" -- acceptance/aoe4-builds-api.spec.ts
         acceptance/aoe4-builds-api-contract.spec.ts` has no match.
-- [ ] Contract spec (`aoe4-builds-api-contract.spec.ts`), validated with Ajv against the document:
+- [x] Contract spec (`aoe4-builds-api-contract.spec.ts`), validated with Ajv against the document:
       - `info.version` is `2.4.0` and the document has exactly the paths `/api/fight`,
         `/api/aoe4-build-order/simulate`, `/api/aoe4-build-order/builds` and `/api/aoe4-build-order/builds/{id}`
         (and the surface spec's list is updated to match).
@@ -300,22 +300,22 @@ Single-component change outside the core control loop; no diagram required.
       - A real 201 body, a real GET body (against `SavedBuildWithId`) and a real 400 validate; a copy of the 201
         body or of the GET body with an added property does not, and a copy of the GET body without `id` does
         not.
-- [ ] Stale example fixed and guarded (owner Q17 A): `aoe4-simulate-api-contract.spec.ts` has one test per key of
+- [x] Stale example fixed and guarded (owner Q17 A): `aoe4-simulate-api-contract.spec.ts` has one test per key of
       `requestExamples` (so the `buildOrder` example too) asserting the live 200 body `toEqual` the documented
       200 example. The test for `buildOrder` fails on the current `docs/api/openapi.json` (its example differs
       from the engine in the keys listed in Scope item 7) and passes after the example is regenerated; the
       implementer records both runs in the report.
-- [ ] `playwright.config.ts` `webServer.env` sets `BUILDS_LOCAL_DIR` to a directory under `test-results/`, carries
+- [x] `playwright.config.ts` `webServer.env` sets `BUILDS_LOCAL_DIR` to a directory under `test-results/`, carries
       the inherited string-valued `process.env` entries, omits `BUILDS_STORE_ID` and `VERCEL_ENV`, and `npx tsc
       --noEmit` passes on it. After `npm run acceptance`, `git status` is clean and no
       `.builds-local/` directory was created.
-- [ ] Every existing test that pins the document version, the path list or the schema-name list holds the new
+- [x] Every existing test that pins the document version, the path list or the schema-name list holds the new
       value, and every other existing test keeps its expected value. The report lists each test edited.
-- [ ] `docs/aoe4-build-order.md` and `ARCHITECTURE.md` carry the Scope item 11 text; the docs quote no measured
+- [x] `docs/aoe4-build-order.md` and `ARCHITECTURE.md` carry the Scope item 11 text; the docs quote no measured
       result and copy no field list from the OpenAPI file.
-- [ ] `npx tsc --noEmit`, `npm run lint:dup`, `npm test`, `npm run acceptance` and `npx next build` pass, and
+- [x] `npx tsc --noEmit`, `npm run lint:dup`, `npm test`, `npm run acceptance` and `npx next build` pass, and
       `lint:dup` flags no duplication between `simulate.ts`, the two new route files and `builds-routes.ts`.
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
@@ -332,3 +332,16 @@ None.
 - Underspecified: the `SavedBuild` and `SavedBuildWithId` composition (a closed `SavedBuild` cannot be composed with `id`), and the One-source grep that matched `pages/api/fight.ts`.
 - Changed: Scope item 7 and the contract criteria follow the amended C3 (open `SavedBuild`, `SavedBuildWithId` closed by `unevaluatedProperties: false`, three closed schemas); the grep uses `request body: must be a JSON object`; also the Invariants S3 wording, `webServer.env` typing and `VERCEL_ENV`, `postBuildRaw` content type, the surface spec title, the stray memo clause removed, and On merge now adds the routes to CONTEXT.md Key surfaces.
 - Stands: no branch work exists yet.
+
+## Rework 1 - 2026-11-09 (review, text)
+
+Review 1 bounced tip 6e2cd5d85c1f44a8db8253a38d8b0bb38d704c31 (base sgs-101 @ 380e778). No earlier gate had passed this branch. Both findings are text only; the code matches the C3/C4/C7 tables.
+
+Findings:
+- `ARCHITECTURE.md:25`: the last sentence of the new row ("Route files under `pages/api/` only adapt `req` and `res`...") is false for `pages/api/aoe4-build-order/simulate.ts` and `pages/api/fight.ts`, and contradicts the "App API route" row.
+- `docs/api/openapi.json:4254` and `:1862`: both descriptions say save checks the order like simulate, but `checkSaveBuildRequest` also rejects an order that does not read back unchanged after format-then-parse (e.g. `walkSeconds: 2.5`, saved-builds.test.ts:211), which simulate accepts.
+
+Required fixes:
+- [x] `ARCHITECTURE.md:25`: replace the last sentence with "The builds route files under `pages/api/aoe4-build-order/builds/` only adapt `req` and `res`: they call these functions and `sendReply`."
+- [x] `docs/api/openapi.json` `components.schemas.SaveBuildRequest.properties.buildOrder.description`: replace with "The build order to save. It is checked like the simulate route checks buildOrder, its name is at most 100 characters, and it must read back unchanged when turned into text and parsed again (a fractional walkSeconds, for example, is rejected)."
+- [x] `docs/api/openapi.json` saveBuild operation description: replace the clause "otherwise the order is checked like the simulate route checks buildOrder, durationSeconds must be an integer in range, and name at most 100 characters; the issues are listed as in the simulate route." with "otherwise the order is checked like the simulate route checks buildOrder, durationSeconds must be an integer in range, name at most 100 characters, and the order must read back unchanged when turned into text and parsed again (a fractional walkSeconds, for example, is rejected); the issues are listed as in the simulate route."

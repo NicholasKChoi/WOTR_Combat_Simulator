@@ -139,15 +139,15 @@ A later route function takes `store: () => Promise<BuildStore>`. A test passes
 
 ## Acceptance criteria
 
-- [ ] `build-store.ts` exports exactly the names in Scope item 1, `blob-build-store.ts` exports only
+- [x] `build-store.ts` exports exactly the names in Scope item 1, `blob-build-store.ts` exports only
       `createBlobBuildStore`, and `save-rate-limit.ts` exports exactly `SAVE_RATE_LIMIT`, `clientKey` and
       `takeSaveSlot`.
-- [ ] Import boundary: every match of `git grep -n "@vercel/blob" -- lib` is in `blob-build-store.ts` or
+- [x] Import boundary: every match of `git grep -n "@vercel/blob" -- lib` is in `blob-build-store.ts` or
       `blob-build-store.test.ts`; every match of `git grep -nE "blob-build-store" -- lib ':!*.test.ts'` outside
       `blob-build-store.ts` itself is the dynamic `import('./blob-build-store')` in `build-store.ts` (no static
       `import ... from './blob-build-store'` in any non-test file). `git grep -nE "from '(react|next)"` over
       the three new lib files is empty. `saved-builds.ts` has no diff unless the lint:dup fallback applied.
-- [ ] Shared `BuildStore` behavior table (rows run for both memory and file stores), each pinned:
+- [x] Shared `BuildStore` behavior table (rows run for both memory and file stores), each pinned:
       - `putBuild` on a new id returns `'created'` and `getBuild` returns the parsed JSON; a second `putBuild`
         of the same id with different JSON returns `'exists'` and `getBuild` still returns the first value
         (catches an overwrite).
@@ -163,7 +163,7 @@ A later route function takes `store: () => Promise<BuildStore>`. A test passes
         returns `'contended'` (a test asserts no result is `'contended'`; the memory store likewise).
       - File store only: a key that would resolve outside the directory (a client key `../x`) throws and
         creates no file outside the directory.
-- [ ] `buildStoreFromEnv` table (explicit `env` argument, so nothing is memoized): `BUILDS_STORE_ID` unset or
+- [x] `buildStoreFromEnv` table (explicit `env` argument, so nothing is memoized): `BUILDS_STORE_ID` unset or
       `''` with `BUILDS_LOCAL_DIR` set gives a store that writes under that directory (a put creates a file
       there); both unset gives the default directory `BUILDS_LOCAL_DIR_DEFAULT` (assert on a mocked
       `createFileBuildStore` path or on the written location in a temp working directory, not by writing into
@@ -173,7 +173,7 @@ A later route function takes `store: () => Promise<BuildStore>`. A test passes
       promise, and a later call with a working import resolves (no memoized rejection; run through
       `vi.resetModules` and the no-argument form for this row). With `BUILDS_STORE_ID` unset the mocked
       `blob-build-store` module is never imported (catches a static import).
-- [ ] Blob adapter table (mocked `@vercel/blob`; every call asserted to receive `storeId`):
+- [x] Blob adapter table (mocked `@vercel/blob`; every call asserted to receive `storeId`):
       - `putBuild` calls `put` with the key `<env>/builds/<id>.json` and exactly `access: 'private'`,
         `addRandomSuffix: false`, `allowOverwrite: false`, `contentType: 'application/json'`.
       - `put` throws and `head` resolves: `'exists'`. `put` throws and `head` throws: the original `put` error
@@ -189,7 +189,7 @@ A later route function takes `store: () => Promise<BuildStore>`. A test passes
         `'contended'` after exactly 3 `put` calls and 3 `get` calls (catches a loop of 2 or 4, and a retry
         that reuses a stale etag: each attempt's `put` uses the etag of that attempt's `get`). A non-precondition
         error from `put` propagates after one attempt.
-- [ ] `takeSaveSlot` table (`nowMs` passed in; a window start `w` and the same client key):
+- [x] `takeSaveSlot` table (`nowMs` passed in; a window start `w` and the same client key):
       - Calls 1 to 30 in one window return `{ ok: true }` and call 31 returns `{ ok: false }` (catches `>=`
         versus `>`). A 32nd call is also refused.
       - Refusal `retryAfterSeconds` is 3600 at `nowMs = w`, 1 at `nowMs = w + 3_599_999`, and the matching
@@ -201,7 +201,7 @@ A later route function takes `store: () => Promise<BuildStore>`. A test passes
       - `SAVE_RATE_LIMIT` is frozen (assignment throws in strict mode or `Object.isFrozen` is true) and
         `takeSaveSlot` reads no environment variable (a test sets a plausible override variable and sees the
         same boundary).
-- [ ] `clientKey` table: result is exactly 16 characters of `[A-Za-z0-9_-]`; `'1.2.3.4'` and
+- [x] `clientKey` table: result is exactly 16 characters of `[A-Za-z0-9_-]`; `'1.2.3.4'` and
       `'1.2.3.4, 10.0.0.1'` (first entry, trimmed) give the same key; `' 1.2.3.4 '` equals `'1.2.3.4'`; an array
       header `['1.2.3.4', '5.6.7.8']` equals `'1.2.3.4'`; a different address gives a different key; a
       missing or empty header uses `socket.remoteAddress`; both missing gives the key of `'unknown'`; the key
@@ -210,10 +210,10 @@ A later route function takes `store: () => Promise<BuildStore>`. A test passes
       succeeds; `npm audit` reports no advisory for `zod` (record the output in the PR body); the lockfile has
       a single resolved zod version, and no `npm audit fix --force` was run. `git grep -n "builds-local" --
       .gitignore` matches. No test file writes into `.builds-local/` (`git status` is clean after `npm test`).
-- [ ] `ARCHITECTURE.md` "Where files go" names the three lib files and `.builds-local/` as stated in Scope item 5.
-- [ ] `npx tsc --noEmit`, `npm run lint:dup` and `npm test` pass; `lint:dup` flags no duplication among
+- [x] `ARCHITECTURE.md` "Where files go" names the three lib files and `.builds-local/` as stated in Scope item 5.
+- [x] `npx tsc --noEmit`, `npm run lint:dup` and `npm test` pass; `lint:dup` flags no duplication among
       `saved-builds.ts`, `save-rate-limit.ts` and the stores.
-- [ ] No INVARIANTS.md regressions
+- [x] No INVARIANTS.md regressions
 
 ## Open questions
 
