@@ -328,20 +328,11 @@ has enough gatherers or a resource of its cost is short; supply may block produc
 are not order payments: they ignore a waiting step's resource reservation, and never take a resource below
 zero.
 
-Auto-houses are off until the last `build house` step in the order has started, and on from then; with no
-`build house` step they are on from the start. If that step never starts, auto-houses stay off for the whole
-run. The gate is not relaxed for either case; instead, with `autoHouses` on, the result warns:
-
-- `auto-houses-never-start` when that last `build house` step is a reaction that never fired by the horizon;
-  a reaction that fired but still waits gets `step-stuck` instead.
-- `auto-houses-held` when production sat at the supply limit while that step had not started, for example a
-  late explicit `build house`. An instant counts as held when a `produce` step waits on population or a
-  producer's order cannot pay its next unit for supply, the step has not started by the end of that instant,
-  and supply is below `maxPopCap`. `seconds` adds up the time from each held instant to the next instant the
-  simulation looks at, and `at` is the first held instant; a hold only at the horizon adds nothing.
-
-The warnings change no timing. With `autoHouses: false` production blocks at supply until a `build house`
-step adds more, and neither warning is emitted.
+With `autoHouses` on, auto-houses plan from the start whether or not the order has `build house` steps.
+Explicit `build house` steps start as ordered and add houses on top. The planner counts a house under
+construction in its headroom whichever kind it is, so an explicit step that starts after auto-houses already
+cover the demand adds a surplus house. With `autoHouses: false` no auto-house is built, and production blocks
+at supply until a `build house` step adds more. No warning reports production held at the supply limit.
 
 **Farms and mill coverage.** A farm costs its snapshot cost. The simulation lets one villager gather per
 built farm (one per instance of `gatherNodes.farm.createdBy`, starting farms included), with no input to turn
@@ -426,8 +417,7 @@ when infinite) and `depletedAt` (`null` when the ref is still stocked at the hor
 | `farm-idle` | `warning` | at most once per run, at the first instant a villager arrives, or starts, at `farm` with no free farm (0 for starting farmers); `idleVillagers` adds up every such villager, including those a farm takes later. Message: `3 villagers arrived at farm from 0:50 on with no free farm and wait idle until one is built.` |
 
 Warnings are sorted by `at`; at one instant node warnings come first in node-ref order, with `node-depleted`
-before `idle-arrival` for the same ref, then `farm-idle`, then `step-stuck` by step, then
-`auto-houses-never-start` and `auto-houses-held` (see Houses and supply), never-start first.
+before `idle-arrival` for the same ref, then `farm-idle`, then `step-stuck` by step.
 
 ## Severity
 
@@ -440,8 +430,6 @@ Every message the simulator returns has a severity level: `error`, `warning` or 
 | `idle-arrival` | `warning` |
 | `farm-idle` | `warning` |
 | `step-stuck` | `warning` |
-| `auto-houses-never-start` | `warning` |
-| `auto-houses-held` | `warning` |
 | `tech-effect-ignored`, `tech-effect-unmodeled` | `info` |
 
 No item in a result has `error`: an invalid request is rejected before any simulation. The page lists
@@ -790,22 +778,16 @@ A `SimulationResult` holds:
   `nodeAmounts` the six start at their `rules/base.json` amounts, so a default run can emit `node-depleted`
   and `idle-arrival` warnings.
 - `warnings`: non-fatal `SimWarning`s, each with a `code` (`node-depleted`, `idle-arrival`, `farm-idle`,
-  `step-stuck`, `auto-houses-never-start` or `auto-houses-held`), a `severity` (one of `error`, `warning`,
+  `step-stuck`), a `severity` (one of `error`, `warning`,
   `info`), a `message` and an `at` time. They hold the node warnings when a finite node runs out, at most one
   `farm-idle` warning (severity `warning`, with `idleVillagers`) when villagers wait idle at `farm` for lack of a
   built farm, message `1 villager arrived at farm from 0:50 on with no free farm and waits idle until one is
   built.`, and one `step-stuck`
   warning (severity `warning`) for each step still `waiting` at the horizon, whose message reads `step 12
   (build) was still waiting on resources at 60:00, from 11:40.` (1-based step number; `at` is the step's
-  `armedAt`). With `autoHouses` on they also hold at most one of each house-gate warning (severity
-  `warning`, see Houses and supply), whose `step` is the 0-based index of the order's last `build house`
-  step: `auto-houses-never-start` with `at` always 0, message `auto-houses never start: they wait for step 24
-  (build house), a reaction that did not fire by 20:00, so no auto-house is built.`; and `auto-houses-held`
-  with `at` the first held instant and `seconds` the total held time, message `production was held at the
-  supply limit for 0:21 from 7:42 while auto-houses waited for step 24 (build house) to start.` They are
-  sorted by `at`; at the same `at`, node warnings come first in node-ref order with `node-depleted` before
-  `idle-arrival` for one node, then `farm-idle`, then `step-stuck` by step index, then `auto-houses-never-start` and
-  `auto-houses-held` by step, never-start first. See Severity.
+  `armedAt`). They are sorted by `at`; at the same `at`, node warnings come first in node-ref order with
+  `node-depleted` before `idle-arrival` for one node, then `farm-idle`, then `step-stuck` by step index. See
+  Severity.
 
 The page draws four graphs over time from it, with the chart markers (see Page; the warnings are lists beside them): units produced (by
 unit and tier), gather rates, gathered resources, and floating resources. `spent` and `populationCapReachedAt` feed the compare

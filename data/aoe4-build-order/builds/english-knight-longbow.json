@@ -210,7 +210,7 @@
     {
       "action": "rally",
       "producer": "capital-town-center",
-      "to": "gold"
+      "to": "wood"
     },
     {
       "action": "research",
@@ -318,12 +318,12 @@
     {
       "trigger": {
         "kind": "time",
-        "seconds": 722
+        "seconds": 740
       },
       "action": "build",
       "building": "farm",
       "from": "wood",
-      "then": "wood"
+      "then": "farm"
     },
     {
       "action": "produce",
@@ -386,25 +386,25 @@
       "action": "build",
       "building": "farm",
       "from": "wood",
-      "then": "wood"
+      "then": "farm"
     },
     {
       "action": "build",
       "building": "farm",
       "from": "wood",
-      "then": "wood"
+      "then": "farm"
     },
     {
       "action": "build",
       "building": "farm",
       "from": "wood",
-      "then": "wood"
+      "then": "farm"
     },
     {
       "action": "build",
       "building": "farm",
       "from": "wood",
-      "then": "wood"
+      "then": "farm"
     },
     {
       "trigger": {

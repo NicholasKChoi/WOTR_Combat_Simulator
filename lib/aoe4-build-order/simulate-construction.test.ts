@@ -302,22 +302,26 @@ describe('auto-houses', () => {
         expect(auto.gatherRates.wood[sampleIndex(auto, 125)]).toBeCloseTo(off.gatherRates.wood[sampleIndex(off, 125)], 9)
     })
 
-    it('stay off until the last build-house step has started', () => {
-        const never = run([house(1, 'wood', { trigger: at(600) })], { game: towns, start: woodStart })
-        expect(villagersAt(never, 200)).toBe(13)
+    it('plan from the start alongside explicit build-house steps', () => {
+        const none = run([], { game: towns, start: woodStart, inputs: { durationSeconds: 400 } })
+        const onlyLate = run([house(1, 'wood', { trigger: at(600) })], { game: towns, start: woodStart })
+        expect(villagersAt(onlyLate, 200)).toBe(villagersAt(none, 200))
+        expect(onlyLate.steps[0].startedAt).toBe(600)
         const twoSteps = (second: number, inputs: unknown = { durationSeconds: 400 }) =>
             run([house(1, 'wood', { trigger: at(0) }), house(1, 'wood', { trigger: at(second) })], { game: towns, start: woodStart, inputs })
+        const off = twoSteps(30, { durationSeconds: 400, autoHouses: false })
+        expect(villagersAt(off, 400)).toBe(33)
         const { done, rules } = housesDone()
-        const gated = run([house(1, 'wood', { trigger: at(0) }), house(1, 'wood', { trigger: at(30) })], { game: towns, start: woodStart, rules, inputs: { durationSeconds: 400 } })
+        const both = run([house(1, 'wood', { trigger: at(0) }), house(1, 'wood', { trigger: at(30) })], { game: towns, start: woodStart, rules, inputs: { durationSeconds: 400 } })
+        expect(done.slice(0, 2)).toEqual([20, 50])
         expect(done).toEqual([20, 50, 320])
-        expect(villagersAt(gated, 400)).toBe(40)
-        expect(villagersAt(twoSteps(30, { durationSeconds: 400, autoHouses: false }), 400)).toBe(33)
-        const late = twoSteps(300)
+        expect(villagersAt(both, 400)).toBe(40)
+        const lateDone = housesDone()
+        const late = run([house(1, 'wood', { trigger: at(0) }), house(1, 'wood', { trigger: at(300) })], { game: towns, start: woodStart, rules: lateDone.rules, inputs: { durationSeconds: 400 } })
         expect(late.steps[1].startedAt).toBe(300)
-        expect(villagersAt(late, 240)).toBe(23)
-        expect(villagersAt(late, 300)).toBe(23)
-        expect(late.steps[1].completedAt).toBe(320)
-        expect(villagersAt(late, 340)).toBe(25)
+        expect(lateDone.done).toEqual([20, 220, 320])
+        expect(villagersAt(late, 240)).toBe(24)
+        expect(villagersAt(late, 300)).toBe(30)
     })
 
     it('take houseBuilders from houseBuilderSource and return them there', () => {
@@ -483,7 +487,7 @@ describe('auto-houses with a long build in flight', () => {
         expect(build.steps.slice(firstHouse, firstHouse + 3).every((step) => step.action === 'build' && step.building === 'house')).toBe(true)
         const result = simulateBuildOrder({ ...build, steps }, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 800 }))
         const population = (t: number) => result.spawnedPopulation[sampleIndex(result, t)]
-        expect(population(660)).toBe(44)
+        expect(population(660)).toBe(47)
         expect(population(760)).toBeGreaterThan(population(660))
     })
 })

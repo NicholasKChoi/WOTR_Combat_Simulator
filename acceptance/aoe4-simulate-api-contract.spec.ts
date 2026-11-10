@@ -130,7 +130,7 @@ test.describe('spec structure', () => {
 
   test('every SimWarning variant is closed, requires every property and is tagged by a code const', () => {
     const variants: Schema[] = schemas.SimWarning.oneOf
-    expect(variants.map((v) => (v.properties!.code as { const?: string }).const)).toEqual(['node-depleted', 'idle-arrival', 'farm-idle', 'step-stuck', 'auto-houses-never-start', 'auto-houses-held'])
+    expect(variants.map((v) => (v.properties!.code as { const?: string }).const)).toEqual(['node-depleted', 'idle-arrival', 'farm-idle', 'step-stuck'])
     for (const variant of variants) {
       expect(variant.additionalProperties).toBe(false)
       expect([...variant.required!].sort()).toEqual(keys(variant.properties!))
@@ -503,15 +503,11 @@ test.describe('exported types match the spec', () => {
     WarningKeys<'idle-arrival'>,
     WarningKeys<'farm-idle'>,
     WarningKeys<'step-stuck'>,
-    WarningKeys<'auto-houses-never-start'>,
-    WarningKeys<'auto-houses-held'>,
   ] = [
     nodeWarning,
     nodeWarning,
     { code: true, severity: true, message: true, at: true, idleVillagers: true },
     { code: true, severity: true, message: true, step: true, waitingOn: true, at: true },
-    { code: true, severity: true, message: true, step: true, at: true },
-    { code: true, severity: true, message: true, step: true, at: true, seconds: true },
   ]
   const unitSeries: Record<keyof UnitSeries, true> = { unitId: true, baseId: true, name: true, tier: true, counts: true }
   const stepTiming: Record<keyof StepTiming, true> = { step: true, status: true, armedAt: true, startedAt: true, completedAt: true, waitSeconds: true, waitingOn: true, waitBreakdown: true }
