@@ -25,9 +25,9 @@ export function StepKindBadge({ kind }: { kind: StepKind }) {
     )
 }
 
-export function StepKindLegend({ testId = 'step-kind-legend' }: { testId?: string }) {
+export function StepKindLegend() {
     return (
-        <div data-testid={testId} className={styles.legendRow}>
+        <div data-testid="step-kind-legend" className={styles.legendRow}>
             {LEGEND_KINDS.map((kind) => (
                 <span key={kind} data-kind={kind} className={cn(styles.badge, KIND_CLASS[kind])}>
                     {STEP_KINDS[kind]}

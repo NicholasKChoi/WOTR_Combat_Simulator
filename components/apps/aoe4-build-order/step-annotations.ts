@@ -41,13 +41,6 @@ export interface StepRun {
     flagged: boolean
 }
 
-export interface TimelineRow extends Omit<StepRun, 'runStep'> {
-    step: number
-    label: string
-    kind: StepKind
-    reaction: boolean
-}
-
 export const finishedText = (run: Pick<StepRun, 'status' | 'completedAt'>): string =>
     run.status === 'in-progress' ? 'ongoing' : formatStepTime(run.completedAt)
 
@@ -104,22 +97,6 @@ export function stepSpan(timing: StepTiming, end: number): StepSpan | null {
     const clamp = (t: number) => Math.min(Math.max(t, 0), end)
     const from = clamp(timing.startedAt)
     return { from, to: Math.max(from, clamp(to)) }
-}
-
-export function timelineRows(steps: StepTiming[], text: string, landmarks: readonly string[]): TimelineRow[] {
-    const parsed = parseBuildOrderText(text)
-    const parsedSteps = parsed.ok ? parsed.order.steps : []
-    return steps.map((timing) => {
-        const parsedStep = parsedSteps[timing.step]
-        const { runStep, ...run } = stepRun(timing)
-        return {
-            ...run,
-            step: runStep,
-            label: parsedStep === undefined ? `step ${runStep + 1}` : formatBuildStep(parsedStep),
-            kind: stepKind(parsedStep, landmarks),
-            reaction: parsedStep?.reaction === true,
-        }
-    })
 }
 
 export interface StepAnnotation {

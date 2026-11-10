@@ -91,10 +91,9 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
     const [loadError, setLoadError] = useState<keyof typeof LOAD_ERRORS | null>(null)
     const [awaitingLoadTab, setAwaitingLoadTab] = useState(false)
     const [urlBaseline, setUrlBaseline] = useState<LiveInput | null>(null)
+    const [active, setActive] = useState<{ result: SimulateResponse; step: number } | null>(null)
     const initialB = useRef<{ id: string | undefined } | null>(null)
     const pinTouched = useRef(false)
-    const pageSection = useRef<HTMLElement>(null)
-    const runBar = useRef<HTMLFormElement>(null)
     if (router.isReady && initialB.current === null) initialB.current = { id: firstQueryValue(router.query.b) }
     const savedLoadInFlight = router.isReady && initialB.current?.id !== undefined && !loadEnded
     const autoRun = useAutoRun({ text, duration, selected, catalog, hold: !router.isReady || savedLoadInFlight })
@@ -110,6 +109,8 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
         () => buildAnnotations({ result, shown, live: { text, duration, selected }, liveSteps, landmarks: catalog.landmarks, stale }),
         [result, shown, text, duration, selected, liveSteps, catalog.landmarks, stale],
     )
+    const activeStep =
+        active !== null && active.result === result && annotations?.steps.some((s) => s.run?.runStep === active.step) ? active.step : null
     const clientIssues = conversion.ok ? [] : conversion.issues
     const rejected = status === 'rejected'
 
@@ -176,17 +177,6 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
         router.replace({ pathname: router.pathname, query: {} }, undefined, { shallow: true })
     }, [urlBaseline, status, settled])
 
-    useEffect(() => {
-        const bar = runBar.current
-        const section = pageSection.current
-        if (!bar || !section) return
-        const observer = new ResizeObserver(() => {
-            section.style.setProperty('--run-bar-height', `${bar.getBoundingClientRect().height}px`)
-        })
-        observer.observe(bar)
-        return () => observer.disconnect()
-    }, [])
-
     function editText(next: string) {
         const reparsed = parseBuildOrderText(next)
         if (reparsed.ok === true) setOpenRows((flags) => mergeExternalEdit(flags, reparsed.order.steps))
@@ -228,7 +218,7 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
             <Head>
                 <title>{pageTitle}</title>
             </Head>
-            <section ref={pageSection} className={cn(utilStyles.headingMd, 'container')}>
+            <section className={cn(utilStyles.headingMd, 'container')}>
                 <h1>{pageTitle}</h1>
                 <BuildInput
                     builds={builds}
@@ -247,7 +237,6 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                     view={view}
                     onViewChange={setView}
                     viewDisabled={!split && shownTab === 'results'}
-                    formRef={runBar}
                 />
                 {loadError !== null ? (
                     <div data-testid="saved-build-error" role="alert" className="alert alert-warning">
@@ -272,6 +261,8 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                                     onOpenRowsChange={setOpenRows}
                                     disabled={savedLoadInFlight}
                                     annotations={annotations}
+                                    activeStep={activeStep}
+                                    onActiveStepChange={(step) => setActive(step === null || result === null ? null : { result, step })}
                                 />
                             ) : (
                                 <div data-testid="step-table-unavailable" className="alert alert-secondary">
@@ -306,8 +297,7 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                                 <Results
                                     result={result}
                                     pinned={pin?.result ?? null}
-                                    text={run?.text ?? ''}
-                                    landmarks={catalog.landmarks}
+                                    activeStep={activeStep}
                                     dimmed={stale}
                                     describedByStatus={statusDescribesResults(stale, status, true)}
                                     infoExpanded={infoExpanded}

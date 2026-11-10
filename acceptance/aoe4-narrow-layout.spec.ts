@@ -3,7 +3,6 @@ import { WIDE_VIEWPORT, expectInvalidNoRun, openPage, showTab, showView, waitFor
 
 const PHONE = { width: 390, height: 844 }
 const KNIGHT_LONGBOW = "ENG Knight/Longbow (King's Palace)"
-const SCROLL_BOXES = ['step-timeline-scroll', 'compare-scroll'] as const
 
 const pageWidth = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth)
 
@@ -47,19 +46,17 @@ test.describe('AoE4 build order at a 390 px screen', () => {
 
   test('the Results tab with a result and a pinned run does not scroll sideways', async ({ page }) => {
     await pinnedResults(page)
-    for (const id of ['chart-series-legend', 'chart-marker-legend', ...SCROLL_BOXES]) {
+    for (const id of ['chart-series-legend', 'chart-marker-legend', 'compare-scroll']) {
       await expect(page.getByTestId(id).first()).toBeVisible()
     }
     await expectNoSidewaysScroll(page)
   })
 
-  test('the timeline and compare tables scroll in their own boxes', async ({ page }) => {
+  test('the compare table scrolls in its own box', async ({ page }) => {
     await pinnedResults(page)
-    for (const id of SCROLL_BOXES) {
-      const { overflowX, scrollWidth, clientWidth } = await box(page.getByTestId(id))
-      expect(overflowX).toBe('auto')
-      expect(scrollWidth).toBeGreaterThan(clientWidth)
-    }
+    const { overflowX, scrollWidth, clientWidth } = await box(page.getByTestId('compare-scroll'))
+    expect(overflowX).toBe('auto')
+    expect(scrollWidth).toBeGreaterThan(clientWidth)
   })
 
   test('a 3000 character unknown unit id in an issue does not scroll the page sideways', async ({ page }) => {
@@ -81,16 +78,6 @@ test.describe('AoE4 build order at a 1800 px screen', () => {
   test('the compare table fits its box', async ({ page }) => {
     await pinnedResults(page)
     const { scrollWidth, clientWidth } = await box(page.getByTestId('compare-scroll'))
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth)
-  })
-})
-
-test.describe('AoE4 build order at a 1024 px screen', () => {
-  test.use({ viewport: { width: 1024, height: 768 } })
-
-  test('the stacked timeline fits its box', async ({ page }) => {
-    await pinnedResults(page)
-    const { scrollWidth, clientWidth } = await box(page.getByTestId('step-timeline-scroll'))
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth)
   })
 })
