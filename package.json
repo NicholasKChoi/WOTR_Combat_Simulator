@@ -5,6 +5,7 @@
         "dev": "next dev",
         "test": "vitest run",
         "acceptance": "playwright test",
+        "smoke:preview": "node scripts/smoke-preview.mjs",
         "acceptance:setup": "playwright install chromium",
         "lint:dup": "jscpd"
     },
