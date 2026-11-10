@@ -42,6 +42,7 @@ interface StepTableProps {
     onChange: (next: BuildOrder) => void
     openRows: readonly boolean[]
     onOpenRowsChange: (next: boolean[]) => void
+    disabled?: boolean
 }
 
 type FieldDef = { name: string; kind: 'number' } | { name: string; kind: 'select'; choices: readonly string[] }
@@ -288,7 +289,7 @@ function StartRow({ order, catalog, onChange }: { order: BuildOrder; catalog: Bu
     )
 }
 
-export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange }: StepTableProps) {
+export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange, disabled = false }: StepTableProps) {
     const { steps } = order
     const open = openFlags(openRows, steps)
     const commit = (next: BuildStep[], nextOpen: boolean[] = open) => {
@@ -298,7 +299,7 @@ export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange
     const setOpen = (index: number, value: boolean) => onOpenRowsChange(open.map((was, i) => (i === index ? value : was)))
 
     return (
-        <div data-testid="step-table" className="mb-3">
+        <fieldset data-testid="step-table" disabled={disabled} aria-busy={disabled ? 'true' : undefined} className={cn('mb-3', styles.fieldset)}>
             <table className={cn(styles.table, 'table table-sm align-middle')}>
                 <tbody>
                     <StartRow order={order} catalog={catalog} onChange={onChange} />
@@ -368,6 +369,6 @@ export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange
             >
                 Add step
             </button>
-        </div>
+        </fieldset>
     )
 }

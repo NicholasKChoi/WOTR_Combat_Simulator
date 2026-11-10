@@ -1,13 +1,17 @@
 import type { Ref } from 'react'
 import cn from 'classnames'
 
-import type { AutoRunStatus } from './auto-run'
+import type { SaveBuildResponse } from '../../../lib/aoe4-build-order/saved-builds'
+import type { TextToBuildResult } from '../../../lib/aoe4-build-order/text-to-build'
+import type { AutoRunStatus, LiveInput } from './auto-run'
 import { autoRunStatusMessage } from './auto-run-status'
+import { SaveBuild } from './save-build'
 import styles from './workbench.module.css'
 
 export interface PrebuiltBuild {
     name: string
     text: string
+    buildName?: string
 }
 
 export type EditorView = 'text' | 'table'
@@ -20,7 +24,11 @@ interface BuildInputProps {
     onDurationChange: (duration: string) => void
     durationError: string | null
     status: AutoRunStatus
+    settled: LiveInput
+    conversion: TextToBuildResult
     hasResult: boolean
+    busy?: boolean
+    onSaved: (response: SaveBuildResponse, input: LiveInput) => void
     onSubmit: () => void
     view: EditorView
     onViewChange: (view: EditorView) => void
@@ -33,7 +41,7 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ builds, selected, onBuildSelect, duration, onDurationChange, durationError, status, hasResult, onSubmit, view, onViewChange, viewDisabled = false, formRef }: BuildInputProps) {
+export function BuildInput({ builds, selected, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, onSaved, onSubmit, view, onViewChange, viewDisabled = false, formRef }: BuildInputProps) {
     return (
         <form
             ref={formRef}
@@ -52,6 +60,8 @@ export function BuildInput({ builds, selected, onBuildSelect, duration, onDurati
                     data-testid="build-order-select"
                     className="form-select"
                     value={selected}
+                    disabled={busy}
+                    aria-busy={busy ? 'true' : undefined}
                     onChange={(e) => onBuildSelect(e.target.value)}
                 >
                     {builds.map((b) => (
@@ -68,6 +78,8 @@ export function BuildInput({ builds, selected, onBuildSelect, duration, onDurati
                     className={cn('form-control', durationError !== null && 'is-invalid')}
                     value={duration}
                     step={1}
+                    disabled={busy}
+                    aria-busy={busy ? 'true' : undefined}
                     aria-invalid={durationError !== null ? 'true' : undefined}
                     aria-describedby={durationError !== null ? 'duration-error' : undefined}
                     onChange={(e) => onDurationChange(e.target.value)}
@@ -93,6 +105,7 @@ export function BuildInput({ builds, selected, onBuildSelect, duration, onDurati
                     </button>
                 ))}
             </div>
+            <SaveBuild status={status} settled={settled} conversion={conversion} builds={builds} busy={busy} onSaved={onSaved} />
             <p id="auto-run-status" data-testid="auto-run-status" role="status" data-status={status} className={styles.autoRunStatus}>
                 {autoRunStatusMessage(status, hasResult)}
             </p>

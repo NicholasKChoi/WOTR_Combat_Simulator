@@ -860,14 +860,14 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 ### Page
 
 The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls; below that it scrolls with the page. It
-holds the prebuilt build select, the `durationSeconds` number input (default 1200), a text/table toggle and the
-run status (`auto-run-status`). There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
+holds the build select (the prebuilt builds, plus the saved build a `?b=` link opened), the `durationSeconds` number input (default 1200), a text/table toggle and the
+run status (`auto-run-status`) and the Save build button. There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
 Build and Results sit side by side in two equal columns, both always shown, with no tabs. Below 1200 px they are two
-tabs, Build and Results; Results is enabled while there is a result or a pinned run. No run selects a tab, and
+tabs, Build and Results; Results is enabled while there is a result or a pinned run. No run selects a tab (one exception: opening a `?b=` link, see below), and
 the page never scrolls by itself. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so in the tabs layout the toggle is usable on the Build tab only; in the side-by-side layout the tab never disables it. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The layout follows the viewport width live, with no reload and no new run, and neither panel is remounted by a switch, so editor focus and text, an uncommitted table cell and the chart state carry across it. The tab selected before a resize to the side-by-side layout is kept, and the tabs layout shows it again after a resize back. When the page is opened directly, its first paint is the tabs layout and it switches to the side-by-side layout after it loads. In the side-by-side layout a Build panel wider than its column scrolls sideways inside the column. The Build panel shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and never scrolls vertically (a line longer than the box scrolls sideways), and the table view is the
-step table. The view survives runs and tab switches but not a reload, and a reload starts on Build.
+step table. The view survives runs and tab switches but not a reload, and a reload starts on Build (except that opening a `?b=` link selects Results on a narrow screen after its first successful run).
 Choosing a prebuilt build replaces the text with that build's paste text; editing the text
 leaves the select as it is.
 
@@ -899,6 +899,37 @@ Gold run-outs and other info notes are in the collapsed info list in Results.
 Narrow layout: under 768 px the step rows are cards (their selects and inputs shrink to the card), the run bar scrolls with the page and wraps onto several rows with the select and
 duration input at full width, and the step timeline and compare tables scroll sideways inside their own boxes. The
 page itself does not scroll sideways at 390 px on either tab, even with a long unbroken token in an issue message.
+
+#### Saving a build and opening it by link
+
+Save build (`save-build`) is enabled only while the shown result matches the settled input (status `current`), and
+while no save and no `?b=` load is in flight. A save stores the parsed build order, not the raw text, with the
+name the pin would use (an unchanged opened build keeps its stored name, an edited one gets ` (edited)` once, and
+the name is cut to fit the name cap) and the duration, so comments and blank lines are not kept and the text
+reopens in canonical form. The same content gives the same link, and saving it again returns it.
+
+The link is the page's origin plus `?b=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
+(`copy-saved-link`) in the run bar, and focus moves to the link with its text selected. Copy reads `Copied` once
+the clipboard accepts the link; when the browser refuses it, the link stays selected and the page says `Could not
+copy. Select the link and copy it by hand.` Escape in the link panel hides it and returns focus to Save build.
+The link, any save error and the `b` in the address bar go away on the first settled change of the text, the
+duration or the selected build (not while the edit is still inside the pause), and a save puts `b` back. A save
+answered after the settled input changed shows no link.
+
+Opening `/apps/aoe4-build-order?b=<id>` loads that build into the editor and runs it: the select gains an option
+`<name> (<id>)` that is selected, the duration is the saved one, and the select, duration, text editor, step
+table and Save build are disabled while the build loads, with no run until it ends. On a narrow screen Results
+opens after the first successful run. The first `b` in the address is the only one read, and a later change of `b`
+(back or forward) loads nothing. An unknown or malformed id shows `That saved build was not found. Showing the
+default build.`, and a load that failed shows `That saved build could not be loaded. Showing the default build.`;
+either runs the default build. A saved build whose text no longer converts opens as text with its issues and does
+not run.
+
+A failed save shows one message (`save-build-error`) and leaves Save build enabled: the first issue for a rejected
+build (`The build could not be saved: <issue>`), `The build is too large to save.`, `Saving is unavailable right
+now. Try again later.`, or `The build could not be saved. Try again.` for any other failure. When saves are
+limited it reads `Too many saves. Try again in <n> seconds.` below a minute and `Too many saves. Try again in <m>
+minutes.` from a minute on (rounded up), or `Too many saves. Try again later.` when the wait is unknown.
 At 1800 px and wider the step timeline sits in a column to the left of the charts and stays on screen just below the run
 bar while the charts scroll; it scrolls vertically inside that column, and sideways inside its own box when the table is
 wider than the column. Below 1800 px it is stacked above the charts and scrolls with the page.
