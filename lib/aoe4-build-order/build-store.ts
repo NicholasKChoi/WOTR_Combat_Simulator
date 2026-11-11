@@ -1,11 +1,20 @@
-// Where saved builds and save-rate counters live. Callers pass bare ids and client keys; each store
-// prefixes them with its own env through savedBuildKey and rateCounterKey.
+// Where saved builds, named builds and save-rate counters live. Callers pass bare ids and client keys;
+// each store prefixes them with its own env through savedBuildKey, namedBuildKey and rateCounterKey.
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { namedBuildKey } from './named-builds';
 import { deploymentEnv, rateCounterKey, savedBuildKey } from './saved-builds';
 
 export type PutResult = 'created' | 'exists';
+
+export type ReplaceResult = 'replaced' | 'conflict';
+
+export interface StoredWithEtag {
+  value: unknown;
+  etag: string;
+}
 
 export interface CounterUpdate {
   windowStart: number;
@@ -20,6 +29,12 @@ export interface BuildStore {
   deleteBuild(id: string): Promise<void>;
   // A 'refused' result writes nothing, so the stored count never passes the limit.
   bumpCounter(clientKey: string, windowStart: number, limit: number): Promise<CounterResult>;
+  createNamed(id: string, json: string): Promise<PutResult>;
+  // Always a fresh read, never a cached one.
+  getNamed(id: string): Promise<StoredWithEtag | null>;
+  // Compare-and-swap: writes only when the key exists and its etag is still `etag`; never retries.
+  replaceNamed(id: string, json: string, etag: string): Promise<ReplaceResult>;
+  deleteNamed(id: string): Promise<void>;
 }
 
 export const BUILDS_LOCAL_DIR_DEFAULT = '.builds-local';
@@ -31,23 +46,70 @@ export function nextCounter(stored: unknown, windowStart: number, limit: number)
   return { windowStart, count: previous.count + 1 };
 }
 
+// The JSON text behind each key of the memory and file stores. readNow and writeNow are synchronous so
+// replaceNamed has no await between its compare and its write.
+interface TextByKey {
+  create(key: string, json: string): Promise<PutResult>;
+  read(key: string): Promise<string | null>;
+  readNow(key: string): string | null;
+  writeNow(key: string, json: string): void;
+  remove(key: string): Promise<void>;
+}
+
+const textEtag = (json: string): string => createHash('sha256').update(json).digest('hex');
+
+function buildMethods(env: string, text: TextByKey): Omit<BuildStore, 'bumpCounter'> {
+  return {
+    async putBuild(id, json) {
+      return text.create(savedBuildKey(env, id), json);
+    },
+    async getBuild(id) {
+      const json = await text.read(savedBuildKey(env, id));
+      return json === null ? null : JSON.parse(json);
+    },
+    async deleteBuild(id) {
+      await text.remove(savedBuildKey(env, id));
+    },
+    async createNamed(id, json) {
+      return text.create(namedBuildKey(env, id), json);
+    },
+    async getNamed(id) {
+      const json = await text.read(namedBuildKey(env, id));
+      return json === null ? null : { value: JSON.parse(json), etag: textEtag(json) };
+    },
+    async replaceNamed(id, json, etag) {
+      const key = namedBuildKey(env, id);
+      const current = text.readNow(key);
+      if (current === null || textEtag(current) !== etag) return 'conflict';
+      text.writeNow(key, json);
+      return 'replaced';
+    },
+    async deleteNamed(id) {
+      await text.remove(namedBuildKey(env, id));
+    },
+  };
+}
+
 export function createMemoryBuildStore(env = 'development'): BuildStore {
   const builds = new Map<string, string>();
   const counters = new Map<string, CounterUpdate>();
+  const readNow = (key: string): string | null => builds.get(key) ?? null;
   return {
-    async putBuild(id, json) {
-      const key = savedBuildKey(env, id);
-      if (builds.has(key)) return 'exists';
-      builds.set(key, json);
-      return 'created';
-    },
-    async getBuild(id) {
-      const json = builds.get(savedBuildKey(env, id));
-      return json === undefined ? null : JSON.parse(json);
-    },
-    async deleteBuild(id) {
-      builds.delete(savedBuildKey(env, id));
-    },
+    ...buildMethods(env, {
+      async create(key, json) {
+        if (builds.has(key)) return 'exists';
+        builds.set(key, json);
+        return 'created';
+      },
+      read: async (key) => readNow(key),
+      readNow,
+      writeNow(key, json) {
+        builds.set(key, json);
+      },
+      async remove(key) {
+        builds.delete(key);
+      },
+    }),
     async bumpCounter(clientKey, windowStart, limit) {
       const key = rateCounterKey(env, clientKey);
       const update = nextCounter(counters.get(key), windowStart, limit);
@@ -72,29 +134,41 @@ export function createFileBuildStore(dir: string, env: string): BuildStore {
   };
 
   return {
-    async putBuild(id, json) {
-      const file = fileFor(savedBuildKey(env, id));
-      await mkdir(path.dirname(file), { recursive: true });
-      try {
-        await writeFile(file, json, { flag: 'wx' });
-        return 'created';
-      } catch (error) {
-        if (hasCode(error, 'EEXIST')) return 'exists';
-        throw error;
-      }
-    },
-    async getBuild(id) {
-      const file = fileFor(savedBuildKey(env, id));
-      try {
-        return JSON.parse(await readFile(file, 'utf8'));
-      } catch (error) {
-        if (hasCode(error, 'ENOENT')) return null;
-        throw error;
-      }
-    },
-    async deleteBuild(id) {
-      await rm(fileFor(savedBuildKey(env, id)), { force: true });
-    },
+    ...buildMethods(env, {
+      async create(key, json) {
+        const file = fileFor(key);
+        await mkdir(path.dirname(file), { recursive: true });
+        try {
+          await writeFile(file, json, { flag: 'wx' });
+          return 'created';
+        } catch (error) {
+          if (hasCode(error, 'EEXIST')) return 'exists';
+          throw error;
+        }
+      },
+      async read(key) {
+        try {
+          return await readFile(fileFor(key), 'utf8');
+        } catch (error) {
+          if (hasCode(error, 'ENOENT')) return null;
+          throw error;
+        }
+      },
+      readNow(key) {
+        try {
+          return readFileSync(fileFor(key), 'utf8');
+        } catch (error) {
+          if (hasCode(error, 'ENOENT')) return null;
+          throw error;
+        }
+      },
+      writeNow(key, json) {
+        writeFileSync(fileFor(key), json);
+      },
+      async remove(key) {
+        await rm(fileFor(key), { force: true });
+      },
+    }),
     // Synchronous on purpose: with no await between the read and the write, concurrent calls in one
     // process never lose an update. Across processes it is not atomic; this store serves only next dev,
     // Vitest and Playwright, where a lost count only loosens the limit.

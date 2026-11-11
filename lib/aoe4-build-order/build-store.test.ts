@@ -114,7 +114,101 @@ describe.each(factories)('%s build store', (_label, makeStore) => {
     })
 })
 
+const NAMED_ID = 'Nm3_k9-QaB0Nm3_k9-QaB0'
+
+async function storedNamed(store: BuildStore, value: unknown) {
+    expect(await store.createNamed(NAMED_ID, JSON.stringify(value))).toBe('created')
+    const stored = await store.getNamed(NAMED_ID)
+    if (stored === null) throw new Error('the named build was not stored')
+    return stored
+}
+
+describe.each(factories)('%s named builds', (_label, makeStore) => {
+    it('creates a named build once and never overwrites it', async () => {
+        const store = makeStore('development')
+        await storedNamed(store, { a: 1 })
+        expect(await store.createNamed(NAMED_ID, JSON.stringify({ a: 2 }))).toBe('exists')
+        expect((await store.getNamed(NAMED_ID))?.value).toStrictEqual({ a: 1 })
+    })
+
+    it('reads an absent named build as null', async () => {
+        expect(await makeStore('development').getNamed(NAMED_ID)).toBeNull()
+    })
+
+    it('reads the stored value with a non-empty string etag', async () => {
+        const { value, etag } = await storedNamed(makeStore('development'), { a: 1 })
+        expect(value).toStrictEqual({ a: 1 })
+        expect(typeof etag).toBe('string')
+        expect(etag.length).toBeGreaterThan(0)
+    })
+
+    it('replaces with the current etag and then reads the new value under a new etag', async () => {
+        const store = makeStore('development')
+        const first = await storedNamed(store, { revision: 1 })
+        expect(await store.replaceNamed(NAMED_ID, JSON.stringify({ revision: 2 }), first.etag)).toBe('replaced')
+        const second = await store.getNamed(NAMED_ID)
+        expect(second?.value).toStrictEqual({ revision: 2 })
+        expect(second?.etag).not.toBe(first.etag)
+    })
+
+    it('refuses a stale etag and keeps the first replacement', async () => {
+        const store = makeStore('development')
+        const { etag } = await storedNamed(store, { revision: 1 })
+        expect(await store.replaceNamed(NAMED_ID, JSON.stringify({ revision: 2 }), etag)).toBe('replaced')
+        expect(await store.replaceNamed(NAMED_ID, JSON.stringify({ revision: 3 }), etag)).toBe('conflict')
+        expect((await store.getNamed(NAMED_ID))?.value).toStrictEqual({ revision: 2 })
+    })
+
+    it('answers conflict for an absent id and does not create it', async () => {
+        const store = makeStore('development')
+        expect(await store.replaceNamed(NAMED_ID, '{"revision":2}', 'any-etag')).toBe('conflict')
+        expect(await store.getNamed(NAMED_ID)).toBeNull()
+    })
+
+    it('lets only one of two concurrent replaces with the same etag win', async () => {
+        const store = makeStore('development')
+        const { etag } = await storedNamed(store, { revision: 1 })
+        const results = await Promise.all([
+            store.replaceNamed(NAMED_ID, JSON.stringify({ writer: 'a' }), etag),
+            store.replaceNamed(NAMED_ID, JSON.stringify({ writer: 'b' }), etag),
+        ])
+        expect([...results].sort()).toStrictEqual(['conflict', 'replaced'])
+        const winner = results[0] === 'replaced' ? 'a' : 'b'
+        expect((await store.getNamed(NAMED_ID))?.value).toStrictEqual({ writer: winner })
+    })
+
+    it('deletes a named build and accepts deleting an absent one', async () => {
+        const store = makeStore('development')
+        await storedNamed(store, {})
+        await store.deleteNamed(NAMED_ID)
+        expect(await store.getNamed(NAMED_ID)).toBeNull()
+        await expect(store.deleteNamed(NAMED_ID)).resolves.toBeUndefined()
+    })
+
+    it('keeps named builds and saved builds under separate keys for the same id', async () => {
+        const store = makeStore('development')
+        expect(await store.putBuild(NAMED_ID, '{"kind":"saved"}')).toBe('created')
+        expect(await store.createNamed(NAMED_ID, '{"kind":"named"}')).toBe('created')
+        expect(await store.getBuild(NAMED_ID)).toStrictEqual({ kind: 'saved' })
+        expect((await store.getNamed(NAMED_ID))?.value).toStrictEqual({ kind: 'named' })
+    })
+
+    it('shares no named build between envs', async () => {
+        const preview = makeStore('preview')
+        const production = makeStore('production')
+        await storedNamed(preview, { env: 'preview' })
+        expect(await production.getNamed(NAMED_ID)).toBeNull()
+        expect(await production.createNamed(NAMED_ID, '{"env":"production"}')).toBe('created')
+        expect((await preview.getNamed(NAMED_ID))?.value).toStrictEqual({ env: 'preview' })
+    })
+})
+
 describe('file build store layout', () => {
+    it('writes named builds to <dir>/<env>/named-builds/<id>.json', async () => {
+        await createFileBuildStore(dir, 'preview').createNamed(NAMED_ID, '{"x":1}')
+        expect(readFileSync(path.join(dir, 'preview', 'named-builds', `${NAMED_ID}.json`), 'utf8')).toBe('{"x":1}')
+    })
+
     it('writes builds to <dir>/<env>/builds/<id>.json', async () => {
         await createFileBuildStore(dir, 'preview').putBuild(ID, '{"x":1}')
         expect(readFileSync(path.join(dir, 'preview', 'builds', `${ID}.json`), 'utf8')).toBe('{"x":1}')
