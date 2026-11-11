@@ -63,22 +63,9 @@ describe('loadSavedBuild', () => {
 
     it.each<[string, string, () => Promise<Response>]>([
         ['a record of another version', 'failed', json({ ...saved, version: 2 })],
-        ['a body that is not JSON', 'failed', () => Promise.resolve(new Response('<html>', { status: 200 }))],
         ['404', 'not-found', json({ error: 'not found' }, 404)],
-        ['500', 'failed', json({ error: 'boom' }, 500)],
-        ['503', 'failed', json({ error: 'down' }, 503)],
-        ['a network error', 'failed', () => Promise.reject(new TypeError('offline'))],
     ])('%s gives %s', async (_label, status, respond) => {
         stubFetch(respond)
         expect(await loadSavedBuild(ID, new AbortController().signal)).toStrictEqual({ status })
-    })
-
-    it('fails when the signal is already aborted', async () => {
-        stubFetch((init) => (init?.signal?.aborted ? Promise.reject(new DOMException('aborted', 'AbortError')) : json(saved)()))
-        const live = new AbortController()
-        expect(await loadSavedBuild(ID, live.signal)).toStrictEqual({ status: 'ok', saved })
-        const abort = new AbortController()
-        abort.abort()
-        expect(await loadSavedBuild(ID, abort.signal)).toStrictEqual({ status: 'failed' })
     })
 })

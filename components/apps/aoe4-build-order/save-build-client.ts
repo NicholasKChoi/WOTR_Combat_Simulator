@@ -1,4 +1,5 @@
 import type { SaveBuildRequest, SaveBuildResponse } from '../../../lib/aoe4-build-order/saved-builds'
+import { sendJson } from './build-fetch'
 
 const GENERIC_FAILURE = 'The build could not be saved. Try again.'
 
@@ -40,27 +41,8 @@ function isSaveBuildResponse(body: unknown): body is SaveBuildResponse {
     return typeof body === 'object' && body !== null && 'id' in body && typeof body.id === 'string' && 'path' in body && typeof body.path === 'string'
 }
 
-async function readJson(response: Response): Promise<unknown> {
-    try {
-        return await response.json()
-    } catch {
-        return undefined
-    }
-}
-
 export async function postSavedBuild(request: SaveBuildRequest, signal?: AbortSignal): Promise<{ ok: true; response: SaveBuildResponse } | { ok: false; message: string }> {
-    let response: Response
-    try {
-        response = await fetch('/api/aoe4-build-order/builds', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify(request),
-            signal,
-        })
-    } catch {
-        return { ok: false, message: saveFailureMessage(null, null, undefined) }
-    }
-    const body = await readJson(response)
-    if ((response.status === 201 || response.status === 200) && isSaveBuildResponse(body)) return { ok: true, response: body }
-    return { ok: false, message: saveFailureMessage(response.status, response.headers.get('Retry-After'), body) }
+    const reply = await sendJson('/api/aoe4-build-order/builds', { method: 'POST', body: request }, signal)
+    if ((reply.status === 201 || reply.status === 200) && isSaveBuildResponse(reply.body)) return { ok: true, response: reply.body }
+    return { ok: false, message: saveFailureMessage(reply.status, reply.retryAfter, reply.body) }
 }
