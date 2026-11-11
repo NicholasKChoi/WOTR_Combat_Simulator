@@ -2,7 +2,7 @@
 // each store prefixes them with its own env through savedBuildKey, namedBuildKey and rateCounterKey.
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { namedBuildKey } from './named-builds';
 import { deploymentEnv, rateCounterKey, savedBuildKey } from './saved-builds';
@@ -133,6 +133,15 @@ export function createFileBuildStore(dir: string, env: string): BuildStore {
     return file;
   };
 
+  const readNow = (key: string): string | null => {
+    try {
+      return readFileSync(fileFor(key), 'utf8');
+    } catch (error) {
+      if (hasCode(error, 'ENOENT')) return null;
+      throw error;
+    }
+  };
+
   return {
     ...buildMethods(env, {
       async create(key, json) {
@@ -146,22 +155,8 @@ export function createFileBuildStore(dir: string, env: string): BuildStore {
           throw error;
         }
       },
-      async read(key) {
-        try {
-          return await readFile(fileFor(key), 'utf8');
-        } catch (error) {
-          if (hasCode(error, 'ENOENT')) return null;
-          throw error;
-        }
-      },
-      readNow(key) {
-        try {
-          return readFileSync(fileFor(key), 'utf8');
-        } catch (error) {
-          if (hasCode(error, 'ENOENT')) return null;
-          throw error;
-        }
-      },
+      read: async (key) => readNow(key),
+      readNow,
       writeNow(key, json) {
         writeFileSync(fileFor(key), json);
       },
