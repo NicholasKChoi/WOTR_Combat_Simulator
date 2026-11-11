@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
 import { expect, type APIRequestContext, type Page, type Request, type Response } from '@playwright/test'
+import { RESULT_CHART_IDS } from '../components/apps/aoe4-build-order/chart-layout'
 import { AUTO_RUN_DEBOUNCE_MS, type AutoRunStatus } from '../components/apps/aoe4-build-order/auto-run'
 import { FINITE_GATHER_NODES, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
 import { buildOrderCatalog, type BuildOrderCatalog } from '../lib/aoe4-build-order/schema'
@@ -85,7 +86,7 @@ export function buildOrderFrom(text: string): BuildOrder {
 }
 
 export const RESOURCE_CHARTS = ['chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
-export const CHART_IDS = ['chart-units-produced', ...RESOURCE_CHARTS] as const
+export const CHART_IDS = RESULT_CHART_IDS
 
 // A click on Fight! before React hydrates submits the form natively and reloads the page. React DOM sets a
 // `__reactProps$` property on the form element once it attaches onSubmit; the server HTML has none.

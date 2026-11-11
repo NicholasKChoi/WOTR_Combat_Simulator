@@ -14,6 +14,7 @@ import { statusDescribesResults } from '../../components/apps/aoe4-build-order/a
 import { buildAnnotations } from '../../components/apps/aoe4-build-order/step-annotations'
 import { issueLines } from '../../components/apps/aoe4-build-order/text-lines'
 import { type LiveInput, resultsStale, sameInput } from '../../components/apps/aoe4-build-order/auto-run'
+import { browserStorage } from '../../components/apps/aoe4-build-order/browser-storage'
 import { pinName } from '../../components/apps/aoe4-build-order/pin-name'
 import { clearStoredPin, readStoredPin, writeStoredPin } from '../../components/apps/aoe4-build-order/pin-storage'
 import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
@@ -66,14 +67,6 @@ const LOAD_ERRORS = {
 function firstQueryValue(value: string | string[] | undefined): string | undefined {
     const first = Array.isArray(value) ? value[0] : value
     return first === undefined || first === '' ? undefined : first
-}
-
-function browserStorage(): Storage | null {
-    try {
-        return window.localStorage
-    } catch {
-        return null
-    }
 }
 
 export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps) {
