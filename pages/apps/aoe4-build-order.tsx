@@ -13,22 +13,24 @@ import { IssueList } from '../../components/apps/aoe4-build-order/issue-list'
 import { statusDescribesResults } from '../../components/apps/aoe4-build-order/auto-run-status'
 import { buildAnnotations } from '../../components/apps/aoe4-build-order/step-annotations'
 import { issueLines } from '../../components/apps/aoe4-build-order/text-lines'
-import { resultsStale } from '../../components/apps/aoe4-build-order/auto-run'
+import { type LiveInput, resultsStale, sameInput } from '../../components/apps/aoe4-build-order/auto-run'
 import { browserStorage } from '../../components/apps/aoe4-build-order/browser-storage'
 import {
+    entryKey,
     entryLabel,
     isEdited,
     linkEntry,
     mineEntries,
     namedEntry,
     runName,
+    savedMineEntry,
     templateEntries,
     withLoadedEntry,
     withMyBuilds,
     type LibraryEntry,
 } from '../../components/apps/aoe4-build-order/build-library'
 import { type InitialBuildQuery, initialBuildQuery, nextBuildQuery } from '../../components/apps/aoe4-build-order/build-query'
-import { myBuildsAvailable, readMyBuilds } from '../../components/apps/aoe4-build-order/my-builds-storage'
+import { MY_BUILDS_STORAGE_KEY, type MyBuildEntry, myBuildsAvailable, readMyBuilds } from '../../components/apps/aoe4-build-order/my-builds-storage'
 import { loadNamedBuild } from '../../components/apps/aoe4-build-order/named-build-client'
 import { clearStoredPin, readStoredPin, writeStoredPin } from '../../components/apps/aoe4-build-order/pin-storage'
 import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
@@ -48,7 +50,7 @@ import { formatBuildOrderText, parseBuildOrderText } from '../../lib/aoe4-build-
 import { type BuildOrderCatalog, buildOrderCatalog } from '../../lib/aoe4-build-order/schema'
 import { textToBuildOrder } from '../../lib/aoe4-build-order/text-to-build'
 import type { SimulateResponse } from '../../lib/aoe4-build-order/api'
-import type { SaveBuildResponse } from '../../lib/aoe4-build-order/saved-builds'
+import type { CreateNamedBuildResponse, UpdateNamedBuildResponse } from '../../lib/aoe4-build-order/named-builds'
 
 const pageTitle = 'AoE4 Build Order Simulator'
 const DEFAULT_DURATION_SECONDS = 1200
@@ -102,6 +104,19 @@ async function loadInitialEntry(query: { kind: 'named' | 'link'; id: string }, s
     return loadNamedEntry(mine.some((build) => build.id === query.id) ? 'mine' : 'shared', query.id, signal)
 }
 
+function secretsOf(stored: readonly MyBuildEntry[]): Record<string, string> {
+    return Object.fromEntries(stored.map((build) => [build.id, build.editSecret]))
+}
+
+// Another tab rewrote the stored list: its entries replace this tab's My builds, except the selected
+// one, which keeps the version this tab loaded so the edited marker and Save stay as they were.
+function withRereadMyBuilds(list: readonly LibraryEntry[], mine: readonly LibraryEntry[], selectedKey: string): LibraryEntry[] {
+    const selected = list.find((entry) => entry.kind === 'mine' && entry.key === selectedKey)
+    const fresh = mine.map((entry) => (entry.key === selected?.key ? selected : entry))
+    const kept = selected !== undefined && !mine.some((entry) => entry.key === selected.key) ? [selected] : []
+    return [...list.filter((entry) => entry.kind !== 'mine'), ...kept, ...fresh]
+}
+
 function confirmDiscard(label: string): boolean {
     return window.confirm(`Discard your edits to "${label}"?`)
 }
@@ -123,6 +138,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [loadError, setLoadError] = useState<string | null>(null)
     const [awaitingLoadTab, setAwaitingLoadTab] = useState(false)
     const [active, setActive] = useState<{ result: SimulateResponse; step: number } | null>(null)
+    const [secrets, setSecrets] = useState<Record<string, string>>({})
     const pinTouched = useRef(false)
     const runBarRef = useRef<HTMLFormElement>(null)
     useRunBarHeight(runBarRef)
@@ -131,9 +147,12 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const busy = initialLoadInFlight || choosing
     const autoRun = useAutoRun({ text, duration, selected, catalog, hold: initialQuery === null || initialLoadInFlight })
     const { status, conversion, result, shown, settled } = autoRun
+    const settledRef = useRef(settled)
+    const selectedRef = useRef(selected)
     const run: Run | null = shown === null ? null : { text: shown.text, durationSeconds: shown.durationSeconds, name: runName(entries, shown.text, shown.selected) }
     const selectedEntry = entries.find((entry) => entry.key === selected)
     const edited = isEdited(selectedEntry, { text, duration })
+    const editSecret = selectedEntry?.kind === 'mine' && selectedEntry.id !== null ? (secrets[selectedEntry.id] ?? null) : null
     useDiscardGuard(edited)
     const resultsEnabled = result !== null || pin !== null
     const shownTab = resultsEnabled ? tab : 'build'
@@ -181,9 +200,27 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     useEffect(() => {
         const storage = browserStorage()
         if (storage === null || !myBuildsAvailable(storage)) return
-        const mine = mineEntries(readMyBuilds(storage))
-        setEntries((list) => withMyBuilds(list, mine))
+        const stored = readMyBuilds(storage)
+        setEntries((list) => withMyBuilds(list, mineEntries(stored)))
+        setSecrets(secretsOf(stored))
     }, [])
+
+    useEffect(() => {
+        settledRef.current = settled
+        selectedRef.current = selected
+    }, [settled, selected])
+
+    useEffect(() => {
+        function reread(event: StorageEvent) {
+            const storage = browserStorage()
+            if (event.key !== MY_BUILDS_STORAGE_KEY || storage === null) return
+            const stored = readMyBuilds(storage)
+            setEntries((list) => withRereadMyBuilds(list, mineEntries(stored), selected))
+            setSecrets((known) => ({ ...known, ...secretsOf(stored) }))
+        }
+        window.addEventListener('storage', reread)
+        return () => window.removeEventListener('storage', reread)
+    }, [selected])
 
     useEffect(() => () => chooseAbort.current?.abort(), [])
 
@@ -260,8 +297,21 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         })
     }
 
-    function recordSave(response: SaveBuildResponse) {
-        replaceBuildQuery({ kind: 'link', id: response.id })
+    function recordCreated(response: CreateNamedBuildResponse, input: LiveInput, name: string) {
+        const entry = savedMineEntry(response.id, name, input, 1)
+        setSecrets((known) => ({ ...known, [response.id]: response.editSecret }))
+        setEntries((list) => [entry, ...list.filter((listed) => listed.key !== entry.key)])
+        if (!sameInput(input, settledRef.current)) return
+        setSelected(entry.key)
+        autoRun.flush({ text: input.text, duration: input.duration, selected: entry.key })
+        replaceBuildQuery(entry)
+    }
+
+    function recordUpdated(response: UpdateNamedBuildResponse, input: LiveInput) {
+        const key = entryKey.named(response.id)
+        const loaded = { text: input.text, duration: input.duration, revision: response.revision }
+        setEntries((list) => list.map((entry) => (entry.key === key ? { ...entry, loaded } : entry)))
+        if (selectedRef.current === key) replaceBuildQuery({ kind: 'mine', id: response.id })
     }
 
     const alreadyPinned = result !== null && run !== null && pin !== null && pin.text === run.text && pin.durationSeconds === run.durationSeconds
@@ -301,7 +351,10 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                     settled={settled}
                     conversion={conversion}
                     busy={busy}
-                    onSaved={recordSave}
+                    entry={selectedEntry}
+                    editSecret={editSecret}
+                    onCreated={recordCreated}
+                    onUpdated={recordUpdated}
                     hasResult={result !== null}
                     onSubmit={() => autoRun.flush()}
                     view={view}

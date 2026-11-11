@@ -1,8 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { listBuilds } from '../../../lib/aoe4-build-order/builds'
-import { postSavedBuild, saveFailureMessage } from './save-build-client'
+import { describe, expect, it } from 'vitest'
+import { saveFailureMessage } from './save-build-client'
 
-const request = { buildOrder: listBuilds()[0], durationSeconds: 900 }
 const GENERIC = 'The build could not be saved. Try again.'
 
 describe('saveFailureMessage', () => {
@@ -28,49 +26,5 @@ describe('saveFailureMessage', () => {
         ['a network error', null, null, undefined, GENERIC],
     ])('%s', (_label, status, retryAfter, body, expected) => {
         expect(saveFailureMessage(status, retryAfter, body)).toBe(expected)
-    })
-})
-
-describe('postSavedBuild', () => {
-    afterEach(() => {
-        vi.unstubAllGlobals()
-    })
-
-    function stubFetch(respond: () => Promise<Response>) {
-        const fetch = vi.fn(respond)
-        vi.stubGlobal('fetch', fetch)
-        return fetch
-    }
-
-    const saved = { id: 'Zx3_k9-QaB0', path: '/apps/aoe4-build-order?b=Zx3_k9-QaB0' }
-
-    it('posts the request as JSON to the builds route', async () => {
-        const fetch = stubFetch(() => Promise.resolve(new Response(JSON.stringify(saved), { status: 201 })))
-        const signal = new AbortController().signal
-        await postSavedBuild(request, signal)
-        const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit]
-        expect(url).toBe('/api/aoe4-build-order/builds')
-        expect(init.method).toBe('POST')
-        expect(init.body).toBe(JSON.stringify(request))
-        expect(init.signal).toBe(signal)
-    })
-
-    const ok = (status: number) => () => Promise.resolve(new Response(JSON.stringify(saved), { status }))
-    const notSave = (status: number) => () => Promise.resolve(new Response('{}', { status }))
-
-    it.each<[string, () => Promise<Response>, Awaited<ReturnType<typeof postSavedBuild>>]>([
-        ['201 is a success with the response body', ok(201), { ok: true, response: saved }],
-        ['200 is a success with the response body', ok(200), { ok: true, response: saved }],
-        [
-            '429 with Retry-After maps to minutes',
-            () => Promise.resolve(new Response('{}', { status: 429, headers: { 'Retry-After': '90' } })),
-            { ok: false, message: 'Too many saves. Try again in 2 minutes.' },
-        ],
-        ['a rejecting fetch maps to the network message', () => Promise.reject(new TypeError('offline')), { ok: false, message: GENERIC }],
-        ['a 201 whose body is not a save response is a failure', notSave(201), { ok: false, message: GENERIC }],
-        ['a 200 whose body is not a save response is a failure', notSave(200), { ok: false, message: GENERIC }],
-    ])('%s', async (_label, respond, expected) => {
-        stubFetch(respond)
-        expect(await postSavedBuild(request)).toStrictEqual(expected)
     })
 })

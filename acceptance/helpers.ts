@@ -144,7 +144,7 @@ export function isSimulatePost(r: Request): boolean {
 export const bodyDuration = (r: Request): unknown => r.postDataJSON()?.inputs?.durationSeconds
 
 // Holds every matching request until the returned function runs; later matching requests then pass at once.
-// Other requests on the path go to any route registered earlier.
+// Other requests on the path, and held ones once released, go to any route registered earlier.
 export async function holdRequests(page: Page, path: string, method: string, matches: (request: Request) => boolean = () => true): Promise<() => void> {
   let release = () => {}
   const gate = new Promise<void>((resolve) => (release = resolve))
@@ -152,7 +152,7 @@ export async function holdRequests(page: Page, path: string, method: string, mat
     const request = route.request()
     if (request.method() !== method || !matches(request)) return route.fallback()
     await gate
-    await route.continue().catch(() => {})
+    await route.fallback().catch(() => {})
   })
   return release
 }
