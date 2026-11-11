@@ -5,21 +5,17 @@ import type { SaveBuildResponse } from '../../../lib/aoe4-build-order/saved-buil
 import type { TextToBuildResult } from '../../../lib/aoe4-build-order/text-to-build'
 import type { AutoRunStatus, LiveInput } from './auto-run'
 import { autoRunStatusMessage } from './auto-run-status'
+import { LIBRARY_GROUPS, entryLabel, type LibraryEntry } from './build-library'
 import { SaveBuild } from './save-build'
 import styles from './workbench.module.css'
-
-export interface PrebuiltBuild {
-    name: string
-    text: string
-    buildName?: string
-}
 
 export type EditorView = 'text' | 'table'
 
 interface BuildInputProps {
-    builds: PrebuiltBuild[]
+    entries: LibraryEntry[]
     selected: string
-    onBuildSelect: (name: string) => void
+    edited: boolean
+    onBuildSelect: (key: string) => void
     duration: string
     onDurationChange: (duration: string) => void
     durationError: string | null
@@ -41,7 +37,7 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ builds, selected, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, onSaved, onSubmit, view, onViewChange, viewDisabled = false, runBarRef }: BuildInputProps) {
+export function BuildInput({ entries, selected, edited, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, onSaved, onSubmit, view, onViewChange, viewDisabled = false, runBarRef }: BuildInputProps) {
     return (
         <form
             ref={runBarRef}
@@ -54,7 +50,7 @@ export function BuildInput({ builds, selected, onBuildSelect, duration, onDurati
             }}
         >
             <div className={styles.runField}>
-                <label htmlFor="build-order-select">Prebuilt build</label>
+                <label htmlFor="build-order-select">Build</label>
                 <select
                     id="build-order-select"
                     data-testid="build-order-select"
@@ -62,11 +58,22 @@ export function BuildInput({ builds, selected, onBuildSelect, duration, onDurati
                     value={selected}
                     disabled={busy}
                     aria-busy={busy ? 'true' : undefined}
+                    data-edited={edited ? 'true' : 'false'}
                     onChange={(e) => onBuildSelect(e.target.value)}
                 >
-                    {builds.map((b) => (
-                        <option key={b.name} value={b.name}>{b.name}</option>
-                    ))}
+                    {LIBRARY_GROUPS.map((group) => {
+                        const members = entries.filter((entry) => group.kind.includes(entry.kind))
+                        if (members.length === 0) return null
+                        return (
+                            <optgroup key={group.label} label={group.label}>
+                                {members.map((entry) => (
+                                    <option key={entry.key} value={entry.key}>
+                                        {entryLabel(entry, edited && entry.key === selected)}
+                                    </option>
+                                ))}
+                            </optgroup>
+                        )
+                    })}
                 </select>
             </div>
             <div className={styles.runField}>
@@ -105,7 +112,7 @@ export function BuildInput({ builds, selected, onBuildSelect, duration, onDurati
                     </button>
                 ))}
             </div>
-            <SaveBuild status={status} settled={settled} conversion={conversion} builds={builds} busy={busy} onSaved={onSaved} />
+            <SaveBuild status={status} settled={settled} conversion={conversion} entries={entries} busy={busy} onSaved={onSaved} />
             <p id="auto-run-status" data-testid="auto-run-status" role="status" data-status={status} className={styles.autoRunStatus}>
                 {autoRunStatusMessage(status, hasResult)}
             </p>

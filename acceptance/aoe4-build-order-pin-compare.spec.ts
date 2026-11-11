@@ -3,7 +3,7 @@ import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { AOE4_PAGE, CHART_IDS, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, bodyDuration, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, holdNextSimulate, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, CHART_IDS, acceptBeforeUnload, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, bodyDuration, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, holdNextSimulate, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -267,6 +267,7 @@ test.describe('AoE4 build order pin and compare', () => {
     await runOk(page, { text: NO_MILITARY_PASTE })
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
     await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
+    page.once('dialog', (dialog) => dialog.accept())
     await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ index: 0 }))
     await expect(page.getByTestId('unpin-run')).toBeEnabled()
     await runOk(page, { duration: 600, text: NO_MILITARY_PASTE })
@@ -457,6 +458,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
     await page.getByTestId('unpin-run').click()
     await showTab(page, 'build')
+    page.once('dialog', (dialog) => dialog.accept())
     await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ index: 1 }))
     await runOk(page, { text: DEFAULT_PASTE })
     await pin(page)
@@ -471,6 +473,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[1].name} (edited), 20:00`)
 
     await showTab(page, 'build')
+    page.once('dialog', (dialog) => dialog.accept())
     await page.getByTestId('build-order-select').selectOption({ index: 0 })
     await showTab(page, 'results')
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[1].name} (edited), 20:00`)
@@ -551,6 +554,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
 
     await page.getByTestId('unpin-run').click()
     expect(await storedPin(page)).toBeNull()
+    acceptBeforeUnload(page)
     await page.reload()
     await expectNoPin(page)
   })

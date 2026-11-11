@@ -1,4 +1,6 @@
-import { SAVED_NAME_MAX_CHARS } from '../../../lib/aoe4-build-order/saved-builds'
+import type { NamedBuild } from '../../../lib/aoe4-build-order/named-builds'
+import { formatBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
+import { SAVED_NAME_MAX_CHARS, type SavedBuild } from '../../../lib/aoe4-build-order/saved-builds'
 import type { MyBuildEntry } from './my-builds-storage'
 
 export type LibraryEntryKind = 'template' | 'mine' | 'shared' | 'link'
@@ -47,6 +49,41 @@ export function mineEntries(stored: readonly MyBuildEntry[]): LibraryEntry[] {
     return stored.map((entry) => ({ key: entryKey.named(entry.id), kind: 'mine', name: entry.name, id: entry.id, loaded: null }))
 }
 
+export function linkEntry(id: string, saved: SavedBuild): LibraryEntry {
+    return {
+        key: entryKey.link(id),
+        kind: 'link',
+        name: saved.buildOrder.name,
+        id,
+        loaded: { text: formatBuildOrderText(saved.buildOrder), duration: String(saved.durationSeconds), revision: null },
+    }
+}
+
+export function namedEntry(kind: 'mine' | 'shared', build: NamedBuild): LibraryEntry {
+    return {
+        key: entryKey.named(build.id),
+        kind,
+        name: build.buildOrder.name,
+        id: build.id,
+        loaded: { text: formatBuildOrderText(build.buildOrder), duration: String(build.durationSeconds), revision: build.revision },
+    }
+}
+
+export function withMyBuilds(list: readonly LibraryEntry[], mine: readonly LibraryEntry[]): LibraryEntry[] {
+    const listed = new Map(list.map((entry) => [entry.key, entry]))
+    const mineKeys = new Set(mine.map((entry) => entry.key))
+    const kept = list.filter((entry) => !mineKeys.has(entry.key))
+    return [...kept, ...mine.map((entry) => ({ ...entry, loaded: listed.get(entry.key)?.loaded ?? entry.loaded }))]
+}
+
+export function withLoadedEntry(list: readonly LibraryEntry[], entry: LibraryEntry): LibraryEntry[] {
+    if (!list.some((listed) => listed.key === entry.key)) return [...list, entry]
+    return list.map((listed) => {
+        if (listed.key !== entry.key) return listed
+        return listed.kind === 'mine' ? { ...listed, loaded: entry.loaded } : entry
+    })
+}
+
 export function entryLabel(entry: LibraryEntry, edited: boolean): string {
     const base = entry.kind === 'shared' ? `${entry.name} (shared)` : entry.kind === 'link' ? `${entry.name} (${entry.id})` : entry.name
     return edited ? `${base}${EDITED_SUFFIX}` : base
@@ -63,10 +100,15 @@ export function copyName(name: string): string {
     return `${base.slice(0, SAVED_NAME_MAX_CHARS - COPY_SUFFIX.length)}${COPY_SUFFIX}`
 }
 
-export function runName(entries: readonly LibraryEntry[], text: string, selectedKey: string): string {
+// The entry whose loaded text is `text`, preferring the selected one when several share it.
+export function entryWithText(entries: readonly LibraryEntry[], text: string, selectedKey: string): LibraryEntry | undefined {
     const selected = entries.find((entry) => entry.key === selectedKey)
-    if (selected?.loaded?.text === text) return selected.name
-    const match = entries.find((entry) => entry.loaded?.text === text)
-    if (match !== undefined) return match.name
+    return selected?.loaded?.text === text ? selected : entries.find((entry) => entry.loaded?.text === text)
+}
+
+export function runName(entries: readonly LibraryEntry[], text: string, selectedKey: string): string {
+    const same = entryWithText(entries, text, selectedKey)
+    if (same !== undefined) return same.name
+    const selected = entries.find((entry) => entry.key === selectedKey)
     return selected === undefined ? CUSTOM_BUILD_NAME : `${selected.name}${EDITED_SUFFIX}`
 }

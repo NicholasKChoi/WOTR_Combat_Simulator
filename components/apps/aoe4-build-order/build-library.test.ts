@@ -1,8 +1,48 @@
 import { describe, expect, it } from 'vitest'
-import { LIBRARY_GROUPS, copyName, entryKey, entryLabel, isEdited, mineEntries, runName, templateEntries, type LibraryEntry } from './build-library'
+import { listBuilds } from '../../../lib/aoe4-build-order/builds'
+import type { NamedBuild } from '../../../lib/aoe4-build-order/named-builds'
+import { formatBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
+import type { SavedBuild } from '../../../lib/aoe4-build-order/saved-builds'
+import { buildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
+import { ENGLISH } from '../../../lib/aoe4-build-order/test-helpers'
+import { textToBuildOrder } from '../../../lib/aoe4-build-order/text-to-build'
+import {
+    LIBRARY_GROUPS,
+    copyName,
+    entryKey,
+    entryLabel,
+    isEdited,
+    linkEntry,
+    mineEntries,
+    namedEntry,
+    runName,
+    templateEntries,
+    withLoadedEntry,
+    withMyBuilds,
+    type LibraryEntry,
+} from './build-library'
 import type { MyBuildEntry } from './my-builds-storage'
 
 const ID = 'a'.repeat(22)
+const B_ID = 'b'.repeat(22)
+const LINK_ID = 'Zx3_k9-QaB0'
+const [firstOrder, secondOrder] = listBuilds()
+
+function namedBuild(id: string, name: string, revision: number): NamedBuild {
+    return {
+        version: 1,
+        id,
+        buildOrder: { ...secondOrder, name },
+        durationSeconds: 840,
+        revision,
+        createdAt: '2026-11-10T08:00:00.000Z',
+        updatedAt: '2026-11-10T09:00:00.000Z',
+    }
+}
+
+function stored(id: string, name: string, updatedAt: string): MyBuildEntry {
+    return { id, name, editSecret: 'S'.repeat(43), revision: 1, updatedAt }
+}
 
 function libraryEntry(over: Partial<LibraryEntry> & Pick<LibraryEntry, 'key'>): LibraryEntry {
     return { kind: 'template', name: over.key, id: null, loaded: null, ...over }
@@ -38,12 +78,83 @@ describe('builders', () => {
     it('mineEntries fills every field in input order', () => {
         const stored: MyBuildEntry[] = [
             { id: ID, name: 'B', editSecret: 'S'.repeat(43), revision: 3, updatedAt: '2026-11-10T10:00:00Z' },
-            { id: 'b'.repeat(22), name: 'A', editSecret: 'S'.repeat(43), revision: 1, updatedAt: '2026-11-10T09:00:00Z' },
+            { id: B_ID, name: 'A', editSecret: 'S'.repeat(43), revision: 1, updatedAt: '2026-11-10T09:00:00Z' },
         ]
         expect(mineEntries(stored)).toEqual([
             { key: `named:${ID}`, kind: 'mine', name: 'B', id: ID, loaded: null },
-            { key: `named:${'b'.repeat(22)}`, kind: 'mine', name: 'A', id: 'b'.repeat(22), loaded: null },
+            { key: `named:${B_ID}`, kind: 'mine', name: 'A', id: B_ID, loaded: null },
         ])
+    })
+
+    it('linkEntry keys by the link id and keeps the stored name and duration', () => {
+        const saved: SavedBuild = { version: 1, buildOrder: { ...firstOrder, name: 'Fast Castle' }, durationSeconds: 900 }
+        expect(linkEntry(LINK_ID, saved)).toEqual({
+            key: `link:${LINK_ID}`,
+            kind: 'link',
+            name: 'Fast Castle',
+            id: LINK_ID,
+            loaded: { text: formatBuildOrderText(saved.buildOrder), duration: '900', revision: null },
+        })
+    })
+
+    it('linkEntry text converts back to the saved steps', () => {
+        const saved: SavedBuild = { version: 1, buildOrder: firstOrder, durationSeconds: 900 }
+        const reopened = textToBuildOrder(linkEntry(LINK_ID, saved).loaded?.text ?? '', buildOrderCatalog(ENGLISH))
+        expect(reopened.ok && reopened.order.steps).toStrictEqual(saved.buildOrder.steps)
+    })
+
+    it.each(['mine', 'shared'] as const)('namedEntry(%s) keys by the build id and carries its revision', (kind) => {
+        const build = namedBuild(ID, 'Shared Castle', 4)
+        expect(namedEntry(kind, build)).toEqual({
+            key: `named:${ID}`,
+            kind,
+            name: 'Shared Castle',
+            id: ID,
+            loaded: { text: formatBuildOrderText(build.buildOrder), duration: '840', revision: 4 },
+        })
+    })
+})
+
+describe('list merges', () => {
+    const templates = templateEntries([
+        { name: 'T1', text: 'start -> sheep' },
+        { name: 'T2', text: 'start -> boar' },
+    ])
+    const mine = mineEntries([stored(ID, 'A stored', '2026-11-10T10:00:00Z'), stored(B_ID, 'B stored', '2026-11-10T09:00:00Z')])
+    const loadedB = namedEntry('mine', namedBuild(B_ID, 'B on the server', 3))
+
+    it('gives the same list whichever of the My builds read and a load result lands first', () => {
+        expect(loadedB.name).not.toBe('B stored')
+        const readFirst = withLoadedEntry(withMyBuilds(templates, mine), loadedB)
+        const loadFirst = withMyBuilds(withLoadedEntry(templates, loadedB), mine)
+        expect(readFirst).toEqual(loadFirst)
+        const b = readFirst.find((entry) => entry.key === loadedB.key)
+        expect(b).toEqual({ key: `named:${B_ID}`, kind: 'mine', name: 'B stored', id: B_ID, loaded: loadedB.loaded })
+    })
+
+    it.each([
+        ['read first', () => withLoadedEntry(withMyBuilds(templates, mine), loadedB)],
+        ['load first', () => withMyBuilds(withLoadedEntry(templates, loadedB), mine)],
+    ])('keeps My builds in stored order (%s)', (_label, merge) => {
+        expect(merge().filter((entry) => entry.kind === 'mine').map((entry) => entry.name)).toEqual(['A stored', 'B stored'])
+    })
+
+    it('replaces a listed shared entry whole', () => {
+        const before = namedEntry('shared', namedBuild(ID, 'Old', 1))
+        const after = namedEntry('shared', namedBuild(ID, 'New', 2))
+        expect(withLoadedEntry([...templates, before], after)).toEqual([...templates, after])
+    })
+
+    it('appends an entry whose key is not listed', () => {
+        const link = linkEntry(LINK_ID, { version: 1, buildOrder: firstOrder, durationSeconds: 600 })
+        const shared = namedEntry('shared', namedBuild(B_ID, 'Shared', 1))
+        expect(withLoadedEntry([...templates, link], shared)).toEqual([...templates, link, shared])
+    })
+
+    it('keeps link and shared entries the My builds read does not name', () => {
+        const link = linkEntry(LINK_ID, { version: 1, buildOrder: firstOrder, durationSeconds: 600 })
+        const shared = namedEntry('shared', namedBuild('c'.repeat(22), 'Shared', 1))
+        expect(withMyBuilds([...templates, link, shared], mine)).toEqual([...templates, link, shared, ...mine])
     })
 })
 
