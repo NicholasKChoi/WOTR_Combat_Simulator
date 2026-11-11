@@ -71,3 +71,13 @@ none
 - Underspecified: the all-`0xff` id sample was wrong (22 `_`; 16 bytes encode to 21 `_` then `w`), and the shared base64url encoder had no name or home.
 - Changed: the id criterion now expects `_____________________w`, matching the revised `design/M8.md` C1; Scope names `base64UrlEncode(bytes: Uint8Array): string` exported from `saved-builds.ts` and imported by `named-builds.ts`, with a new criterion that the conversion lives only there.
 - No branch work exists yet; nothing to carry over.
+
+## Rework 1 - 2026-11-10 (review)
+
+Review bounced at tip f2b60d55d28e753a078bbb6741531ad305c8bfbb (report: reports/SGS-119-review-1.md). Only gate so far.
+
+Findings:
+- `lib/aoe4-build-order/named-builds.test.ts:104`: the "different lengths" row for `sameSecretHash` passes the longer string first (`'abcdef', 'abcde'`). Deleting the length guard at `named-builds.ts:38` leaves all 51 tests passing, so the test cannot catch a missing guard.
+
+Required fixes:
+- [ ] Add the row `['the first is a prefix of the second', 'abcde', 'abcdef', false]` to the `sameSecretHash` table and keep the existing row. Confirm by deleting the length guard that the new row fails, then restore it.

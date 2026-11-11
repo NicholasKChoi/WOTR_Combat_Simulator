@@ -74,6 +74,15 @@ Names follow design/M8.md C11. All paths are under `components/apps/aoe4-build-o
   `acceptance/helpers.ts`; every rect read in one `page.evaluate` or under `expect.poll`, per LESSONS). Existing
   specs that look at layout stay valid; any test of the old layout (the page scrolling to reach the results, a
   panel's height) is changed to the new rule, and the implementer lists every test it edits.
+- **"each column scrolls on its own" precondition (the only remaining implementer work on branch
+  `sgs-115-split-scroll`).** In `acceptance/aoe4-split-scroll.spec.ts`, the test's page-scroll precondition (today
+  `await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true)`,
+  which only proves the page has overflow) is replaced verbatim with
+  `await expect.poll(() => page.evaluate(() => window.scrollY < document.documentElement.scrollHeight - window.innerHeight)).toBe(true)`,
+  so the wheel runs only when the window still has room to scroll further down from where it is. Then remove
+  `overscroll-behavior: contain` from `.column` in `workbench.module.css`, run the spec, confirm the test fails on
+  the `window.scrollY` "unchanged" assertion, restore the CSS, and record both runs in the report. No production
+  code changes.
 
 **Out of scope:** per-chart collapse and reorder, the legend, step-table and run-cell polish, the library select
 and save panel (other M8 tickets that touch the same files in different hunks); the breakpoint (stays 1200 px); the
@@ -91,10 +100,16 @@ Single-component change outside the core control loop; no diagram required.
   (within 1 px), and its bottom equals `innerHeight` (within 1 px). Pinned by `aoe4-split-scroll.spec.ts`; it fails
   if the `height` rule or the custom property is removed, or if the hook drops the margin (the bottom then overshoots
   the viewport by the margin).
-- [ ] Each column scrolls itself: with a build long enough that `build-column` has `scrollHeight > clientHeight`
-  (the test asserts this first), scrolling `build-column` changes its `scrollTop` and leaves `window.scrollY` and
-  `results-column.scrollTop` unchanged; the same for `results-column` with `build-column.scrollTop` unchanged. It
-  fails if either column loses `overflow-y: auto` or `min-height: 0`.
+- [ ] (respec 2) Each column scrolls itself. `aoe4-split-scroll.spec.ts` "each column scrolls on its own", at
+  `SPLIT_VIEWPORT` with the long build shown, for `build-column` and then `results-column`: the test asserts the
+  column has `scrollHeight > clientHeight`, scrolls the column to its end and asserts its `scrollTop` is above 0, then
+  asserts the page can still scroll further down from its current position
+  (`window.scrollY < document.documentElement.scrollHeight - window.innerHeight`, under `expect.poll`; overflow
+  alone, `scrollHeight > innerHeight`, does not satisfy this), then sends `page.mouse.wheel(0, 200)` with the
+  pointer over the column and asserts `window.scrollY` and the other column's `scrollTop` did not change. It fails if
+  either column loses `overflow-y: auto` or `min-height: 0`, and it fails (on the `window.scrollY` assertion) when
+  `overscroll-behavior: contain` is removed from `.column` in `workbench.module.css`; the implementer runs that
+  mutation, restores the CSS and records the failing output in the report.
 - [ ] Hover still shades charts: with the long build's last step row's annotation (`build-order-line-annotation`)
   scrolled into view in the build column and hovered, at least one `chart-step-band` is shown in a results chart that
   is within the viewport. It fails if the columns stop scrolling separately and the chart is off screen.
@@ -141,3 +156,26 @@ none
   bottom + margin and bottom = `innerHeight` with the alert absent; criterion 4 uses the `duration-error` route only;
   columns get `overflow-x: hidden` with a new criterion.
 - Branch work: none yet; no implementation exists to keep or discard.
+
+## Rework 1 - 2026-11-10 (review)
+
+Review bounced at tip 3a0fc44351af4487535f58f5da3dc7f0b8e071ab (report: reports/SGS-115-review-1.md). Only gate so far.
+
+Findings:
+- `acceptance/aoe4-split-scroll.spec.ts:22-26, 69-70`: "each column scrolls on its own" sets `scrollTop` from script, which can never move `window.scrollY` or the other column, so the two "unchanged" assertions cannot fail.
+- `docs/aoe4-build-order.md:851`: the sentence says the textarea's column scrolls, but below 1200 px there is no scrolling column; the page scrolls (text-fix).
+
+Required fixes:
+- [ ] In the "each column scrolls on its own" case, scroll the column to its end, assert the page can still scroll, then `page.mouse.wheel(0, 200)` over the column and assert `window.scrollY` and the other column's scrollTop did not move. Confirm it fails when `overscroll-behavior: contain` is removed from `.column` (`workbench.module.css:26`), then restore.
+- [ ] `docs/aoe4-build-order.md:851` (text): replace that line verbatim with: `rows) and does not scroll vertically itself (in the side-by-side layout the Build column scrolls, below 1200 px the page does; a line longer than the box scrolls sideways), and the table view is the`
+
+## Re-spec 2 - 2026-11-10
+
+- Underspecified: criterion 2 and Rework 1 said only "the page can still scroll", so the test's precondition
+  checked page overflow (`scrollHeight > innerHeight`), which passes with the window at its maximum `scrollY`, where
+  the `window.scrollY` "unchanged" check holds whatever the CSS (review 2).
+- Changed: criterion 2 (respec 2) states the precondition as room to scroll further down from the current position
+  and requires a recorded failing run with `overscroll-behavior: contain` removed; Scope gives the verbatim
+  replacement of the precondition line as the only remaining implementer work.
+- Branch work: everything at `sgs-115-split-scroll` tip 637e1ad stands (production code, docs line 851 fix, the
+  rest of the wheel-based test); only the one precondition line changes.

@@ -1,0 +1,16 @@
+
+> test
+> vitest run
+
+
+ RUN  v5.0.5 /home/choin/git/WOTR_Combat_Simulator/.claude/code-factory/worktrees/suite-batch-113-117-119
+
+
+ Test Files  64 passed (64)
+      Tests  2030 passed | 13 skipped (2043)
+   Start at  18:35:29
+   Duration  4.02s (tests 48%, import 30%, transform 22%, worker 1%)
+
+    Isolate  64 workers spawned · ~129ms startup each (spawn + environment, per file)
+             at least ~623ms faster with isolate: false — reuses workers across files instead of one per file
+

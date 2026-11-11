@@ -122,3 +122,13 @@ none
 - Underspecified: whether `CHART_IDS` was renamed or re-exported, what `RESOURCE_CHARTS` and `aoe4-results-split.spec.ts` become, whether a collapsed `chart-body` is unmounted (and where the measure svg lives), whether the Bootstrap header wrapper goes, and which viewport the new spec uses.
 - Changed: `helpers.ts` re-exports `CHART_IDS = RESULT_CHART_IDS` with `RESOURCE_CHARTS` a standalone literal and no existing spec edited; the collapsed body stays in the DOM with `id` and `hidden` and no children, the measure svg stays outside it, and the header row is module CSS; viewports named per case; explicit focus restore after a move.
 - No branch work existed; nothing to carry over.
+
+## Rework 1 - 2026-11-10 (review, text)
+
+Review bounced at tip 72ac4acb410237a084cecf551c139e8f36672b72 (report: reports/SGS-114-review-1.md). Only gate so far.
+
+Findings:
+- `components/apps/aoe4-build-order/line-chart.tsx:161-277` (text): the JSX inside the new `<>` fragment is mis-indented. `{headerControls}` is at 24 columns but lines 163-276 (`<ResponsiveContainer>` through `<MarkerLegend>`) sit at 20, the fragment's own level.
+
+Required fixes:
+- [ ] Indent lines 163-276 of `line-chart.tsx` by 4 more spaces and leave `</>` at 20 columns. Whitespace only; no other change.

@@ -119,3 +119,13 @@ none
 - Underspecified: the contract spec's pinned `saveBuild` key list, the build-store export-list test, and the `docs/aoe4-build-order.md` reply table all break or go stale with the new 500 and `nextCounter`, and none was in Scope; the `deploymentEnv` test file and the GET body type were unnamed.
 - Changed: Scope adds the contract-spec edit, an export-list test rule, the docs 500 row and Builds-routes bullets, `SavedBuild & { id: string }` as the inline GET body, explicit `sendReply<Union>` allowed (no casts), and `deploymentEnv` rows in `saved-builds.test.ts`; four criteria tagged `(respec 1)`.
 - No branch work exists yet; the design revision to M8.md did not touch C2, C3 or the Debt table.
+
+## Rework 1 - 2026-11-10 (review, text)
+
+Review bounced at tip 36be3d2921ad29c6a52072f8c0d996c61859cf80 (report: reports/SGS-112-review-1.md). Only gate so far.
+
+Findings:
+- `lib/aoe4-build-order/api-route.ts:42-43` (text): the comment on `sendReply` says NoInfer is needed because "With strict off, json's parameter is bivariant". The real cause is that `ReplyTarget.json` is declared with method syntax, so its parameter is bivariant even under strictFunctionTypes.
+
+Required fixes:
+- [x] `api-route.ts:42-43` (text): replace that comment with exactly these three lines: `// Body comes from the response alone. json is declared as a method, so its parameter is bivariant even under` / `// strictFunctionTypes; inferring Body from the reply too would let a response type that lacks one of the reply's` / `// bodies compile.` No other change.
