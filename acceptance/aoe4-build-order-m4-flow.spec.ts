@@ -73,6 +73,7 @@ test.describe('AoE4 build order M4 flow', () => {
       page.off('request', onRequest)
     }
 
+    page.once('dialog', (dialog) => dialog.accept())
     await page.getByTestId('build-order-select').selectOption({ label: OTHER_BUILD })
     await page.getByTestId('build-order-select').selectOption({ label: KNIGHT_LONGBOW })
     await expect(page.getByTestId('build-order-text')).toHaveValue(textOf(KNIGHT_LONGBOW))

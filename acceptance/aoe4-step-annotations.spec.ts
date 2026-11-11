@@ -176,6 +176,7 @@ test.describe('AoE4 step annotations in the text view', () => {
 
   test('choosing another build in the select scrolls the text back to the left', async ({ page }) => {
     const textarea = await scrolledLongText(page)
+    page.once('dialog', (dialog) => dialog.accept())
     await page.getByTestId('build-order-select').selectOption({ label: listBuilds()[1].name })
     await expect(textarea).toHaveValue(formatBuildOrderText(listBuilds()[1]))
     await expect.poll(() => textarea.evaluate((el: HTMLTextAreaElement) => el.scrollLeft)).toBe(0)
