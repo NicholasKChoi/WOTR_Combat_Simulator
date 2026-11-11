@@ -64,6 +64,11 @@ export function run(steps: BuildStep[], options: { game?: GameData; inputs?: unk
     return simulateBuildOrder(buildOrder(steps, options.start), game, inputsFor(game, options.inputs), options.rules)
 }
 
+export function housesDone(): { done: number[]; rules: CivRules } {
+    const done: number[] = []
+    return { done, rules: { onBuildingComplete: (_state, ctx) => void (ctx.baseId === 'house' && done.push(ctx.time)) } }
+}
+
 export function sampleIndex(result: SimulationResult, t: number): number {
     const i = result.times.indexOf(t)
     if (i < 0) {

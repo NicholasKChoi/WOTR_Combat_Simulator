@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
-import { textToBuildOrder } from '../../../lib/aoe4-build-order/text-to-build'
-import { createAutoRunController, durationError, type AutoRunController, type AutoRunState, type LiveInput } from './auto-run'
+import { createAutoRunController, initialAutoRunState, type AutoRunController, type AutoRunState, type LiveInput } from './auto-run'
 import { postSimulation } from './simulate-client'
 
 interface AutoRunArgs extends LiveInput {
@@ -12,26 +11,8 @@ interface AutoRunArgs extends LiveInput {
 
 type AutoRun = AutoRunState & { flush(live?: LiveInput): void; retry(): void }
 
-function firstPaintState(settled: LiveInput, catalog: BuildOrderCatalog): AutoRunState {
-    const conversion = textToBuildOrder(settled.text, catalog)
-    const error = durationError(settled.duration)
-    return {
-        status: 'loading',
-        settled,
-        conversion,
-        durationError: error,
-        request: conversion.ok && error === null ? { buildOrder: conversion.order, inputs: { durationSeconds: Number(settled.duration) } } : null,
-        result: null,
-        resultRequestKey: null,
-        shown: null,
-        serverIssues: [],
-        omittedIssues: 0,
-        errorMessage: null,
-    }
-}
-
 // The controller is created in an effect, never during render, so the prerendered HTML and the first
-// client render come from firstPaintState alone and nothing is posted before hydration.
+// client render come from initialAutoRunState alone and nothing is posted before hydration.
 export function useAutoRun({ text, duration, selected, catalog, hold }: AutoRunArgs): AutoRun {
     const controller = useRef<AutoRunController | null>(null)
     const previous = useRef({ text, duration, selected, hold })
@@ -61,7 +42,7 @@ export function useAutoRun({ text, duration, selected, catalog, hold }: AutoRunA
         if (before.hold && !hold) current.release()
     }, [text, duration, selected, hold])
 
-    const snapshot = useMemo(() => state ?? firstPaintState({ text, duration, selected }, catalog), [state, text, duration, selected, catalog])
+    const snapshot = useMemo(() => state ?? initialAutoRunState({ text, duration, selected }, catalog), [state, text, duration, selected, catalog])
     const flush = useCallback((live?: LiveInput) => controller.current?.flush(live), [])
     const retry = useCallback(() => controller.current?.retry(), [])
 

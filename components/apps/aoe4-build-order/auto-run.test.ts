@@ -195,7 +195,7 @@ describe('input', () => {
     })
 
     it('an equal input restarts the timer, and its fire posts nothing', async () => {
-        const { controller, post, answer, state } = await withResult()
+        const { controller, post, answer, state, history } = await withResult()
         controller.input(live(OTHER))
         vi.advanceTimersByTime(AUTO_RUN_DEBOUNCE_MS - 100)
         controller.input(live(OTHER))
@@ -204,10 +204,12 @@ describe('input', () => {
         vi.advanceTimersByTime(1)
         expect(post).toHaveBeenCalledTimes(2)
         await answer(1, reply(200, result(OTHER)))
+        const changes = history.length
         controller.input(live(OTHER))
         vi.advanceTimersByTime(AUTO_RUN_DEBOUNCE_MS)
         expect(post).toHaveBeenCalledTimes(2)
         expect(state().status).toBe('current')
+        expect(history).toHaveLength(changes)
     })
 
     it('held: records the input only', () => {
