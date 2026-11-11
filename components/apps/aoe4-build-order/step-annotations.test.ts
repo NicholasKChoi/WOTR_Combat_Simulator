@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { SimulateResponse } from '../../../lib/aoe4-build-order/api'
 import type { StepTiming } from '../../../lib/aoe4-build-order/model'
 import { parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { annotationsByLine, buildAnnotations, alignSteps, finishedText, formatStepTime, formatWaitBreakdown, stepKind, stepSpan, type AnnotationInput, type StepAnnotation, type StepKind } from './step-annotations'
+import { annotationsByLine, buildAnnotations, alignSteps, finishedText, formatStepTime, formatWaitBreakdown, stepKind, stepSpan, waitedText, type AnnotationInput, type StepAnnotation, type StepKind } from './step-annotations'
 
 const LANDMARKS = ['kings-palace']
 
@@ -208,6 +208,17 @@ describe('finishedText', () => {
         ['completed', null, '–'],
     ])('%s with completedAt %s reads %s', (status, completedAt, expected) => {
         expect(finishedText({ status, completedAt })).toBe(expected)
+    })
+})
+
+describe('waitedText', () => {
+    it.each<[StepTiming['status'], string]>([
+        ['completed', '1:15'],
+        ['in-progress', '1:15'],
+        ['waiting', 'still waiting'],
+        ['not-reached', 'still waiting'],
+    ])('%s with 75 waited seconds reads %s', (status, expected) => {
+        expect(waitedText({ status, waitSeconds: 75 })).toBe(expected)
     })
 })
 

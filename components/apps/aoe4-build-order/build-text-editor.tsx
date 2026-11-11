@@ -1,11 +1,10 @@
 import cn from 'classnames'
-import type { SyntheticEvent } from 'react'
+import { useEffect, useRef, type SyntheticEvent } from 'react'
 
-import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import type { BuildOrderLines } from '../../../lib/aoe4-build-order/model'
 import annotationStyles from './step-annotation.module.css'
 import { KIND_CLASS, StepKindLegend, StepTimes, annotationToneClass } from './step-annotation'
-import { annotationsByLine, type BuildAnnotations, type StepAnnotation } from './step-annotations'
+import { STILL_WAITING, annotationsByLine, waitedText, type BuildAnnotations, type StepAnnotation } from './step-annotations'
 import { lineCount } from './text-lines'
 import styles from './workbench.module.css'
 
@@ -30,6 +29,7 @@ interface AnnotationLineProps {
 
 function AnnotationLine({ line, annotation, stale, active, onActiveStepChange }: AnnotationLineProps) {
     const run = annotation?.run ?? null
+    const waited = run === null ? null : waitedText(run)
     return (
         <li
             data-testid="build-order-line-annotation"
@@ -40,17 +40,22 @@ function AnnotationLine({ line, annotation, stale, active, onActiveStepChange }:
             data-long-wait={run?.longWait ? 'true' : undefined}
             data-stale={annotation !== null && stale ? 'true' : undefined}
             data-gutter-active={active ? 'true' : undefined}
-            title={run === null ? undefined : `Waited ${formatMinSec(run.waitSeconds)}. Blocked by: ${run.blockedBy === '' ? 'nothing' : run.blockedBy}`}
+            title={run === null ? undefined : `${waited === STILL_WAITING ? 'Still waiting' : `Waited ${waited}`}. Blocked by: ${run.blockedBy === '' ? 'nothing' : run.blockedBy}`}
             className={cn(annotation !== null && [annotationStyles.kindBorder, KIND_CLASS[annotation.kind], annotationToneClass(run ?? undefined, stale)])}
             onPointerEnter={() => onActiveStepChange(run?.runStep ?? null)}
             onPointerLeave={() => onActiveStepChange(null)}
         >
-            {run === null ? null : <StepTimes run={run} />}
+            {run === null ? null : <StepTimes run={run} labelled={false} />}
         </li>
     )
 }
 
 export function BuildTextEditor({ text, onChange, errorLines, annotations, lines, activeStep, onActiveStepChange, disabled = false }: BuildTextEditorProps) {
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const typedText = useRef<string | null>(null)
+    useEffect(() => {
+        if (typedText.current !== text && textareaRef.current !== null) textareaRef.current.scrollLeft = 0
+    }, [text])
     const rowCount = lineCount(text)
     const byLine = annotations === null ? null : annotationsByLine(annotations, lines.steps, rowCount)
     const onCaret = (e: SyntheticEvent<HTMLTextAreaElement>) => {
@@ -92,6 +97,7 @@ export function BuildTextEditor({ text, onChange, errorLines, annotations, lines
                     </ol>
                 ) : null}
                 <textarea
+                    ref={textareaRef}
                     id="build-order-text"
                     data-testid="build-order-text"
                     className={cn('form-control font-monospace', styles.textarea)}
@@ -101,7 +107,10 @@ export function BuildTextEditor({ text, onChange, errorLines, annotations, lines
                     value={text}
                     disabled={disabled}
                     aria-busy={disabled ? 'true' : undefined}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={(e) => {
+                        typedText.current = e.target.value
+                        onChange(e.target.value)
+                    }}
                     onSelect={onCaret}
                     onKeyUp={onCaret}
                     onClick={onCaret}

@@ -1,8 +1,7 @@
 import cn from 'classnames'
 
-import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import styles from './step-annotation.module.css'
-import { STEP_KINDS, finishedText, formatStepTime, type StepAnnotation, type StepKind, type StepRun } from './step-annotations'
+import { STEP_KINDS, STILL_WAITING, finishedText, formatStepTime, waitedText, type StepAnnotation, type StepKind, type StepRun } from './step-annotations'
 
 export const KIND_CLASS: Record<StepKind, string> = {
     'age-up': styles.kindAgeUp,
@@ -42,17 +41,29 @@ export function annotationToneClass(run: StepRun | undefined, stale: boolean): s
     return cn(warn && styles.warn, stale && styles.stale)
 }
 
-export function StepTimes({ run }: { run: StepRun }) {
+export function StepTimes({ run, labelled }: { run: StepRun; labelled: boolean }) {
+    const started = <span data-testid="step-started">{formatStepTime(run.startedAt)}</span>
+    const finished = <span data-testid="step-finished">{finishedText(run)}</span>
     return (
         <span className={styles.times}>
-            <span data-testid="step-started">{formatStepTime(run.startedAt)}</span>
-            <span data-testid="step-finished">{finishedText(run)}</span>
+            {labelled ? (
+                <>
+                    <span>Started {started}</span>
+                    <span>Finished {finished}</span>
+                </>
+            ) : (
+                <>
+                    {started}
+                    {finished}
+                </>
+            )}
         </span>
     )
 }
 
 export function StepRunCell({ annotation, stale }: { annotation: StepAnnotation; stale: boolean }) {
     const { kind, run } = annotation
+    const waited = run === null ? null : waitedText(run)
     return (
         <td
             data-testid="step-run"
@@ -62,8 +73,11 @@ export function StepRunCell({ annotation, stale }: { annotation: StepAnnotation;
             <StepKindBadge kind={kind} />
             {run === null ? null : (
                 <>
-                    <StepTimes run={run} />
-                    <div data-testid="step-waited">{formatMinSec(run.waitSeconds)}</div>
+                    <StepTimes run={run} labelled />
+                    <div>
+                        {waited === STILL_WAITING ? null : 'Waited '}
+                        <span data-testid="step-waited">{waited}</span>
+                    </div>
                     <div data-testid="step-blocked-by">{run.blockedBy}</div>
                 </>
             )}

@@ -44,6 +44,11 @@ export interface StepRun {
 export const finishedText = (run: Pick<StepRun, 'status' | 'completedAt'>): string =>
     run.status === 'in-progress' ? 'ongoing' : formatStepTime(run.completedAt)
 
+export const STILL_WAITING = 'still waiting'
+
+export const waitedText = (run: Pick<StepRun, 'status' | 'waitSeconds'>): string =>
+    run.status === 'waiting' || run.status === 'not-reached' ? STILL_WAITING : formatMinSec(run.waitSeconds)
+
 function blockedByText(timing: StepTiming, breakdown: StepRun['waitBreakdown']): string {
     if (timing.status === 'not-reached') return `not reached (${timing.waitingOn})`
     const reasons = formatWaitBreakdown(breakdown)
