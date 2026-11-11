@@ -161,86 +161,64 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                 {collapsed ? null : (
                     <>
                         {headerControls}
-                    <ResponsiveContainer width="100%" height={360} onResize={(width) => setChartWidth(width)}>
-                        <LineChart
-                            data={toChartRows(times, series, pinned)}
-                            margin={{ top: CHART_MARGIN_PX + rows * LABEL_LINE_HEIGHT, right: CHART_MARGIN_PX, bottom: CHART_MARGIN_PX, left: CHART_MARGIN_PX }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} />
-                            <YAxis width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft', textAnchor: 'middle' }} />
-                            <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} formatter={formatChartValue} />
-                            {series.map((s, i) => (
-                                <Line
-                                    key={s.key}
-                                    dataKey={s.key}
-                                    name={s.name}
-                                    data-series={s.key}
-                                    stroke={seriesColor(i)}
-                                    dot={false}
-                                    isAnimationActive={false}
-                                    hide={isLineHidden(hidden, s.key)}
-                                />
-                            ))}
-                            {pinned?.series.map((s, i) => (
-                                <Line
-                                    key={pinnedKey(s.key)}
-                                    dataKey={pinnedKey(s.key)}
-                                    name={`${s.name} (pinned)`}
-                                    data-series={pinnedKey(s.key)}
-                                    stroke={pinnedColor(series, s.key, i)}
-                                    strokeDasharray="6 4"
-                                    dot={false}
-                                    connectNulls={false}
-                                    isAnimationActive={false}
-                                    hide={isLineHidden(hidden, pinnedKey(s.key))}
-                                />
-                            ))}
-                            {highlight && highlight.from < highlight.to ? (
-                                <ReferenceArea
-                                    x1={highlight.from}
-                                    x2={highlight.to}
-                                    fill={BAND_COLOR}
-                                    fillOpacity={0.15}
-                                    stroke="none"
-                                    data-testid="chart-step-band"
-                                    data-from={highlight.from}
-                                    data-to={highlight.to}
-                                />
-                            ) : null}
-                            {highlight && highlight.from === highlight.to ? (
-                                <ReferenceLine
-                                    x={highlight.from}
-                                    stroke={BAND_COLOR}
-                                    strokeWidth={2}
-                                    data-testid="chart-step-band"
-                                    data-from={highlight.from}
-                                    data-to={highlight.to}
-                                />
-                            ) : null}
-                            {placed.map(({ marker, side, row, dx }) => (
-                                <ReferenceLine
-                                    key={`${marker.kind}:${marker.label}:${marker.at}`}
-                                    x={marker.at}
-                                    stroke={MARKER_COLORS[marker.kind]}
-                                    data-testid="chart-marker"
-                                    data-kind={marker.kind}
-                                    data-label={marker.label}
-                                    data-at={marker.at}
-                                    label={{
-                                        value: markerLabel(marker),
-                                        position: side === 'left' ? 'insideTopLeft' : 'insideTopRight',
-                                        fill: MARKER_COLORS[marker.kind],
-                                        fontSize: LABEL_FONT_SIZE,
-                                        offset: 0,
-                                        dx,
-                                        dy: (row - rows) * LABEL_LINE_HEIGHT,
-                                    }}
-                                />
-                            ))}
-                            {markers
-                                .filter((marker) => marker.kind !== 'age-up')
-                                .map((marker) => (
+                        <ResponsiveContainer width="100%" height={360} onResize={(width) => setChartWidth(width)}>
+                            <LineChart
+                                data={toChartRows(times, series, pinned)}
+                                margin={{ top: CHART_MARGIN_PX + rows * LABEL_LINE_HEIGHT, right: CHART_MARGIN_PX, bottom: CHART_MARGIN_PX, left: CHART_MARGIN_PX }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} />
+                                <YAxis width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft', textAnchor: 'middle' }} />
+                                <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} formatter={formatChartValue} />
+                                {series.map((s, i) => (
+                                    <Line
+                                        key={s.key}
+                                        dataKey={s.key}
+                                        name={s.name}
+                                        data-series={s.key}
+                                        stroke={seriesColor(i)}
+                                        dot={false}
+                                        isAnimationActive={false}
+                                        hide={isLineHidden(hidden, s.key)}
+                                    />
+                                ))}
+                                {pinned?.series.map((s, i) => (
+                                    <Line
+                                        key={pinnedKey(s.key)}
+                                        dataKey={pinnedKey(s.key)}
+                                        name={`${s.name} (pinned)`}
+                                        data-series={pinnedKey(s.key)}
+                                        stroke={pinnedColor(series, s.key, i)}
+                                        strokeDasharray="6 4"
+                                        dot={false}
+                                        connectNulls={false}
+                                        isAnimationActive={false}
+                                        hide={isLineHidden(hidden, pinnedKey(s.key))}
+                                    />
+                                ))}
+                                {highlight && highlight.from < highlight.to ? (
+                                    <ReferenceArea
+                                        x1={highlight.from}
+                                        x2={highlight.to}
+                                        fill={BAND_COLOR}
+                                        fillOpacity={0.15}
+                                        stroke="none"
+                                        data-testid="chart-step-band"
+                                        data-from={highlight.from}
+                                        data-to={highlight.to}
+                                    />
+                                ) : null}
+                                {highlight && highlight.from === highlight.to ? (
+                                    <ReferenceLine
+                                        x={highlight.from}
+                                        stroke={BAND_COLOR}
+                                        strokeWidth={2}
+                                        data-testid="chart-step-band"
+                                        data-from={highlight.from}
+                                        data-to={highlight.to}
+                                    />
+                                ) : null}
+                                {placed.map(({ marker, side, row, dx }) => (
                                     <ReferenceLine
                                         key={`${marker.kind}:${marker.label}:${marker.at}`}
                                         x={marker.at}
@@ -249,32 +227,54 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                         data-kind={marker.kind}
                                         data-label={marker.label}
                                         data-at={marker.at}
+                                        label={{
+                                            value: markerLabel(marker),
+                                            position: side === 'left' ? 'insideTopLeft' : 'insideTopRight',
+                                            fill: MARKER_COLORS[marker.kind],
+                                            fontSize: LABEL_FONT_SIZE,
+                                            offset: 0,
+                                            dx,
+                                            dy: (row - rows) * LABEL_LINE_HEIGHT,
+                                        }}
+                                    />
+                                ))}
+                                {markers
+                                    .filter((marker) => marker.kind !== 'age-up')
+                                    .map((marker) => (
+                                        <ReferenceLine
+                                            key={`${marker.kind}:${marker.label}:${marker.at}`}
+                                            x={marker.at}
+                                            stroke={MARKER_COLORS[marker.kind]}
+                                            data-testid="chart-marker"
+                                            data-kind={marker.kind}
+                                            data-label={marker.label}
+                                            data-at={marker.at}
+                                        >
+                                            <title>{markerLabel(marker)}</title>
+                                        </ReferenceLine>
+                                    ))}
+                                {pinnedAgeUps.map((marker) => (
+                                    <ReferenceLine
+                                        key={`pinned:${marker.label}:${marker.at}`}
+                                        x={marker.at}
+                                        stroke={MARKER_COLORS['age-up']}
+                                        strokeDasharray="6 4"
+                                        data-testid="chart-pinned-marker"
+                                        data-label={marker.label}
+                                        data-at={marker.at}
                                     >
-                                        <title>{markerLabel(marker)}</title>
+                                        <title>{`${marker.label} (pinned) ${formatMinSec(marker.at)}`}</title>
                                     </ReferenceLine>
                                 ))}
-                            {pinnedAgeUps.map((marker) => (
-                                <ReferenceLine
-                                    key={`pinned:${marker.label}:${marker.at}`}
-                                    x={marker.at}
-                                    stroke={MARKER_COLORS['age-up']}
-                                    strokeDasharray="6 4"
-                                    data-testid="chart-pinned-marker"
-                                    data-label={marker.label}
-                                    data-at={marker.at}
-                                >
-                                    <title>{`${marker.label} (pinned) ${formatMinSec(marker.at)}`}</title>
-                                </ReferenceLine>
-                            ))}
-                        </LineChart>
-                    </ResponsiveContainer>
-                    <SeriesLegend
-                        series={series}
-                        pinned={pinned}
-                        hidden={hidden}
-                        onToggle={(key) => setHidden((h) => toggleHidden(h, key))}
-                    />
-                    <MarkerLegend markers={markers} pinnedAgeUps={pinnedAgeUps.length > 0} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                        <SeriesLegend
+                            series={series}
+                            pinned={pinned}
+                            hidden={hidden}
+                            onToggle={(key) => setHidden((h) => toggleHidden(h, key))}
+                        />
+                        <MarkerLegend markers={markers} pinnedAgeUps={pinnedAgeUps.length > 0} />
                     </>
                 )}
             </div>
