@@ -43,8 +43,8 @@ test.describe.serial('save, read back and delete', () => {
     expect(response.headers()['cache-control']).toBe('public, max-age=31536000, immutable')
     const saved = await response.json()
     expectValid('SavedBuildWithId', saved)
-    expect(saved).toMatchObject({ version: SAVED_BUILD_VERSION, id, durationSeconds: body.durationSeconds })
-    expect(saved.buildOrder).toMatchObject(body.buildOrder)
+    expect(saved.buildOrder).toEqual(body.buildOrder)
+    expect(saved).toEqual({ version: SAVED_BUILD_VERSION, buildOrder: body.buildOrder, durationSeconds: body.durationSeconds, id })
   })
 
   test('DELETE answers 204 and a following GET answers 404', async ({ request }) => {

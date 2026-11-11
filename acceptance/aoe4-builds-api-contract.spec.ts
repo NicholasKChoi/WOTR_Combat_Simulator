@@ -39,7 +39,7 @@ test.describe('spec structure', () => {
   })
 
   test('declares every documented status of each operation', () => {
-    expect(keys(save.responses)).toEqual(['200', '201', '400', '405', '413', '429', '503'])
+    expect(keys(save.responses)).toEqual(['200', '201', '400', '405', '413', '429', '500', '503'])
     expect(keys(getOperation.responses)).toEqual(['200', '404', '405', '500', '503'])
     expect(keys(deleteOperation.responses)).toEqual(['204', '404', '405', '503'])
     expect(save.responses['429'].headers['Retry-After']).toBeDefined()
@@ -180,7 +180,7 @@ test.describe('the examples equal the real responses', () => {
   })
 
   test('the 503 and 500 examples have no live reproduction and validate as BuildsError only', () => {
-    for (const example of [examples(save, '503').storageUnavailable, examples(getOperation, '500').unreadableBuild]) expectValid('BuildsError', example.value)
+    for (const example of [examples(save, '503').storageUnavailable, examples(save, '500').idFailure, examples(getOperation, '500').unreadableBuild]) expectValid('BuildsError', example.value)
   })
 })
 

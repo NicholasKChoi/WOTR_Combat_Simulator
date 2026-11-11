@@ -48,9 +48,15 @@ describe('takeSaveSlot', () => {
     })
 
     it('passes the window start for the time to the store', async () => {
-        const bumpCounter = vi.fn(async (_key: string, windowStart: number) => ({ windowStart, count: 1 }))
+        const bumpCounter = vi.fn(async (_key: string, windowStart: number, _limit: number) => ({ windowStart, count: 1 }))
         await takeSaveSlot(storeWith(bumpCounter), 'c', W + 1_234_567)
-        expect(bumpCounter).toHaveBeenCalledExactlyOnceWith('c', W)
+        expect(bumpCounter).toHaveBeenCalledExactlyOnceWith('c', W, SAVE_RATE_LIMIT.maxSaves)
+    })
+
+    it('leaves the stored count at the limit after refusals', async () => {
+        const store = createMemoryBuildStore()
+        await takeSlots(store, 'c', 35)
+        expect(await store.bumpCounter('c', W, SAVE_RATE_LIMIT.maxSaves + 1)).toStrictEqual({ windowStart: W, count: SAVE_RATE_LIMIT.maxSaves + 1 })
     })
 
     it('refuses for one second when the counter is contended', async () => {

@@ -715,9 +715,13 @@ request and response.
   A repeat save still takes a rate-limit slot.
 - `GET` sends `Cache-Control: public, max-age=31536000, immutable`, because a saved build never changes. An id
   that is malformed and an id with no build give the same 404.
-- `DELETE` exists outside production only; in production the route answers it with 405.
+- `DELETE` exists outside production only; in production the route answers it with 405. It also answers 405
+  when `VERCEL` is set without `VERCEL_ENV`, where every builds route answers 503 anyway, because the store
+  cannot be chosen.
 - The storage comes from `buildStoreFromEnv` in `build-store.ts`, and the per-client limit is
-  `SAVE_RATE_LIMIT` in `save-rate-limit.ts`. A 429 carries `Retry-After`.
+  `SAVE_RATE_LIMIT` in `save-rate-limit.ts`. A 429 carries `Retry-After`. A save refused by the limit writes
+  nothing, so the stored count never passes the limit.
+- When the build id cannot be created the save answers 500 before any store call.
 
 ## Outputs
 
@@ -1057,6 +1061,7 @@ documents it:
 | 400 | rejected, body has `issues` | fix the build and send it again |
 | 413 | the saved record is too large | shorten the build |
 | 429 | too many saves from this client, `Retry-After` header | wait that many seconds, then send again |
+| 500 | the build id could not be created | try again later |
 | 503 | storage is unavailable | try again later |
 
 The link to print is the deployment's origin plus `path` (`<origin><path>`). `path` is relative, so the script

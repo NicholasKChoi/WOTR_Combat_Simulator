@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { MAX_REPORTED_ISSUES, type SimulateError, type SimulateResponse } from '../../../lib/aoe4-build-order/api';
-import { isPlainObject, methodNotAllowed, notAnObjectError, sendReply } from '../../../lib/aoe4-build-order/api-route';
+import type { SimulateError, SimulateResponse } from '../../../lib/aoe4-build-order/api';
+import { isPlainObject, issuesError, methodNotAllowed, notAnObjectError, sendReply } from '../../../lib/aoe4-build-order/api-route';
 import { loadGameData } from '../../../lib/aoe4-build-order/data';
 import { englishCatalog } from '../../../lib/aoe4-build-order/english-catalog';
 import type { BuildOrderIssue } from '../../../lib/aoe4-build-order/model';
@@ -45,7 +45,5 @@ export default function handler(req: NextApiRequest, res: NextApiResponse<Simula
   }
 
   const all = [...(order.ok ? [] : order.issues), ...(inputs.ok ? [] : inputs.issues)];
-  const issues = all.slice(0, MAX_REPORTED_ISSUES);
-  const omittedIssues = all.length - issues.length;
-  sendReply(res, { status: 400, body: { error: issues[0].message, issues, ...(omittedIssues > 0 ? { omittedIssues } : {}) } });
+  sendReply(res, { status: 400, body: issuesError(all) });
 }

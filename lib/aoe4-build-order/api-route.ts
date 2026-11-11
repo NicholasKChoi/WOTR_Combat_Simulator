@@ -1,16 +1,17 @@
 // What every AoE4 route shares. Browser-safe: saved-builds.ts imports it, so it must not import data.ts or any server-only module.
-import type { SimulateError } from './api';
+import { MAX_REPORTED_ISSUES, type BuildsError, type SimulateError } from './api';
+import type { BuildOrderIssue } from './model';
 
-export interface RouteReply {
+export interface RouteReply<Body = unknown> {
   status: number;
   headers?: Record<string, string>;
-  body?: unknown;
+  body?: Body;
 }
 
-export interface ReplyTarget {
-  status(code: number): ReplyTarget;
+export interface ReplyTarget<Body = unknown> {
+  status(code: number): ReplyTarget<Body>;
   setHeader(name: string, value: string): unknown;
-  json(body: unknown): void;
+  json(body: Body): void;
   end(): void;
 }
 
@@ -18,7 +19,7 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function methodNotAllowed(method: string | undefined, allowed: readonly string[]): RouteReply {
+export function methodNotAllowed(method: string | undefined, allowed: readonly string[]): RouteReply<BuildsError> {
   return {
     status: 405,
     headers: { Allow: allowed.join(', ') },
@@ -31,7 +32,16 @@ export function notAnObjectError(): SimulateError {
   return { error: message, issues: [{ code: 'syntax', message }] };
 }
 
-export function sendReply(res: ReplyTarget, reply: RouteReply): void {
+// The caller guarantees at least one issue: the first one's message is the error.
+export function issuesError(all: readonly BuildOrderIssue[]): SimulateError {
+  const issues = all.slice(0, MAX_REPORTED_ISSUES);
+  const omittedIssues = all.length - issues.length;
+  return { error: issues[0].message, issues, ...(omittedIssues > 0 ? { omittedIssues } : {}) };
+}
+
+// Body comes from the response alone. With strict off, json's parameter is bivariant, so inferring from the
+// reply too would let a response type that lacks one of the reply's bodies compile.
+export function sendReply<Body>(res: ReplyTarget<Body>, reply: RouteReply<NoInfer<Body>>): void {
   res.status(reply.status);
   for (const [name, value] of Object.entries(reply.headers ?? {})) res.setHeader(name, value);
   if (reply.body === undefined) res.end();

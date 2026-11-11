@@ -3,7 +3,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { rateCounterKey, savedBuildKey, storageEnv } from './saved-builds';
+import { deploymentEnv, rateCounterKey, savedBuildKey } from './saved-builds';
 
 export type PutResult = 'created' | 'exists';
 
@@ -12,18 +12,23 @@ export interface CounterUpdate {
   count: number;
 }
 
+export type CounterResult = CounterUpdate | 'contended' | 'refused';
+
 export interface BuildStore {
   putBuild(id: string, json: string): Promise<PutResult>;
   getBuild(id: string): Promise<unknown | null>;
   deleteBuild(id: string): Promise<void>;
-  bumpCounter(clientKey: string, windowStart: number): Promise<CounterUpdate | 'contended'>;
+  // A 'refused' result writes nothing, so the stored count never passes the limit.
+  bumpCounter(clientKey: string, windowStart: number, limit: number): Promise<CounterResult>;
 }
 
 export const BUILDS_LOCAL_DIR_DEFAULT = '.builds-local';
 
-function nextCounter(stored: unknown, windowStart: number): CounterUpdate {
+export function nextCounter(stored: unknown, windowStart: number, limit: number): CounterUpdate | 'refused' {
   const previous = stored as Partial<CounterUpdate> | null | undefined;
-  return { windowStart, count: previous?.windowStart === windowStart && typeof previous.count === 'number' ? previous.count + 1 : 1 };
+  if (previous?.windowStart !== windowStart || typeof previous.count !== 'number') return { windowStart, count: 1 };
+  if (previous.count >= limit) return 'refused';
+  return { windowStart, count: previous.count + 1 };
 }
 
 export function createMemoryBuildStore(env = 'development'): BuildStore {
@@ -43,10 +48,10 @@ export function createMemoryBuildStore(env = 'development'): BuildStore {
     async deleteBuild(id) {
       builds.delete(savedBuildKey(env, id));
     },
-    async bumpCounter(clientKey, windowStart) {
+    async bumpCounter(clientKey, windowStart, limit) {
       const key = rateCounterKey(env, clientKey);
-      const update = nextCounter(counters.get(key), windowStart);
-      counters.set(key, update);
+      const update = nextCounter(counters.get(key), windowStart, limit);
+      if (update !== 'refused') counters.set(key, update);
       return update;
     },
   };
@@ -93,7 +98,7 @@ export function createFileBuildStore(dir: string, env: string): BuildStore {
     // Synchronous on purpose: with no await between the read and the write, concurrent calls in one
     // process never lose an update. Across processes it is not atomic; this store serves only next dev,
     // Vitest and Playwright, where a lost count only loosens the limit.
-    async bumpCounter(clientKey, windowStart) {
+    async bumpCounter(clientKey, windowStart, limit) {
       const file = fileFor(rateCounterKey(env, clientKey));
       let stored: unknown = null;
       try {
@@ -101,7 +106,8 @@ export function createFileBuildStore(dir: string, env: string): BuildStore {
       } catch (error) {
         if (!hasCode(error, 'ENOENT')) throw error;
       }
-      const update = nextCounter(stored, windowStart);
+      const update = nextCounter(stored, windowStart, limit);
+      if (update === 'refused') return update;
       mkdirSync(path.dirname(file), { recursive: true });
       writeFileSync(file, JSON.stringify(update));
       return update;
@@ -110,7 +116,8 @@ export function createFileBuildStore(dir: string, env: string): BuildStore {
 }
 
 async function storeFor(env: NodeJS.ProcessEnv): Promise<BuildStore> {
-  const storage = storageEnv(env.VERCEL_ENV);
+  const storage = deploymentEnv({ VERCEL: env.VERCEL, VERCEL_ENV: env.VERCEL_ENV });
+  if (storage === null) throw new Error('VERCEL is set but VERCEL_ENV is not');
   if (env.BUILDS_STORE_ID) {
     const { createBlobBuildStore } = await import('./blob-build-store');
     return createBlobBuildStore(env.BUILDS_STORE_ID, storage);

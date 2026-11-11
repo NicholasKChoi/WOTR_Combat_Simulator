@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BUILDS_LOCAL_DIR_DEFAULT, buildStoreFromEnv, createFileBuildStore, createMemoryBuildStore, type BuildStore, type CounterUpdate } from './build-store'
+import { BUILDS_LOCAL_DIR_DEFAULT, buildStoreFromEnv, createFileBuildStore, createMemoryBuildStore, nextCounter, type BuildStore, type CounterResult } from './build-store'
 
 const blobFactory = vi.hoisted(() => ({ create: vi.fn(), imported: vi.fn() }))
 
@@ -33,13 +33,36 @@ const factories: [string, (env: string) => BuildStore][] = [
     ['file', (env) => createFileBuildStore(dir, env)],
 ]
 
-async function counts(store: BuildStore, clientKey: string, windows: number[]) {
-    const results: (CounterUpdate | 'contended')[] = []
-    for (const windowStart of windows) results.push(await store.bumpCounter(clientKey, windowStart))
-    return results.map((result) => (result === 'contended' ? result : result.count))
+const LIMIT = 30
+
+async function counts(store: BuildStore, clientKey: string, windows: number[], limit = LIMIT) {
+    const results: CounterResult[] = []
+    for (const windowStart of windows) results.push(await store.bumpCounter(clientKey, windowStart, limit))
+    return results.map((result) => (typeof result === 'string' ? result : result.count))
 }
 
+describe('nextCounter', () => {
+    it.each([
+        ['same window below the limit', { windowStart: W, count: 7 }, { windowStart: W, count: 8 }],
+        ['same window one below the limit', { windowStart: W, count: LIMIT - 1 }, { windowStart: W, count: LIMIT }],
+        ['same window at the limit', { windowStart: W, count: LIMIT }, 'refused'],
+        ['same window above the limit', { windowStart: W, count: LIMIT + 5 }, 'refused'],
+        ['an older window at the limit', { windowStart: W - HOUR, count: LIMIT }, { windowStart: W, count: 1 }],
+        ['null', null, { windowStart: W, count: 1 }],
+        ['a count that is not a number', { windowStart: W, count: '7' }, { windowStart: W, count: 1 }],
+    ])('steps %s', (_label, stored, expected) => {
+        expect(nextCounter(stored, W, LIMIT)).toStrictEqual(expected)
+    })
+})
+
 describe.each(factories)('%s build store', (_label, makeStore) => {
+    it('refuses the 31st bump at limit 30 without writing, so limit 31 then counts 31', async () => {
+        const store = makeStore('development')
+        expect(await counts(store, 'c', Array(LIMIT).fill(W))).toStrictEqual(Array.from({ length: LIMIT }, (_, index) => index + 1))
+        expect(await counts(store, 'c', [W, W])).toStrictEqual(['refused', 'refused'])
+        expect(await counts(store, 'c', [W], LIMIT + 1)).toStrictEqual([LIMIT + 1])
+    })
+
     it('creates a build once and never overwrites it', async () => {
         const store = makeStore('development')
         expect(await store.putBuild(ID, JSON.stringify({ a: 1 }))).toBe('created')
@@ -84,10 +107,10 @@ describe.each(factories)('%s build store', (_label, makeStore) => {
 
     it('loses no update under ten concurrent bumps of one key', async () => {
         const store = makeStore('development')
-        const results = await Promise.all(Array.from({ length: 10 }, () => store.bumpCounter('c', W)))
+        const results = await Promise.all(Array.from({ length: 10 }, () => store.bumpCounter('c', W, LIMIT)))
         expect(results).not.toContain('contended')
-        expect(results.map((result) => (result === 'contended' ? 0 : result.count)).sort((a, b) => a - b)).toStrictEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-        expect(await store.bumpCounter('c', W)).toStrictEqual({ windowStart: W, count: 11 })
+        expect(results.map((result) => (typeof result === 'string' ? 0 : result.count)).sort((a, b) => a - b)).toStrictEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        expect(await store.bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: 11 })
     })
 })
 
@@ -97,9 +120,18 @@ describe('file build store layout', () => {
         expect(readFileSync(path.join(dir, 'preview', 'builds', `${ID}.json`), 'utf8')).toBe('{"x":1}')
     })
 
+    const counterFile = () => JSON.parse(readFileSync(path.join(dir, 'development', 'rate-limit', 'c.json'), 'utf8'))
+
     it('stores the window and count in the counter file', async () => {
-        await createFileBuildStore(dir, 'development').bumpCounter('c', W)
-        expect(JSON.parse(readFileSync(path.join(dir, 'development', 'rate-limit', 'c.json'), 'utf8'))).toStrictEqual({ windowStart: W, count: 1 })
+        await createFileBuildStore(dir, 'development').bumpCounter('c', W, LIMIT)
+        expect(counterFile()).toStrictEqual({ windowStart: W, count: 1 })
+    })
+
+    it('leaves the counter file at the limit after a refused bump', async () => {
+        const store = createFileBuildStore(dir, 'development')
+        await counts(store, 'c', Array(LIMIT).fill(W))
+        expect(await store.bumpCounter('c', W, LIMIT)).toBe('refused')
+        expect(counterFile()).toStrictEqual({ windowStart: W, count: LIMIT })
     })
 
     it.each([
@@ -107,13 +139,13 @@ describe('file build store layout', () => {
         ['stays inside but aliases another key', '../builds/aliased'],
     ])('rejects a client key that %s', async (_label, key) => {
         const inner = path.join(dir, 'inner')
-        await expect(createFileBuildStore(inner, 'development').bumpCounter(key, W)).rejects.toThrow('not a plain path')
+        await expect(createFileBuildStore(inner, 'development').bumpCounter(key, W, LIMIT)).rejects.toThrow('not a plain path')
         expect(existsSync(path.join(dir, 'escaped.json'))).toBe(false)
         expect(existsSync(path.join(inner, 'development', 'builds', 'aliased.json'))).toBe(false)
     })
 
     it('rejects a client key of ../x without writing it', async () => {
-        await expect(createFileBuildStore(dir, 'development').bumpCounter('../x', W)).rejects.toThrow('not a plain path')
+        await expect(createFileBuildStore(dir, 'development').bumpCounter('../x', W, LIMIT)).rejects.toThrow('not a plain path')
         expect(existsSync(path.join(dir, 'development', 'x.json'))).toBe(false)
     })
 
@@ -139,10 +171,31 @@ describe('buildStoreFromEnv', () => {
         ['unset', undefined],
         ['empty', ''],
     ])('uses BUILDS_LOCAL_DIR when BUILDS_STORE_ID is %s', async (_label, storeId) => {
-        const store = await buildStoreFromEnv(processEnv({ BUILDS_STORE_ID: storeId, BUILDS_LOCAL_DIR: dir, VERCEL_ENV: 'preview' }))
+        // Vitest keeps a vi.mock factory's result across vi.resetModules, so a new doMock factory is what
+        // runs during the fresh import, and only if build-store imports the Blob module statically.
+        vi.doMock('./blob-build-store', () => {
+            blobFactory.imported()
+            return { createBlobBuildStore: blobFactory.create }
+        })
+        const { buildStoreFromEnv: fresh } = await import('./build-store')
+        const store = await fresh(processEnv({ BUILDS_STORE_ID: storeId, BUILDS_LOCAL_DIR: dir, VERCEL_ENV: 'preview' }))
         await store.putBuild(ID, '{}')
         expect(existsSync(path.join(dir, 'preview', 'builds', `${ID}.json`))).toBe(true)
         expect(blobFactory.imported).not.toHaveBeenCalled()
+    })
+
+    it.each([
+        ['VERCEL_ENV unset', { VERCEL: '1' }],
+        ['VERCEL_ENV empty', { VERCEL: '1', VERCEL_ENV: '' }],
+    ])('rejects when VERCEL is set and %s, even with BUILDS_STORE_ID', async (_label, env) => {
+        await expect(buildStoreFromEnv(processEnv({ ...env, BUILDS_STORE_ID: 'store_x', BUILDS_LOCAL_DIR: dir }))).rejects.toThrow('VERCEL is set but VERCEL_ENV is not')
+        expect(blobFactory.create).not.toHaveBeenCalled()
+    })
+
+    it('uses the file store when VERCEL and VERCEL_ENV are both empty', async () => {
+        const store = await buildStoreFromEnv(processEnv({ VERCEL: '', VERCEL_ENV: '', BUILDS_LOCAL_DIR: dir }))
+        await store.putBuild(ID, '{}')
+        expect(existsSync(path.join(dir, 'development', 'builds', `${ID}.json`))).toBe(true)
     })
 
     it.each([
@@ -194,7 +247,8 @@ describe('buildStoreFromEnv', () => {
                 throw new Error('blob import failed')
             })
             const { buildStoreFromEnv: fresh } = await import('./build-store')
-            await expect(fresh()).rejects.toThrow()
+            // Vitest wraps a throwing mock factory in its own error and keeps the thrown one as the cause.
+            await expect(fresh()).rejects.toHaveProperty('cause.message', 'blob import failed')
 
             const working = createMemoryBuildStore()
             vi.doMock('./blob-build-store', () => ({ createBlobBuildStore: () => working }))

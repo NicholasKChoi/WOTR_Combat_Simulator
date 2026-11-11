@@ -1,5 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
-import { isPlainObject, methodNotAllowed, notAnObjectError, sendReply, type ReplyTarget } from './api-route'
+import { describe, expect, it } from 'vitest'
+import { MAX_REPORTED_ISSUES } from './api'
+import { isPlainObject, issuesError, methodNotAllowed, notAnObjectError, sendReply } from './api-route'
+import type { BuildOrderIssue } from './model'
+import { recordingTarget } from './route-test-support'
 
 describe('methodNotAllowed', () => {
     it.each([
@@ -35,25 +38,25 @@ describe('isPlainObject', () => {
     })
 })
 
-function recordingTarget() {
-    const calls: string[] = []
-    const target: ReplyTarget = {
-        status: vi.fn((code: number) => {
-            calls.push(`status ${code}`)
-            return target
-        }),
-        setHeader: vi.fn((name: string, value: string) => {
-            calls.push(`header ${name}=${value}`)
-        }),
-        json: vi.fn((body: unknown) => {
-            calls.push(`json ${JSON.stringify(body)}`)
-        }),
-        end: vi.fn(() => {
-            calls.push('end')
-        }),
-    }
-    return { target, calls }
-}
+describe('issuesError', () => {
+    const issues = (count: number): BuildOrderIssue[] => Array.from({ length: count }, (_, index) => ({ code: 'invalid', message: `issue ${index}` }))
+
+    it.each([
+        [1, 1, undefined],
+        [MAX_REPORTED_ISSUES, MAX_REPORTED_ISSUES, undefined],
+        [MAX_REPORTED_ISSUES + 1, MAX_REPORTED_ISSUES, 1],
+    ])('reports %i issues as %i with omittedIssues %s', (count, reported, omitted) => {
+        const all = issues(count)
+        const error = issuesError(all)
+        expect(error.issues).toStrictEqual(all.slice(0, reported))
+        expect(error.omittedIssues).toBe(omitted)
+        expect('omittedIssues' in error).toBe(omitted !== undefined)
+    })
+
+    it('uses the first issue message as the error', () => {
+        expect(issuesError([{ code: 'syntax', message: 'first' }, { code: 'invalid', message: 'second' }]).error).toBe('first')
+    })
+})
 
 describe('sendReply', () => {
     it('sets the status, then each header, then sends the body as json once and never ends', () => {

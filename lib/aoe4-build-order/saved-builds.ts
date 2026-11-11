@@ -1,8 +1,8 @@
 // The saved-build record, its content-addressed id, storage keys and the checks a save request must pass.
 // Browser-safe: Web Crypto only, no node: modules.
 import { z } from 'zod';
-import { MAX_REPORTED_ISSUES, type BuildsError, type SimulateError } from './api';
-import { isPlainObject, notAnObjectError } from './api-route';
+import type { BuildsError, SimulateError } from './api';
+import { isPlainObject, issuesError, notAnObjectError } from './api-route';
 import type { BuildOrder, BuildOrderIssue } from './model';
 import { formatBuildOrderText } from './parse-text';
 import { buildOrderShape, checkBuildOrder, outOfRange, type BuildOrderCatalog } from './schema';
@@ -51,6 +51,12 @@ export function storageEnv(vercelEnv: string | undefined): string {
   return vercelEnv === 'production' || vercelEnv === 'preview' ? vercelEnv : 'development';
 }
 
+// On Vercel an unset VERCEL_ENV must not fall back to the development prefix, which also allows DELETE.
+export function deploymentEnv(env: { VERCEL?: string; VERCEL_ENV?: string }): string | null {
+  if (env.VERCEL && !env.VERCEL_ENV) return null;
+  return storageEnv(env.VERCEL_ENV);
+}
+
 export const savedBuildKey = (env: string, id: string): string => `${env}/builds/${id}.json`;
 export const rateCounterKey = (env: string, clientKey: string): string => `${env}/rate-limit/${clientKey}.json`;
 export const savedBuildPath = (id: string): string => `/apps/aoe4-build-order?b=${id}`;
@@ -61,9 +67,7 @@ type SaveCheck =
   | { ok: false; status: 413; error: BuildsError };
 
 function badRequest(all: BuildOrderIssue[]): SaveCheck {
-  const issues = all.slice(0, MAX_REPORTED_ISSUES);
-  const omittedIssues = all.length - issues.length;
-  return { ok: false, status: 400, error: { error: issues[0].message, issues, ...(omittedIssues > 0 ? { omittedIssues } : {}) } };
+  return { ok: false, status: 400, error: issuesError(all) };
 }
 
 function durationIssue(value: unknown): BuildOrderIssue | undefined {

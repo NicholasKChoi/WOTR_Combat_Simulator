@@ -18,8 +18,8 @@ export async function clientKey(req: { headers: IncomingHttpHeaders; socket: { r
 
 export async function takeSaveSlot(store: BuildStore, clientKey: string, nowMs: number): Promise<{ ok: true } | { ok: false; retryAfterSeconds: number }> {
   const windowStart = Math.floor(nowMs / WINDOW_MS) * WINDOW_MS;
-  const update = await store.bumpCounter(clientKey, windowStart);
+  const update = await store.bumpCounter(clientKey, windowStart, SAVE_RATE_LIMIT.maxSaves);
   if (update === 'contended') return { ok: false, retryAfterSeconds: 1 };
-  if (update.count <= SAVE_RATE_LIMIT.maxSaves) return { ok: true };
+  if (update !== 'refused') return { ok: true };
   return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((windowStart + WINDOW_MS - nowMs) / 1000)) };
 }
