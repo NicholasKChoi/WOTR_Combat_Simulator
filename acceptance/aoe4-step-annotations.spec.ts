@@ -301,14 +301,19 @@ test.describe('AoE4 step table layout beside Results', () => {
           const byId = (id: string) => document.querySelector(`[data-testid="${id}"]`)!
           const box = byId('step-table-scroll')
           const panel = byId('panel-build')
-          const right = panel.getBoundingClientRect().right
+          box.scrollLeft = box.scrollWidth - box.clientWidth
+          const { left, right } = box.getBoundingClientRect()
           return {
             panelFits: panel.scrollWidth <= panel.clientWidth,
-            deletesInside: [...document.querySelectorAll('[data-testid="step-delete"]')].every((el) => el.getBoundingClientRect().right <= right),
+            scrollsInside: getComputedStyle(box).overflowX === 'auto',
+            deletesInside: [...document.querySelectorAll('[data-testid="step-delete"]')].every((el) => {
+              const rect = el.getBoundingClientRect()
+              return rect.left >= left && rect.right <= right
+            }),
           }
         }),
       )
-      .toEqual({ panelFits: true, deletesInside: true })
+      .toEqual({ panelFits: true, scrollsInside: true, deletesInside: true })
 
     await showView(page, 'text')
     await expect
