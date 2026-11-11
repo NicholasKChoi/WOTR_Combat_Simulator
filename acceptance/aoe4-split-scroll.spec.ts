@@ -62,9 +62,14 @@ test.describe('AoE4 split layout scrolls the columns separately', () => {
       await expect
         .poll(() => column(page, id).evaluate((el) => el.scrollHeight > el.clientHeight))
         .toBe(true)
-      const before = await scrollTops(page)
       await scrollColumn(page, id)
       await expect.poll(async () => (await scrollTops(page))[id === 'build-column' ? 'build' : 'results']).toBeGreaterThan(0)
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true)
+      const before = await scrollTops(page)
+      const box = (await column(page, id).boundingBox())!
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+      await page.mouse.wheel(0, 200)
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
       const after = await scrollTops(page)
       expect(after.page).toBe(before.page)
       expect(after[other]).toBe(before[other])
