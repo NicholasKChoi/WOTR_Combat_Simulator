@@ -938,7 +938,7 @@ The Gather rates chart has a `Per villager` checkbox, off by default. On, each s
 run is drawn the same way.
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
-it again restores it; a pinned item is hidden and restored under its own `pinned:<key>` key, independent of its current series' item (hiding `Gold` does not hide `Gold (pinned)`, and the reverse). Each chart also draws the result's `markers` as solid vertical lines in their kind colour. Only `age-up` markers carry a
+it again restores it; the legend has one item per series, named without a suffix: with a pinned run, an item for a series in both runs hides and restores both its lines, and a series only the pinned run has is listed once, with a dashed swatch. With a pinned run, the series legend also holds a key (`chart-pinned-key`) that explains the line styles: solid is the current run and dashed is the pinned run. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. Only `age-up` markers carry a
 text label `<label> <m:ss>` (for example `Castle 13:24`) above the plot, stacked in rows by their measured width so each stays
 readable; the other kinds have no text label and show `<label> <m:ss>` as a hover title. Tooltip values are shown rounded to
 at most 1 decimal place. A marker legend titled "Markers", in its own row below the series legend, lists one entry per
@@ -969,8 +969,8 @@ empty, so it is absent while an edit to a current result waits the 500 ms to set
 
 With a pinned run, each chart also draws the pinned run's series dashed, in the same color as the
 current series with that key, with the name `<name> (pinned)` and the key `pinned:<key>`. The x axis covers
-the union of both runs' sample times; a series has a gap at times outside its own run. Each pinned line
-toggles from the series legend like any series.
+the union of both runs' sample times; a series has a gap at times outside its own run. A pinned line is hidden and
+restored together with its series' legend item.
 
 With both a shown result and a pinned run, a compare table lists up to seven rows (`data-key`): military spent at
 10, 15 and 20 minutes (`military-600`, `military-900`, `military-1200`; the cumulative `spent.military` at the
