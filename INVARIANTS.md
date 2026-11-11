@@ -1,4 +1,5 @@
-# Strategy Game Simulator: Invariants
+# Invariants
+
 
 Rules no change may break. Spec-review blocks on a violation; tech-lead escalates one to a human.
 Each invariant is scoped to the paths it covers. A reviewer applies it only when the diff touches one

@@ -1,4 +1,5 @@
-# Strategy Game Simulator: Spec-review checklist
+# Spec-review checklist
+
 
 The review gate holds every diff to this list in addition to INVARIANTS.md. Apply a section only when
 the diff touches its paths (see INVARIANTS.md).
