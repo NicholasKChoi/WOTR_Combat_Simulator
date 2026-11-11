@@ -169,3 +169,30 @@ this milestone (M4.13 and M6.2's 390 px clause are waived for the new UI).
 | M7.6 | Compact view: the Text tab's line gutter shows each step line's kind colour and started and finished times, with waited and Blocked by on hover, dimmed when stale, and hovering or putting the caret on a line shades that step on the charts | code | SGS-110 | done |
 | M7.7 | `docs/aoe4-build-order.md` describes the annotated build order instead of the step timeline; Playwright covers the colours and times, the hover shading, the stale dimming, the compact view, and the timeline's absence; specs that drove the timeline are rewritten; no 390 px check is added for the new UI | code | SGS-108, SGS-109, SGS-110 | done |
 | M7.8 | Explicit `build house` steps no longer freeze production: auto-houses are not held off for the whole build by the last explicit house step (owner added from the backlog, Q22); the rule is documented and the build 259 case has a test | code | SGS-111 | done |
+
+## M8: AoE4 workbench: iterate on builds, tidy results, and pay down debt
+
+**Outcome:** A user can take any build as a starting point, edit it, and keep their versions without losing
+work. The results column is easier to read and arrange. The correctness bugs and weak tests reported during
+M6 and M7 are fixed.
+
+### Exit criteria
+
+Proposed 2026-11-10 from the owner's scope pick (Q35 C: UI asks + correctness bugs + test/cleanup debt, plus the
+start-from-a-build workflow and collapsible charts). Awaiting owner confirmation.
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M8.1 | Start from a build and iterate: the select no longer frames builds as "prebuilt" (shipped builds are read-only templates beside the user's own builds); once the text diverges from the selected build the page shows it (e.g. `<name> (edited)`); choosing another build or reloading never silently discards edits (confirm, or keep a draft); a user can start a named copy from any build, save versions of it, and reopen them from a "my builds" list; the save model follows the owner's decision on immutable links vs editable named builds | code | | |
+| M8.2 | Each results chart can be collapsed (title only) and moved up or down, by mouse and keyboard; collapsed state and order persist per browser and fall back cleanly when storage is unavailable; row-hover shading and pinned runs still work on expanded charts | code | | |
+| M8.3 | Split layout: the build order column and the results column scroll separately inside a viewport-height area below the run bar, so hovering any step row shades charts that are on screen; the page's heading sizes are consistent | code | | |
+| M8.4 | With a run pinned, the chart legend explains pinned once (solid = current, dashed = pinned) and lists each series once with its colour; the per-series hide toggle still hides both lines | code | | |
+| M8.5 | Step-table readability: the run cell labels its started, finished and waited times; a still-waiting step does not show `Waited 0:00`; kind badges do not wrap mid-word and table selects do not truncate names like "Capital Town Center" at 1280 px; the kind-colour border shows (or the doc stops claiming it) under 768 px; after a programmatic fill the text editor scrolls back to the start of the line | code | | |
+| M8.6 | Correctness bugs: the `?b=` load keeps other query keys and stops writing a ref during render; builds routes fail closed when `VERCEL` is set but `VERCEL_ENV` is not; an id-generation failure maps to 500; a refused save does not write the rate-limit counter; Playwright's web server blanks `BUILDS_STORE_ID` and `VERCEL_ENV`; `sendReply` type-checks response bodies; the knight-longbow README text matches the build | code | | |
+| M8.7 | Test debt: each backlog test that cannot fail (auto-run equal-input history, build-store blob-import check, saved-build loader abort, step-annotations identity branch, step-annotation CSS-module tones via a vitest `css` setting, the acceptance specs for duration-error, open-rows, aria-describedby and same-build dimming, the house-gate always-true assertion) is made to fail when its code is broken; acceptance specs use `CHART_IDS` and share one hold-simulate helper; the SGS-103 route test gaps are closed | code | | |
+| M8.8 | Cleanup debt: issue capping and the rate-limit counter step each live in one helper; `settledFields` and `recordingTarget` are reused, not repeated; the blob-store comment, ARCHITECTURE wording, docs list grammar and spec import order from the backlog are fixed; design/M6.md's smoke notes match the shipped smoke script | code | | |
+| M8.9 | `docs/aoe4-build-order.md` describes the build workflow, chart controls and scrolling layout; Playwright covers edit-diverged marking, not losing edits, start-a-copy and reopen from my builds, collapse and reorder with persistence, and separate column scrolling | code | | |
+
+Left in the backlog: the AoE4 data freshness CI job, the provisional gather rates, the English economy and
+Blacksmith gaps, the acceptance coverage removed by SGS-098, the 360x760 small-screen flake, and the SGS-106
+smoke-script hardening notes.

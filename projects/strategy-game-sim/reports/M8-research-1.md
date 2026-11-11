@@ -1,0 +1,49 @@
+# M8 research 1: saved builds, immutable links or editable named builds
+
+## Question
+
+For "start from a build and iterate" in the AoE4 workbench: keep saves as immutable content-addressed `?b=<id>` links plus a per-browser "my builds" list (A), make saves editable named server records (B), or something else (C)? Changes: server API and Blob store, openapi contract, rate limits, and the select/"my builds" UI the M8 design describes.
+
+## Facts that decide it
+
+Repo:
+- A save is `POST` of `{ buildOrder, durationSeconds }`. The id is the first 11 chars of base64url SHA-256 of the canonical record JSON (`lib/aoe4-build-order/saved-builds.ts:42-44`). The same content gives the same id, and `put` uses `allowOverwrite:false` (`lib/aoe4-build-order/blob-build-store.ts:35`; file and memory stores also refuse overwrite, `build-store.ts:33-36,70-79`). `GET` is served with `Cache-Control: public, max-age=31536000, immutable` (`builds-routes.ts:44`; openapi.json:2127 pins that value in the contract). So the whole stack assumes immutability: edit-in-place would break the CDN/browser cache contract and every `?b=` link already handed out.
+- There is no ownership concept. The only identity is a hashed IP used for the rate counter (`save-rate-limit.ts:12-17`); 30 saves per hour per client (`save-rate-limit.ts:7`). `DELETE` exists only outside production (`builds-routes.ts:51`).
+- The saved name lives inside the record (`savedBuildSchema` has `buildOrder.name`, cap 100 chars, `saved-builds.ts:28,72-75`). Today the page names an edited save `<name> (edited)` (`docs/aoe4-build-order.md:~1009-1011`, backlog item at `BACKLOG.md:65`). So a "version" is already just another record with its own link; there is no lineage field.
+- Client precedent for per-browser state exists: `components/apps/aoe4-build-order/pin-storage.ts` (versioned JSON in `localStorage`, every access in try/catch so unavailable storage is harmless). The "my builds" list can copy that shape. The backlog also asks for chart order/collapse in localStorage, so a second localStorage store is not a new pattern.
+- `recordSave` (`pages/apps/aoe4-build-order.tsx:195-198`) is the single place a save succeeds; it already receives `{id, path}` and the live input, so appending to a list is a one-site change.
+- `CONTEXT.md` Decisions: "None"; `INVARIANTS.md` has only S2 (landing-page link, Layout). No invariant constrains this choice. Note the AoE4 apps' stated agent audience: agents hand the owner links (per your brief), which favors links that never change meaning.
+
+External:
+- No public detail found on how aoe4guides.com stores builds beyond "create your own build orders and share them", favourites and voting, so it appears account-based; unverified how accounts work ([AoE forums launch post](https://forums.ageofempires.com/t/presenting-aoe4-guides-yet-another-build-order-site/228310)). Account-backed tools are out of scope for a no-auth site.
+- JSFiddle: every save makes a new numbered version with its own URL; fork starts a branch; old URLs keep pointing at the old version; anonymous fiddles appear in a per-browser "recent fiddles" list ([Stack Overflow archive](https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/5841818/how-do-i-just-save-a-jsfiddle-and-not-get-a-new-version), [MDN planning notes](https://m.wiki.mozilla.org/MDN/Development/Offsites/Toronto_2012/Features/jsFiddle_meeting)). That is option A almost exactly.
+- CodePen removed anonymous saving in 2019: anonymous Pens could not be edited later and people posted things they did not mean to share; they point users to fork into an account ([CodePen blog](https://blog.codepen.io/2019/08/06/anonymous-pen-save-option-removed/)). Claim-later is unverified/not offered.
+- Secret-edit-URL tools (uMap, Drupal node_authlink, Plannotator guest links) treat the URL as the credential; leakage means anyone can edit, remedy is regenerate/revoke, and uMap users report the edit link breaking ([uMap help](https://help.openstreetmap.org/questions/79757/secret-edit-link-for-umap-is-not-working/), [Plannotator](https://help.plannotator.ai/workspaces/sharing/manage-guest-links), [Drupal sandbox](https://www.drupal.org/sandbox/mikeker/1230502)).
+
+## Options
+
+**A. Immutable links plus per-browser "my builds" (localStorage)** - Keep the server unchanged. On each successful save, `recordSave` appends `{id, name, savedAt}` to a versioned localStorage list; the build select shows "My builds" beside the read-only templates (renamed from "prebuilt"); choosing one loads it through the existing `loadSavedBuild`; "start from this build" just opens it with a dirty marker and Save makes a new link. Optionally store a `parentId` in the local list only, to group versions of one lineage. Tradeoff: list is per browser (lost on clearing storage, not shared across devices); no "overwrite", every iteration is a new link, so the list needs de-duplication and a way to remove entries locally (removal does not delete server data). Effort: lowest; pure client plus tests, no openapi change (maybe docs only). Abuse and rate limits: unchanged (30/hour/client). Link stability: perfect; every link an agent hands over stays valid and means the same build forever. Conflicts: none.
+
+**B. Editable named builds on the server (overwrite in place)** - Needs a stable build identity separate from content (random id), an edit secret or account, a new `PUT`/`PATCH` route, a changed store contract (overwrite and an ownership token, likely a hashed secret stored in the record), and the openapi contract. Tradeoff: matches "saved builds" wording and gives one stable URL per build, but costs the most: the immutable cache header (`builds-routes.ts:44`, openapi.json:2127) must become revalidating, existing `?b=` ids stay a separate immutable class (two kinds of link), edit secrets must live somewhere (a localStorage secret is no better than A's list; a URL secret has the leakage problem above), and overwrite makes an agent-handed link silently change under the owner. Abuse: ownerless overwrite is vandalism-prone; each update needs its own rate-limit story, and orphaned named builds accumulate with no delete in production. Link stability: worst. Conflicts: breaks the `immutable` contract and the content-addressing the M6 design built the store around.
+
+**C1. A plus export/import of the local list** - Same as A, with the list also copyable as JSON or a few `?b=` ids (copy/paste or a share link that carries several ids), so a user can move it between browsers. Small client addition. Tradeoff: still no sync; slightly more UI. Keeps all of A's properties.
+
+**C2. A plus an optional lineage on the server** - Add an optional `parentId` (or "forked from") field to the record so a link can show "version of X". Tradeoff: changes the content hash, so the same content saved from two parents gets two ids; a schema/openapi bump (`SAVED_BUILD_VERSION`) and a back-compat read for v1 records. More value for sharing history, but it is not needed for the stated flow (open, edit, save new version) and can be added later without breaking A.
+
+## Recommendation
+
+A, with C1's export/import only if the owner asks for cross-device. A is the JSFiddle model (new version per save, per-browser recent list), needs no server, auth, contract or rate-limit change, keeps every handed-out link stable, and the `recordSave`/`pin-storage` seams already exist. B's costs (secret handling, cache contract, vandalism) buy little for a single-owner tool, and CodePen's removal of anonymous saves is evidence that ownerless editable server state is the risky part. Defer C2 unless the owner wants visible version history.
+
+Design notes for A the designer should settle: list cap and eviction (e.g. newest 50), name shown (stored name, with ` (<id>)` suffix as the select does today for opened builds, per docs), dirty marker `<name> (edited)` is a client-side display state only, confirm-or-draft when switching away from edits, and storage-unavailable behavior (hide the list, saves still work).
+
+## Unknowns
+
+- aoe4guides.com account/storage mechanics and how aoe4world build orders are authored: not verified (search found only the 2023 launch post). Would not change the recommendation, since both are account-based.
+- Whether the owner wants the list shared across devices: a preference only the owner has; C1 is the cheap answer, accounts are the expensive one.
+- Whether saved builds ever need real deletion by users in production (today `DELETE` is non-production only, `builds-routes.ts:51`): affects whether "remove from my list" should be described as local-only in the UI.
+
+## Sources
+
+Repo: `lib/aoe4-build-order/saved-builds.ts:42-44,28,72-75`; `lib/aoe4-build-order/builds-routes.ts:44,51`; `lib/aoe4-build-order/blob-build-store.ts:35`; `lib/aoe4-build-order/build-store.ts:33-36,70-79`; `lib/aoe4-build-order/save-rate-limit.ts:7,12-17`; `pages/apps/aoe4-build-order.tsx:195-198`; `components/apps/aoe4-build-order/pin-storage.ts`; `docs/api/openapi.json:1860-1862,2127`; `docs/aoe4-build-order.md:853,1009-1011`; `.claude/code-factory/BACKLOG.md:65-66`; `.claude/code-factory/projects/strategy-game-sim/CONTEXT.md` (Decisions: None); `.../INVARIANTS.md`.
+
+Web: https://forums.ageofempires.com/t/presenting-aoe4-guides-yet-another-build-order-site/228310 ; https://kiwix.lema.org/stackoverflow.com_en_all_2023-11/questions/5841818/how-do-i-just-save-a-jsfiddle-and-not-get-a-new-version ; https://m.wiki.mozilla.org/MDN/Development/Offsites/Toronto_2012/Features/jsFiddle_meeting ; https://blog.codepen.io/2019/08/06/anonymous-pen-save-option-removed/ ; https://help.openstreetmap.org/questions/79757/secret-edit-link-for-umap-is-not-working/ ; https://help.plannotator.ai/workspaces/sharing/manage-guest-links ; https://www.drupal.org/sandbox/mikeker/1230502
