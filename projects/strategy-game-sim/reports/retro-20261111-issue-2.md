@@ -1,4 +1,4 @@
-Run-log names and times must come from `date`; pick the open log by mtime
+Run-log names and times must come from `date` (one clock, not UTC vs local); pick the open log by mtime
 
 ## Problem
 
@@ -12,6 +12,8 @@ invents times. Once one log has a future name, every later pass resumes into it.
 - One log records 23:30-07:50 for work actually done 18:27-19:15 (matching drive-log pass and a state commit at 22:44).
 - A future-named log collected later entries out of order (21:51, 22:00, then 13:47).
 - Retro windows and time metrics built from these logs are wrong.
+
+- Likely cause, confirmed on this machine (`date` = PST, UTC-8): the clock-skewed names are UTC. E.g. `run-20261110-2150.md` mtime is 13:47 PST = 21:47 UTC, `run-20261110-2210`/`-2230` mtimes 13:49/13:50 PST = 21:49/21:50 UTC. The manager mixes UTC and local time, so "future" logs are really UTC-named while others are local-named; the `-2300` and `-2330` logs read as 23:00/23:30 UTC-style stamps too. The fix must pick one clock (local, from `date`) for both names and entries.
 
 ## Suggested edit
 
