@@ -33,10 +33,14 @@ export function isSavedBuildId(value: unknown): value is string {
   return typeof value === 'string' && SAVED_BUILD_ID_PATTERN.test(value);
 }
 
+export function base64UrlEncode(bytes: Uint8Array): string {
+  const base64 = btoa(String.fromCharCode(...bytes));
+  return base64.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+}
+
 export async function base64UrlSha256(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(digest)));
-  return base64.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+  return base64UrlEncode(new Uint8Array(digest));
 }
 
 export async function savedBuildId(record: SavedBuild): Promise<string> {
