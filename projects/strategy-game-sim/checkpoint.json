@@ -8,10 +8,5 @@
   "nextMilestoneScope": {
     "id": "M8",
     "backlog": "C: UI asks + correctness bugs + test/cleanup debt sweep (Q35, 2026-11-11); plus the start-from-a-build/iterate workflow item (owner, 2026-11-10); plus collapsible/re-orderable charts (owner, 2026-11-10)"
-  },
-  "milestone": {
-    "id": "M8",
-    "step": "3 tickets",
-    "waiting": []
   }
 }
