@@ -134,6 +134,14 @@ describe('buildAnnotations', () => {
         expect(runs(runInput())).toEqual([0, 1, 2])
     })
 
+    it('keeps every row its own run when the text is equal and only the selected build differs', () => {
+        const steps = [timing(0, { startedAt: 1 }), timing(1, { startedAt: 11 }), timing(2, { startedAt: 21 })]
+        const input = runInput({ live: { text: RUN_TEXT, duration: '600', selected: 'Other' } }, steps)
+        expect(input.live.selected).not.toBe(input.shown?.selected)
+        expect(input.live.text).toBe(input.shown?.text)
+        expect(buildAnnotations(input)?.steps.map((s) => s.run?.startedAt ?? null)).toEqual([1, 11, 21])
+    })
+
     it('drops every run but keeps kinds when another build is selected with different text', () => {
         const input = runInput({ live: { text: 'other', duration: '600', selected: 'Other' } })
         const result = buildAnnotations(input)

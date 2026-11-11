@@ -118,8 +118,8 @@ engine or the build is tuned, and the page shows them for any run.
   built by wood gatherers who farm them; the 10:00 block sits after the third stable and the 10:34 pair in the
   list, so it waits for both of them to start. Smaller groups of wood-and-return farms come at `time` 563
   (four) and 634 (two); the farm at `time` 740 (one) and the group at 942 (four) are built by wood gatherers
-  who farm them. The groups are placed ahead of the villagers sent to farm by
-  the Town Center rally to farm and by the sheep reaction, so each of them finds a built farm. The four
+  who farm them. The groups are placed ahead of the villagers the sheep reaction sends to farm, so each of
+  them finds a built farm. The four
   blacksmith techs (`steeled-arrow`, `fitted-leatherwork`, `bloomery`, `iron-undermesh`) come after
   `build kings-palace` in the list, so they queue behind the landmark instead of taking its gold first;
   `veteran-longbowmen` and the Castle blacksmith techs (`balanced-projectiles`, `wedge-rivets`,

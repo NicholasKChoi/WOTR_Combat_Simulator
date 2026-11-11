@@ -77,11 +77,15 @@ type Outcome =
 const NO_ISSUES: BuildOrderIssue[] = []
 const CLEARED = { serverIssues: NO_ISSUES, omittedIssues: 0, errorMessage: null } as const
 
-function settledFields(settled: LiveInput, catalog: BuildOrderCatalog): SettledFields {
+export function settledFields(settled: LiveInput, catalog: BuildOrderCatalog): SettledFields {
     const conversion = textToBuildOrder(settled.text, catalog)
     const error = durationError(settled.duration)
     const request = conversion.ok && error === null ? { buildOrder: conversion.order, inputs: { durationSeconds: Number(settled.duration) } } : null
     return { settled, conversion, durationError: error, request }
+}
+
+export function initialAutoRunState(settled: LiveInput, catalog: BuildOrderCatalog): AutoRunState {
+    return { ...settledFields(settled, catalog), status: 'loading', result: null, resultRequestKey: null, shown: null, ...CLEARED }
 }
 
 export function sameInput(a: LiveInput, b: LiveInput): boolean {
@@ -118,14 +122,7 @@ export function createAutoRunController(deps: AutoRunDeps, initial: LiveInput, h
     let inflight: { key: string; abort: AbortController } | null = null
     let seq = 0
     let rejectedKey: string | null = null
-    let state: AutoRunState = {
-        ...settledFields(initial, deps.catalog),
-        status: 'loading',
-        result: null,
-        resultRequestKey: null,
-        shown: null,
-        ...CLEARED,
-    }
+    let state = initialAutoRunState(initial, deps.catalog)
 
     function update(patch: Partial<AutoRunState>): void {
         const keys = Object.keys(patch) as (keyof AutoRunState)[]

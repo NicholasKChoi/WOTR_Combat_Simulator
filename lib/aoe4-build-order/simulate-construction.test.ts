@@ -5,7 +5,7 @@ import { listBuilds } from './builds'
 import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
-import { ENGLISH, at, countAt, editGameData, inputsFor, run, sampleIndex, withHandler } from './test-helpers'
+import { ENGLISH, at, countAt, editGameData, housesDone, inputsFor, run, sampleIndex, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
@@ -282,11 +282,6 @@ const twoTowns = (edit: (parts: Parts) => void = () => {}) =>
 const woodStart: BuildStart = { villagers: { wood: 6 }, rally: 'wood' }
 const villagersAt = (result: SimulationResult, t: number) => countAt(result, 'villager', t)
 
-function housesDone(): { done: number[]; rules: CivRules } {
-    const done: number[] = []
-    return { done, rules: { onBuildingComplete: (_state, ctx) => void (ctx.baseId === 'house' && done.push(ctx.time)) } }
-}
-
 describe('auto-houses', () => {
     const towns = twoTowns()
 
@@ -313,7 +308,6 @@ describe('auto-houses', () => {
         expect(villagersAt(off, 400)).toBe(33)
         const { done, rules } = housesDone()
         const both = run([house(1, 'wood', { trigger: at(0) }), house(1, 'wood', { trigger: at(30) })], { game: towns, start: woodStart, rules, inputs: { durationSeconds: 400 } })
-        expect(done.slice(0, 2)).toEqual([20, 50])
         expect(done).toEqual([20, 50, 320])
         expect(villagersAt(both, 400)).toBe(40)
         const lateDone = housesDone()
@@ -347,8 +341,7 @@ describe('auto-houses', () => {
         const capped = editGameData((parts) => {
             parts.base.maxPopCap.value = 30
         })
-        const houses: number[] = []
-        const rules: CivRules = { onBuildingComplete: (_state, ctx) => void (ctx.baseId === 'house' && houses.push(ctx.time)) }
+        const { done: houses, rules } = housesDone()
         const result = run([], { game: capped, rules, inputs: { durationSeconds: 900 } })
         expect(houses).toHaveLength(2)
         expect(villagersAt(result, 900)).toBe(23)

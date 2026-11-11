@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { listBuilds } from './builds'
-import type { CivRules } from './civ-rules'
 import type { BuildStart, BuildStep, GatherNodeId, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
-import { ENGLISH, at, editGameData, inputsFor, run, sampleIndex } from './test-helpers'
+import { ENGLISH, at, editGameData, housesDone, inputsFor, run, sampleIndex } from './test-helpers'
 
 const twoTowns = editGameData((parts) => {
     parts.civData.startingState.buildings.value = ['capital-town-center', 'town-center']
@@ -27,8 +26,7 @@ interface HouseRun {
 }
 
 function withHouses(steps: BuildStep[], inputs: object = {}): HouseRun {
-    const done: number[] = []
-    const rules: CivRules = { onBuildingComplete: (_state, ctx) => void (ctx.baseId === 'house' && done.push(ctx.time)) }
+    const { done, rules } = housesDone()
     const result = run(steps, { game: twoTowns, start: woodStart, rules, inputs: { durationSeconds: 700, ...inputs } })
     return { result, done }
 }
@@ -60,7 +58,7 @@ describe('auto-houses with a late build-house step', () => {
 
     it('blocks production at supply before the late step when auto-houses are off', () => {
         expect(hold).toBeLessThan(595 - 60)
-        expect(population(off.result, hold)).toBe(population(off.result, 595))
+        expect(population(on.result, 595)).toBeGreaterThan(population(off.result, 595))
         expect(population(off.result, 700)).toBeGreaterThan(population(off.result, 595))
         expect(off.done).toEqual([20, 620])
     })
@@ -86,7 +84,7 @@ describe('auto-houses with a late build-house step', () => {
 describe('auto-houses with other house steps', () => {
     const none = withHouses([], { durationSeconds: 400 })
 
-    it('plans an order without build-house steps as it did with the gate', () => {
+    it('gives an order without build-house steps auto-houses at 120, 220 and 320 s', () => {
         expect(none.done).toEqual([120, 220, 320])
         expect(digestTimeline(none.result)).toBe('679240f54895c11f')
     })

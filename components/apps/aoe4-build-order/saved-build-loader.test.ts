@@ -10,8 +10,8 @@ import { loadSavedBuild, savedBuildOption } from './saved-build-loader'
 const ID = 'Zx3_k9-QaB0'
 const saved: SavedBuild = { version: 1, buildOrder: { ...listBuilds()[0], name: 'Fast Castle' }, durationSeconds: 900 }
 
-function stubFetch(respond: () => Promise<Response>) {
-    const fetch = vi.fn(respond)
+function stubFetch(respond: (init?: RequestInit) => Promise<Response>) {
+    const fetch = vi.fn((_url: string, init?: RequestInit) => respond(init))
     vi.stubGlobal('fetch', fetch)
     return fetch
 }
@@ -74,7 +74,9 @@ describe('loadSavedBuild', () => {
     })
 
     it('fails when the signal is already aborted', async () => {
-        stubFetch(() => Promise.reject(new DOMException('aborted', 'AbortError')))
+        stubFetch((init) => (init?.signal?.aborted ? Promise.reject(new DOMException('aborted', 'AbortError')) : json(saved)()))
+        const live = new AbortController()
+        expect(await loadSavedBuild(ID, live.signal)).toStrictEqual({ status: 'ok', saved })
         const abort = new AbortController()
         abort.abort()
         expect(await loadSavedBuild(ID, abort.signal)).toStrictEqual({ status: 'failed' })
