@@ -17,6 +17,7 @@ commands:
   codegen: ""
   acceptance: "npm run acceptance"     # Playwright; starts its own next dev on a per-checkout port
   acceptanceSetup: "bash /home/choin/git/WOTR_Combat_Simulator/.claude/code-factory/bin/link-node-modules.sh . && npm run acceptance:setup"   # Chromium; system libs once per machine: npx playwright install-deps chromium
+  preview: "npx next dev -p {port}"
 
 acceptanceHarness: "Playwright (@playwright/test, Chromium) in acceptance/, config playwright.config.ts; shared helpers in acceptance/helpers.ts. Port derived per checkout (3100-3999), ACCEPTANCE_PORT overrides. Needs Node 24.x."
 
