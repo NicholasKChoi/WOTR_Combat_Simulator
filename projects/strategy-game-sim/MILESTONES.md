@@ -196,3 +196,26 @@ start-from-a-build workflow and collapsible charts). Confirmed by the owner 2026
 Left in the backlog: the AoE4 data freshness CI job, the provisional gather rates, the English economy and
 Blacksmith gaps, the acceptance coverage removed by SGS-098, the 360x760 small-screen flake, and the SGS-106
 smoke-script hardening notes.
+
+## M9: AoE4 workbench: version saves work in production, and the results column is easier to use
+
+**Outcome:** "Save a new version" works on the deployed site (SGS-127). Saving gives visible feedback and
+the save controls sit compactly. The results charts use common controls (drag handle, caret), show pinned
+runs with one clear legend entry and no tooltip clutter, offer the owner's requested alternative views, and
+label markers by the hovered legend kind. The text editor stays readable on narrow screens.
+
+### Exit criteria
+
+Drafted 2026-11-11 from SGS-127 and the owner's 2026-11-11 backlog requests; awaiting owner confirmation.
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M9.1 | Version saves work against Vercel Blob: compare-and-swap reads the blob uncompressed so its etag is strong, takes etag and body from the same response, and rejects a weak etag as storage-unavailable (503, logged) instead of 412; the two 412 sources (stale If-Match revision, Blob `conflict`) log distinctly; the debug branch `debug/named-build-412-diagnostics` is deleted | code | SGS-127 | open |
+| M9.2 | Owner verifies on the PR preview and then production: save a build, Save as copy, edit, Save a new version succeeds and a reload shows revision 2 | evidence | | open |
+| M9.3 | Save feedback and layout: after a save or new version, a short "Saved" status (live region) shows next to the save buttons at 1280x800 and 390x844; at 1280 wide the save buttons and link share one row instead of three | code | | open |
+| M9.4 | Chart controls: each chart header uses a drag handle to reorder and a caret to collapse/expand, replacing the text buttons; keyboard reorder on the focused handle, accessible labels and `aria-expanded` kept; order and collapsed state still persist per browser; the key-results panel (`ComparePanel`) collapses with the same caret and persists its state | code | | open |
+| M9.5 | Pinned runs read cleanly: the hover tooltip lists only the current run's values; one generic legend entry says dashed = pinned build for both lines and markers, replacing the separate pinned-line key and "Age-up (pinned)" entry | code | | open |
+| M9.6 | Chart views: the Gather rates toggle switches to villagers assigned per resource over time (from `SimulationResult.gatherers`) instead of per-villager rate; the Units produced chart gains a toggle to production buildings over time, one series per building type, emitted by the simulator | code | | open |
+| M9.7 | Marker labels: hovering or keyboard-focusing a marker legend kind labels that kind's markers along the chart top (same stacking and widths), reverting to age-ups on leave/blur; legend items are focusable with an accessible name | code | | open |
+| M9.8 | Editor readability: at 390 px wide the build text column shows at least half the editor width, and at 1280x800 typical lines are not clipped (narrower time columns, hidden finish time on narrow screens, or a toggle) | code | | open |
+| M9.9 | `docs/aoe4-build-order.md` and `ARCHITECTURE.md` describe the changes; Playwright covers saved status, drag/caret controls with persistence, pinned tooltip/legend, the two new chart views, marker-label hover, and the split-layout Tab order; `.jscpd.json` scans `acceptance/` and its findings are fixed | code | | open |
