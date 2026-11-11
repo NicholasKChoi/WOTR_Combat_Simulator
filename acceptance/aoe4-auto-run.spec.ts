@@ -3,15 +3,17 @@ import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import {
   AOE4_PAGE,
+  CHART_IDS,
   SIMULATE_PATH,
+  TABS_VIEWPORT,
   buildOrderFrom,
   expectNoRun,
+  holdNextSimulate,
   isSimulatePost,
   openPage,
   scrollInstantly,
   setDurationInPlace,
   settledScrollY,
-  TABS_VIEWPORT,
   showTab,
   showView,
   waitForRun,
@@ -183,19 +185,14 @@ test.describe('AoE4 build order auto-run', () => {
   })
 
   test('a first invalid load state has no target', async ({ page }) => {
-    let release = () => {}
-    const gate = new Promise<void>((resolve) => (release = resolve))
-    await page.route(`**${SIMULATE_PATH}`, async (route) => {
-      await gate
-      await route.continue().catch(() => {})
-    })
+    const release = await holdNextSimulate(page)
     await page.goto(AOE4_PAGE)
     await expect(status(page)).toHaveAttribute('data-status', 'running')
     await textarea(page).fill(UNKNOWN_ID)
     await expect(status(page)).toHaveAttribute('data-status', 'invalid')
     await expect(status(page)).toHaveText('No valid build to simulate yet.')
     await expect(page.getByTestId('results-last-good')).toHaveCount(0)
-    for (const chart of ['chart-units-produced', 'chart-gather-rates']) await expect(page.getByTestId(chart)).toHaveCount(0)
+    for (const chart of CHART_IDS) await expect(page.getByTestId(chart)).toHaveCount(0)
     release()
   })
 
@@ -209,6 +206,7 @@ test.describe('AoE4 build order auto-run', () => {
       ['', 'Duration is required.'],
     ]) {
       await expectNoRun(page, () => duration(page).fill(value))
+      await expect(page.getByTestId('duration-error')).toBeVisible()
       await expect(page.getByTestId('duration-error')).toHaveText(message)
       await expect(duration(page)).toHaveAttribute('aria-invalid', 'true')
       await expect(duration(page)).toHaveAttribute('aria-describedby', 'duration-error')
@@ -274,12 +272,7 @@ test.describe('AoE4 build order auto-run', () => {
 
   test('a superseded request is aborted and its response never shows', async ({ page }) => {
     await openPage(page)
-    let release = () => {}
-    const gate = new Promise<void>((resolve) => (release = resolve))
-    await page.route(`**${SIMULATE_PATH}`, async (route) => {
-      if (posted(route.request()).inputs.durationSeconds === 900) await gate
-      await route.continue().catch(() => {})
-    })
+    const release = await holdNextSimulate(page, 900)
     const first = page.waitForRequest((r) => isSimulatePost(r) && posted(r).inputs.durationSeconds === 900)
     const aborted = page.waitForEvent('requestfailed', (r) => isSimulatePost(r) && posted(r).inputs.durationSeconds === 900)
     await duration(page).fill('900')
@@ -323,9 +316,12 @@ test.describe('AoE4 build order auto-run', () => {
     await more.first().click()
     await expect(more.first()).toHaveAttribute('aria-expanded', 'true')
     const other = BUILDS[2]
-    await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ label: other.name }))
     const before = buildOrderFrom(BUILDS[0].text).steps.map((step, i) => i === 0 || hasOptionalField(step))
-    const expected = buildOrderFrom(other.text).steps.map((step, i) => String((before[i] ?? false) || hasOptionalField(step)))
+    const otherSteps = buildOrderFrom(other.text).steps
+    const expected = otherSteps.map((step, i) => String((before[i] ?? false) || hasOptionalField(step)))
+    expect(expected.some((open, i) => open === 'true' && !before[i])).toBe(true)
+    expect(otherSteps.some((step, i) => before[i] && !hasOptionalField(step))).toBe(true)
+    await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ label: other.name }))
     await expect.poll(() => more.evaluateAll((buttons) => buttons.map((b) => b.getAttribute('aria-expanded')))).toEqual(expected)
   })
 })

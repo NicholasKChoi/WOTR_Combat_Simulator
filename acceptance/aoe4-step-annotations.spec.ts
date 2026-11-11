@@ -4,7 +4,7 @@ import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { formatBuildOrderText, parseBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { STEP_KINDS, formatStepTime } from '../components/apps/aoe4-build-order/step-annotations'
-import { SIMULATE_PATH, SPLIT_VIEWPORT, buildOrderFrom, openPage, showTab, showView, simulateOk, waitForRun } from './helpers'
+import { SPLIT_VIEWPORT, buildOrderFrom, expectNoRun, holdNextSimulate, openPage, showTab, showView, simulateOk, waitForRun } from './helpers'
 
 const LONG_WAIT_SECONDS = 60
 const EN_DASH = '–'
@@ -31,14 +31,13 @@ async function openTable(page: Page, text?: string) {
   await expect(page.getByTestId('step-run').first()).toBeVisible()
 }
 
-async function holdSimulate(page: Page) {
-  let release = () => {}
-  const gate = new Promise<void>((resolve) => (release = resolve))
-  await page.route(`**${SIMULATE_PATH}`, async (route) => {
-    await gate
-    await route.continue().catch(() => {})
+async function expectDescribedByStatus(page: Page, message: string) {
+  await expect(lastGood(page)).toHaveAttribute('aria-describedby', 'auto-run-status')
+  const described = await page.evaluate(() => {
+    const target = document.getElementById(document.querySelector('[data-testid="results-last-good"]')!.getAttribute('aria-describedby')!)
+    return { isStatus: target === document.querySelector('[data-testid="auto-run-status"]'), text: target?.textContent }
   })
-  return release
+  expect(described).toEqual({ isStatus: true, text: message })
 }
 
 test.describe('AoE4 step run cells', () => {
@@ -206,7 +205,7 @@ test.describe('AoE4 step run cells while the result is stale', () => {
     await expect(rows(page).nth(0)).toHaveAttribute('data-run-step', '0')
     await expect(rows(page).nth(1)).toHaveAttribute('data-run-step', '1')
 
-    const release = await holdSimulate(page)
+    const release = await holdNextSimulate(page)
     await rows(page).nth(0).getByTestId('step-delete').click()
     await expect(status(page)).toHaveAttribute('data-status', 'updating')
     await expect(rows(page).nth(0)).toHaveAttribute('data-run-step', '1')
@@ -217,7 +216,7 @@ test.describe('AoE4 step run cells while the result is stale', () => {
     await expect(lastGood(page)).toHaveCSS('opacity', '0.5')
     await expect(rows(page).nth(0).getByTestId('step-delete')).toHaveCSS('opacity', '1')
     await expect(status(page)).toHaveText('Updating the results.')
-    await expect(lastGood(page)).toHaveAttribute('aria-describedby', 'auto-run-status')
+    await expectDescribedByStatus(page, 'Updating the results.')
 
     release()
     await expect(status(page)).toHaveAttribute('data-status', 'current')
@@ -230,7 +229,7 @@ test.describe('AoE4 step run cells while the result is stale', () => {
   test('choosing another prebuilt build while the result is stale shows no previous times', async ({ page }) => {
     await openTable(page)
     await expect(rows(page).first().getByTestId('step-started')).toBeVisible()
-    const release = await holdSimulate(page)
+    const release = await holdNextSimulate(page)
     await page.getByTestId('build-order-select').selectOption({ label: listBuilds()[1].name })
     await expect(status(page)).toHaveAttribute('data-status', 'updating')
     const total = await rows(page).count()
@@ -267,19 +266,20 @@ test.describe('AoE4 step run cells while the result is stale', () => {
       await expect(row.getByTestId('step-run')).toHaveCSS('opacity', '0.5')
     }
     await expect(lastGood(page)).toHaveCSS('opacity', '0.5')
-    await expect(lastGood(page)).toHaveAttribute('aria-describedby', 'auto-run-status')
+    await expectDescribedByStatus(page, 'The charts show the last valid build.')
   })
 
-  test('the charts dim from the edit until its result lands, and choosing the selected build does not dim them', async ({ page }) => {
+  test('the charts dim from a real input change until its held result lands; choosing the selected build sends no run and does not dim them', async ({ page }) => {
     await openPage(page)
     await expect.poll(() => lastGoodOpacity(page)).toBe(1)
-    await page.getByTestId('build-order-select').selectOption({ label: listBuilds()[0].name })
+    await expectNoRun(page, () => page.getByTestId('build-order-select').selectOption({ label: listBuilds()[0].name }))
     expect(await lastGoodOpacity(page)).toBe(1)
 
-    await showView(page, 'text')
-    await page.getByTestId('build-order-text').fill(`${DEFAULT_TEXT}\nproduce villager from capital-town-center x1`)
+    const release = await holdNextSimulate(page)
+    await page.getByTestId('build-order-select').selectOption({ label: listBuilds()[1].name })
     await expect.poll(() => lastGoodOpacity(page)).toBe(0.5)
-    await expect(lastGood(page)).not.toHaveAttribute('aria-describedby', /.*/)
+    await expect(status(page)).toHaveAttribute('data-status', 'updating')
+    release()
     await expect(status(page)).toHaveAttribute('data-status', 'current')
     await expect.poll(() => lastGoodOpacity(page)).toBe(1)
   })
@@ -294,7 +294,7 @@ test.describe('AoE4 step table layout beside Results', () => {
     await page.getByTestId('build-order-select').selectOption({ label: longest.name })
     await expect(status(page)).toHaveAttribute('data-status', 'current')
     await showView(page, 'table')
-    await expect(page.getByTestId('step-run').first()).toBeVisible()
+    await expect(page.getByTestId('step-started').first()).toBeVisible()
     await expect
       .poll(() =>
         page.evaluate(() => {

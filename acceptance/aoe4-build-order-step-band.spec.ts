@@ -1,8 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult, StepTiming } from '../lib/aoe4-build-order/model'
-import { AOE4_PAGE, SIMULATE_PATH, openPage, showTab, showView, waitForRun } from './helpers'
+import { AOE4_PAGE, CHART_IDS, holdNextSimulate, isSimulatePost, openPage, showTab, showView, waitForRun } from './helpers'
 
-const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 const WIDE = { width: 1280, height: 800 }
 const EDGE_TOLERANCE_PX = 1
 
@@ -40,10 +39,10 @@ const bandsPerChart = (page: Page) =>
         }
       })
     })
-  }, CHARTS) as Promise<Band[][]>
+  }, CHART_IDS) as Promise<Band[][]>
 
 async function expectBandEverywhere(page: Page, from: number, to: number) {
-  await expect.poll(async () => (await bandsPerChart(page)).map((found) => found.map((b) => [b.from, b.to]))).toEqual(CHARTS.map(() => [[from, to]]))
+  await expect.poll(async () => (await bandsPerChart(page)).map((found) => found.map((b) => [b.from, b.to]))).toEqual(CHART_IDS.map(() => [[from, to]]))
 }
 
 async function runPasted(page: Page, text: string, duration: number) {
@@ -98,7 +97,7 @@ test.describe('AoE4 step span band on the charts', () => {
     const result = await runDefault(page)
     const timing = result.steps.find((s) => s.status === 'completed' && s.startedAt! < s.completedAt!)!
     await row(page, timing.step).hover()
-    await expect(bands(page)).toHaveCount(CHARTS.length)
+    await expect(bands(page)).toHaveCount(CHART_IDS.length)
     await page.mouse.move(0, 0)
     await expect(bands(page)).toHaveCount(0)
   })
@@ -151,12 +150,12 @@ test.describe('AoE4 step span band on the charts', () => {
     }
     await page.mouse.move(0, 0)
     await row(page, timing.step).getByTestId('step-delete').focus()
-    await expect(bands(page)).toHaveCount(CHARTS.length)
+    await expect(bands(page)).toHaveCount(CHART_IDS.length)
     await start.hover()
     await expectNoBand()
     await page.getByTestId('duration-seconds').focus()
     await row(page, timing.step).hover()
-    await expect(bands(page)).toHaveCount(CHARTS.length)
+    await expect(bands(page)).toHaveCount(CHART_IDS.length)
     await start.locator('button, select, input').first().focus()
     await expectNoBand()
   })
@@ -190,7 +189,7 @@ test.describe('AoE4 step span band on the charts', () => {
           const grid = root.querySelector('.recharts-cartesian-grid')!.getBoundingClientRect()
           return { bandLeft: band.left, bandRight: band.right, markerX: marker.left, gridLeft: grid.left, gridRight: grid.right }
         }),
-      { charts: [...CHARTS], at: ageUp.at }
+      { charts: [...CHART_IDS], at: ageUp.at }
     )
     for (const g of geometry) {
       expect(Math.abs(g.bandRight - g.markerX)).toBeLessThanOrEqual(EDGE_TOLERANCE_PX)
@@ -235,7 +234,7 @@ test.describe('AoE4 step span band on the charts', () => {
     const timing = result.steps.find((s) => s.status === 'completed' && s.startedAt! < s.completedAt!)!
     const target = row(page, timing.step)
     await target.hover()
-    await expect(bands(page)).toHaveCount(CHARTS.length)
+    await expect(bands(page)).toHaveCount(CHART_IDS.length)
     await expect(target).toHaveAttribute('data-active', 'true')
 
     await waitForRun(page, () => page.getByTestId('duration-seconds').fill('900'))
@@ -246,22 +245,6 @@ test.describe('AoE4 step span band on the charts', () => {
   })
 
   test.describe('while a new result is pending', () => {
-    async function holdSimulate(page: Page) {
-      let release!: () => void
-      const gate = new Promise<void>((resolve) => (release = resolve))
-      let hit!: () => void
-      const hitOnce = new Promise<void>((resolve) => (hit = resolve))
-      await page.route(
-        (url) => url.pathname === SIMULATE_PATH,
-        async (route) => {
-          hit()
-          await gate
-          await route.continue()
-        }
-      )
-      return { release, hitOnce }
-    }
-
     async function runStale(page: Page) {
       const result = await runPasted(page, STALE_BUILD, 300)
       expect(result.steps).toHaveLength(3)
@@ -271,9 +254,10 @@ test.describe('AoE4 step span band on the charts', () => {
 
     test('hovering a row with no run while stale draws no band, and an unchanged earlier row still does', async ({ page }) => {
       const result = await runStale(page)
-      const { release, hitOnce } = await holdSimulate(page)
+      const release = await holdNextSimulate(page)
+      const sent = page.waitForRequest(isSimulatePost)
       await row(page, 2).getByTestId('step-field-builders').fill('3')
-      await hitOnce
+      await sent
       await expect(row(page, 2).getByTestId('step-run')).toHaveAttribute('data-stale', 'true')
       await expect(row(page, 2)).not.toHaveAttribute('data-run-step', /.*/)
       await row(page, 2).hover()
@@ -283,22 +267,21 @@ test.describe('AoE4 step span band on the charts', () => {
       await expectBandEverywhere(page, result.steps[0].startedAt!, result.steps[0].completedAt!)
       await expect.poll(() => page.getByTestId('results-last-good').evaluate((el) => getComputedStyle(el).opacity)).toBe('0.5')
       release()
-      await page.unroute((url) => url.pathname === SIMULATE_PATH)
     })
 
     test('an edit that unaligns the active row removes the band at once', async ({ page }) => {
       const result = await runStale(page)
-      const { release, hitOnce } = await holdSimulate(page)
+      const release = await holdNextSimulate(page)
       const builders = row(page, 1).getByTestId('step-field-builders')
       await builders.focus()
       await expectBandEverywhere(page, result.steps[1].startedAt!, result.steps[1].completedAt!)
+      const sent = page.waitForRequest(isSimulatePost)
       await page.keyboard.type('3')
-      await hitOnce
+      await sent
       await expect.poll(() => bands(page).count()).toBe(0)
       await expect(activeRows(page)).toHaveCount(0)
       await expect(builders).toBeFocused()
       release()
-      await page.unroute((url) => url.pathname === SIMULATE_PATH)
     })
   })
 })

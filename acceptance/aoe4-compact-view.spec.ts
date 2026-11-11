@@ -1,9 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult, StepTiming } from '../lib/aoe4-build-order/model'
 import { parseBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { SIMULATE_PATH, SPLIT_VIEWPORT, openPage, showView, waitForRun } from './helpers'
+import { CHART_IDS, SPLIT_VIEWPORT, holdNextSimulate, openPage, showView, waitForRun } from './helpers'
 
-const CHARTS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
 const EN_DASH = '–'
 const VILLAGER = 'produce villager from capital-town-center'
 
@@ -60,23 +59,13 @@ function expectStatus(result: SimulationResult, step: number, status: StepTiming
   expect(result.steps[step].status).toBe(status)
 }
 
-async function holdSimulate(page: Page) {
-  let release = () => {}
-  const gate = new Promise<void>((resolve) => (release = resolve))
-  await page.route(`**${SIMULATE_PATH}`, async (route) => {
-    await gate
-    await route.continue().catch(() => {})
-  })
-  return release
-}
-
 const bandsPerChart = (page: Page) =>
-  page.evaluate((charts) => charts.map((chart) => [...document.querySelectorAll(`[data-testid="${chart}"] [data-testid="chart-step-band"]`)].map((el) => [Number(el.getAttribute('data-from')), Number(el.getAttribute('data-to'))])), CHARTS)
+  page.evaluate((charts) => charts.map((chart) => [...document.querySelectorAll(`[data-testid="${chart}"] [data-testid="chart-step-band"]`)].map((el) => [Number(el.getAttribute('data-from')), Number(el.getAttribute('data-to'))])), CHART_IDS)
 
 const expectBandEverywhere = (page: Page, timing: StepTiming) =>
-  expect.poll(() => bandsPerChart(page)).toEqual(CHARTS.map(() => [[timing.startedAt, timing.completedAt]]))
+  expect.poll(() => bandsPerChart(page)).toEqual(CHART_IDS.map(() => [[timing.startedAt, timing.completedAt]]))
 
-const expectNoBands = (page: Page) => expect.poll(() => bandsPerChart(page)).toEqual(CHARTS.map(() => []))
+const expectNoBands = (page: Page) => expect.poll(() => bandsPerChart(page)).toEqual(CHART_IDS.map(() => []))
 
 test.describe('AoE4 compact view in the Text tab', () => {
   test.use({ viewport: SPLIT_VIEWPORT })
@@ -152,7 +141,7 @@ test.describe('AoE4 compact view in the Text tab', () => {
   })
 
   test('the annotation column and the legend are absent before a result and the legend follows the parsed steps', async ({ page }) => {
-    const release = await holdSimulate(page)
+    const release = await holdNextSimulate(page)
     try {
       await page.goto('/apps/aoe4-build-order')
       await showView(page, 'text')
@@ -188,7 +177,7 @@ test.describe('AoE4 compact view in the Text tab', () => {
     const kept = gutter(page, LINE_OF.spanning)
     await expect(kept).not.toHaveAttribute('data-stale', /.*/)
     await expect(kept).toHaveCSS('opacity', '1')
-    const release = await holdSimulate(page)
+    const release = await holdNextSimulate(page)
     try {
       await textarea(page).fill(MIXED_BUILD.replace(`${VILLAGER} x1`, `${VILLAGER} x3`))
       await expect(kept).toHaveAttribute('data-stale', 'true')
@@ -216,7 +205,7 @@ test.describe('AoE4 compact view in the Text tab', () => {
     const warning = await background(changed)
     expect(warning).not.toBe(await background(calm))
 
-    const release = await holdSimulate(page)
+    const release = await holdNextSimulate(page)
     try {
       await textarea(page).fill(MIXED_BUILD.replace('with 9 from sheep', 'with 8 from sheep'))
       await expect(changed).toHaveAttribute('data-stale', 'true')
