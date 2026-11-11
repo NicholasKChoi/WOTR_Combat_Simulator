@@ -23,16 +23,3 @@ Detail goes in the research report. Each item has this shape:
     <the owner's answer; empty while open>
 
 next: Q55
-
-## Q49: Retro P5 (engine): make drive-loop.sh wait for the usage-limit reset instead of stopping?
-kind: confirmation
-blocks: retro-20261111
-options: A) approve: file it as a GitHub issue on code-factory | B) reject: drop it
-recommendation: A: removes an avoidable human-stop
-research: reports/retro-20261111.md
-thread: 1570126558809686126
-
-M8 retro. Hitting the 5-hour usage limit ended the drive loop.
-- Happened once; factory sat idle ~3.5 h and it cost a human-stop. Draft: reports/retro-20261111-issue-5.md
-
-### Answer
