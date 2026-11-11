@@ -100,10 +100,15 @@ export function copyName(name: string): string {
     return `${base.slice(0, SAVED_NAME_MAX_CHARS - COPY_SUFFIX.length)}${COPY_SUFFIX}`
 }
 
-export function runName(entries: readonly LibraryEntry[], text: string, selectedKey: string): string {
+// The entry whose loaded text is `text`, preferring the selected one when several share it.
+export function entryWithText(entries: readonly LibraryEntry[], text: string, selectedKey: string): LibraryEntry | undefined {
     const selected = entries.find((entry) => entry.key === selectedKey)
-    if (selected?.loaded?.text === text) return selected.name
-    const match = entries.find((entry) => entry.loaded?.text === text)
-    if (match !== undefined) return match.name
+    return selected?.loaded?.text === text ? selected : entries.find((entry) => entry.loaded?.text === text)
+}
+
+export function runName(entries: readonly LibraryEntry[], text: string, selectedKey: string): string {
+    const same = entryWithText(entries, text, selectedKey)
+    if (same !== undefined) return same.name
+    const selected = entries.find((entry) => entry.key === selectedKey)
     return selected === undefined ? CUSTOM_BUILD_NAME : `${selected.name}${EDITED_SUFFIX}`
 }
