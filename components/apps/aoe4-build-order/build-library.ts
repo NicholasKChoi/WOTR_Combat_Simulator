@@ -69,6 +69,10 @@ export function namedEntry(kind: 'mine' | 'shared', build: NamedBuild): LibraryE
     }
 }
 
+export function savedMineEntry(id: string, name: string, input: { text: string; duration: string }, revision: number): LibraryEntry {
+    return { key: entryKey.named(id), kind: 'mine', name, id, loaded: { text: input.text, duration: input.duration, revision } }
+}
+
 export function withMyBuilds(list: readonly LibraryEntry[], mine: readonly LibraryEntry[]): LibraryEntry[] {
     const listed = new Map(list.map((entry) => [entry.key, entry]))
     const mineKeys = new Set(mine.map((entry) => entry.key))
@@ -101,7 +105,7 @@ export function copyName(name: string): string {
 }
 
 // The entry whose loaded text is `text`, preferring the selected one when several share it.
-export function entryWithText(entries: readonly LibraryEntry[], text: string, selectedKey: string): LibraryEntry | undefined {
+function entryWithText(entries: readonly LibraryEntry[], text: string, selectedKey: string): LibraryEntry | undefined {
     const selected = entries.find((entry) => entry.key === selectedKey)
     return selected?.loaded?.text === text ? selected : entries.find((entry) => entry.loaded?.text === text)
 }

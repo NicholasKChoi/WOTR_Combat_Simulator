@@ -16,6 +16,7 @@ import {
     mineEntries,
     namedEntry,
     runName,
+    savedMineEntry,
     templateEntries,
     withLoadedEntry,
     withMyBuilds,
@@ -111,6 +112,34 @@ describe('builders', () => {
             name: 'Shared Castle',
             id: ID,
             loaded: { text: formatBuildOrderText(build.buildOrder), duration: '840', revision: 4 },
+        })
+    })
+
+    it('savedMineEntry keys by the id and keeps the saved input as loaded', () => {
+        expect(savedMineEntry(ID, 'My Castle', { text: 'start -> sheep', duration: '900' }, 2)).toEqual({
+            key: `named:${ID}`,
+            kind: 'mine',
+            name: 'My Castle',
+            id: ID,
+            loaded: { text: 'start -> sheep', duration: '900', revision: 2 },
+        })
+    })
+
+    describe('savedMineEntry text is kept as typed', () => {
+        const typed = ['start -> sheep', '', '', '# scout early', 'produce   knight from stable', ''].join('\n')
+        const input = { text: typed, duration: '1200' }
+
+        it('uses a text the formatter would reflow', () => {
+            const parsed = textToBuildOrder(typed, buildOrderCatalog(ENGLISH))
+            if (!parsed.ok) throw new Error('the typed text must convert')
+            expect(formatBuildOrderText(parsed.order)).not.toBe(typed)
+        })
+
+        it.each([
+            { label: 'the saved input', live: input, expected: false },
+            { label: 'the saved input plus one character', live: { ...input, text: `${typed}x` }, expected: true },
+        ])('isEdited against $label is $expected', ({ live, expected }) => {
+            expect(isEdited(savedMineEntry(ID, 'Typed', input, 1), live)).toBe(expected)
         })
     })
 })

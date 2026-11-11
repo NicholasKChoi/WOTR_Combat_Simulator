@@ -134,7 +134,8 @@ button.activeView:disabled {
     opacity: 0.5;
 }
 
-.linkPanel {
+.linkPanel,
+.copyForm {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -143,14 +144,20 @@ button.activeView:disabled {
     min-width: 0;
 }
 
-.linkInput {
+.copyForm {
+    align-items: flex-start;
+}
+
+.linkInput,
+.copyNameField {
     flex: 1 1 12rem;
     min-width: 0;
     width: auto;
 }
 
 .linkHint,
-.saveError {
+.saveError,
+.saveNotice {
     flex: 1 1 100%;
     margin: 0;
 }

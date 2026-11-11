@@ -1,7 +1,7 @@
 import cn from 'classnames'
 import type { RefObject } from 'react'
 
-import type { SaveBuildResponse } from '../../../lib/aoe4-build-order/saved-builds'
+import type { CreateNamedBuildResponse, UpdateNamedBuildResponse } from '../../../lib/aoe4-build-order/named-builds'
 import type { TextToBuildResult } from '../../../lib/aoe4-build-order/text-to-build'
 import type { AutoRunStatus, LiveInput } from './auto-run'
 import { autoRunStatusMessage } from './auto-run-status'
@@ -24,7 +24,10 @@ interface BuildInputProps {
     conversion: TextToBuildResult
     hasResult: boolean
     busy?: boolean
-    onSaved: (response: SaveBuildResponse, input: LiveInput) => void
+    entry: LibraryEntry | undefined
+    editSecret: string | null
+    onCreated: (response: CreateNamedBuildResponse, input: LiveInput, name: string) => void
+    onUpdated: (response: UpdateNamedBuildResponse, input: LiveInput) => void
     onSubmit: () => void
     view: EditorView
     onViewChange: (view: EditorView) => void
@@ -37,7 +40,7 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ entries, selected, edited, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, onSaved, onSubmit, view, onViewChange, viewDisabled = false, runBarRef }: BuildInputProps) {
+export function BuildInput({ entries, selected, edited, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, entry, editSecret, onCreated, onUpdated, onSubmit, view, onViewChange, viewDisabled = false, runBarRef }: BuildInputProps) {
     return (
         <form
             ref={runBarRef}
@@ -112,7 +115,17 @@ export function BuildInput({ entries, selected, edited, onBuildSelect, duration,
                     </button>
                 ))}
             </div>
-            <SaveBuild status={status} settled={settled} conversion={conversion} entries={entries} busy={busy} onSaved={onSaved} />
+            <SaveBuild
+                status={status}
+                settled={settled}
+                conversion={conversion}
+                busy={busy}
+                entry={entry}
+                editSecret={editSecret}
+                edited={edited}
+                onCreated={onCreated}
+                onUpdated={onUpdated}
+            />
             <p id="auto-run-status" data-testid="auto-run-status" role="status" data-status={status} className={styles.autoRunStatus}>
                 {autoRunStatusMessage(status, hasResult)}
             </p>

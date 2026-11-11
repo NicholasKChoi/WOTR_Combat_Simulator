@@ -872,7 +872,7 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 
 The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls; below that it scrolls with the page. In the side-by-side layout the page only scrolls above the columns, so the bar stays stuck only as far as the page still scrolls. It
 holds the build select (labelled Build, see below), the `durationSeconds` number input (default 1200), a text/table toggle and the
-run status (`auto-run-status`) and the Save build button. There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
+run status (`auto-run-status`) and the save buttons, Save a new version and Save as copy (see below). There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
 Build and Results sit side by side in two equal columns, both always shown, with no tabs. The two columns fill the viewport below the run bar and each scrolls on its own, so the page does not scroll to reach either column's content. The Build column, the Results column and the tabs carry the headings `Build order` and `Results` at the same size; the text editor's textarea takes its accessible name from the `Build order` heading. Below 1200 px they are two
 tabs, Build and Results; Results is enabled while there is a result or a pinned run. No run selects a tab (one exception: opening a `?n=` or `?b=` link, see below), and
 the page never scrolls by itself. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so in the tabs layout the toggle is usable on the Build tab only; in the side-by-side layout the tab never disables it. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The layout follows the viewport width live, with no reload and no new run, and neither panel is remounted by a switch, so editor focus and text, an uncommitted table cell and the chart state carry across it. The tab selected before a resize to the side-by-side layout is kept, and the tabs layout shows it again after a resize back. When the page is opened directly, its first paint is the tabs layout and it switches to the side-by-side layout after it loads. In the side-by-side layout the step table wraps to fit the Build panel's column, a table that still cannot fit scrolls inside its own box (`step-table-scroll`), and the Build panel itself never scrolls sideways. The Build panel shows one editor view
@@ -884,7 +884,7 @@ by a `?n=` or `?b=` link, in the order they were opened; a shared build reads `<
 `<name> (<id>)`) and Templates (the shipped builds); an empty group is not shown. Choosing a template replaces the
 text with its paste text and keeps the duration; choosing an opened `?b=` build restores its text and duration;
 choosing one of My builds or a shared build fetches its latest version, and the select, duration, text editor, step
-table and Save build are disabled while it loads, with no run until it ends. A failed fetch keeps the text,
+table and the save buttons are disabled while it loads, with no run until it ends. A failed fetch keeps the text,
 duration and selection and shows `That build was not found. The current build is unchanged.` or `That build could
 not be loaded. The current build is unchanged.`; the next choice clears it.
 While the live text, or an opened build's duration, differs from the selected entry's loaded version (a template's
@@ -1056,22 +1056,49 @@ MAA/Crossbow` and `ENG 1TC Council Hall`.
 
 #### Saving a build and opening it by link
 
-Save build (`save-build`) is enabled only while the shown result matches the settled input (status `current`), and
-while no save and no build load is in flight. A save stores the parsed build order, not the raw text, and the duration, so comments and blank lines are not kept and the text
-reopens in canonical form. The saved name is that of the selected build when its text equals the saved text, else of the first build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label. The same content gives the same link, and saving it again returns it.
+The run bar has two save buttons. Save as copy (`save-build-copy`) is shown for every entry, templates and opened
+links included, and Save a new version (`save-build`) only for one of My builds whose edit secret this browser
+holds. Both are enabled only while the shown result matches the settled input (status `current`), the input
+converts, and no save and no build load is in flight; Save a new version also needs the build to be edited. A save
+stores the parsed build order, not the raw text, and the duration, so comments and blank lines are not kept when
+the build is opened elsewhere.
 
-The link is the page's origin plus `?b=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
+Save as copy opens a small form (`save-copy-form`) with the name (`save-copy-name`, labelled `Name of the copy`)
+prefilled as `<name> (copy)`, cut to fit the name cap, where `<name>` is the selected entry's name, or `Custom
+build` when no entry is selected. The trimmed name must be 1 to 100 characters; otherwise the field shows `Enter a
+name of 1 to 100 characters.` (`save-copy-name-error`) and Save copy (`save-copy-submit`) is disabled. Enter in
+the name or Save copy saves; Escape or Cancel (`save-copy-cancel`) closes the form and returns focus to Save as
+copy. The form closes when the save starts, and choosing another entry closes it. Each copy is a new named build
+with a new id, even for the same content. It becomes the newest of My builds and is selected, and the address gets
+`n=<id>`; when the settled input changed while the save was in flight, the new build is only added to My builds.
+
+Save a new version replaces the selected build with the shown text and duration, keeping its name, and the build
+is no longer edited. A second tab or another browser that saved the build first makes the update fail with `This
+build changed somewhere else. Choose it again to get the latest version, or save a copy.`, and Save a new version
+stays disabled until the build is chosen again, which loads the latest version.
+
+The create response carries the build's edit secret once. The page keeps it only in this browser's My builds list,
+which holds the newest 50 builds: the 51st save evicts the oldest, which then opens read-only here, and its link
+still works. The secret is sent only as the update's `Authorization` header, never in the address. When the
+browser cannot store the list, the save still succeeds and the page says `This browser could not store the edit
+key, so you can edit this build only until you close the page.` (`my-builds-unavailable`). A save in another tab
+updates this tab's My builds.
+
+The link is the page's origin plus `?n=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
 (`copy-saved-link`) in the run bar, and focus moves to the link with its text selected. Copy reads `Copied` once
 the clipboard accepts the link; when the browser refuses it, the link stays selected and the page says `Could not
-copy. Select the link and copy it by hand.` Escape in the link panel hides it and returns focus to Save build.
-The link and any save error go away on the first settled change of the text, the duration or the selected build
-(not while the edit is still inside the pause); the `b` in the address bar does not, since the address follows the
-selected entry, not the edits. A save puts its `b` in the address and keeps the other query keys. A save answered
-after the settled input changed shows no link.
+copy. Select the link and copy it by hand.` Escape in the link panel hides it and returns focus to the button that
+saved, or to Save as copy when that button is disabled. The link and any save error go away on the first settled
+change of the text, the duration or the selected build (not while the edit is still inside the pause). A save
+answered after the settled input changed shows no link and no error. Opening the link anywhere but the browser that
+made it opens the build read-only, as a shared build; Save as copy still works there.
+
+The page no longer creates `?b=` links. Links made by an earlier version of the page and by the `saveBuild` route
+still open:
 
 Opening `/apps/aoe4-build-order?b=<id>` loads that build into the editor and runs it: the select gains an option
 `<name> (<id>)` under Opened links that is selected, the duration is the saved one, and the select, duration, text editor, step
-table and Save build are disabled while the build loads, with no run until it ends. When the page shows the Build and Results tabs, Results is selected after the first successful run. `?n=<id>` opens a named build the same way: one of My builds keeps its stored name, any other loads as `<name>
+table and the save buttons are disabled while the build loads, with no run until it ends. When the page shows the Build and Results tabs, Results is selected after the first successful run. `?n=<id>` opens a named build the same way: one of My builds keeps its stored name, any other loads as `<name>
 (shared)` under Opened links. When both are present `n` wins and `b` is not fetched. The first `n` or `b` in the
 address is the only one read, and a later change of either (back or forward) loads nothing. After a load or a
 choice the address follows the selected entry: `n=<id>` for My builds and shared builds, `b=<id>` for an opened
@@ -1080,11 +1107,14 @@ default build.`, and a load that failed shows `That saved build could not be loa
 either runs the default build. A saved build whose text no longer converts opens as text with its issues and does
 not run.
 
-A failed save shows one message (`save-build-error`) and leaves Save build enabled: the first issue for a rejected
-build (`The build could not be saved: <issue>`), `The build is too large to save.`, `Saving is unavailable right
-now. Try again later.`, or `The build could not be saved. Try again.` for any other failure. When saves are
-limited it reads `Too many saves. Try again in <n> seconds.` below a minute and `Too many saves. Try again in <m>
-minutes.` from a minute on (rounded up), or `Too many saves. Try again later.` when the wait is unknown.
+A failed save shows one message (`save-build-error`): `This build changed somewhere else. Choose it again to get
+the latest version, or save a copy.` for a conflict, `You cannot edit this build here. Save a copy instead.` when
+the secret is refused, `This build no longer exists. Save a copy instead.` when the build is gone, the first issue
+for a rejected build (`The build could not be saved: <issue>`), `The build is too large to save.`, `Saving is
+unavailable right now. Try again later.`, or `The build could not be saved. Try again.` for any other failure.
+When saves are limited it reads `Too many saves. Try again in <n> seconds.` below a minute and `Too many saves. Try
+again in <m> minutes.` from a minute on (rounded up), or `Too many saves. Try again later.` when the wait is
+unknown.
 
 #### Saving a build from a script
 
