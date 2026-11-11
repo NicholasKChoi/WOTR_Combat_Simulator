@@ -73,6 +73,13 @@ describe('sendReply', () => {
         expect(target.json).not.toHaveBeenCalled()
     })
 
+    it('writes a body whose reply sets an ETag directly as JSON, so the framework cannot replace the ETag', () => {
+        const { target, calls } = recordingTarget()
+        sendReply(target, { status: 200, headers: { ETag: '"2"' }, body: { revision: 2 } })
+        expect(calls).toStrictEqual(['status 200', 'header ETag="2"', 'header Content-Type=application/json; charset=utf-8', 'end {"revision":2}'])
+        expect(target.json).not.toHaveBeenCalled()
+    })
+
     it('sends a falsy body that is not undefined as json', () => {
         const { target } = recordingTarget()
         sendReply(target, { status: 200, body: null })

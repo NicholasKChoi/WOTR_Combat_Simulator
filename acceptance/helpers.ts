@@ -238,6 +238,18 @@ export function postBuild(request: APIRequestContext, body: unknown, client: str
   return request.post(BUILDS_PATH, { data: body, headers: { 'x-forwarded-for': client }, timeout })
 }
 
+export const NAMED_BUILDS_PATH = '/api/aoe4-build-order/named-builds'
+export const namedBuildUrl = (id: string) => `${NAMED_BUILDS_PATH}/${id}`
+
+export function postNamedBuild(request: APIRequestContext, body: unknown, client: string, timeout = 10_000) {
+  return request.post(NAMED_BUILDS_PATH, { data: body, headers: { 'x-forwarded-for': client }, timeout })
+}
+
+// `data` may be a Buffer, sent as is, for a raw body.
+export function putNamedBuild(request: APIRequestContext, id: string, data: unknown, client: string, headers: Record<string, string>, timeout = 10_000) {
+  return request.put(namedBuildUrl(id), { data, headers: { 'Content-Type': 'application/json', ...headers, 'x-forwarded-for': client }, timeout })
+}
+
 // Playwright JSON-encodes a string `data`, so a raw body (a bare JSON value, an oversized body) goes as a Buffer.
 export function postBuildRaw(request: APIRequestContext, raw: string, client: string, timeout = 10_000) {
   return request.post(BUILDS_PATH, {

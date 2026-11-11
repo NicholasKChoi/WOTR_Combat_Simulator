@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import { BUILDS_PATH, buildPath, postBuild, uniqueClient } from './helpers'
-import { expectInvalid, expectValid, schemas, spec } from './openapi-schemas'
+import { expectInvalid, expectValid, routeFilePaths, schemas, spec } from './openapi-schemas'
 import { SAVE_RATE_LIMIT } from '../lib/aoe4-build-order/save-rate-limit'
 import { SAVED_BUILD_ID_PATTERN } from '../lib/aoe4-build-order/saved-builds'
 import { SIM_INPUT_BOUNDS } from '../lib/aoe4-build-order/schema'
@@ -32,9 +32,9 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.describe('spec structure', () => {
-  test('is version 2.4.0 with exactly the four paths', () => {
-    expect(spec.info.version).toBe('2.4.0')
-    expect(keys(spec.paths)).toEqual(['/api/aoe4-build-order/builds', BY_ID, '/api/aoe4-build-order/simulate', '/api/fight'].sort())
+  test('is version 2.5.0 and documents exactly the route files', () => {
+    expect(spec.info.version).toBe('2.5.0')
+    expect(keys(spec.paths)).toEqual(routeFilePaths())
     expect([save.operationId, getOperation.operationId, deleteOperation.operationId]).toEqual(['saveBuild', 'getSavedBuild', 'deleteSavedBuild'])
   })
 

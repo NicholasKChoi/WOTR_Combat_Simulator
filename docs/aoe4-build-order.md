@@ -723,6 +723,31 @@ request and response.
   nothing, so the stored count never passes the limit.
 - When the build id cannot be created the save answers 500 before any store call.
 
+#### Named builds routes
+
+A named build is a build that its creator can edit. `POST /api/aoe4-build-order/named-builds`
+(`createNamedBuild`) stores one, and `GET`, `PUT` and `DELETE` `/api/aoe4-build-order/named-builds/{id}`
+(`getNamedBuild`, `updateNamedBuild`, `deleteNamedBuild`) read, replace and remove it. Their logic is in
+`lib/aoe4-build-order/named-builds-routes.ts`; the files under `pages/api/aoe4-build-order/named-builds/` only
+adapt the request and response.
+
+- Every create makes a new random id and a new edit secret, even for a body posted before. The secret is in the
+  create response only. The store keeps only its hash, and no route logs it.
+- `GET` returns the latest revision with `Cache-Control: no-store`, and its `ETag` is the revision. The body never
+  has the secret hash. A malformed id and an id with no build give the same 404.
+- An update needs the edit secret as `Authorization: Bearer <secret>` and the current revision as `If-Match`.
+  A revision that is not the stored one is 412, and so is a write that lands between the read and the replace;
+  the other write is kept. A successful update stores the next revision even when the content is unchanged,
+  and may rename the build.
+- An update checks, in this order: the id (404), the secret's form (401), `If-Match` (428), the body (400 or
+  413); then it takes a rate-limit slot (429), before it compares the secret, so guessing secrets is rate-limited;
+  then whether the build exists (404), the secret (403) and the revision (412). The 404, 403 and 412 after the
+  slot still cost it.
+- Creates, updates and `POST /builds` saves share one per-client write budget, `SAVE_RATE_LIMIT`. Reads and
+  deletes cost nothing.
+- `DELETE` exists outside production only, as for saved builds: in production, and when `VERCEL` is set without
+  `VERCEL_ENV`, it is 405 with `Allow: GET, PUT`.
+
 ## Outputs
 
 A `SimulationResult` holds:
