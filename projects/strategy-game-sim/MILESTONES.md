@@ -179,7 +179,7 @@ M6 and M7 are fixed.
 ### Exit criteria
 
 Proposed 2026-11-10 from the owner's scope pick (Q35 C: UI asks + correctness bugs + test/cleanup debt, plus the
-start-from-a-build workflow and collapsible charts). Awaiting owner confirmation.
+start-from-a-build workflow and collapsible charts). Confirmed by the owner 2026-11-11 (Q36: approved as drafted).
 
 | id | criterion | kind | covered by | status |
 |----|-----------|------|------------|--------|

@@ -24,34 +24,13 @@ Detail goes in the research report. Each item has this shape:
 
 next: Q38
 
-## Q36: Confirm the M8 exit criteria (M8.1-M8.9)?
-kind: confirmation
-blocks: M8 (AoE4 workbench: iterate on builds, tidy results, and pay do…)
-options: A) approve as drafted | B) change: <what to add, drop or reword>
-recommendation: A: matches the scope you picked in Q35
-thread: 1569885907614703628
-answered: 2026-11-11T01:26Z discord
-
-M8 cannot start design until you confirm its exit criteria (drafted from your Q35 pick C plus the build-iterate and chart items).
-- M8.1 start from a build and iterate (no prebuilt framing, edited marker, never lose edits, named copies, my builds list)
-- M8.2 collapsible + reorderable charts, remembered per browser
-- M8.3 build order and results columns scroll separately; consistent heading sizes
-- M8.4 pinned legend: explain pinned once, each series once
-- M8.5 step-table readability (time labels, Waited 0:00, badge/select truncation, editor scroll)
-- M8.6 correctness bugs (?b= query keys, VERCEL_ENV fail-closed, save rate-limit counter, test env, sendReply typing, README)
-- M8.7 tests that cannot fail are fixed; M8.8 duplicated helpers and doc text fixed; M8.9 docs + Playwright
-- Left in backlog: data freshness CI, gather rates, English tech gaps, SGS-098 removed coverage, 360x760 flake, smoke-script hardening
-Full table: MILESTONES.md, section M8.
-
-### Answer
-A) approve as drafted
-
 ## Q37: M8 saved builds: immutable links plus a per-browser 'my builds' list, or editable named builds on the server?
 kind: decision
 blocks: M8 (AoE4 workbench: iterate on builds, tidy results, and pay do…)
 options: A) immutable links + per-browser my-builds list: least work, links never change, list is per browser | B) editable named builds on server: one link per build that updates, but edit secrets, new route, links can change | C) A plus export/import of the list: A's model, list movable across devices, small extra UI
 recommendation: A: keeps every link stable and needs no server change; C1 can be added later
 research: reports/M8-research-1.md
+thread: 1569886070425002075
 
 M8.1 (start from a build and iterate) needs a save model before design. Today a save is an immutable content-addressed ?b=<id> link with an immutable cache header.
 - A: no server or API change; every link an agent hands you stays valid forever; the list lives in one browser
