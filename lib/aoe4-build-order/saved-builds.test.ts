@@ -8,6 +8,7 @@ import {
     SAVED_BUILD_MAX_BYTES,
     SAVED_NAME_MAX_CHARS,
     checkSaveBuildRequest,
+    deploymentEnv,
     isSavedBuildId,
     rateCounterKey,
     savedBuildId,
@@ -107,6 +108,17 @@ describe('storageEnv', () => {
         ['staging', 'development'],
     ])('%j gives %s', (value, expected) => {
         expect(storageEnv(value)).toBe(expected)
+    })
+})
+
+describe('deploymentEnv', () => {
+    it.each([
+        [{}, 'development'],
+        [{ VERCEL: '1', VERCEL_ENV: 'preview' }, 'preview'],
+        [{ VERCEL: '1' }, null],
+        [{ VERCEL: '1', VERCEL_ENV: '' }, null],
+    ])('%j gives %s', (env, expected) => {
+        expect(deploymentEnv(env)).toBe(expected)
     })
 })
 

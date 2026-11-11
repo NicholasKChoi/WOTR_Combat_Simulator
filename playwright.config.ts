@@ -9,12 +9,14 @@ const PORT =
   3100 + (createHash('sha1').update(__dirname).digest().readUInt16BE(0) % 900)
 
 // `env` replaces the inherited environment, so copy it. Acceptance runs write builds under test-results/ and
-// never reach Vercel Blob or answer DELETE as production does, whatever the developer's shell sets.
-const DROPPED_ENV = ['BUILDS_STORE_ID', 'VERCEL_ENV']
+// never reach Vercel Blob or answer DELETE as production does, whatever the developer's shell or .env.local
+// sets. The storage variables are blank rather than absent because Next only reads a variable from .env files
+// when the process environment does not already have it, and an empty string counts as having it.
 const webServerEnv: Record<string, string> = {
-  ...Object.fromEntries(
-    Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && !DROPPED_ENV.includes(entry[0])),
-  ),
+  ...Object.fromEntries(Object.entries(process.env).filter((entry): entry is [string, string] => typeof entry[1] === 'string')),
+  BUILDS_STORE_ID: '',
+  VERCEL_ENV: '',
+  VERCEL: '',
   BUILDS_LOCAL_DIR: join(__dirname, 'test-results', 'builds-local'),
 }
 

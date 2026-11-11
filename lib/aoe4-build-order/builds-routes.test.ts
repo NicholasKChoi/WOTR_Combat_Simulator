@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { sendReply, type ReplyTarget } from './api-route'
+import { sendReply } from './api-route'
 import { listBuilds } from './builds'
-import { createMemoryBuildStore, type BuildStore } from './build-store'
+import { buildStoreFromEnv, createMemoryBuildStore, type BuildStore } from './build-store'
 import { saveBuildReply, savedBuildReply } from './builds-routes'
+import { recordingTarget } from './route-test-support'
 import { SAVE_RATE_LIMIT } from './save-rate-limit'
 import { SAVED_BUILD_MAX_BYTES, checkSaveBuildRequest, savedBuildId, savedBuildPath } from './saved-builds'
 import { buildOrderCatalog } from './schema'
@@ -25,14 +26,29 @@ const getterFor = (store: BuildStore) => vi.fn(() => Promise.resolve(store))
 const rejectingGetter = () => vi.fn(() => Promise.reject(new Error('no blob')))
 const withBroken = (store: BuildStore, broken: Partial<BuildStore>): BuildStore => ({ ...store, ...broken })
 
-function save(store: BuildStore | (() => Promise<BuildStore>), body: unknown = VALID, options: { method?: string; clientKey?: string; nowMs?: number } = {}) {
+const failClosedGetter = () => vi.fn(() => buildStoreFromEnv({ VERCEL: '1' } as Record<string, string> as NodeJS.ProcessEnv))
+
+function loggedStrings(calls: unknown[][]) {
+    return calls.flat().flatMap((value) => {
+        if (typeof value === 'string') return [value]
+        if (value instanceof Error) return [value.message]
+        if (typeof value === 'object' && value !== null) return Object.values(value).filter((entry): entry is string => typeof entry === 'string')
+        return []
+    })
+}
+
+function save(
+    store: BuildStore | (() => Promise<BuildStore>),
+    body: unknown = VALID,
+    options: { method?: string; clientKey?: string; nowMs?: number; makeId?: Parameters<typeof saveBuildReply>[1]['makeId'] } = {},
+) {
     return saveBuildReply(
         { method: options.method ?? 'POST', body, clientKey: options.clientKey ?? 'client' },
-        { store: typeof store === 'function' ? store : getterFor(store), catalog, nowMs: options.nowMs ?? NOW },
+        { store: typeof store === 'function' ? store : getterFor(store), catalog, nowMs: options.nowMs ?? NOW, makeId: options.makeId },
     )
 }
 
-function read(store: BuildStore | (() => Promise<BuildStore>), method: string | undefined, id: unknown, env = 'development') {
+function read(store: BuildStore | (() => Promise<BuildStore>), method: string | undefined, id: unknown, env: string | null = 'development') {
     return savedBuildReply({ method, id }, { store: typeof store === 'function' ? store : getterFor(store), env })
 }
 
@@ -90,6 +106,12 @@ describe('saveBuildReply, storage failures', () => {
         expect(error).toHaveBeenCalledOnce()
     })
 
+    it('answers 503 and logs when VERCEL is set without VERCEL_ENV', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+        expect(await save(failClosedGetter())).toStrictEqual(STORAGE_DOWN)
+        expect(error).toHaveBeenCalledExactlyOnceWith('builds: storage failed', new Error('VERCEL is set but VERCEL_ENV is not'))
+    })
+
     it.each([
         ['bumpCounter', { bumpCounter: () => Promise.reject(new Error('counter down')) }],
         ['putBuild', { putBuild: () => Promise.reject(new Error('put down')) }],
@@ -99,7 +121,27 @@ describe('saveBuildReply, storage failures', () => {
         expect(await save(withBroken(createMemoryBuildStore(), broken))).toStrictEqual(STORAGE_DOWN)
         expect(error).toHaveBeenCalledOnce()
         expect(error.mock.calls[0].at(-1)).toBeInstanceOf(Error)
-        expect(JSON.stringify(error.mock.calls)).not.toContain('client')
+        expect(loggedStrings(error.mock.calls).filter((value) => value.includes('client'))).toStrictEqual([])
+    })
+})
+
+describe('saveBuildReply, id failure', () => {
+    const cause = new Error('digest failed')
+
+    it.each([
+        ['throws', (): Promise<string> => {
+            throw cause
+        }],
+        ['rejects', () => Promise.reject<string>(cause)],
+    ])('answers 500 before the store when makeId %s, and logs the cause', async (_label, makeId) => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const store = createMemoryBuildStore()
+        const bumpCounter = vi.spyOn(store, 'bumpCounter')
+        const getter = getterFor(store)
+        expect(await save(getter, VALID, { makeId })).toStrictEqual({ status: 500, body: { error: 'the build id could not be created' } })
+        expect(error).toHaveBeenCalledExactlyOnceWith('builds: id generation failed', cause)
+        expect(getter).not.toHaveBeenCalled()
+        expect(bumpCounter).not.toHaveBeenCalled()
     })
 })
 
@@ -115,6 +157,13 @@ describe('saveBuildReply, rate limit', () => {
             body: { error: 'too many saves from this client; try again later' },
         })
         expect(putBuild).not.toHaveBeenCalled()
+    })
+
+    it('writes no counter for refused saves, so the stored count stays at the limit', async () => {
+        const store = createMemoryBuildStore()
+        for (let index = 0; index < SAVE_RATE_LIMIT.maxSaves + 3; index += 1) await save(store)
+        const next = await store.bumpCounter('client', NOW, SAVE_RATE_LIMIT.maxSaves + 1)
+        expect(next).toStrictEqual({ windowStart: NOW, count: SAVE_RATE_LIMIT.maxSaves + 1 })
     })
 
     it('answers Retry-After for the time left in the window', async () => {
@@ -181,6 +230,20 @@ describe('savedBuildReply, methods', () => {
         expect((await read(store, 'GET', id, 'production')).status).toBe(200)
     })
 
+    it('answers 405 for DELETE when the deployment env is unknown, deletes nothing, and still answers GET', async () => {
+        const store = createMemoryBuildStore()
+        const { id } = await savedRecord(store)
+        const deleteBuild = vi.spyOn(store, 'deleteBuild')
+        expect(await read(store, 'DELETE', id, null)).toStrictEqual({
+            status: 405,
+            headers: { Allow: 'GET' },
+            body: { error: 'method DELETE is not allowed; use GET' },
+        })
+        expect(deleteBuild).not.toHaveBeenCalled()
+        expect((await read(store, 'GET', id, null)).status).toBe(200)
+        expect(await read(store, 'DELETE', id, 'development')).toStrictEqual({ status: 204 })
+    })
+
     it('answers 405 for a missing method without asking for the store', async () => {
         const getter = getterFor(createMemoryBuildStore())
         expect((await read(getter, undefined, ID)).status).toBe(405)
@@ -200,9 +263,10 @@ describe.each(['GET', 'DELETE'])('savedBuildReply, %s', (method) => {
         expect(getter).not.toHaveBeenCalled()
     })
 
-    it('answers 503 when the store getter rejects', async () => {
-        vi.spyOn(console, 'error').mockImplementation(() => {})
+    it('answers 503 and logs once when the store getter rejects', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
         expect(await read(rejectingGetter(), method, ID)).toStrictEqual(STORAGE_DOWN)
+        expect(error).toHaveBeenCalledOnce()
     })
 
     it('answers 503 and logs when the store throws', async () => {
@@ -218,11 +282,18 @@ describe('savedBuildReply, GET', () => {
         expect(await read(createMemoryBuildStore(), 'GET', ID)).toStrictEqual(NOT_FOUND)
     })
 
-    it('answers 500 when the stored value fails the record schema', async () => {
-        vi.spyOn(console, 'error').mockImplementation(() => {})
+    it('answers 500 and logs once when the stored value fails the record schema', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
         const store = createMemoryBuildStore()
         await store.putBuild(ID, JSON.stringify({ version: 2 }))
         expect(await read(store, 'GET', ID)).toStrictEqual({ status: 500, body: { error: 'the stored build could not be read' } })
+        expect(error).toHaveBeenCalledOnce()
+    })
+
+    it('answers 503 and logs when VERCEL is set without VERCEL_ENV', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+        expect(await read(failClosedGetter(), 'GET', ID, null)).toStrictEqual(STORAGE_DOWN)
+        expect(error).toHaveBeenCalledExactlyOnceWith('builds: storage failed', new Error('VERCEL is set but VERCEL_ENV is not'))
     })
 
     it('answers 200 with the stored record plus its id and the immutable cache header', async () => {
@@ -236,18 +307,13 @@ describe('savedBuildReply, GET', () => {
 })
 
 describe('savedBuildReply, DELETE', () => {
-    function recordingTarget() {
-        const target = { status: vi.fn(() => target), setHeader: vi.fn(), json: vi.fn(), end: vi.fn() }
-        return target
-    }
-
     it('answers 204 with no body for a stored id, and a following GET answers 404', async () => {
         const store = createMemoryBuildStore()
         const { id } = await savedRecord(store)
         const reply = await read(store, 'DELETE', id)
         expect(reply).toStrictEqual({ status: 204 })
-        const target = recordingTarget()
-        sendReply(target as unknown as ReplyTarget, reply)
+        const { target } = recordingTarget<NonNullable<typeof reply.body>>()
+        sendReply(target, reply)
         expect(target.end).toHaveBeenCalledOnce()
         expect(target.json).not.toHaveBeenCalled()
         expect(await read(store, 'GET', id)).toStrictEqual(NOT_FOUND)

@@ -1,6 +1,6 @@
 // The Vercel Blob BuildStore. Credentials come from the function's OIDC token for storeId.
 import { BlobNotFoundError, BlobPreconditionFailedError, del, get, head, put } from '@vercel/blob';
-import type { BuildStore, CounterUpdate } from './build-store';
+import { nextCounter, type BuildStore } from './build-store';
 import { rateCounterKey, savedBuildKey } from './saved-builds';
 
 const COUNTER_ATTEMPTS = 3;
@@ -15,8 +15,8 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
     }
   };
 
-  // Absence is handled both as a null result and as BlobNotFoundError: which one the SDK uses
-  // could not be checked without a live store.
+  // @vercel/blob 2.9 `get` resolves null when the blob answers 404. BlobNotFoundError is also treated
+  // as absent.
   const read = async (key: string, fresh: boolean): Promise<{ value: unknown; etag: string } | null> => {
     try {
       const result = await get(key, { access: 'private', storeId, ...(fresh ? { useCache: false } : {}) });
@@ -45,12 +45,12 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
     async deleteBuild(id) {
       await del(savedBuildKey(env, id), { storeId });
     },
-    async bumpCounter(clientKey, windowStart) {
+    async bumpCounter(clientKey, windowStart, limit) {
       const key = rateCounterKey(env, clientKey);
       for (let attempt = 0; attempt < COUNTER_ATTEMPTS; attempt += 1) {
         const current = await read(key, true);
-        const stored = current?.value as Partial<CounterUpdate> | undefined;
-        const update: CounterUpdate = { windowStart, count: stored?.windowStart === windowStart && typeof stored.count === 'number' ? stored.count + 1 : 1 };
+        const update = nextCounter(current?.value ?? null, windowStart, limit);
+        if (update === 'refused') return update;
         const write = current === null ? { allowOverwrite: false } : { allowOverwrite: true, ifMatch: current.etag };
         try {
           await put(key, JSON.stringify(update), { access: 'private', addRandomSuffix: false, contentType: 'application/json', storeId, ...write });

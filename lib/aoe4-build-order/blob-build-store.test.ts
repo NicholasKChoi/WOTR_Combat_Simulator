@@ -12,6 +12,7 @@ const ID = 'Zx3_k9-QaB0'
 const BUILD_KEY = `preview/builds/${ID}.json`
 const COUNTER_KEY = 'preview/rate-limit/c.json'
 const W = 3_600_000 * 1_000
+const LIMIT = 30
 
 const store = () => createBlobBuildStore(STORE_ID, 'preview')
 
@@ -85,7 +86,7 @@ describe('deleteBuild', () => {
 
 describe('bumpCounter', () => {
     it('creates an absent counter without overwrite or ifMatch', async () => {
-        expect(await store().bumpCounter('c', W)).toStrictEqual({ windowStart: W, count: 1 })
+        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: 1 })
         expect(get).toHaveBeenCalledExactlyOnceWith(COUNTER_KEY, { access: 'private', storeId: STORE_ID, useCache: false })
         expect(counterPuts()).toStrictEqual([
             {
@@ -101,7 +102,7 @@ describe('bumpCounter', () => {
         ['an older window', { windowStart: W - 3_600_000, count: 7 }, 1],
     ])('updates a counter from %s through ifMatch', async (_label, stored, count) => {
         vi.mocked(get).mockResolvedValue(found(stored, 'etag-7'))
-        expect(await store().bumpCounter('c', W)).toStrictEqual({ windowStart: W, count })
+        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count })
         expect(counterPuts()).toStrictEqual([
             {
                 key: COUNTER_KEY,
@@ -111,10 +112,26 @@ describe('bumpCounter', () => {
         ])
     })
 
+    it('refuses the 31st bump at limit 30 without a put, so limit 31 then counts 31', async () => {
+        let stored: string | null = null
+        vi.mocked(get).mockImplementation(async () => (stored === null ? null : found(JSON.parse(stored))))
+        vi.mocked(put).mockImplementation(async (_key, body) => {
+            stored = body as string
+            return {} as Awaited<ReturnType<typeof put>>
+        })
+        const blob = store()
+        for (let index = 0; index < LIMIT; index += 1) await blob.bumpCounter('c', W, LIMIT)
+        expect(JSON.parse(stored ?? 'null')).toStrictEqual({ windowStart: W, count: LIMIT })
+        vi.mocked(put).mockClear()
+        expect(await blob.bumpCounter('c', W, LIMIT)).toBe('refused')
+        expect(put).not.toHaveBeenCalled()
+        expect(await blob.bumpCounter('c', W, LIMIT + 1)).toStrictEqual({ windowStart: W, count: LIMIT + 1 })
+    })
+
     it('retries a changed etag with the etag of the new read', async () => {
         vi.mocked(get).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, 'etag-1')).mockResolvedValueOnce(found({ windowStart: W, count: 2 }, 'etag-2'))
         vi.mocked(put).mockRejectedValueOnce(new BlobPreconditionFailedError())
-        expect(await store().bumpCounter('c', W)).toStrictEqual({ windowStart: W, count: 3 })
+        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: 3 })
         expect(counterPuts().map(({ body, options }) => [body.count, options.ifMatch])).toStrictEqual([
             [2, 'etag-1'],
             [3, 'etag-2'],
@@ -124,7 +141,7 @@ describe('bumpCounter', () => {
     it('reports contended after three changed etags', async () => {
         for (const etag of ['etag-1', 'etag-2', 'etag-3']) vi.mocked(get).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, etag))
         vi.mocked(put).mockRejectedValue(new BlobPreconditionFailedError())
-        expect(await store().bumpCounter('c', W)).toBe('contended')
+        expect(await store().bumpCounter('c', W, LIMIT)).toBe('contended')
         expect(get).toHaveBeenCalledTimes(3)
         expect(counterPuts().map(({ options }) => options.ifMatch)).toStrictEqual(['etag-1', 'etag-2', 'etag-3'])
     })
@@ -133,7 +150,7 @@ describe('bumpCounter', () => {
         vi.mocked(get).mockResolvedValueOnce(null).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, 'etag-1'))
         vi.mocked(put).mockRejectedValueOnce(new Error('already exists'))
         vi.mocked(head).mockResolvedValue({} as Awaited<ReturnType<typeof head>>)
-        expect(await store().bumpCounter('c', W)).toStrictEqual({ windowStart: W, count: 2 })
+        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: 2 })
         expect(put).toHaveBeenCalledTimes(2)
     })
 
@@ -143,7 +160,7 @@ describe('bumpCounter', () => {
     ])('propagates any other put error on %s after one attempt', async (_label, arrange) => {
         arrange()
         vi.mocked(put).mockRejectedValue(new Error('service down'))
-        await expect(store().bumpCounter('c', W)).rejects.toThrow('service down')
+        await expect(store().bumpCounter('c', W, LIMIT)).rejects.toThrow('service down')
         expect(put).toHaveBeenCalledOnce()
     })
 })

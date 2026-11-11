@@ -2078,6 +2078,24 @@
               }
             }
           },
+          "500": {
+            "description": "The build id could not be created; nothing was stored and no rate-limit slot was spent. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "idFailure": {
+                    "summary": "the id digest failed",
+                    "value": {
+                      "error": "the build id could not be created"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "503": {
             "description": "The storage is unavailable.",
             "content": {

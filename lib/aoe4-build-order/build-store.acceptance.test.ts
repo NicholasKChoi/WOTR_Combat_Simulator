@@ -22,7 +22,7 @@ afterEach(async () => {
 describe('public surface', () => {
   it('build-store exports exactly the documented names', () => {
     expect(Object.keys(buildStoreModule).sort()).toEqual(
-      ['BUILDS_LOCAL_DIR_DEFAULT', 'buildStoreFromEnv', 'createFileBuildStore', 'createMemoryBuildStore'].sort(),
+      ['BUILDS_LOCAL_DIR_DEFAULT', 'buildStoreFromEnv', 'createFileBuildStore', 'createMemoryBuildStore', 'nextCounter'].sort(),
     );
   });
 
