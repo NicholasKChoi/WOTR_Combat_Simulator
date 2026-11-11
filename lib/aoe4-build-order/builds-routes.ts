@@ -5,7 +5,7 @@ import { takeSaveSlot } from './save-rate-limit';
 import { checkSaveBuildRequest, isSavedBuildId, savedBuildId, savedBuildPath, savedBuildSchema, type SavedBuild } from './saved-builds';
 import type { BuildOrderCatalog } from './schema';
 
-type StoreGetter = () => Promise<BuildStore>;
+export type StoreGetter = () => Promise<BuildStore>;
 
 export const errorReply = (status: number, error: string, headers?: Record<string, string>): RouteReply<BuildsError> => ({ status, ...(headers && { headers }), body: { error } });
 export const storageUnavailable = (cause: unknown): RouteReply<BuildsError> => {
@@ -17,6 +17,19 @@ export const idFailure = (cause: unknown): RouteReply<BuildsError> => {
   return errorReply(500, 'the build id could not be created');
 };
 const notFound = (): RouteReply<BuildsError> => errorReply(404, 'no saved build with that id');
+
+// The 429 for a client whose save slot was refused, or null once the slot is taken.
+export async function refusedSaveSlot(store: BuildStore, clientKey: string, nowMs: number): Promise<RouteReply<BuildsError> | null> {
+  const slot = await takeSaveSlot(store, clientKey, nowMs);
+  if (slot.ok) return null;
+  return errorReply(429, 'too many saves from this client; try again later', { 'Retry-After': String(slot.retryAfterSeconds) });
+}
+
+// DELETE is allowed only outside production; the 405 names the methods the deployment allows, or null when allowed.
+export function disallowedMethod(method: string | undefined, methods: readonly string[], env: string | null): RouteReply<BuildsError> | null {
+  const allowed = env !== null && env !== 'production' ? [...methods, 'DELETE'] : methods;
+  return method !== undefined && allowed.includes(method) ? null : methodNotAllowed(method, allowed);
+}
 
 export async function saveBuildReply(
   req: { method: string | undefined; body: unknown; clientKey: string },
@@ -35,8 +48,8 @@ export async function saveBuildReply(
 
   try {
     const store = await deps.store();
-    const slot = await takeSaveSlot(store, req.clientKey, deps.nowMs);
-    if (!slot.ok) return errorReply(429, 'too many saves from this client; try again later', { 'Retry-After': String(slot.retryAfterSeconds) });
+    const refused = await refusedSaveSlot(store, req.clientKey, deps.nowMs);
+    if (refused) return refused;
     const put = await store.putBuild(id, checked.json);
     return { status: put === 'created' ? 201 : 200, body: { id, path: savedBuildPath(id) } };
   } catch (cause) {
@@ -59,10 +72,8 @@ export async function savedBuildReply(
   req: { method: string | undefined; id: unknown },
   deps: { store: StoreGetter; env: string | null },
 ): Promise<RouteReply<(SavedBuild & { id: string }) | BuildsError>> {
-  const canDelete = deps.env !== null && deps.env !== 'production';
-  if (req.method !== 'GET' && !(req.method === 'DELETE' && canDelete)) {
-    return methodNotAllowed(req.method, canDelete ? ['GET', 'DELETE'] : ['GET']);
-  }
+  const disallowed = disallowedMethod(req.method, ['GET'], deps.env);
+  if (disallowed) return disallowed;
   if (!isSavedBuildId(req.id)) return notFound();
 
   try {

@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { test, expect } from '@playwright/test'
 import { DEFAULT_ARMIES, postFight, type FightBody } from './helpers'
+import { routeFilePaths } from './openapi-schemas'
 
 const TIMEOUT = { timeout: 10_000 }
 
@@ -29,10 +30,12 @@ const AOE4_SCHEMA_NAMES = [
   'ChartMarker',
   'ChartMarkerKind',
   'CivId',
+  'CreateNamedBuildResponse',
   'DepositRef',
   'FiniteGatherNodeId',
   'FiniteNodeRef',
   'GatherNodeId',
+  'NamedBuild',
   'NodeDepletion',
   'NodeRef',
   'ResourceKind',
@@ -52,6 +55,7 @@ const AOE4_SCHEMA_NAMES = [
   'Trigger',
   'TripInputOverrides',
   'UnitSeries',
+  'UpdateNamedBuildResponse',
 ]
 const fightSchemas = Object.fromEntries(Object.entries<any>(schemas).filter(([name]) => FIGHT_SCHEMA_NAMES.includes(name)))
 const operation = spec.paths['/api/fight'].post
@@ -66,14 +70,9 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.describe('spec file shape', () => {
-  test('is OpenAPI 3.1 and lists /api/fight, the simulate route and the two builds routes', () => {
+  test('is OpenAPI 3.1 and lists every route file under pages/api', () => {
     expect(spec.openapi).toMatch(/^3\.1\./)
-    expect(Object.keys(spec.paths).sort()).toEqual([
-      '/api/aoe4-build-order/builds',
-      '/api/aoe4-build-order/builds/{id}',
-      '/api/aoe4-build-order/simulate',
-      '/api/fight',
-    ])
+    expect(Object.keys(spec.paths).sort()).toEqual(routeFilePaths())
     expect(spec.info.version).toBeTruthy()
     expect(spec.info.description).not.toContain('/api/models/army')
   })

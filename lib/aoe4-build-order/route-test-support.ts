@@ -14,8 +14,8 @@ export function recordingTarget<Body = unknown>() {
         json: vi.fn((body: Body) => {
             calls.push(`json ${JSON.stringify(body)}`)
         }),
-        end: vi.fn(() => {
-            calls.push('end')
+        end: vi.fn((chunk?: string) => {
+            calls.push(chunk === undefined ? 'end' : `end ${chunk}`)
         }),
     }
     return { target, calls }

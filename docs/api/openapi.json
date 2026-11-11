@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Strategy Game Simulator API",
-    "version": "2.4.0",
+    "version": "2.5.0",
     "description": "HTTP API of the strategy game simulator site."
   },
   "paths": {
@@ -2345,6 +2345,803 @@
           }
         }
       }
+    },
+    "/api/aoe4-build-order/named-builds": {
+      "post": {
+        "operationId": "createNamedBuild",
+        "summary": "Create an editable named build and get its edit secret.",
+        "description": "Validates the build like saveBuild and stores it under a new random id as revision 1. Every create makes a new id and a new edit secret, even for a body posted before. The edit secret is in this response only: the server keeps only its hash, so a lost secret cannot be recovered and the build can no longer be updated. Send it as Authorization: Bearer <editSecret> to update the build. A create costs one slot of the same per-client rate limit as saveBuild and updateNamedBuild, which share one budget; an invalid body is rejected before it costs a slot. A body that is not valid JSON is a 400 with the plain-text body Invalid JSON, and a body over the 128 kb body limit is a 413 with a plain-text body; both come from the framework before the handler runs.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveBuildRequest"
+              },
+              "examples": {
+                "buildOrder": {
+                  "summary": "a small build order for a 300 second horizon",
+                  "value": {
+                    "buildOrder": {
+                      "civ": "english",
+                      "name": "Rally opener",
+                      "start": {
+                        "villagers": {
+                          "sheep": 6
+                        },
+                        "rally": "sheep"
+                      },
+                      "steps": [
+                        {
+                          "action": "produce",
+                          "producer": "capital-town-center",
+                          "unit": "villager",
+                          "count": 2
+                        },
+                        {
+                          "trigger": {
+                            "kind": "time",
+                            "seconds": 30
+                          },
+                          "action": "rally",
+                          "producer": "capital-town-center",
+                          "to": "wood"
+                        }
+                      ]
+                    },
+                    "durationSeconds": 300
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The build was stored as revision 1.",
+            "headers": {
+              "ETag": {
+                "description": "The revision as a quoted number; always \"1\" here.",
+                "schema": {
+                  "type": "string",
+                  "pattern": "^\"[1-9][0-9]*\"$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateNamedBuildResponse"
+                },
+                "examples": {
+                  "created": {
+                    "summary": "a new named build",
+                    "value": {
+                      "id": "Q2v8sYk1Xc0mLr7TzN4bWd",
+                      "path": "/apps/aoe4-build-order?n=Q2v8sYk1Xc0mLr7TzN4bWd",
+                      "editSecret": "h3Jk9QzW0pLm4Rt7Vx2Bn8Cs5Df1Gy6Hu0Ia3Ke9Okw",
+                      "revision": 1,
+                      "updatedAt": "2026-11-10T21:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request was rejected; nothing was stored and no rate-limit slot was spent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulateError"
+                },
+                "examples": {
+                  "notAnObject": {
+                    "summary": "a body that is not a JSON object",
+                    "value": {
+                      "error": "request body: must be a JSON object",
+                      "issues": [
+                        {
+                          "code": "syntax",
+                          "message": "request body: must be a JSON object"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not POST.",
+            "headers": {
+              "Allow": {
+                "description": "The only allowed method.",
+                "schema": {
+                  "type": "string",
+                  "const": "POST"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "getOnCreate": {
+                    "summary": "GET on the create route",
+                    "value": {
+                      "error": "method GET is not allowed; use POST"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The stored record is over 65536 bytes. A body over the 128 kb body limit is a 413 with a plain-text body, from the framework, with no schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "recordTooLarge": {
+                    "summary": "a valid order whose source is 30000 three-byte characters",
+                    "value": {
+                      "error": "saved build: 90345 bytes, more than 65536"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "This client wrote too often in the current window; saveBuild, createNamedBuild and updateNamedBuild share the budget. Retry-After says when to try again.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the client may write again, 1..3600.",
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "tooManySaves": {
+                    "summary": "the 31st write of one client in one window",
+                    "value": {
+                      "error": "too many saves from this client; try again later"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The build id or edit secret could not be created; nothing was stored. Try again later.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "idFailure": {
+                    "summary": "the random source failed",
+                    "value": {
+                      "error": "the build id could not be created"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "storageUnavailable": {
+                    "summary": "the storage did not answer",
+                    "value": {
+                      "error": "storage is unavailable; try again later"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/aoe4-build-order/named-builds/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "The id a create returned.",
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22}$"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getNamedBuild",
+        "summary": "Read the latest revision of a named build.",
+        "description": "Returns the stored build, its id, revision and times, and never the edit secret or its hash. The body is always the latest revision: the response is not cached (Cache-Control: no-store). The ETag header is the revision, to send back as If-Match on an update. A malformed id and an id with no build give the same 404. A read costs no rate-limit slot.",
+        "responses": {
+          "200": {
+            "description": "The latest revision.",
+            "headers": {
+              "Cache-Control": {
+                "description": "A named build can change, so it is never cached.",
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "ETag": {
+                "description": "The revision as a quoted number, for If-Match.",
+                "schema": {
+                  "type": "string",
+                  "pattern": "^\"[1-9][0-9]*\"$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamedBuild"
+                },
+                "examples": {
+                  "named": {
+                    "summary": "the build of the request example after one update",
+                    "value": {
+                      "buildOrder": {
+                        "civ": "english",
+                        "name": "Rally opener",
+                        "start": {
+                          "villagers": {
+                            "sheep": 6
+                          },
+                          "rally": "sheep"
+                        },
+                        "steps": [
+                          {
+                            "action": "produce",
+                            "producer": "capital-town-center",
+                            "unit": "villager",
+                            "count": 2
+                          },
+                          {
+                            "trigger": {
+                              "kind": "time",
+                              "seconds": 30
+                            },
+                            "action": "rally",
+                            "producer": "capital-town-center",
+                            "to": "wood"
+                          }
+                        ]
+                      },
+                      "durationSeconds": 300,
+                      "version": 1,
+                      "revision": 2,
+                      "createdAt": "2026-11-10T21:00:00.000Z",
+                      "updatedAt": "2026-11-10T21:05:00.000Z",
+                      "id": "Q2v8sYk1Xc0mLr7TzN4bWd"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The id is malformed or has no build.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "notFound": {
+                    "summary": "a malformed id",
+                    "value": {
+                      "error": "no named build with that id"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not allowed: DELETE in production, or any method but GET, PUT and DELETE.",
+            "headers": {
+              "Allow": {
+                "description": "The allowed methods: GET, PUT and DELETE, or GET and PUT in production.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "GET, PUT, DELETE",
+                    "GET, PUT"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "patchOnId": {
+                    "summary": "PATCH on the id route outside production (getNamedBuild documents the same reply)",
+                    "value": {
+                      "error": "method PATCH is not allowed; use GET or PUT or DELETE"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The stored value is not a named build. The routes never write one; this is a guard.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "unreadableBuild": {
+                    "summary": "a stored value that fails the record schema",
+                    "value": {
+                      "error": "the stored build could not be read"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "storageUnavailable": {
+                    "summary": "the storage did not answer",
+                    "value": {
+                      "error": "storage is unavailable; try again later"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateNamedBuild",
+        "summary": "Replace a named build with a new revision.",
+        "description": "Needs the edit secret as Authorization: Bearer <editSecret> and the current revision as If-Match: \"<revision>\". The checks run in this order and the first that fails answers: a malformed id is 404; a missing or malformed secret is 401; a missing or malformed If-Match is 428; an invalid body is 400 or 413; then one rate-limit slot is taken (429 when none is left), before the secret is compared, so guessing secrets is rate-limited; then an id with no build is 404, a secret that does not match is 403, and an If-Match that is not the stored revision is 412. A write that lands between the read and this write is also 412, and the other write is kept. The 404, 403 and 412 after the slot still cost that slot; the 401, 428, 400 and 413 do not. The budget is the one saveBuild and createNamedBuild use. A success stores the build as the next revision, keeps createdAt, sets updatedAt, and may change the name; the same content as stored still makes a new revision. The secret is never stored, only its hash.",
+        "security": [
+          {
+            "editSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "description": "The revision being replaced, as a quoted number: the ETag of the last read, create or update.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]*\"$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveBuildRequest"
+              },
+              "examples": {
+                "buildOrder": {
+                  "summary": "a small build order for a 300 second horizon",
+                  "value": {
+                    "buildOrder": {
+                      "civ": "english",
+                      "name": "Rally opener",
+                      "start": {
+                        "villagers": {
+                          "sheep": 6
+                        },
+                        "rally": "sheep"
+                      },
+                      "steps": [
+                        {
+                          "action": "produce",
+                          "producer": "capital-town-center",
+                          "unit": "villager",
+                          "count": 2
+                        },
+                        {
+                          "trigger": {
+                            "kind": "time",
+                            "seconds": 30
+                          },
+                          "action": "rally",
+                          "producer": "capital-town-center",
+                          "to": "wood"
+                        }
+                      ]
+                    },
+                    "durationSeconds": 300
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The build was stored as the next revision.",
+            "headers": {
+              "ETag": {
+                "description": "The new revision as a quoted number.",
+                "schema": {
+                  "type": "string",
+                  "pattern": "^\"[1-9][0-9]*\"$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateNamedBuildResponse"
+                },
+                "examples": {
+                  "updated": {
+                    "summary": "the first update of a build",
+                    "value": {
+                      "id": "Q2v8sYk1Xc0mLr7TzN4bWd",
+                      "path": "/apps/aoe4-build-order?n=Q2v8sYk1Xc0mLr7TzN4bWd",
+                      "revision": 2,
+                      "updatedAt": "2026-11-10T21:05:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body was rejected; nothing was stored and no rate-limit slot was spent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulateError"
+                },
+                "examples": {
+                  "notAnObject": {
+                    "summary": "a body that is not a JSON object",
+                    "value": {
+                      "error": "request body: must be a JSON object",
+                      "issues": [
+                        {
+                          "code": "syntax",
+                          "message": "request body: must be a JSON object"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The Authorization header is missing or is not Bearer with a 43-character secret. No rate-limit slot was spent.",
+            "headers": {
+              "WWW-Authenticate": {
+                "description": "The required scheme.",
+                "schema": {
+                  "type": "string",
+                  "const": "Bearer"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "secretRequired": {
+                    "summary": "no Authorization header",
+                    "value": {
+                      "error": "an edit secret is required"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The edit secret does not match the build. A rate-limit slot was spent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "secretMismatch": {
+                    "summary": "a wrong secret",
+                    "value": {
+                      "error": "the edit secret does not match"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The id is malformed, or has no build (a rate-limit slot was spent for a well-formed id).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "notFound": {
+                    "summary": "a malformed id",
+                    "value": {
+                      "error": "no named build with that id"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not allowed: DELETE in production, or any method but GET, PUT and DELETE.",
+            "headers": {
+              "Allow": {
+                "description": "The allowed methods: GET, PUT and DELETE, or GET and PUT in production.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "GET, PUT, DELETE",
+                    "GET, PUT"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "patchOnId": {
+                    "summary": "PATCH on the id route outside production (updateNamedBuild documents the same reply)",
+                    "value": {
+                      "error": "method PATCH is not allowed; use GET or PUT or DELETE"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "If-Match is not the stored revision, or another write landed first. Read the build again for the current revision. A rate-limit slot was spent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "changed": {
+                    "summary": "If-Match \"1\" after the build reached revision 2",
+                    "value": {
+                      "error": "the build has changed since that revision"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The stored record is over 65536 bytes. A body over the 128 kb body limit is a 413 with a plain-text body, from the framework, with no schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "recordTooLarge": {
+                    "summary": "a valid order whose source is 30000 three-byte characters",
+                    "value": {
+                      "error": "saved build: 90345 bytes, more than 65536"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "The If-Match header is missing or is not a quoted revision number. No rate-limit slot was spent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "revisionRequired": {
+                    "summary": "no If-Match header",
+                    "value": {
+                      "error": "If-Match with the current revision is required"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "This client wrote too often in the current window; saveBuild, createNamedBuild and updateNamedBuild share the budget. Retry-After says when to try again.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds until the client may write again, 1..3600.",
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[0-9]+$"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "tooManySaves": {
+                    "summary": "the 31st write of one client in one window",
+                    "value": {
+                      "error": "too many saves from this client; try again later"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The stored value is not a named build. The routes never write one; this is a guard.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "unreadableBuild": {
+                    "summary": "a stored value that fails the record schema",
+                    "value": {
+                      "error": "the stored build could not be read"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "storageUnavailable": {
+                    "summary": "the storage did not answer",
+                    "value": {
+                      "error": "storage is unavailable; try again later"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteNamedBuild",
+        "summary": "Delete a named build (outside production only).",
+        "description": "Removes the build, so a following read gives 404. Deleting an id with no build also answers 204. It needs no edit secret and costs no rate-limit slot. The DELETE method is answered with 405 in production, where named builds are never deleted.",
+        "responses": {
+          "204": {
+            "description": "The build is gone, or was never there."
+          },
+          "404": {
+            "description": "The id is malformed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "notFound": {
+                    "summary": "a malformed id",
+                    "value": {
+                      "error": "no named build with that id"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "The method is not allowed: DELETE in production, or any method but GET, PUT and DELETE.",
+            "headers": {
+              "Allow": {
+                "description": "The allowed methods: GET, PUT and DELETE, or GET and PUT in production.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "GET, PUT, DELETE",
+                    "GET, PUT"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "patchOnId": {
+                    "summary": "PATCH on the id route outside production (deleteNamedBuild documents the same reply)",
+                    "value": {
+                      "error": "method PATCH is not allowed; use GET or PUT or DELETE"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The storage is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildsError"
+                },
+                "examples": {
+                  "storageUnavailable": {
+                    "summary": "the storage did not answer",
+                    "value": {
+                      "error": "storage is unavailable; try again later"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4277,6 +5074,121 @@
             "description": "What went wrong, in one lower-case sentence."
           }
         }
+      },
+      "CreateNamedBuildResponse": {
+        "type": "object",
+        "description": "A new named build, with the edit secret that updates it. The secret is returned only here.",
+        "required": [
+          "id",
+          "path",
+          "editSecret",
+          "revision",
+          "updatedAt"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22}$",
+            "description": "The random id of the named build, 22 URL-safe characters."
+          },
+          "path": {
+            "type": "string",
+            "description": "The page path that opens the build, for example /apps/aoe4-build-order?n=<id>. A path, not an absolute URL: prefix it with the site origin."
+          },
+          "editSecret": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "description": "The edit secret, 43 URL-safe characters. Send it as Authorization: Bearer <editSecret> to update the build; it cannot be read again."
+          },
+          "revision": {
+            "const": 1,
+            "description": "The revision of a new build; always 1."
+          },
+          "updatedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "description": "When this revision was stored, as an ISO 8601 UTC time."
+          }
+        }
+      },
+      "UpdateNamedBuildResponse": {
+        "type": "object",
+        "description": "The revision an update stored.",
+        "required": [
+          "id",
+          "path",
+          "revision",
+          "updatedAt"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{22}$",
+            "description": "The random id of the named build, 22 URL-safe characters."
+          },
+          "path": {
+            "type": "string",
+            "description": "The page path that opens the build, for example /apps/aoe4-build-order?n=<id>. A path, not an absolute URL: prefix it with the site origin."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 2,
+            "description": "The new revision, one more than the one If-Match named."
+          },
+          "updatedAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "description": "When this revision was stored, as an ISO 8601 UTC time."
+          }
+        }
+      },
+      "NamedBuild": {
+        "description": "The body of a named-build read: the stored build, its id, revision and times. It is closed and never has the secret hash.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SavedBuild"
+          },
+          {
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{22}$",
+                "description": "The random id of the named build, 22 URL-safe characters."
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "The current revision; 1 at create, one more after each update."
+              },
+              "createdAt": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+                "description": "When the build was created, as an ISO 8601 UTC time."
+              },
+              "updatedAt": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+                "description": "When this revision was stored, as an ISO 8601 UTC time."
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "createdAt",
+              "updatedAt"
+            ]
+          }
+        ],
+        "unevaluatedProperties": false
+      }
+    },
+    "securitySchemes": {
+      "editSecret": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The edit secret a create returned, sent as Authorization: Bearer <editSecret>."
       }
     }
   }

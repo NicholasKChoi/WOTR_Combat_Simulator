@@ -12,7 +12,7 @@ export interface ReplyTarget<Body = unknown> {
   status(code: number): ReplyTarget<Body>;
   setHeader(name: string, value: string): unknown;
   json(body: Body): void;
-  end(): void;
+  end(chunk?: string): void;
 }
 
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -46,5 +46,12 @@ export function sendReply<Body>(res: ReplyTarget<Body>, reply: RouteReply<NoInfe
   res.status(reply.status);
   for (const [name, value] of Object.entries(reply.headers ?? {})) res.setHeader(name, value);
   if (reply.body === undefined) res.end();
+  else if (reply.headers?.ETag !== undefined) sendWithOwnEtag(res, reply.body);
   else res.json(reply.body);
+}
+
+// Next replaces the ETag of a res.json body with a hash of that body, so a body with its own ETag is written directly.
+function sendWithOwnEtag(res: ReplyTarget<unknown>, body: unknown): void {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(body));
 }

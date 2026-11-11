@@ -1,10 +1,18 @@
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { expect } from '@playwright/test'
 import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020'
 
 export const spec = JSON.parse(readFileSync(join(__dirname, '..', 'docs', 'api', 'openapi.json'), 'utf8'))
 export const schemas = spec.components.schemas
+
+// The URL of every route file under pages/api: the extension and a trailing /index dropped, [x] written {x}.
+export function routeFilePaths(): string[] {
+  return readdirSync(join(__dirname, '..', 'pages', 'api'), { recursive: true, encoding: 'utf8' })
+    .filter((file) => /\.(ts|js)$/.test(file))
+    .map((file) => `/api/${file.replaceAll('\\', '/')}`.replace(/\.(ts|js)$/, '').replace(/\/index$/, '').replace(/\[([^\]]+)\]/g, '{$1}'))
+    .sort()
+}
 
 const ajv = new Ajv2020({ strict: false })
 ajv.addSchema(spec, 'openapi.json')
