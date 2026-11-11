@@ -111,6 +111,14 @@ export async function openSavedBuild(page: Page, id: string) {
   await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'current')
 }
 
+// Call just before reloading or leaving an edited page: Playwright dismisses an unhandled dialog, which cancels the unload.
+export function acceptBeforeUnload(page: Page): void {
+  page.once('dialog', async (dialog) => {
+    if (dialog.type() !== 'beforeunload') throw new Error(`Expected a beforeunload dialog, got ${dialog.type()}: ${dialog.message()}`)
+    await dialog.accept()
+  })
+}
+
 export const SPLIT_MIN_WIDTH = 1200
 export const TABS_VIEWPORT = { width: 1024, height: 768 }
 export const SPLIT_VIEWPORT = { width: 1280, height: 800 }

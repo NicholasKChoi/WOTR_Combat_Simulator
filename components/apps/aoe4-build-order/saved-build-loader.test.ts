@@ -1,11 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { listBuilds } from '../../../lib/aoe4-build-order/builds'
-import { formatBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
 import type { SavedBuild } from '../../../lib/aoe4-build-order/saved-builds'
-import { buildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
-import { ENGLISH } from '../../../lib/aoe4-build-order/test-helpers'
-import { textToBuildOrder } from '../../../lib/aoe4-build-order/text-to-build'
-import { loadSavedBuild, savedBuildOption } from './saved-build-loader'
+import { loadSavedBuild } from './saved-build-loader'
 
 const ID = 'Zx3_k9-QaB0'
 const saved: SavedBuild = { version: 1, buildOrder: { ...listBuilds()[0], name: 'Fast Castle' }, durationSeconds: 900 }
@@ -18,21 +14,6 @@ function stubFetch(respond: (init?: RequestInit) => Promise<Response>) {
 
 afterEach(() => {
     vi.unstubAllGlobals()
-})
-
-describe('savedBuildOption', () => {
-    const option = savedBuildOption(ID, saved)
-
-    it('labels the option with the id but keeps the stored name as the build name', () => {
-        expect(option.name).toBe(`Fast Castle (${ID})`)
-        expect(option.buildName).toBe('Fast Castle')
-    })
-
-    it('carries the canonical text, which converts back to the saved order', () => {
-        expect(option.text).toBe(formatBuildOrderText(saved.buildOrder))
-        const reopened = textToBuildOrder(option.text, buildOrderCatalog(ENGLISH))
-        expect(reopened.ok && reopened.order.steps).toStrictEqual(saved.buildOrder.steps)
-    })
 })
 
 describe('loadSavedBuild', () => {

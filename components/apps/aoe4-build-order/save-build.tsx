@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { SaveBuildResponse } from '../../../lib/aoe4-build-order/saved-builds'
 import type { TextToBuildResult } from '../../../lib/aoe4-build-order/text-to-build'
 import { type AutoRunStatus, type LiveInput, sameInput } from './auto-run'
-import type { PrebuiltBuild } from './build-input'
+import type { LibraryEntry } from './build-library'
 import { savedBuildName } from './pin-name'
 import { postSavedBuild } from './save-build-client'
 import styles from './workbench.module.css'
@@ -13,14 +13,14 @@ interface SaveBuildProps {
     status: AutoRunStatus
     settled: LiveInput
     conversion: TextToBuildResult
-    builds: PrebuiltBuild[]
+    entries: LibraryEntry[]
     busy: boolean
     onSaved: (response: SaveBuildResponse, input: LiveInput) => void
 }
 
 type CopyState = 'idle' | 'copied' | 'failed'
 
-export function SaveBuild({ status, settled, conversion, builds, busy, onSaved }: SaveBuildProps) {
+export function SaveBuild({ status, settled, conversion, entries, busy, onSaved }: SaveBuildProps) {
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState<{ link: string; input: LiveInput } | null>(null)
     const [error, setError] = useState<{ message: string; input: LiveInput } | null>(null)
@@ -63,7 +63,7 @@ export function SaveBuild({ status, settled, conversion, builds, busy, onSaved }
         abort.current = controller
         setSaving(true)
         const outcome = await postSavedBuild(
-            { buildOrder: { ...conversion.order, name: savedBuildName(builds, input.text, input.selected) }, durationSeconds: Number(input.duration) },
+            { buildOrder: { ...conversion.order, name: savedBuildName(entries, input.text, input.selected) }, durationSeconds: Number(input.duration) },
             controller.signal,
         )
         if (!mounted.current) return

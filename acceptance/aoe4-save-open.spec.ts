@@ -347,14 +347,14 @@ test.describe('Save is enabled only while the shown result is current', () => {
 
 test.describe('after a save', () => {
   type Edit = (page: Page) => Promise<unknown>
-  const edits: { name: string; edit: Edit }[] = [
-    { name: 'a text edit', edit: (page) => textarea(page).fill(VALID_A) },
-    { name: 'a duration edit', edit: (page) => duration(page).fill('900') },
-    { name: 'a build selection', edit: (page) => select(page).selectOption({ label: BUILDS[1].name }) },
+  const edits: { name: string; edit: Edit; keepsB: boolean }[] = [
+    { name: 'a text edit', edit: (page) => textarea(page).fill(VALID_A), keepsB: true },
+    { name: 'a duration edit', edit: (page) => duration(page).fill('900'), keepsB: true },
+    { name: 'a build selection', edit: (page) => select(page).selectOption({ label: BUILDS[1].name }), keepsB: false },
   ]
 
-  for (const { name, edit } of edits) {
-    test(`${name} drops the link and b only once the pause ends, and a new save puts b back`, async ({ page }) => {
+  for (const { name, edit, keepsB } of edits) {
+    test(`${name} drops the link only once the pause ends, ${keepsB ? 'keeps' : 'drops'} b, and a new save puts the new b`, async ({ page }) => {
       await openPausedPage(page)
       const { id } = await saveThroughUi(page)
       await expectLinkId(page, id)
@@ -367,7 +367,8 @@ test.describe('after a save', () => {
       await waitForRun(page, () => settle(page))
       await expect(link(page)).toHaveCount(0)
       await expect(saveError(page)).toHaveCount(0)
-      await expect.poll(() => hasQuery(page)).toBe(false)
+      if (keepsB) expect(page.url()).toContain(`?b=${id}`)
+      else await expect.poll(() => hasQuery(page)).toBe(false)
 
       const again = await saveThroughUi(page)
       expect(again.id).not.toBe(id)
@@ -661,7 +662,7 @@ test.describe('opening a link', () => {
   ]
 
   for (const row of loadRows) {
-    test(`${row.name} shows the message, runs the default build once and drops b on the first settled edit`, async ({ page }) => {
+    test(`${row.name} shows the message, runs the default build once and keeps b after a settled edit`, async ({ page }) => {
       if (row.route) await page.route(isBuildGetUrl, row.route)
       const gets = trackRequests(page, isBuildGet)
       const posts = trackSimulatePosts(page)
@@ -672,7 +673,7 @@ test.describe('opening a link', () => {
       await page.goto(`${AOE4_PAGE}?b=${row.query}`)
       await expect(status(page)).toHaveAttribute('data-status', 'current')
       await expect(loadError(page)).toHaveText(row.message)
-      await expect(select(page)).toHaveValue(DEFAULT.name)
+      await expect(select(page)).toHaveValue(`template:${DEFAULT.name}`)
       await page.waitForTimeout(AUTO_RUN_DEBOUNCE_MS + 300)
       expect(gets).toHaveLength(row.gets)
       if (row.name === 'an id that is not stored') expect(responses).toEqual([404])
@@ -681,7 +682,7 @@ test.describe('opening a link', () => {
       expect(page.url()).toContain(`?b=${row.query}`)
 
       await waitForRun(page, () => textarea(page).fill(VALID_A))
-      await expect.poll(() => hasQuery(page)).toBe(false)
+      expect(page.url()).toContain(`?b=${row.query}`)
     })
   }
 

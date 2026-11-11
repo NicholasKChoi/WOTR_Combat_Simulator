@@ -871,7 +871,7 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 ### Page
 
 The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls; below that it scrolls with the page. In the side-by-side layout the page only scrolls above the columns, so the bar stays stuck only as far as the page still scrolls. It
-holds the build select (the prebuilt builds, plus the saved build a `?b=` link opened), the `durationSeconds` number input (default 1200), a text/table toggle and the
+holds the build select (labelled Build, see below), the `durationSeconds` number input (default 1200), a text/table toggle and the
 run status (`auto-run-status`) and the Save build button. There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
 Build and Results sit side by side in two equal columns, both always shown, with no tabs. The two columns fill the viewport below the run bar and each scrolls on its own, so the page does not scroll to reach either column's content. The Build column, the Results column and the tabs carry the headings `Build order` and `Results` at the same size; the text editor's textarea takes its accessible name from the `Build order` heading. Below 1200 px they are two
 tabs, Build and Results; Results is enabled while there is a result or a pinned run. No run selects a tab (one exception: opening a `?b=` link, see below), and
@@ -879,8 +879,19 @@ the page never scrolls by itself. Switching tabs changes nothing else, and both 
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and does not scroll vertically itself (in the side-by-side layout the Build column scrolls, below 1200 px the page does; a line longer than the box scrolls sideways; filling the text from the select, a load or the table starts it scrolled to the left, while typing keeps the caret's scroll), and the table view is the
 step table. After a result, the text view also shows an annotation for each step line in a second gutter between the line numbers and the textarea: the step's kind colour as a left border and its started and finished times without labels, dimmed in the same stale state as the step table; hovering the annotation shows the time it waited and what blocked it, and for a `waiting` or `not-reached` step it reads `Still waiting. Blocked by: ...` instead of a time. Blank, comment, `start` and unparseable lines have an empty annotation. Hovering a gutter annotation, or putting the caret on a step line, shades that step's span on the charts as a table row does; the last of the two inputs wins, so leaving a hovered annotation clears the shading until the next caret move, and blurring the textarea clears it. The kind legend renders above the text editor as well as above the step table, while a result is shown and the text has at least one parsed step, including when another line has a syntax error. The view survives runs and tab switches but not a reload, and a reload starts on Build (except that after opening a `?b=` link, Results is selected after its first successful run when the page shows the Build and Results tabs).
-Choosing a prebuilt build replaces the text with that build's paste text; editing the text
-leaves the select as it is.
+The select groups its entries as My builds (the builds this browser saved, newest first), Opened links (builds opened
+by a `?n=` or `?b=` link, in the order they were opened; a shared build reads `<name> (shared)` and a `?b=` build
+`<name> (<id>)`) and Templates (the shipped builds); an empty group is not shown. Choosing a template replaces the
+text with its paste text and keeps the duration; choosing an opened `?b=` build restores its text and duration;
+choosing one of My builds or a shared build fetches its latest version, and the select, duration, text editor, step
+table and Save build are disabled while it loads, with no run until it ends. A failed fetch keeps the text,
+duration and selection and shows `That build was not found. The current build is unchanged.` or `That build could
+not be loaded. The current build is unchanged.`; the next choice clears it.
+While the live text, or an opened build's duration, differs from the selected entry's loaded version (a template's
+duration never counts), the selected option reads `<label> (edited)` and the select has `data-edited="true"`
+(otherwise `"false"`); the marker follows typing, not the 500 ms pause. Choosing another entry while edited asks
+`Discard your edits to "<label>"?`, and cancelling keeps the text, the duration and the selection. Reloading or
+closing an edited page asks the browser to confirm; an unedited page leaves without asking.
 
 The input settles 500 ms (`AUTO_RUN_DEBOUNCE_MS`) after the last edit to the text, the step table or the duration,
 and the page then re-runs it; Enter in the duration field and choosing a build in the select settle the input at once.
@@ -999,8 +1010,8 @@ pinned) drops it. The pin stays through later runs, text and build edits, invali
 `aoe4-build-order.pinned-run` as the build text, duration and name (not the result), and the page re-runs it on
 load. A stored value that is not valid, a text that no longer converts, or a response that is not ok (400 or 5xx)
 from the re-run drops it; only a failed request (the network) keeps it, and no pin is shown. A Pin or Unpin made before the re-run finishes wins. The label
-`pinned-label` reads `Pinned: <name>, <m:ss>`. The name comes from the shown result's input: the name of the select option whose text it equals exactly (for an opened build, `<name> (<id>)`), `<name> (edited)` (the build selected when that input was sent) otherwise,
-and `Custom build` when there are no prebuilt builds. The charts (`results-last-good`) and the step table's run cells dim together whenever the shown result no longer
+`pinned-label` reads `Pinned: <name>, <m:ss>`. The name comes from the shown result's input: the name of the entry selected when that input was sent if its text equals the input exactly, else the name of the first entry whose text does (an opened build by its stored name, without the ` (<id>)` of its select label), else `<name> (edited)` for the selected entry,
+and `Custom build` when no entry is selected. The charts (`results-last-good`) and the step table's run cells dim together whenever the shown result no longer
 describes the live input: when its text or its duration differs from the live text or duration, and on `invalid`, `rejected` and
 `failed`. That includes the 500 ms before the input settles and while the page is `updating`; a change to the select alone does not
 dim. `results-last-good` carries `aria-describedby="auto-run-status"` only while it is dimmed and the status text is not
@@ -1047,20 +1058,24 @@ MAA/Crossbow` and `ENG 1TC Council Hall`.
 
 Save build (`save-build`) is enabled only while the shown result matches the settled input (status `current`), and
 while no save and no `?b=` load is in flight. A save stores the parsed build order, not the raw text, and the duration, so comments and blank lines are not kept and the text
-reopens in canonical form. The saved name is that of the build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label. The same content gives the same link, and saving it again returns it.
+reopens in canonical form. The saved name is that of the selected build when its text equals the saved text, else of the first build whose text it equals, or else the selected build's name followed by ` (edited)` (added once, and cut to fit the name cap); an opened build is named by its stored name, without the ` (<id>)` of its select label. The same content gives the same link, and saving it again returns it.
 
 The link is the page's origin plus `?b=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
 (`copy-saved-link`) in the run bar, and focus moves to the link with its text selected. Copy reads `Copied` once
 the clipboard accepts the link; when the browser refuses it, the link stays selected and the page says `Could not
 copy. Select the link and copy it by hand.` Escape in the link panel hides it and returns focus to Save build.
-The link, any save error and the `b` in the address bar go away on the first settled change of the text, the
-duration or the selected build (not while the edit is still inside the pause), and a save puts `b` back. A save
-answered after the settled input changed shows no link.
+The link and any save error go away on the first settled change of the text, the duration or the selected build
+(not while the edit is still inside the pause); the `b` in the address bar does not, since the address follows the
+selected entry, not the edits. A save puts its `b` in the address and keeps the other query keys. A save answered
+after the settled input changed shows no link.
 
 Opening `/apps/aoe4-build-order?b=<id>` loads that build into the editor and runs it: the select gains an option
-`<name> (<id>)` that is selected, the duration is the saved one, and the select, duration, text editor, step
-table and Save build are disabled while the build loads, with no run until it ends. When the page shows the Build and Results tabs, Results is selected after the first successful run. The first `b` in the address is the only one read, and a later change of `b`
-(back or forward) loads nothing. An unknown or malformed id shows `That saved build was not found. Showing the
+`<name> (<id>)` under Opened links that is selected, the duration is the saved one, and the select, duration, text editor, step
+table and Save build are disabled while the build loads, with no run until it ends. When the page shows the Build and Results tabs, Results is selected after the first successful run. `?n=<id>` opens a named build the same way: one of My builds keeps its stored name, any other loads as `<name>
+(shared)` under Opened links. When both are present `n` wins and `b` is not fetched. The first `n` or `b` in the
+address is the only one read, and a later change of either (back or forward) loads nothing. After a load or a
+choice the address follows the selected entry: `n=<id>` for My builds and shared builds, `b=<id>` for an opened
+`?b=` build, and neither for a template; other query keys are kept. A load that fails leaves the address as it was. For either key, an unknown or malformed id shows `That saved build was not found. Showing the
 default build.`, and a load that failed shows `That saved build could not be loaded. Showing the default build.`;
 either runs the default build. A saved build whose text no longer converts opens as text with its issues and does
 not run.
