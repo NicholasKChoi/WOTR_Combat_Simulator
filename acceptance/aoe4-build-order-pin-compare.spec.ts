@@ -140,9 +140,9 @@ test.describe('AoE4 build order pin and compare', () => {
 
   test('a series only the pinned run has gets one dashed legend item that hides its dashed line', async ({ page }) => {
     await openPage(page)
-    await runOk(page, { duration: 300 })
+    await expect(page.getByTestId('build-order-text')).toHaveValue(DEFAULT_PASTE)
     await pin(page)
-    await runOk(page, { text: NO_MILITARY_PASTE, duration: 600 })
+    await runOk(page, { text: NO_MILITARY_PASTE })
     const chart = page.getByTestId('chart-units-produced')
     const keys = await chart.getByTestId('chart-series-legend-item').evaluateAll((els) => els.map((e) => e.getAttribute('data-series')!))
     const current = new Set(await chart.locator('path[data-series]:not([data-series^="pinned:"])').evaluateAll((els) => els.map((e) => e.getAttribute('data-series'))))
