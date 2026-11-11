@@ -874,7 +874,7 @@ test.describe('reopening and new versions', () => {
 
     await waitForRun(page, () => select(page).selectOption({ label: OTHER.name }))
     const gets = track(page, isNamedGet)
-    await select(page).selectOption({ label: 'Reload me' })
+    await waitForRun(page, () => select(page).selectOption({ label: 'Reload me' }))
     await expect(textarea(page)).toHaveValue(DEFAULT.text)
     expect(gets.map((r) => new URL(r.url()).pathname)).toEqual([namedBuildUrl(created.id)])
     await expect(saveButton(page)).toHaveText('Save a new version')
