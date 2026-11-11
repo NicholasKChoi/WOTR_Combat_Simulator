@@ -32,51 +32,53 @@ beforeEach(() => {
     vi.mocked(del).mockReset().mockResolvedValue(undefined)
 })
 
-describe('putBuild', () => {
-    it('creates the blob privately, without a suffix or overwrite', async () => {
-        expect(await store().putBuild(ID, '{"a":1}')).toBe('created')
-        expect(put).toHaveBeenCalledExactlyOnceWith(BUILD_KEY, '{"a":1}', {
-            access: 'private',
-            addRandomSuffix: false,
-            allowOverwrite: false,
-            contentType: 'application/json',
-            storeId: STORE_ID,
-        })
+describe.each([
+    ['putBuild', ID, BUILD_KEY],
+    ['createNamed', NAMED_ID, NAMED_KEY],
+] as const)('%s', (method, id, key) => {
+    it('creates the blob privately, without a suffix, overwrite or ifMatch', async () => {
+        expect(await store()[method](id, '{"a":1}')).toBe('created')
+        expect(put).toHaveBeenCalledExactlyOnceWith(key, '{"a":1}', { ...PUT_OPTIONS, allowOverwrite: false })
     })
 
     it('reports exists when put fails and the blob is there', async () => {
         vi.mocked(put).mockRejectedValue(new Error('already exists'))
         vi.mocked(head).mockResolvedValue({} as Awaited<ReturnType<typeof head>>)
-        expect(await store().putBuild(ID, '{}')).toBe('exists')
-        expect(head).toHaveBeenCalledExactlyOnceWith(BUILD_KEY, { storeId: STORE_ID })
+        expect(await store()[method](id, '{}')).toBe('exists')
+        expect(head).toHaveBeenCalledExactlyOnceWith(key, { storeId: STORE_ID })
     })
 
     it('rethrows the put error when the blob is not there', async () => {
         const putError = new Error('service down')
         vi.mocked(put).mockRejectedValue(putError)
         vi.mocked(head).mockRejectedValue(new Error('head failed'))
-        await expect(store().putBuild(ID, '{}')).rejects.toBe(putError)
+        await expect(store()[method](id, '{}')).rejects.toBe(putError)
     })
 })
 
-describe('getBuild', () => {
+describe.each([
+    ['getBuild', ID],
+    ['getNamed', NAMED_ID],
+] as const)('%s', (method, id) => {
     it.each([
         ['get returns null', () => vi.mocked(get).mockResolvedValue(null)],
         ['get throws BlobNotFoundError', () => vi.mocked(get).mockRejectedValue(new BlobNotFoundError())],
-    ])('reads an absent build as null when %s', async (_label, arrange) => {
+    ])('reads an absent blob as null when %s', async (_label, arrange) => {
         arrange()
-        expect(await store().getBuild(ID)).toBeNull()
-    })
-
-    it('parses a present build', async () => {
-        vi.mocked(get).mockResolvedValue(found({ version: 1 }))
-        expect(await store().getBuild(ID)).toStrictEqual({ version: 1 })
-        expect(get).toHaveBeenCalledExactlyOnceWith(BUILD_KEY, { access: 'private', storeId: STORE_ID })
+        expect(await store()[method](id)).toBeNull()
     })
 
     it('propagates any other get error', async () => {
         vi.mocked(get).mockRejectedValue(new Error('service down'))
-        await expect(store().getBuild(ID)).rejects.toThrow('service down')
+        await expect(store()[method](id)).rejects.toThrow('service down')
+    })
+})
+
+describe('getBuild', () => {
+    it('parses a present build', async () => {
+        vi.mocked(get).mockResolvedValue(found({ version: 1 }))
+        expect(await store().getBuild(ID)).toStrictEqual({ version: 1 })
+        expect(get).toHaveBeenCalledExactlyOnceWith(BUILD_KEY, { access: 'private', storeId: STORE_ID })
     })
 })
 
@@ -93,45 +95,11 @@ describe('deleteBuild', () => {
     })
 })
 
-describe('createNamed', () => {
-    it('creates the named blob without overwrite or ifMatch', async () => {
-        expect(await store().createNamed(NAMED_ID, '{"a":1}')).toBe('created')
-        expect(put).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, '{"a":1}', { ...PUT_OPTIONS, allowOverwrite: false })
-    })
-
-    it('reports exists when put fails and the blob is there', async () => {
-        vi.mocked(put).mockRejectedValue(new Error('already exists'))
-        vi.mocked(head).mockResolvedValue({} as Awaited<ReturnType<typeof head>>)
-        expect(await store().createNamed(NAMED_ID, '{}')).toBe('exists')
-        expect(head).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, { storeId: STORE_ID })
-    })
-
-    it('rethrows the put error when head fails', async () => {
-        const putError = new Error('service down')
-        vi.mocked(put).mockRejectedValue(putError)
-        vi.mocked(head).mockRejectedValue(new Error('head failed'))
-        await expect(store().createNamed(NAMED_ID, '{}')).rejects.toBe(putError)
-    })
-})
-
 describe('getNamed', () => {
     it('reads the value and the blob etag without the cache', async () => {
         vi.mocked(get).mockResolvedValue(found({ revision: 3 }, 'etag-3'))
         expect(await store().getNamed(NAMED_ID)).toStrictEqual({ value: { revision: 3 }, etag: 'etag-3' })
         expect(get).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, { access: 'private', storeId: STORE_ID, useCache: false })
-    })
-
-    it.each([
-        ['get returns null', () => vi.mocked(get).mockResolvedValue(null)],
-        ['get throws BlobNotFoundError', () => vi.mocked(get).mockRejectedValue(new BlobNotFoundError())],
-    ])('reads an absent named build as null when %s', async (_label, arrange) => {
-        arrange()
-        expect(await store().getNamed(NAMED_ID)).toBeNull()
-    })
-
-    it('propagates any other get error', async () => {
-        vi.mocked(get).mockRejectedValue(new Error('service down'))
-        await expect(store().getNamed(NAMED_ID)).rejects.toThrow('service down')
     })
 })
 
