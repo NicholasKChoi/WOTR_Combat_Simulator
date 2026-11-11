@@ -3,7 +3,7 @@ import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { AOE4_PAGE, CHART_IDS, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, CHART_IDS, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, bodyDuration, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, holdNextSimulate, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -13,7 +13,6 @@ const NO_MILITARY_PASTE = 'start -> sheep'
 
 const LOAD_DURATION = 1200
 const status = (page: Page) => page.getByTestId('auto-run-status')
-const bodyDuration = (r: Request): unknown => r.postDataJSON()?.inputs?.durationSeconds
 const lastGoodOpacity = (page: Page) => page.getByTestId('results-last-good').evaluate((el) => Number(getComputedStyle(el).opacity))
 
 // Every call must change the text or the duration; an unchanged input posts nothing.
@@ -31,16 +30,6 @@ async function runOk(page: Page, opts: { duration?: number; text?: string }) {
   return (await response.json()) as SimulationResult
 }
 
-async function holdSimulate(page: Page, durationSeconds: number) {
-  let release = () => {}
-  const gate = new Promise<void>((resolve) => (release = resolve))
-  await page.route(`**${SIMULATE_PATH}`, async (route) => {
-    if (bodyDuration(route.request()) === durationSeconds) await gate
-    await route.continue().catch(() => {})
-  })
-  return release
-}
-
 const pin = (page: Page) => page.getByTestId('pin-run').click()
 const path = (page: Page, chart: string, key: string): Locator => page.getByTestId(chart).locator(`path[data-series="${key}"]`)
 
@@ -55,7 +44,7 @@ function militaryDelta(delta: number): string {
 
 test.describe('AoE4 build order pin and compare', () => {
   test('pin is disabled with no result, enabled once the load run lands; unpin is disabled until a pin exists', async ({ page }) => {
-    const release = await holdSimulate(page, LOAD_DURATION)
+    const release = await holdNextSimulate(page, LOAD_DURATION)
     await page.goto(AOE4_PAGE)
     await expect(status(page)).toHaveAttribute('data-status', 'running')
     await expect(page.getByTestId('pin-run')).toBeDisabled()
@@ -677,14 +666,20 @@ test.describe('AoE4 build order pin persistence and label', () => {
   test('a run that finishes before the restore lands keeps its result; then only the pin appears', async ({ page }) => {
     await openPage(page)
     await storePin(page, validStored)
-    const release = await holdSimulate(page, LOAD_DURATION)
+    const heldAnswers: string[] = []
+    page.on('response', (r) => {
+      if (isSimulatePost(r.request()) && bodyDuration(r.request()) === LOAD_DURATION) heldAnswers.push(r.url())
+    })
+    const release = await holdNextSimulate(page, LOAD_DURATION)
     await page.reload()
     await expect(status(page)).toHaveAttribute('data-status', 'running')
     const result = await runOk(page, { duration: 600 })
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
     await expect(label(page)).toHaveCount(0)
+    expect(heldAnswers).toEqual([])
 
     release()
+    await expect.poll(() => heldAnswers.length).toBe(1)
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
     await expect(status(page)).toHaveAttribute('data-status', 'current')
@@ -699,7 +694,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
   test('a Pin before the restore lands wins over the restore', async ({ page }) => {
     await openPage(page)
     await storePin(page, validStored)
-    const release = await holdSimulate(page, LOAD_DURATION)
+    const release = await holdNextSimulate(page, LOAD_DURATION)
     await page.reload()
     await expect(status(page)).toHaveAttribute('data-status', 'running')
     await runOk(page, { duration: 600 })
@@ -715,7 +710,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
   test('an Unpin before the restore lands wins over the restore', async ({ page }) => {
     await openPage(page)
     await storePin(page, validStored)
-    const release = await holdSimulate(page, LOAD_DURATION)
+    const release = await holdNextSimulate(page, LOAD_DURATION)
     await page.reload()
     await expect(status(page)).toHaveAttribute('data-status', 'running')
     await runOk(page, { duration: 600 })

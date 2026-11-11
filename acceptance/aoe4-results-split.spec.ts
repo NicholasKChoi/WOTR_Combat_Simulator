@@ -1,8 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
-import { SPLIT_VIEWPORT, TABS_VIEWPORT, WIDE_VIEWPORT, openPage, showTab, waitForRun } from './helpers'
+import { CHART_IDS, SPLIT_VIEWPORT, TABS_VIEWPORT, WIDE_VIEWPORT, openPage, showTab, waitForRun } from './helpers'
 
 const REMOVED_TIMELINE_IDS = ['step-timeline', 'step-timeline-scroll', 'step-timeline-legend', 'results-split'] as const
-const CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources']
 const CHARTS_FILL_RATIO = 0.95
 
 async function openResults(page: Page) {

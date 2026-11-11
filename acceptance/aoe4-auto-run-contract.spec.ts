@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
-import { AOE4_PAGE, SIMULATE_PATH, expectNoRun, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, SIMULATE_PATH, expectNoRun, holdNextSimulate, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
 
 const UNKNOWN_ID = ['start -> sheep', 'produce knigt from stable'].join('\n')
 const FIRST_BUILD = listBuilds()[0].name
@@ -8,16 +8,6 @@ const FIRST_BUILD = listBuilds()[0].name
 const status = (page: Page) => page.getByTestId('auto-run-status')
 const textarea = (page: Page) => page.getByTestId('build-order-text')
 const duration = (page: Page) => page.getByTestId('duration-seconds')
-
-async function holdNextSimulate(page: Page) {
-  let release = () => {}
-  const gate = new Promise<void>((resolve) => (release = resolve))
-  await page.route(`**${SIMULATE_PATH}`, async (route) => {
-    await gate
-    await route.continue().catch(() => {})
-  })
-  return release
-}
 
 test.describe('AoE4 build order auto-run page contract', () => {
   test.describe('without JavaScript', () => {
@@ -40,10 +30,15 @@ test.describe('AoE4 build order auto-run page contract', () => {
   })
 
   test('the status line reads computing on the first run, then updating while a later run is in flight, then empty', async ({ page }) => {
+    const answered: string[] = []
+    page.on('response', (r) => {
+      if (isSimulatePost(r.request())) answered.push(r.url())
+    })
     const release = await holdNextSimulate(page)
     await page.goto(AOE4_PAGE)
     await expect(status(page)).toHaveAttribute('data-status', 'running')
     await expect(status(page)).toHaveText('Computing the simulation.')
+    expect(answered).toEqual([])
     release()
     await expect(status(page)).toHaveAttribute('data-status', 'current')
     await expect(status(page)).toHaveText('')

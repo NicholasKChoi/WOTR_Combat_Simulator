@@ -133,6 +133,26 @@ export function isSimulatePost(r: Request): boolean {
   return r.url().endsWith(SIMULATE_PATH) && r.method() === 'POST'
 }
 
+export const bodyDuration = (r: Request): unknown => r.postDataJSON()?.inputs?.durationSeconds
+
+// Holds every matching request until the returned function runs; later matching requests then pass at once.
+// Other requests on the path go to any route registered earlier.
+export async function holdRequests(page: Page, path: string, method: string, matches: (request: Request) => boolean = () => true): Promise<() => void> {
+  let release = () => {}
+  const gate = new Promise<void>((resolve) => (release = resolve))
+  await page.route(`**${path}`, async (route) => {
+    const request = route.request()
+    if (request.method() !== method || !matches(request)) return route.fallback()
+    await gate
+    await route.continue().catch(() => {})
+  })
+  return release
+}
+
+export function holdNextSimulate(page: Page, durationSeconds?: number): Promise<() => void> {
+  return holdRequests(page, SIMULATE_PATH, 'POST', durationSeconds === undefined ? undefined : (r) => bodyDuration(r) === durationSeconds)
+}
+
 // Registers the wait for the simulate response before `action`, so a response that lands during it is not missed.
 export async function waitForRun(page: Page, action?: () => Promise<unknown>, status: AutoRunStatus = 'current'): Promise<Response> {
   const response = page.waitForResponse((r) => isSimulatePost(r.request()))
