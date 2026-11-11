@@ -1,0 +1,72 @@
+import { SAVED_NAME_MAX_CHARS } from '../../../lib/aoe4-build-order/saved-builds'
+import type { MyBuildEntry } from './my-builds-storage'
+
+export type LibraryEntryKind = 'template' | 'mine' | 'shared' | 'link'
+
+export interface LoadedVersion {
+    text: string
+    duration: string | null
+    revision: number | null
+}
+
+export interface LibraryEntry {
+    key: string
+    kind: LibraryEntryKind
+    name: string
+    id: string | null
+    loaded: LoadedVersion | null
+}
+
+export const LIBRARY_GROUPS: readonly { kind: readonly LibraryEntryKind[]; label: string }[] = [
+    { kind: ['mine'], label: 'My builds' },
+    { kind: ['shared', 'link'], label: 'Opened links' },
+    { kind: ['template'], label: 'Templates' },
+]
+
+export const entryKey = {
+    template: (name: string): string => `template:${name}`,
+    named: (id: string): string => `named:${id}`,
+    link: (id: string): string => `link:${id}`,
+}
+
+const EDITED_SUFFIX = ' (edited)'
+const COPY_SUFFIX = ' (copy)'
+const CUSTOM_BUILD_NAME = 'Custom build'
+
+export function templateEntries(builds: readonly { name: string; text: string }[]): LibraryEntry[] {
+    return builds.map((build) => ({
+        key: entryKey.template(build.name),
+        kind: 'template',
+        name: build.name,
+        id: null,
+        loaded: { text: build.text, duration: null, revision: null },
+    }))
+}
+
+export function mineEntries(stored: readonly MyBuildEntry[]): LibraryEntry[] {
+    return stored.map((entry) => ({ key: entryKey.named(entry.id), kind: 'mine', name: entry.name, id: entry.id, loaded: null }))
+}
+
+export function entryLabel(entry: LibraryEntry, edited: boolean): string {
+    const base = entry.kind === 'shared' ? `${entry.name} (shared)` : entry.kind === 'link' ? `${entry.name} (${entry.id})` : entry.name
+    return edited ? `${base}${EDITED_SUFFIX}` : base
+}
+
+export function isEdited(entry: LibraryEntry | undefined, live: { text: string; duration: string }): boolean {
+    const loaded = entry?.loaded
+    if (loaded === undefined || loaded === null) return false
+    return live.text !== loaded.text || (loaded.duration !== null && live.duration !== loaded.duration)
+}
+
+export function copyName(name: string): string {
+    const base = name.endsWith(EDITED_SUFFIX) ? name.slice(0, -EDITED_SUFFIX.length) : name
+    return `${base.slice(0, SAVED_NAME_MAX_CHARS - COPY_SUFFIX.length)}${COPY_SUFFIX}`
+}
+
+export function runName(entries: readonly LibraryEntry[], text: string, selectedKey: string): string {
+    const selected = entries.find((entry) => entry.key === selectedKey)
+    if (selected?.loaded?.text === text) return selected.name
+    const match = entries.find((entry) => entry.loaded?.text === text)
+    if (match !== undefined) return match.name
+    return selected === undefined ? CUSTOM_BUILD_NAME : `${selected.name}${EDITED_SUFFIX}`
+}
