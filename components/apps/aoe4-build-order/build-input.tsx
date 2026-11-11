@@ -1,4 +1,5 @@
 import cn from 'classnames'
+import type { RefObject } from 'react'
 
 import type { SaveBuildResponse } from '../../../lib/aoe4-build-order/saved-builds'
 import type { TextToBuildResult } from '../../../lib/aoe4-build-order/text-to-build'
@@ -32,6 +33,7 @@ interface BuildInputProps {
     view: EditorView
     onViewChange: (view: EditorView) => void
     viewDisabled?: boolean
+    runBarRef: RefObject<HTMLFormElement | null>
 }
 
 const VIEWS: { view: EditorView; label: string }[] = [
@@ -39,9 +41,10 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ builds, selected, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, onSaved, onSubmit, view, onViewChange, viewDisabled = false }: BuildInputProps) {
+export function BuildInput({ builds, selected, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, onSaved, onSubmit, view, onViewChange, viewDisabled = false, runBarRef }: BuildInputProps) {
     return (
         <form
+            ref={runBarRef}
             data-testid="run-bar"
             className={cn(styles.runBar, 'd-flex flex-wrap align-items-end gap-3 py-2 mb-3 border-bottom border-info')}
             noValidate

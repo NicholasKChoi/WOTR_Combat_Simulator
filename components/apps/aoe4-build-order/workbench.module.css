@@ -14,8 +14,16 @@
 .workbenchSplit {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     gap: 1rem;
-    align-items: start;
+    height: calc(100dvh - var(--aoe4-run-bar-height, 0px));
+}
+
+.column {
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .editor {
