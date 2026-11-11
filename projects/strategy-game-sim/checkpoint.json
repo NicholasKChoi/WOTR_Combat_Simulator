@@ -11,9 +11,14 @@
   },
   "milestone": {
     "id": "M8",
-    "step": "1 design",
+    "step": "1b design approval",
     "waiting": [
-      "Q38"
+      "Q39",
+      "Q40",
+      "Q41",
+      "Q42",
+      "Q43",
+      "Q44"
     ]
   }
 }
