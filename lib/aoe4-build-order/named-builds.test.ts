@@ -101,6 +101,7 @@ describe('sameSecretHash', () => {
         ['the last character differs', 'abcdef', 'abcdex', false],
         ['one character differs in the middle', 'abcdef', 'abcxef', false],
         ['different lengths', 'abcdef', 'abcde', false],
+        ['the first is a prefix of the second', 'abcde', 'abcdef', false],
         ['empty strings', '', '', true],
     ])('%s', (_name, a, b, expected) => {
         expect(sameSecretHash(a, b)).toBe(expected)
