@@ -4,5 +4,9 @@
   "retro": {
     "lastRun": "2026-11-10",
     "stateSha": "756cfa2"
+  },
+  "nextMilestoneScope": {
+    "id": "M8",
+    "backlog": "C: UI asks + correctness bugs + test/cleanup debt sweep (Q35, 2026-11-11)"
   }
 }
