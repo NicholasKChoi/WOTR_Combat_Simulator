@@ -11,12 +11,12 @@ worktreeRoot: worktrees
 
 commands:
   shellSetup: "source ~/.nvm/nvm.sh && nvm use 24"   # .nvmrc / engines; agents run commands through run.sh
-  build: "npm ci && npx next build"   # no build script in package.json; Vercel runs next build
+  build: "bash /home/choin/git/WOTR_Combat_Simulator/.claude/code-factory/bin/link-node-modules.sh . && npx next build"   # link-node-modules: hardlinked node_modules cached per lockfile hash, replaces npm ci; no build script, Vercel runs next build
   lint: "npx tsc --noEmit && npm run lint:dup"   # tsc typecheck plus the jscpd duplication check (SGS-035)
   unit: "npm test"                    # Vitest (vitest run); golang/ is out of scope
   codegen: ""
   acceptance: "npm run acceptance"     # Playwright; starts its own next dev on a per-checkout port
-  acceptanceSetup: "npm ci && npm run acceptance:setup"   # Chromium; system libs once per machine: npx playwright install-deps chromium
+  acceptanceSetup: "bash /home/choin/git/WOTR_Combat_Simulator/.claude/code-factory/bin/link-node-modules.sh . && npm run acceptance:setup"   # Chromium; system libs once per machine: npx playwright install-deps chromium
 
 acceptanceHarness: "Playwright (@playwright/test, Chromium) in acceptance/, config playwright.config.ts; shared helpers in acceptance/helpers.ts. Port derived per checkout (3100-3999), ACCEPTANCE_PORT overrides. Needs Node 24.x."
 
