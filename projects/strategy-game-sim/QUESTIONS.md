@@ -49,18 +49,3 @@ M8 retro. This recurred after engine issue #4.
 - SGS-118 and SGS-120 reviews filed can't-fail tests as notes; on SGS-115 review dictated a test that still couldn't fail, so the rework repeated and the ticket went to re-spec. Draft: reports/retro-20261111-issue-6.md
 
 ### Answer
-
-## Q51: Retro P7 (repo): add the AoE4 acceptance directory to .jscpd.json so the duplicate checker scans test setup?
-kind: confirmation
-blocks: retro-20261111
-options: A) approve: add as a backlog item | B) reject: drop it
-recommendation: A: lets the linter catch it before review
-research: reports/retro-20261111.md
-thread: 1570126575691763772
-answered: 2026-11-11T17:41Z discord
-
-M8 retro. Copied acceptance test setup keeps causing rework. This is a code change, so it becomes a BACKLOG item for a ticket.
-- SGS-120 and SGS-125 reworks; four copies already in BACKLOG.
-
-### Answer
-A) approve: add as a backlog item
