@@ -595,6 +595,30 @@ async function editedCopy(page: Page, name = 'My copy'): Promise<Created> {
   return created
 }
 
+async function holdCopy(page: Page, name: string): Promise<{ release: () => void; posts: Request[] }> {
+  const release = await holdRequests(page, NAMED_BUILDS_PATH, 'POST')
+  const posts = track(page, isNamedPost)
+  await submitCopy(page, name)
+  await expect.poll(() => posts.length).toBe(1)
+  return { release, posts }
+}
+
+// `beforeClick` runs with the hold already active, so a copy saved there must pass the PUT-only hold.
+async function holdVersion(page: Page, beforeClick?: () => Promise<unknown>): Promise<{ release: () => void }> {
+  const release = await holdRequests(page, namedBuildUrl('*'), 'PUT')
+  await beforeClick?.()
+  const puts = track(page, isNamedPut)
+  await saveButton(page).click()
+  await expect.poll(() => puts.length).toBe(1)
+  return { release }
+}
+
+async function releaseAndAwait(page: Page, release: () => void, matches: (r: Request) => boolean) {
+  const responded = page.waitForResponse((r) => matches(r.request()))
+  release()
+  return responded
+}
+
 async function expectSelectedText(locator: Locator) {
   const selection = await locator.evaluate((el) => {
     const input = el as HTMLInputElement
@@ -1029,15 +1053,10 @@ test.describe('storage unavailable', () => {
   test('a late create still warns although no link shows, until the next settled change', async ({ page }) => {
     await blockStorageWrites(page)
     await openPage(page)
-    const release = await holdRequests(page, NAMED_BUILDS_PATH, 'POST')
-    const posts = track(page, isNamedPost)
-    await submitCopy(page, 'Late unstored')
-    await expect.poll(() => posts.length).toBe(1)
+    const { release } = await holdCopy(page, 'Late unstored')
     await waitForRun(page, () => textarea(page).fill(VALID_A))
 
-    const responded = page.waitForResponse((r) => isNamedPost(r.request()))
-    release()
-    expect((await responded).status()).toBe(201)
+    expect((await releaseAndAwait(page, release, isNamedPost)).status()).toBe(201)
     await expect(unstored(page)).toHaveText(UNSTORED)
     await expect(savedLink(page)).toHaveCount(0)
     await expect(checkedOption(page)).toHaveText(`${DEFAULT.name} (edited)`)
@@ -1054,12 +1073,9 @@ test.describe('in flight and late answers', () => {
     })
     page.on('pageerror', (e) => errors.push(e.message))
     await editedCopy(page, 'In flight')
-    const release = await holdRequests(page, NAMED_BUILDS_PATH, 'POST')
-    const posts = track(page, isNamedPost)
     const puts = track(page, isNamedPut)
     const failed = track(page, isNamedPost, 'requestfailed')
-    await submitCopy(page, 'Held copy')
-    await expect.poll(() => posts.length).toBe(1)
+    const { release, posts } = await holdCopy(page, 'Held copy')
     await expect(saveButton(page)).toBeDisabled()
     await expect(copyButton(page)).toBeDisabled()
     await saveButton(page).click({ force: true })
@@ -1077,15 +1093,10 @@ test.describe('in flight and late answers', () => {
 
   test('a create released after a settled edit is stored and listed but selects nothing', async ({ page }) => {
     await openPage(page)
-    const release = await holdRequests(page, NAMED_BUILDS_PATH, 'POST')
-    const posts = track(page, isNamedPost)
-    await submitCopy(page, 'Late copy')
-    await expect.poll(() => posts.length).toBe(1)
+    const { release } = await holdCopy(page, 'Late copy')
     await waitForRun(page, () => textarea(page).fill(VALID_A))
 
-    const responded = page.waitForResponse((r) => isNamedPost(r.request()))
-    release()
-    const created = (await (await responded).json()) as Created
+    const created = (await (await releaseAndAwait(page, release, isNamedPost)).json()) as Created
     await expect(groupOptions(page, 'My builds')).toHaveText(['Late copy'])
     await expect.poll(async () => (await storedBuild(page, created.id))?.revision).toBe(1)
     await expect(checkedOption(page)).toHaveText(`${DEFAULT.name} (edited)`)
@@ -1096,10 +1107,7 @@ test.describe('in flight and late answers', () => {
 
   test('a create released with no edit selects the build and shows the link', async ({ page }) => {
     await openPage(page)
-    const release = await holdRequests(page, NAMED_BUILDS_PATH, 'POST')
-    const posts = track(page, isNamedPost)
-    await submitCopy(page, 'Prompt copy')
-    await expect.poll(() => posts.length).toBe(1)
+    const { release } = await holdCopy(page, 'Prompt copy')
     await page.waitForTimeout(AUTO_RUN_DEBOUNCE_MS + 300)
     release()
     await expect(checkedOption(page)).toHaveText('Prompt copy')
@@ -1108,15 +1116,10 @@ test.describe('in flight and late answers', () => {
 
   test('a new version released after a settled edit keeps the text and stores revision 2', async ({ page }) => {
     const created = await editedCopy(page, 'Late version')
-    const release = await holdRequests(page, namedBuildUrl('*'), 'PUT')
-    const puts = track(page, isNamedPut)
-    await saveButton(page).click()
-    await expect.poll(() => puts.length).toBe(1)
+    const { release } = await holdVersion(page)
     await waitForRun(page, () => textarea(page).fill(VALID_B))
 
-    const responded = page.waitForResponse((r) => isNamedPut(r.request()))
-    release()
-    expect((await responded).status()).toBe(200)
+    expect((await releaseAndAwait(page, release, isNamedPut)).status()).toBe(200)
     await expect.poll(async () => (await storedBuild(page, created.id))?.revision).toBe(2)
     await expect(textarea(page)).toHaveValue(VALID_B)
     await expect(checkedOption(page)).toHaveText('Late version (edited)')
@@ -1137,15 +1140,10 @@ test.describe('in flight and late answers', () => {
     test(`a late ${code} shows no message and leaves Save a new version ${versionEnabled ? 'enabled' : 'locked'}`, async ({ page }) => {
       await editedCopy(page, `Late ${code}`)
       await stubNamed(page, 'PUT', reply(code))
-      const release = await holdRequests(page, namedBuildUrl('*'), 'PUT')
-      const puts = track(page, isNamedPut)
-      await saveButton(page).click()
-      await expect.poll(() => puts.length).toBe(1)
+      const { release } = await holdVersion(page)
       await waitForRun(page, () => textarea(page).fill(VALID_B))
 
-      const responded = page.waitForResponse((r) => isNamedPut(r.request()))
-      release()
-      expect((await responded).status()).toBe(code)
+      expect((await releaseAndAwait(page, release, isNamedPut)).status()).toBe(code)
       await page.waitForTimeout(300)
       await expect(saveError(page)).toHaveCount(0)
       await expect(select(page)).toHaveAttribute('data-edited', 'true')
@@ -1156,15 +1154,11 @@ test.describe('in flight and late answers', () => {
   }
 
   test('a held new version waits for release while a copy goes through', async ({ page }) => {
-    const release = await holdRequests(page, namedBuildUrl('*'), 'PUT')
-    await editedCopy(page, 'Held version')
     const answered: number[] = []
     page.on('response', (r) => {
       if (isNamedPut(r.request())) answered.push(r.status())
     })
-    const puts = track(page, isNamedPut)
-    await saveButton(page).click()
-    await expect.poll(() => puts.length).toBe(1)
+    const { release } = await holdVersion(page, () => editedCopy(page, 'Held version'))
     await page.waitForTimeout(500)
     expect(answered).toEqual([])
     release()
