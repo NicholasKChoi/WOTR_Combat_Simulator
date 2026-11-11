@@ -39,8 +39,9 @@ export function issuesError(all: readonly BuildOrderIssue[]): SimulateError {
   return { error: issues[0].message, issues, ...(omittedIssues > 0 ? { omittedIssues } : {}) };
 }
 
-// Body comes from the response alone. With strict off, json's parameter is bivariant, so inferring from the
-// reply too would let a response type that lacks one of the reply's bodies compile.
+// Body comes from the response alone. json is declared as a method, so its parameter is bivariant even under
+// strictFunctionTypes; inferring Body from the reply too would let a response type that lacks one of the reply's
+// bodies compile.
 export function sendReply<Body>(res: ReplyTarget<Body>, reply: RouteReply<NoInfer<Body>>): void {
   res.status(reply.status);
   for (const [name, value] of Object.entries(reply.headers ?? {})) res.setHeader(name, value);
