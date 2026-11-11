@@ -555,6 +555,28 @@ test.describe('opening a link', () => {
     expect(urls.filter((url) => !url.includes(`b=${id}`))).toEqual([])
   })
 
+  test('other query keys survive the load and a template choice, which drops only b', async ({ page, request, client }) => {
+    const { id } = await apiSave(request, client)
+    await page.goto(`${AOE4_PAGE}?b=${id}&utm=1`)
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
+    await expect(select(page).locator('option:checked')).toHaveText(new RegExp(`\\(${id}\\)$`))
+    await afterFrames(page)
+    const loaded = new URL(page.url()).searchParams
+    expect([loaded.get('utm'), loaded.get('b')]).toEqual(['1', id])
+
+    await waitForRun(page, () => select(page).selectOption({ label: BUILDS[1].name }))
+    await expect.poll(() => new URL(page.url()).searchParams.has('b')).toBe(false)
+    expect(new URL(page.url()).searchParams.get('utm')).toBe('1')
+  })
+
+  test('a snapshot save keeps the other query keys and adds the new b', async ({ page }) => {
+    await page.goto(`${AOE4_PAGE}?utm=1`)
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
+    const { id } = await saveThroughUi(page)
+    await expect.poll(() => new URL(page.url()).searchParams.get('b')).toBe(id)
+    expect(new URL(page.url()).searchParams.get('utm')).toBe('1')
+  })
+
   test('a first b wins over a later one, and a later change of b loads nothing', async ({ page, request, client }) => {
     const first = await apiSave(request, client)
     const second = await apiSave(request, client)
