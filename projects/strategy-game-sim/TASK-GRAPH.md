@@ -21,3 +21,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-123 | My-builds storage, library, query, discard guard | M8 | M8.1,M8.6 | aoe4-build-order | standard | SGS-119 | | | | draft | | | tickets/SGS-123-my-builds-library-query-discard-guard.md |
 | SGS-121 | Named-build routes, adapters, OpenAPI 2.5.0 | M8 | M8.1 | aoe4-build-order | high | SGS-112,SGS-119,SGS-120 | | | | draft | | | tickets/SGS-121-named-build-routes-openapi.md |
 | SGS-124 | Page: library select, edited marker, discard guard, ?n= load | M8 | M8.1,M8.6,M8.9 | aoe4-build-order | high | SGS-114,SGS-122,SGS-123 | | | | draft | | | tickets/SGS-124-page-library-select-edited-marker-discard-guard.md |
+| SGS-125 | Save panel rewrite: Save as copy, Save a new version | M8 | M8.1,M8.9 | aoe4-build-order | high | SGS-118,SGS-121,SGS-124 | | | | draft | | | tickets/SGS-125-save-panel-rewrite-copy-and-versions.md |
