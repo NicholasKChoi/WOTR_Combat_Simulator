@@ -24,32 +24,6 @@ Detail goes in the research report. Each item has this shape:
 
 next: Q55
 
-## Q47: Retro P3 (engine): put batch report naming and the no-overwrite check in manage.md's launch prompt?
-kind: confirmation
-blocks: retro-20261111
-options: A) approve: file it as a GitHub issue on code-factory | B) reject: drop it
-recommendation: A: repeat finding; the last fix landed in the wrong file
-research: reports/retro-20261111.md
-thread: 1570126548529320070
-
-M8 retro. The previous retro's P4 went only into common.md, which simplify never reads.
-- Reports named batch12-*/batch13-*; two simplify reports overwritten. Draft: reports/retro-20261111-issue-3.md
-
-### Answer
-
-## Q48: Retro P4 (engine): tell manage.md that worktree-cleanup EBUSY/EROFS and transient config.lock are not issue lines?
-kind: confirmation
-blocks: retro-20261111
-options: A) approve: file it as a GitHub issue on code-factory | B) reject: drop it
-recommendation: A: cuts noise from the Factory issues section
-research: reports/retro-20261111.md
-thread: 1570126552522424453
-
-M8 retro. Earlier proposals P5/P7 never reached manage.md, the file the manager writes from.
-- 5 such noise lines in one run log. Draft: reports/retro-20261111-issue-4.md
-
-### Answer
-
 ## Q49: Retro P5 (engine): make drive-loop.sh wait for the usage-limit reset instead of stopping?
 kind: confirmation
 blocks: retro-20261111
