@@ -12,7 +12,9 @@ export interface PinnedSeries {
     series: ChartSeries[]
 }
 
-export const pinnedKey = (key: string): string => 'pinned:' + key
+const PINNED_PREFIX = 'pinned:'
+
+export const pinnedKey = (key: string): string => PINNED_PREFIX + key
 
 type ChartRow = { t: number } & Record<string, number>
 
@@ -60,24 +62,25 @@ export interface LegendItem {
     key: string
     name: string
     color: string
-    pinned: boolean
+    lines: 'current' | 'pinned' | 'both'
 }
 
 export function legendItems(series: readonly ChartSeries[], pinned?: PinnedSeries): LegendItem[] {
     const pinnedSeries = pinned?.series ?? []
-    const pinnedItem = (s: ChartSeries, i: number): LegendItem => ({
-        key: pinnedKey(s.key),
-        name: `${s.name} (pinned)`,
-        color: pinnedColor(series, s.key, i),
-        pinned: true,
-    })
-    const items = series.flatMap((s, i): LegendItem[] => {
-        const pinnedIndex = pinnedSeries.findIndex((p) => p.key === s.key)
-        const current = { key: s.key, name: s.name, color: seriesColor(i), pinned: false }
-        return pinnedIndex >= 0 ? [current, pinnedItem(pinnedSeries[pinnedIndex], pinnedIndex)] : [current]
-    })
-    const pinnedOnly = pinnedSeries.flatMap((s, i) => (series.some((c) => c.key === s.key) ? [] : [pinnedItem(s, i)]))
+    const items = series.map((s, i): LegendItem => ({
+        key: s.key,
+        name: s.name,
+        color: seriesColor(i),
+        lines: pinnedSeries.some((p) => p.key === s.key) ? 'both' : 'current',
+    }))
+    const pinnedOnly = pinnedSeries.flatMap((s, i): LegendItem[] =>
+        series.some((c) => c.key === s.key) ? [] : [{ key: s.key, name: s.name, color: pinnedColor(series, s.key, i), lines: 'pinned' }],
+    )
     return [...items, ...pinnedOnly]
+}
+
+export function isLineHidden(hidden: ReadonlySet<string>, lineKey: string): boolean {
+    return hidden.has(lineKey.startsWith(PINNED_PREFIX) ? lineKey.slice(PINNED_PREFIX.length) : lineKey)
 }
 
 export function toggleHidden(hidden: ReadonlySet<string>, key: string): Set<string> {

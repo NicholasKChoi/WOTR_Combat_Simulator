@@ -65,6 +65,35 @@ describe('age-up markers', () => {
     })
 })
 
+describe('pinned line key', () => {
+    const renderPinned = (pinned?: Parameters<typeof SeriesChart>[0]['pinned']) =>
+        renderToString(
+            createElement(SeriesChart, {
+                testId: 'chart-x',
+                title: 'Units produced',
+                yLabel: 'Units',
+                times: [0, 5],
+                series: [{ key: 'a', name: 'A', values: [1, 2] }],
+                pinned,
+            }),
+        )
+    const pinned = { times: [0, 5], series: [{ key: 'a', name: 'A', values: [3, 4] }] }
+
+    it('renders one key labelled current run and pinned run inside the series legend only with a pinned run', () => {
+        const html = renderPinned(pinned)
+        expect(html.match(/data-testid="chart-pinned-key"/g)).toHaveLength(1)
+        const key = html.slice(html.indexOf('data-testid="chart-pinned-key"'))
+        expect(key).toContain('current run')
+        expect(key).toContain('pinned run')
+        expect(html.indexOf('data-testid="chart-series-legend"')).toBeLessThan(html.indexOf('data-testid="chart-pinned-key"'))
+        expect(renderPinned()).not.toContain('chart-pinned-key')
+    })
+
+    it('lists a shared series once', () => {
+        expect(renderPinned(pinned).match(/data-testid="chart-series-legend-item"/g)).toHaveLength(1)
+    })
+})
+
 describe('series and marker legends', () => {
     it('titles the series legend and the marker legend, each in its own element', () => {
         const html = render([{ key: 'a', name: 'A', values: [1, 2] }], [{ kind: 'age-up', label: 'Feudal', at: 2 }])

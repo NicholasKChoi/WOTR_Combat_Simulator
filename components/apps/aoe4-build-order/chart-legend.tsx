@@ -29,12 +29,30 @@ export function SeriesLegend({ series, pinned, hidden, onToggle }: SeriesLegendP
                     >
                         <span
                             data-testid="chart-series-legend-swatch"
-                            style={{ display: 'inline-block', width: 24, borderTop: `2px ${item.pinned ? 'dashed' : 'solid'} ${item.color}` }}
+                            style={{ display: 'inline-block', width: 24, borderTop: `2px ${item.lines === 'pinned' ? 'dashed' : 'solid'} ${item.color}` }}
                         />
                         {item.name}
                     </button>
                 ))}
             </div>
+            {pinned && <PinnedLineKey />}
+        </div>
+    )
+}
+
+export function PinnedLineKey() {
+    return (
+        <div className="d-flex flex-wrap gap-3 mt-1" data-testid="chart-pinned-key">
+            {(['solid', 'dashed'] as const).map((lineStyle) => (
+                <span key={lineStyle} className="d-inline-flex align-items-center gap-1">
+                    <span
+                        data-testid="chart-pinned-key-swatch"
+                        data-line-style={lineStyle}
+                        style={{ display: 'inline-block', width: 24, borderTop: `2px ${lineStyle} currentColor` }}
+                    />
+                    {lineStyle === 'solid' ? 'current run' : 'pinned run'}
+                </span>
+            ))}
         </div>
     )
 }

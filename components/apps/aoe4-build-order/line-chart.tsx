@@ -7,6 +7,7 @@ import {
     MARKER_COLORS,
     type PinnedSeries,
     formatChartValue,
+    isLineHidden,
     markerLabel,
     pinnedColor,
     pinnedKey,
@@ -127,7 +128,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             stroke={seriesColor(i)}
                             dot={false}
                             isAnimationActive={false}
-                            hide={hidden.has(s.key)}
+                            hide={isLineHidden(hidden, s.key)}
                         />
                     ))}
                     {pinned?.series.map((s, i) => (
@@ -141,7 +142,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             dot={false}
                             connectNulls={false}
                             isAnimationActive={false}
-                            hide={hidden.has(pinnedKey(s.key))}
+                            hide={isLineHidden(hidden, pinnedKey(s.key))}
                         />
                     ))}
                     {highlight && highlight.from < highlight.to ? (

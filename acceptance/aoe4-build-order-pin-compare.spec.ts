@@ -93,57 +93,79 @@ test.describe('AoE4 build order pin and compare', () => {
     }
   })
 
-  test('the pinned legend item toggles only the pinned line', async ({ page }) => {
+  test('each chart lists a series once and explains the line styles in one pinned key that goes away on unpin', async ({ page }) => {
     await openPage(page)
     await runOk(page, { duration: 300 })
+    for (const id of CHART_IDS) await expect(page.getByTestId(id).getByTestId('chart-pinned-key')).toHaveCount(0)
     await pin(page)
     await runOk(page, { duration: 600 })
-    const chart = page.getByTestId('chart-gather-rates')
-    const item = chart.locator('[data-testid="chart-series-legend-item"][data-series="pinned:food"]')
-    await expect(item).toHaveCount(1)
 
-    const keys = await chart.getByTestId('chart-series-legend-item').evaluateAll((els) => els.map((e) => e.getAttribute('data-series')))
-    expect(keys.slice(0, 4)).toEqual(['food', 'pinned:food', 'wood', 'pinned:wood'])
-    for (const key of ['food', 'pinned:food']) {
-      const stroke = (await path(page, 'chart-gather-rates', key).getAttribute('stroke'))!
-      const swatch = chart.locator(`[data-series="${key}"]`).getByTestId('chart-series-legend-swatch')
-      await expect(swatch).toHaveCSS('border-top-style', key === 'food' ? 'solid' : 'dashed')
-      await expect(swatch).toHaveCSS('border-top-color', hexToRgb(stroke))
+    for (const id of CHART_IDS) {
+      const chart = page.getByTestId(id)
+      const key = chart.getByTestId('chart-pinned-key')
+      await expect(key).toHaveCount(1)
+      await expect(key).toContainText('current run')
+      await expect(key).toContainText('pinned run')
+      const styles = await key.getByTestId('chart-pinned-key-swatch').evaluateAll((els) => els.map((e) => getComputedStyle(e).borderTopStyle))
+      expect(styles).toEqual(['solid', 'dashed'])
+      const keys = await chart.getByTestId('chart-series-legend-item').evaluateAll((els) => els.map((e) => e.getAttribute('data-series')))
+      expect(keys.length).toBeGreaterThan(0)
+      expect(keys.filter((k) => k?.startsWith('pinned:'))).toEqual([])
+      expect(new Set(keys).size).toBe(keys.length)
     }
 
-    await item.click()
-    await expect(item).toHaveCSS('opacity', '0.5')
-    await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(1)
-    await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(0)
-    await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(1)
-    await expect(path(page, 'chart-gather-rates', 'pinned:wood')).toHaveCount(1)
-
-    await item.click()
-    await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(0)
-    await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
-    await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(1)
+    await page.getByTestId('unpin-run').click()
+    for (const id of CHART_IDS) await expect(page.getByTestId(id).getByTestId('chart-pinned-key')).toHaveCount(0)
   })
 
-  test('the current legend item toggles only the current line', async ({ page }) => {
+  test('a legend item has a solid swatch in its line colour and hides and restores both lines of its series', async ({ page }) => {
     await openPage(page)
     await runOk(page, { duration: 300 })
     await pin(page)
     await runOk(page, { duration: 600 })
     const chart = page.getByTestId('chart-gather-rates')
     const item = chart.locator('[data-testid="chart-series-legend-item"][data-series="food"]')
-    const pinnedItem = chart.locator('[data-testid="chart-series-legend-item"][data-series="pinned:food"]')
     await expect(item).toHaveCount(1)
-    await expect(pinnedItem).toHaveCount(1)
+
+    const stroke = (await path(page, 'chart-gather-rates', 'food').getAttribute('stroke'))!
+    const swatch = item.getByTestId('chart-series-legend-swatch')
+    await expect(swatch).toHaveCSS('border-top-style', 'solid')
+    await expect(swatch).toHaveCSS('border-top-color', hexToRgb(stroke))
+    expect(await path(page, 'chart-gather-rates', 'pinned:food').getAttribute('stroke')).toBe(stroke)
 
     await item.click()
     await expect(item).toHaveCSS('opacity', '0.5')
-    await expect(pinnedItem).toHaveCSS('opacity', '1')
     await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(1)
+    await expect(item).toHaveAttribute('aria-pressed', 'true')
     await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(0)
-    await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
+    await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(0)
+    await expect(path(page, 'chart-gather-rates', 'wood')).toHaveCount(1)
+    await expect(path(page, 'chart-gather-rates', 'pinned:wood')).toHaveCount(1)
 
     await item.click()
+    await expect(chart.locator('[data-testid="chart-series-legend-item"][aria-pressed="true"]')).toHaveCount(0)
+    await expect(item).toHaveCSS('opacity', '1')
     await expect(path(page, 'chart-gather-rates', 'food')).toHaveCount(1)
+    await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
+  })
+
+  test('a series only the pinned run has gets one dashed legend item that hides its dashed line', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, { duration: 300 })
+    await pin(page)
+    await runOk(page, { text: NO_MILITARY_PASTE, duration: 600 })
+    const chart = page.getByTestId('chart-units-produced')
+    const keys = await chart.getByTestId('chart-series-legend-item').evaluateAll((els) => els.map((e) => e.getAttribute('data-series')!))
+    const current = new Set(await chart.locator('path[data-series]:not([data-series^="pinned:"])').evaluateAll((els) => els.map((e) => e.getAttribute('data-series'))))
+    const only = keys.filter((k) => !current.has(k))
+    expect(only.length).toBeGreaterThan(0)
+    const item = chart.locator(`[data-testid="chart-series-legend-item"][data-series="${only[0]}"]`)
+    const swatch = item.getByTestId('chart-series-legend-swatch')
+    await expect(swatch).toHaveCSS('border-top-style', 'dashed')
+    const stroke = (await path(page, 'chart-units-produced', `pinned:${only[0]}`).getAttribute('stroke'))!
+    await expect(swatch).toHaveCSS('border-top-color', hexToRgb(stroke))
+    await item.click()
+    await expect(path(page, 'chart-units-produced', `pinned:${only[0]}`)).toHaveCount(0)
   })
 
   test('the compare table appears only with a pin and a result, omits rows blank on both sides and shows delta = current - pinned', async ({ page }) => {
