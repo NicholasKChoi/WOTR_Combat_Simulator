@@ -36,16 +36,3 @@ M8 retro. Hitting the 5-hour usage limit ended the drive loop.
 - Happened once; factory sat idle ~3.5 h and it cost a human-stop. Draft: reports/retro-20261111-issue-5.md
 
 ### Answer
-
-## Q50: Retro P6 (engine): in review.md, a test that cannot fail is never a note, and dictated preconditions must leave room to move?
-kind: confirmation
-blocks: retro-20261111
-options: A) approve: file it as a GitHub issue on code-factory | B) reject: drop it
-recommendation: A: recurring review gap
-research: reports/retro-20261111.md
-thread: 1570126570704732201
-
-M8 retro. This recurred after engine issue #4.
-- SGS-118 and SGS-120 reviews filed can't-fail tests as notes; on SGS-115 review dictated a test that still couldn't fail, so the rework repeated and the ticket went to re-spec. Draft: reports/retro-20261111-issue-6.md
-
-### Answer
