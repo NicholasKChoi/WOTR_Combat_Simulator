@@ -16,3 +16,6 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-117 | Unit test debt, settledFields, README | M8 | M8.6,M8.7,M8.8 | aoe4-build-order | low | | | | | draft | | | tickets/SGS-117-unit-test-debt-settled-fields-readme.md |
 | SGS-118 | Acceptance test debt: shared hold helper | M8 | M8.7,M8.8 | aoe4-build-order | standard | | | | | draft | | | tickets/SGS-118-acceptance-test-debt.md |
 | SGS-119 | Named-build library: ids, secrets, shapes | M8 | M8.1 | aoe4-build-order | standard | | | | | draft | | | tickets/SGS-119-named-build-shapes.md |
+| SGS-120 | Named-build store methods (memory, file, Blob) | M8 | M8.1 | aoe4-build-order | high | SGS-112,SGS-119 | | | | draft | | | tickets/SGS-120-named-build-store-methods.md |
+| SGS-122 | Named-build client and shared fetch helper | M8 | M8.1 | aoe4-build-order | standard | SGS-119 | | | | draft | | | tickets/SGS-122-named-build-client-shared-fetch.md |
+| SGS-123 | My-builds storage, library, query, discard guard | M8 | M8.1,M8.6 | aoe4-build-order | standard | SGS-119 | | | | draft | | | tickets/SGS-123-my-builds-library-query-discard-guard.md |
