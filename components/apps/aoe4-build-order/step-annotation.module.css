@@ -13,6 +13,7 @@
     border-left: 4px solid var(--kind-color, transparent);
     background: var(--bs-light);
     font-size: 0.75rem;
+    white-space: nowrap;
 }
 
 .legendRow .badge {
@@ -20,6 +21,10 @@
 }
 
 .kindBorder {
+    border-left: 4px solid var(--kind-color, transparent);
+}
+
+tbody > tr > td.kindBorder {
     border-left: 4px solid var(--kind-color, transparent);
 }
 

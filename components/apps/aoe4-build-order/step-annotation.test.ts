@@ -99,10 +99,38 @@ describe('StepRunCell', () => {
         ['completed', run()],
         ['in-progress', run({ status: 'in-progress', completedAt: null })],
     ])('renders the %s times through StepTimes', (_name, input) => {
-        const times = renderToStaticMarkup(createElement(StepTimes, { run: input }))
+        const times = renderToStaticMarkup(createElement(StepTimes, { run: input, labelled: true }))
         expect(textOf(times, 'step-started')).toBe(formatStepTime(input.startedAt))
         expect(textOf(times, 'step-finished')).toBe(finishedText(input))
         expect(cell({ kind: 'villager', run: input })).toContain(times)
+    })
+
+    it.each<[boolean, boolean]>([
+        [true, true],
+        [false, false],
+    ])('labelled %s shows the Started and Finished labels: %s', (labelled, expected) => {
+        const times = renderToStaticMarkup(createElement(StepTimes, { run: run(), labelled }))
+        expect(times.includes('Started')).toBe(expected)
+        expect(times.includes('Finished')).toBe(expected)
+        expect(textOf(times, 'step-started')).toBe('1:05')
+        expect(textOf(times, 'step-finished')).toBe('2:05')
+    })
+
+    it('labels the completed run cell and keeps the value spans bare', () => {
+        const html = cell({ kind: 'villager', run: run({ waitSeconds: 75 }) })
+        expect(html).toContain('Started')
+        expect(html).toContain('Finished')
+        expect(html).toContain('Waited')
+        expect(textOf(html, 'step-waited')).toBe('1:15')
+    })
+
+    it.each<[string, StepRun]>([
+        ['waiting', run({ status: 'waiting', startedAt: null, completedAt: null, waitSeconds: 75 })],
+        ['not-reached', run({ status: 'not-reached', startedAt: null, completedAt: null, waitSeconds: 75 })],
+    ])('reads still waiting without a Waited label for a %s run', (_name, input) => {
+        const html = cell({ kind: 'villager', run: input })
+        expect(textOf(html, 'step-waited')).toBe('still waiting')
+        expect(html).not.toContain('Waited')
     })
 })
 

@@ -102,9 +102,20 @@ test.describe('AoE4 step run cells', () => {
     await expect(row.getByTestId('step-started')).toHaveText(EN_DASH)
     await expect(row.getByTestId('step-finished')).toHaveText(EN_DASH)
     await expect(row.getByTestId('step-blocked-by')).toHaveText(`not reached (${timing.waitingOn})`)
+    await expect(row.getByTestId('step-waited')).toHaveText('still waiting')
+    expect(await row.getByTestId('step-run').innerText()).not.toContain('Waited')
     await expect(row).toHaveAttribute('data-flagged', 'true')
     const background = (step: number) => rows(page).nth(step).getByTestId('step-run').evaluate((el) => getComputedStyle(el).backgroundColor)
     expect(await background(timing.step)).not.toBe(await background(calm.step))
+  })
+
+  test('a completed step labels its started, finished and waited times', async ({ page, request }) => {
+    await openTable(page)
+    const result = await simulateOk<SimulationResult>(request, buildOrderFrom(DEFAULT_TEXT), DURATION)
+    const timing = result.steps.find((s) => s.status === 'completed')!
+    expect(timing).toBeDefined()
+    const text = await rows(page).nth(timing.step).getByTestId('step-run').innerText()
+    for (const label of ['Started', 'Finished', 'Waited']) expect(text).toContain(label)
   })
 
   test('a completed step with no wait has an empty Blocked by', async ({ page, request }) => {
@@ -115,6 +126,75 @@ test.describe('AoE4 step run cells', () => {
     const row = rows(page).nth(timing.step)
     await expect(row.getByTestId('step-blocked-by')).toHaveText('')
     await expect(row.getByTestId('step-waited')).toHaveText(formatMinSec(0))
+  })
+})
+
+test.describe('AoE4 step annotations in the text view', () => {
+  test('the gutter title reads Still waiting for a step that has not started, and the gutter has no labels', async ({ page, request }) => {
+    await openPage(page)
+    const result = await simulateOk<SimulationResult>(request, buildOrderFrom(DEFAULT_TEXT), DURATION)
+    const unreached = result.steps.find((s) => s.status === 'not-reached')!
+    const calm = result.steps.find((s) => s.status === 'completed' && s.waitSeconds === 0)!
+    expect(unreached).toBeDefined()
+    expect(calm).toBeDefined()
+    await showTab(page, 'build')
+    await showView(page, 'text')
+    const gutter = page.getByTestId('build-order-line-annotation')
+    await expect(gutter.first()).toBeVisible()
+    const read = () =>
+      gutter.evaluateAll((els) =>
+        els.map((el) => ({ step: el.getAttribute('data-line'), status: el.getAttribute('data-status'), title: el.getAttribute('title'), text: el.textContent })),
+      )
+    await expect.poll(async () => (await read()).some((a) => a.status === 'not-reached')).toBe(true)
+    const annotations = (await read()).filter((a) => a.status !== null)
+    const reached = annotations.filter((a) => a.status === 'not-reached')
+    expect(reached.length).toBeGreaterThan(0)
+    for (const a of reached) expect(a.title).toMatch(/^Still waiting\. Blocked by: not reached \(/)
+    for (const a of annotations.filter((a) => a.status === 'waiting' || a.status === 'not-reached')) expect(a.title!.startsWith('Waited')).toBe(false)
+    expect(annotations.some((a) => a.title === 'Waited 0:00. Blocked by: nothing')).toBe(true)
+    for (const a of annotations) {
+      expect(a.text).not.toContain('Started')
+      expect(a.text).not.toContain('Finished')
+    }
+  })
+
+  const LONG_LINE = `# ${'x'.repeat(600)}`
+  const longText = `${LONG_LINE}\n${DEFAULT_TEXT}`
+
+  async function scrolledLongText(page: Page) {
+    await openPage(page)
+    await showView(page, 'text')
+    const textarea = page.getByTestId('build-order-text')
+    await textarea.fill(longText)
+    const metrics = await textarea.evaluate((el: HTMLTextAreaElement) => {
+      el.scrollLeft = 200
+      return { scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: el.scrollLeft }
+    })
+    expect(metrics.scrollWidth).toBeGreaterThan(metrics.clientWidth)
+    expect(metrics.scrollLeft).toBeGreaterThan(0)
+    return textarea
+  }
+
+  test('choosing another build in the select scrolls the text back to the left', async ({ page }) => {
+    const textarea = await scrolledLongText(page)
+    await page.getByTestId('build-order-select').selectOption({ label: listBuilds()[1].name })
+    await expect(textarea).toHaveValue(formatBuildOrderText(listBuilds()[1]))
+    await expect.poll(() => textarea.evaluate((el: HTMLTextAreaElement) => el.scrollLeft)).toBe(0)
+  })
+
+  test('typing on a long line with the caret in view keeps the sideways scroll', async ({ page }) => {
+    const textarea = await scrolledLongText(page)
+    await textarea.focus()
+    const before = await textarea.evaluate((el: HTMLTextAreaElement, length: number) => {
+      const charWidth = el.scrollWidth / length
+      const caret = Math.round((el.scrollLeft + el.clientWidth / 2) / charWidth)
+      el.setSelectionRange(caret, caret)
+      return el.scrollLeft
+    }, LONG_LINE.length)
+    expect(before).toBeGreaterThan(0)
+    await page.keyboard.type('y')
+    await expect(textarea).toHaveValue(/^# x+yx+\n/)
+    expect(await textarea.evaluate((el: HTMLTextAreaElement) => el.scrollLeft)).toBe(before)
   })
 })
 
@@ -223,13 +303,12 @@ test.describe('AoE4 step table layout beside Results', () => {
           const panel = byId('panel-build')
           const right = panel.getBoundingClientRect().right
           return {
-            tableFits: box.querySelector('table')!.scrollWidth <= box.clientWidth,
             panelFits: panel.scrollWidth <= panel.clientWidth,
             deletesInside: [...document.querySelectorAll('[data-testid="step-delete"]')].every((el) => el.getBoundingClientRect().right <= right),
           }
         }),
       )
-      .toEqual({ tableFits: true, panelFits: true, deletesInside: true })
+      .toEqual({ panelFits: true, deletesInside: true })
 
     await showView(page, 'text')
     await expect
@@ -241,5 +320,65 @@ test.describe('AoE4 step table layout beside Results', () => {
       )
       .toBe(true)
     await expect(page.getByTestId('panel-build')).toHaveCSS('overflow-x', 'visible')
+  })
+
+  test('badges stay on one line and each select is wide enough for its selected option', async ({ page }) => {
+    const longest = listBuilds().reduce((best, build) => (build.steps.length > best.steps.length ? build : best))
+    await openPage(page)
+    await page.getByTestId('build-order-select').selectOption({ label: longest.name })
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
+    await showView(page, 'table')
+    await expect(page.getByTestId('step-run').first()).toBeVisible()
+    const measured = await page.evaluate(() => {
+      const px = (value: string) => parseFloat(value) || 0
+      const badges = [...document.querySelectorAll('[data-testid="step-kind-badge"]')].map((el) => {
+        const style = getComputedStyle(el)
+        const lineHeight = style.lineHeight === 'normal' ? px(style.fontSize) * 1.5 : px(style.lineHeight)
+        return { whiteSpace: style.whiteSpace, wrapped: el.getBoundingClientRect().height >= lineHeight * 2 }
+      })
+      const probe = document.body.appendChild(document.createElement('span'))
+      probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap'
+      const selects = [...document.querySelectorAll<HTMLSelectElement>('[data-testid="step-table-scroll"] select')].map((select) => {
+        const style = getComputedStyle(select)
+        probe.style.font = style.font
+        probe.textContent = select.selectedOptions[0].textContent
+        const chrome = px(style.paddingLeft) + px(style.paddingRight) + px(style.borderLeftWidth) + px(style.borderRightWidth)
+        return { text: probe.textContent, needed: probe.getBoundingClientRect().width + chrome, width: select.getBoundingClientRect().width }
+      })
+      probe.remove()
+      return { badges, selects }
+    })
+    expect(measured.badges.length).toBeGreaterThan(0)
+    for (const badge of measured.badges) {
+      expect(badge.whiteSpace).toBe('nowrap')
+      expect(badge.wrapped).toBe(false)
+    }
+    expect(measured.selects.some((s) => s.text === 'Capital Town Center')).toBe(true)
+    for (const select of measured.selects) expect(select.needed, select.text!).toBeLessThanOrEqual(select.width)
+  })
+})
+
+test.describe('AoE4 step run cells in the narrow card layout', () => {
+  test.use({ viewport: { width: 390, height: 760 } })
+
+  test('every run cell keeps a 4px kind border in its legend colour', async ({ page }) => {
+    await openTable(page)
+    const legend = await page
+      .getByTestId('step-kind-legend')
+      .locator('[data-kind]')
+      .evaluateAll((els) => els.map((el) => [el.getAttribute('data-kind'), getComputedStyle(el).borderLeftColor]))
+    const cells = await rows(page).evaluateAll((els) =>
+      els.map((el) => {
+        const style = getComputedStyle(el.querySelector('[data-testid="step-run"]')!)
+        return { kind: el.getAttribute('data-kind'), width: style.borderLeftWidth, color: style.borderLeftColor }
+      }),
+    )
+    const colorOf = new Map(legend as [string, string][])
+    const colored = cells.filter((c) => c.kind !== 'other')
+    expect(colored.length).toBeGreaterThan(0)
+    for (const cell of colored) {
+      expect(cell.width).toBe('4px')
+      expect(cell.color).toBe(colorOf.get(cell.kind!))
+    }
   })
 })

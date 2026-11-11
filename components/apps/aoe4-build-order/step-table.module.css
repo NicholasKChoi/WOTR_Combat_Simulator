@@ -12,10 +12,6 @@
     vertical-align: top;
 }
 
-.table select {
-    max-width: 7.5rem;
-}
-
 @media (max-width: 767.98px) {
     .table,
     .table tbody,
