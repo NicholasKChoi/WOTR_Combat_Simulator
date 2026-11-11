@@ -6,7 +6,7 @@
 - **Priority**: medium
 - **Risk**: low
 - **Invariants**: none
-- **LOC estimate**: 40 (business logic: `settledFields` export in `components/apps/aoe4-build-order/auto-run.ts` and its reuse in `use-auto-run.ts`; the rest is tests, `vitest.config.mts` and one README paragraph)
+- **LOC estimate**: 40 (business logic: `settledFields` and `initialAutoRunState` exports in `components/apps/aoe4-build-order/auto-run.ts` and their reuse in `use-auto-run.ts`; the rest is tests, `vitest.config.mts` and one README paragraph)
 - **Depends on**: none
 - **On merge**: none
 - **Source**: design/M8.md Criteria map M8.6 (README), M8.7 (unit-test rows of the M8.7 detail table), M8.8 (`settledFields`); plan M8-20261110 outline F
@@ -34,7 +34,9 @@ the two tone keys are defined and differ (it cannot pass for a key missing from 
 the first `OTHER` post lands and asserts it is unchanged after the final equal `controller.input(live(OTHER))`
 fires, besides the existing `post` count and `status` checks.
 
-**Loader abort** (`saved-build-loader.test.ts`, case "fails when the signal is already aborted"). The fetch stub
+**Loader abort** (`saved-build-loader.test.ts`, case "fails when the signal is already aborted"). The file's
+`stubFetch` helper takes a `respond` with no arguments today; it changes to pass the fetch call's `init` to `respond`
+(`respond: (init?: RequestInit) => Promise<Response>`), and the other cases that use it keep working unchanged. The fetch stub
 rejects with an `AbortError` only when `init.signal.aborted` is true and otherwise resolves with a valid saved
 build. The case aborts the signal and expects `{ status: 'failed' }`. A companion check in the same case (or the
 existing "requests the build with the given signal" case) shows the same stub with a live signal gives
@@ -49,10 +51,13 @@ row also fails. This pins the `input.live.text === shown.text` check coming befo
 **House gate** (`lib/aoe4-build-order/simulate-house-gate.test.ts`, from the SGS-111 review).
 - `blocks production at supply before the late step when auto-houses are off`: the assertion
   `population(off.result, hold)` equals `population(off.result, 595)` is true by construction of `heldSince`
-  (population never decreases, and `hold` is the first sample at the value held at 595). Replace it with an
-  assertion on the property the test names: with auto-houses off, population at the supply limit does not
-  grow between `hold` and the late house (for example, every sampled `spawnedPopulation` from `hold` to 595 is
-  equal, or `populationCapReachedAt` is not after `hold`; the implementer picks one and states why it can fail).
+  (population never decreases, and `hold` is the first sample at the value held at 595). Any assertion that compares
+  `off` samples at or after `hold` with each other is true by construction too, since `hold` is recomputed from the
+  same series. `populationCapReachedAt` does not help: it records reaching the game's maximum population, and is
+  `null` in both runs of this scenario. (respec 1) Replace the assertion with a comparison against the `on` run, a
+  quantity `hold` is not derived from: `population(on.result, 595)` is greater than `population(off.result, 595)`.
+  Together with the existing `hold < 595 - 60` check, this states the property the test names: with auto-houses
+  off, population sits at the supply limit for over 60 s before the late house, below what auto-houses reach.
 - Rename the `plans an order without build-house steps as it did with the gate` test so its name states the behavior (an order with no
   build-house steps gets auto-houses at 120, 220 and 320 s and the pinned digest) with no reference to the removed gate.
 - `lib/aoe4-build-order/simulate-construction.test.ts`: delete the `expect(done.slice(0, 2))` assertion
@@ -63,10 +68,13 @@ row also fails. This pins the `input.live.text === shown.text` check coming befo
 
 **`settledFields` reuse** (M8.8). `auto-run.ts` exports `settledFields`. `use-auto-run.ts` `firstPaintState` builds its state
 from it instead of repeating the conversion, duration check and request expression; `use-auto-run.ts` then no
-longer imports `textToBuildOrder` or `durationError`. The controller's own initial state in
-`createAutoRunController` and `firstPaintState` must not repeat the same cleared-field literal (`npm run lint:dup`
-runs with threshold 0): export the shared constant or a builder from `auto-run.ts` as needed. No behavior change:
-the first paint is the same state as before.
+longer imports `textToBuildOrder` or `durationError`. (respec 1) To keep the initial-state literal in one place
+(`npm run lint:dup` runs with threshold 0), `auto-run.ts` also exports `initialAutoRunState(settled: LiveInput, catalog: BuildOrderCatalog): AutoRunState`,
+which returns `settledFields(settled, catalog)` plus `status: 'loading'`, `result: null`, `resultRequestKey: null`,
+`shown: null` and the module-private `CLEARED` fields. `createAutoRunController` sets its initial `state` from it, and
+`firstPaintState` is replaced by it (the `useMemo` in `useAutoRun` calls `initialAutoRunState`). `CLEARED` stays
+module-private. The comment above `useAutoRun` that names `firstPaintState` names `initialAutoRunState` instead. No behavior change: the first paint has the same field values as before (`serverIssues` is an
+empty array either way).
 
 **Knight-longbow README** (M8.6). The path is `data/aoe4-build-order/README.md` (the plan and design write `builds/README.md`; that
 file does not exist). In the `english-knight-longbow` paragraph, the sentence that places the farm groups "ahead of the
@@ -92,12 +100,18 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] The equal-input case in `auto-run.test.ts` asserts the `onChange` history length is unchanged after the equal input's timer fires. With the `Object.is` guard in `update` of `createAutoRunController` removed, the case fails; the report names this mutation.
 - [ ] In `saved-build-loader.test.ts` the abort case's fetch stub rejects only when `signal.aborted` and resolves a valid saved build otherwise, and a check shows a live signal gives `ok`. With `signal` dropped from the `fetch` call in `loadSavedBuild`, the abort case fails; the report names this mutation.
 - [ ] `step-annotations.test.ts` has a case where the text is equal and `selected` differs, each row keeps its own `startedAt`. With the `selected` check moved before the text check in `alignedRuns`, the case fails; the report names this mutation.
-- [ ] The house-gate test's supply-block assertion is not true by construction: with auto-houses left on in the scenario meant to have them off (the `off` run), that assertion fails on its own (shown with the test's other assertions temporarily removed); the report names the mutation.
+- [ ] (respec 1) The house-gate case `blocks production at supply before the late step when auto-houses are off` no longer asserts `population(off.result, hold)` equals `population(off.result, 595)`, and asserts `population(on.result, 595)` is greater than `population(off.result, 595)`. Mutation: build the `off` run with `lateHouse()` (auto-houses left on); with the case's other assertions temporarily removed, the new assertion fails on its own. The report names the mutation and shows the failure.
 - [ ] No test name in `simulate-house-gate.test.ts` refers to a gate; `simulate-construction.test.ts` has no `done.slice` assertion that a following assertion covers; the house-completion recorder is defined once in `test-helpers.ts` and no other file under `lib/aoe4-build-order/` defines it.
-- [ ] `settledFields` is exported from `auto-run.ts`; `git grep -n "textToBuildOrder" -- components/apps/aoe4-build-order/use-auto-run.ts` finds nothing. `npm run lint:dup` reports no clones and `npx tsc --noEmit` passes. The auto-run controller tests and any hook-level test pass unchanged.
+- [ ] (respec 1) `settledFields` and `initialAutoRunState` are exported from `auto-run.ts`; `git grep -n -e "textToBuildOrder" -e "durationError" -e "firstPaintState" -- components/apps/aoe4-build-order/use-auto-run.ts` finds nothing. `npm run lint:dup` reports no clones and `npx tsc --noEmit` passes. The auto-run controller tests, apart from the equal-input case edited here, and any hook-level test pass unchanged.
 - [ ] `git grep -n "Town Center rally to farm" -- data` finds nothing, and every statement in the `english-knight-longbow` README paragraph about rallies, building counts, farm groups and techs is true of `english-knight-longbow.json` (the report lists what was compared and any other line changed).
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
 
 none
+
+## Re-spec 1 - 2026-11-10
+
+- Underspecified: the house-gate replacement examples were true by construction (or, for `populationCapReachedAt`, `null` in both runs); the `settledFields` criterion said the auto-run tests pass unchanged though Scope edits one; the shared initial-state literal and the `stubFetch` signature change were left open.
+- Changed: the house-gate assertion is now `population(on, 595) > population(off, 595)` with its mutation; `initialAutoRunState` in `auto-run.ts` replaces `firstPaintState`; `stubFetch` passes `init` to `respond`; the controller-tests criterion excepts the equal-input case.
+- No branch work exists yet; the rest of Scope stands.

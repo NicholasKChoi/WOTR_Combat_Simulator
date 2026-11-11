@@ -49,20 +49,33 @@ All paths are under `components/apps/aoe4-build-order/` unless noted. Read at `o
   With it, the header row (the `h3` title) also holds three native buttons: `chart-collapse` (`aria-expanded`,
   `aria-controls` the body id), `chart-move-up` (disabled when `first`) and `chart-move-down` (disabled when
   `last`), in that Tab order. Each button's accessible name contains the chart title (for example "Collapse Gather
-  rates chart"); wording, icons and styling are left to the implementer. The series legend, plot, marker legend and
-  `headerControls` render inside a wrapper `data-testid="chart-body"`; the container `data-testid=<chart id>` gets
-  `data-collapsed="true" | "false"`. A collapsed chart does not render the plot, so it draws no step band, markers or
-  pinned lines. The hide set (`hidden`), the measured width and hover state stay in `SeriesChart` state and
-  survive collapse. Without `layout` (the existing `line-chart.test.ts` renders) the chart renders as today with no
-  buttons. After a move, focus stays on the pressed button of the moved chart; when that button is now disabled
-  (the chart reached an end), focus goes to the chart's other move button.
+  rates chart"); wording, icons and styling are left to the implementer. The header row is a module-CSS element
+  from `results.module.css`; the existing Bootstrap-utility wrapper around the `h3` and `headerControls`
+  (`d-flex flex-wrap align-items-baseline column-gap-3`) is removed, and no `d-*` / `flex-*` utility class sits on
+  the new header row. The series legend, plot, marker legend and `headerControls` render inside a wrapper
+  `data-testid="chart-body"` with `id` `` `${testId}-body` `` (the `aria-controls` target). That wrapper is always
+  rendered: when collapsed it keeps its `id`, carries the `hidden` attribute, and renders no children, so
+  `aria-controls` always names an element in the DOM. The hidden measuring `<svg>` (`measureRef`) stays a direct
+  child of the container, outside the body, so the label-width effect keeps its ref while collapsed. The container
+  `data-testid=<chart id>` gets `data-collapsed="true" | "false"`. A collapsed chart does not render the plot, so it
+  draws no step band, markers or pinned lines. The hide set (`hidden`), the measured width and hover state stay in
+  `SeriesChart` state and survive collapse. Without `layout` (the existing `line-chart.test.ts` renders) the chart
+  renders as today with no buttons, apart from the header-row markup change above. After a move, focus stays on
+  the pressed button of the moved chart; when that button is now disabled (the chart reached an end), focus goes
+  to the chart's other move button. A keyed reorder can blur the focused node in Chromium, so focus is restored
+  explicitly (for example in an effect that runs after the order changes), not left to the DOM move.
 - **`results.module.css`.** Styles for the header row and the buttons, only what the controls need. Do not mix
   Bootstrap `d-*` / `flex-*` utilities with module CSS on the same element (`REPO.md` review checklist).
-- **`acceptance/helpers.ts`.** `CHART_IDS` becomes `RESULT_CHART_IDS` (imported from `chart-layout.ts`, as `helpers.ts`
-  already imports from `components/`), and `RESOURCE_CHARTS` keeps its current members. Do not touch the other
-  helpers: a sibling ticket edits this file.
-- **`acceptance/aoe4-chart-layout.spec.ts` (new)** per the criteria. Locate charts by `data-testid` from `CHART_IDS`,
-  never by position. Read geometry in one `page.evaluate` (LESSONS).
+- **`acceptance/helpers.ts`.** Keep the exported name `CHART_IDS` and redefine it as
+  `export const CHART_IDS = RESULT_CHART_IDS`, importing `RESULT_CHART_IDS` from `chart-layout.ts` (as `helpers.ts`
+  already imports from `components/`). `RESOURCE_CHARTS` stays a standalone `as const` literal with its current
+  members and is no longer used to build `CHART_IDS`. No spec that imports `CHART_IDS` or `RESOURCE_CHARTS` changes.
+  `aoe4-results-split.spec.ts` keeps its own local `CHART_IDS` literal (a sibling ticket replaces it with the
+  import). Do not touch the other helpers: sibling tickets edit this file.
+- **`acceptance/aoe4-chart-layout.spec.ts` (new)** per the criteria. Locate charts by `data-testid` from `CHART_IDS`
+  (imported from `./helpers`), never by position. Read geometry in one `page.evaluate` (LESSONS). The hover-band
+  and pinned-line case runs at `SPLIT_VIEWPORT`, where the build view and the charts show together; every other
+  case runs at `TABS_VIEWPORT` and calls `showTab(page, 'results')` before reading charts.
 - **`docs/aoe4-build-order.md`, Page section.** After the paragraph that describes the four charts and their
   legends (the one beginning "A 200 draws four line charts"), add a "Chart controls" paragraph or short list: each
   chart has collapse, move up and move down buttons; what collapsing hides and keeps (title row and buttons stay;
@@ -87,18 +100,25 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] `chart-layout.test.ts`: `moveChart` swaps a chart with its neighbour in both directions, and `up` on the first chart and `down` on the last return a layout equal to the input (breaks: wrapping, an out-of-range swap, duplicating an id). `toggleChartCollapsed` adds an id that is absent and removes one that is present, and `collapsed` never gains duplicates. Inputs are not mutated.
 - [ ] `chart-layout.test.ts`: `readChartLayout` returns `DEFAULT_CHART_LAYOUT` and does not throw for a `null` storage, a storage whose `getItem` throws, and a stored non-JSON string; `writeChartLayout` does not throw for `null` and for a storage whose `setItem` throws; a write then a read round-trips a non-default layout through a fake `Storage`. The stored JSON has exactly the keys `version`, `order` and `collapsed`.
 - [ ] `line-chart.test.ts` (server render): with `layout` set, the markup holds `chart-collapse`, `chart-move-up` and `chart-move-down` with a title-bearing accessible name, `chart-move-up` is `disabled` when `first` and `chart-move-down` when `last`, `data-collapsed="true"` and no `chart-body` content (series legend) when `collapsed`, and `aria-expanded` matches; without `layout` none of the three buttons render. It fails if `collapsed` still renders the legend or if `first` leaves the up button enabled.
+- [ ] (respec 1) `line-chart.test.ts` (server render): with `layout` set and `collapsed` true, the markup still holds the `chart-body` element, carrying `hidden` and an `id` equal to the `chart-collapse` button's `aria-controls` value, with no children; with `collapsed` false the same `id` is present without `hidden`. With `collapsed` true (the body is empty, so only the container, header row and measure svg remain) the markup contains no `d-flex` or `flex-wrap` class. It fails if the collapsed body is unmounted (dangling `aria-controls`) or the Bootstrap header wrapper remains.
 - [ ] `git grep -n "function browserStorage"` over `pages` and `components` matches only `components/apps/aoe4-build-order/browser-storage.ts`, and the page imports it from there.
 - [ ] `npx tsc --noEmit` and `npm run lint:dup` pass, and `npm test` passes with existing tests that were not edited to fit the change. The report lists every existing test it edits.
-- [ ] `acceptance/aoe4-chart-layout.spec.ts` (all at a viewport where the charts show): with no stored layout the charts appear in `CHART_IDS` order, every `data-collapsed` is `false`, and the page load alone does not write `aoe4-build-order.chart-layout`.
+- [ ] (respec 1) `acceptance/aoe4-chart-layout.spec.ts` (at `TABS_VIEWPORT` after `showTab(page, 'results')`, except the hover-band case at `SPLIT_VIEWPORT`): with no stored layout the charts appear in `CHART_IDS` order, every `data-collapsed` is `false`, and the page load alone does not write `aoe4-build-order.chart-layout`.
 - [ ] Spec: clicking `chart-collapse` of one chart makes its `chart-body` hidden, flips `aria-expanded` to `false` and `data-collapsed` to `true`, leaves the title and its three buttons visible, and leaves the other three charts expanded; clicking it again restores the body. For the Gather rates chart, the `gather-rates-per-villager` checkbox is hidden when collapsed, and a checked value is still checked, with the y-axis label `Per villager per minute`, after expanding again. A legend item hidden before collapse is still hidden after expanding.
 - [ ] Spec: `chart-move-up` on the second chart and `chart-move-down` on the first each swap it with its neighbour (order read from the DOM by `data-testid`); the first chart's up button and the last chart's down button are disabled. By keyboard, Tab reaches `chart-collapse`, then `chart-move-up`, then `chart-move-down` in a header, and Enter on a focused button activates it. After `chart-move-down` on the first chart, focus is on that chart's `chart-move-down`; after `chart-move-down` brings a chart to the last place, `document.activeElement` is that chart's `chart-move-up`. It fails if focus drops to `body` after a move.
 - [ ] Spec: after collapsing one chart and moving another, a reload shows the same order and collapsed set with no interaction; a second reload shows it again (the restore does not overwrite storage with the default). A stored value that is unknown-ids-only or not JSON (set with `addInitScript`) shows the default layout and no page error; a stored layout missing one id shows that chart appended at the end.
 - [ ] Spec: with `localStorage` access blocked by an `addInitScript` that makes `window.localStorage` throw, the page loads, collapse and move still work for the page session, and no alert or page error appears.
 - [ ] Spec: after a reorder, hovering a step row in the build view still shades the step band on every expanded chart, a pinned run still draws its dashed lines on expanded charts, and a collapsed chart has no visible `chart-step-band`. The spec holds the pin and expanded charts in place before asserting (the conditions it relies on are asserted first so it cannot pass vacuously).
-- [ ] Spec: the existing `aoe4-results-split`, `aoe4-gather-rates-per-villager`, `aoe4-chart-readability` and `aoe4-build-order-pin-compare` specs still pass without edits other than `CHART_IDS` imports.
+- [ ] (respec 1) `acceptance/helpers.ts` defines `CHART_IDS` as `RESULT_CHART_IDS` imported from `chart-layout.ts`, and `git diff --name-only origin/main...HEAD -- acceptance` lists only `acceptance/helpers.ts` and the new `acceptance/aoe4-chart-layout.spec.ts`. Every existing spec that uses `CHART_IDS` or `RESOURCE_CHARTS` (for example `aoe4-build-order-pin-compare`, `aoe4-chart-readability`, `aoe4-gather-rates-per-villager`, `aoe4-gathered-resources`, `aoe4-split-layout`), and `aoe4-results-split`, still passes unedited.
 - [ ] Doc: `docs/aoe4-build-order.md` has the "Chart controls" text described in Scope, names the storage key and shape, and states no measured value. `git grep -n "chart-layout" docs/aoe4-build-order.md` finds it.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
 
 none
+
+## Re-spec 1 - 2026-11-10
+
+- Underspecified: whether `CHART_IDS` was renamed or re-exported, what `RESOURCE_CHARTS` and `aoe4-results-split.spec.ts` become, whether a collapsed `chart-body` is unmounted (and where the measure svg lives), whether the Bootstrap header wrapper goes, and which viewport the new spec uses.
+- Changed: `helpers.ts` re-exports `CHART_IDS = RESULT_CHART_IDS` with `RESOURCE_CHARTS` a standalone literal and no existing spec edited; the collapsed body stays in the DOM with `id` and `hidden` and no children, the measure svg stays outside it, and the header row is module CSS; viewports named per case; explicit focus restore after a move.
+- No branch work existed; nothing to carry over.

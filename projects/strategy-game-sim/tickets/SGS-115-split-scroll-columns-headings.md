@@ -25,10 +25,15 @@ Names follow design/M8.md C11. All paths are under `components/apps/aoe4-build-o
 - **`use-run-bar-height.ts` (new).** Exports `useRunBarHeight(ref: RefObject<HTMLElement | null>): void`. In an
   effect it takes `ref.current` (a null `current` is a no-op) and the element's `closest('section')` (the page's
   `<section class="container ...">`). It writes `--aoe4-run-bar-height` with `style.setProperty` on that section as
-  `` `${Math.ceil(form.getBoundingClientRect().height)}px` `` once on mount and on every `ResizeObserver` callback
-  for the form. Cleanup disconnects the observer and calls `removeProperty`. No section or no `ResizeObserver`:
-  nothing is written, and the CSS fallback `0px` applies. The hook runs in every view; only the split layout
-  reads the value. Cleanup follows the existing `useSplitLayout` hook (`use-split-layout.ts`) in style.
+  `` `${Math.ceil(form.getBoundingClientRect().height + (parseFloat(getComputedStyle(form).marginBottom) || 0))}px` ``
+  (the space the bar takes: its border box plus its bottom margin) once on mount and on every `ResizeObserver`
+  callback for the form. The form keeps its `mb-3`; the margin is static, so no extra trigger watches it. Cleanup
+  disconnects the observer and calls `removeProperty`. No section or no `ResizeObserver`: nothing is written, and
+  the CSS fallback `0px` applies. The hook runs in every view; only the split layout reads the value. Cleanup
+  follows the existing `useSplitLayout` hook (`use-split-layout.ts`) in style.
+- **`saved-build-error`.** The alert the page renders between the run bar and `WorkbenchTabs` is not measured and
+  does not change the split height. It is ordinary page content above the workbench (like the page `h1`): once the
+  page is scrolled so the workbench sits under the stuck bar, the alert has scrolled under the bar. No code change.
 - **`build-input.tsx`.** `BuildInput` gains the prop `runBarRef: RefObject<HTMLFormElement | null>`, set as `ref` on its
   `<form data-testid="run-bar">`.
 - **`pages/apps/aoe4-build-order.tsx`.** Creates `const runBarRef = useRef<HTMLFormElement>(null)`, passes it to
@@ -50,8 +55,12 @@ Names follow design/M8.md C11. All paths are under `components/apps/aoe4-build-o
   class. `panel-build` and `panel-results` keep their current test ids, roles and `hidden` rules. In
   `workbench.module.css`, `.workbenchSplit` gets `height: calc(100dvh - var(--aoe4-run-bar-height, 0px))` with the
   grid rows bounded to that height (`minmax(0, 1fr)`; today `align-items: start` lets the columns grow), and the
-  column class gets `overflow-y: auto; min-height: 0; overscroll-behavior: contain`. Below 1200 px nothing changes:
-  tabs, and the page scrolls.
+  column class gets `overflow-y: auto; min-height: 0; overscroll-behavior: contain` plus `overflow-x: hidden`.
+  `overflow-y: auto` alone computes `overflow-x` to `auto`, which would give a too-wide child a sideways column
+  scrollbar; the docs promise the Build panel "never scrolls sideways" (wide content such as the step table already
+  scrolls inside its own box, `step-table-scroll`, and the compare tables inside `compare-scroll`). The workbench's
+  top sits one run-bar bottom margin (`mb-3`) below the stuck bar's border box, which the hook's value already
+  counts, so the split's bottom is the viewport bottom. Below 1200 px nothing changes: tabs, and the page scrolls.
 - **Docs.** `docs/aoe4-build-order.md`, "Page" section (the paragraph that begins "The page is
   `/apps/aoe4-build-order`"): state that at 1200 px and wider the two columns fill the viewport below the run bar and
   each scrolls on its own, that the page does not scroll to reach either column's content, and that the two
@@ -76,9 +85,12 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] At `SPLIT_VIEWPORT` (and again at `WIDE_VIEWPORT`), with a result shown and the page scrolled to its end so the
-  run bar is stuck, `workbench-split`'s top equals the run bar's bottom (within 1 px) and its bottom is at most
-  `innerHeight`. Pinned by `aoe4-split-scroll.spec.ts`; it fails if the `height` rule or the custom property is removed.
+- [ ] (respec 1) At `SPLIT_VIEWPORT` (and again at `WIDE_VIEWPORT`), with a result shown, `saved-build-error` absent
+  (the test asserts it has count 0), and the page scrolled to its end so the run bar is stuck, one `page.evaluate`
+  reads: `workbench-split`'s top equals the run bar's border-box bottom plus the bar's computed `margin-bottom`
+  (within 1 px), and its bottom equals `innerHeight` (within 1 px). Pinned by `aoe4-split-scroll.spec.ts`; it fails
+  if the `height` rule or the custom property is removed, or if the hook drops the margin (the bottom then overshoots
+  the viewport by the margin).
 - [ ] Each column scrolls itself: with a build long enough that `build-column` has `scrollHeight > clientHeight`
   (the test asserts this first), scrolling `build-column` changes its `scrollTop` and leaves `window.scrollY` and
   `results-column.scrollTop` unchanged; the same for `results-column` with `build-column.scrollTop` unchanged. It
@@ -86,10 +98,15 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] Hover still shades charts: with the long build's last step row's annotation (`build-order-line-annotation`)
   scrolled into view in the build column and hovered, at least one `chart-step-band` is shown in a results chart that
   is within the viewport. It fails if the columns stop scrolling separately and the chart is off screen.
-- [ ] The run bar height follows its content. In one `page.evaluate`, the run bar's rect height and the
-  `--aoe4-run-bar-height` value of `getComputedStyle(workbench-split)` agree within 1 px, before and after a change
-  that grows the bar (an invalid duration that shows `duration-error`, or a narrower viewport that wraps it). The
-  test asserts the bar's height did change. It fails if the observer is not re-armed or the value is written once only.
+- [ ] (respec 1) The run bar height follows its content. At `SPLIT_VIEWPORT`, in one `page.evaluate`, the run bar's
+  rect height plus its computed `margin-bottom` and the `--aoe4-run-bar-height` value of
+  `getComputedStyle(workbench-split)` agree within 1 px, before and after an invalid duration that shows
+  `duration-error` grows the bar. The test asserts the bar's rect height did change. It fails if the observer is not
+  re-armed or the value is written once only.
+- [ ] (respec 1) At `SPLIT_VIEWPORT`, with the long build shown in the table view, `build-column` and
+  `results-column` have computed `overflow-x` `hidden`, and `build-column`'s `scrollWidth` does not exceed its
+  `clientWidth` (nothing is clipped; wide content scrolls in `step-table-scroll`). It fails if the column class
+  loses `overflow-x: hidden` (computed value becomes `auto`).
 - [ ] Below 1200 px the page uses the tabs layout, `build-column` and `results-column` do not exist, and the page
   scrolls (the document's `scrollHeight` exceeds `innerHeight` with a result shown); the existing
   `aoe4-split-layout` and `aoe4-small-screen` specs keep passing, including the layout round trips that keep editor
@@ -115,3 +132,12 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 none
+
+## Re-spec 1 - 2026-11-10
+
+- Underspecified: the run bar's `mb-3` margin was not counted, so the split-height criterion could not hold, and the
+  `saved-build-error` alert's effect was unstated; column `overflow-y: auto` silently made `overflow-x` `auto`.
+- Changed: per revised design C11 the hook writes border box plus bottom margin; criterion 1 asserts top = bar
+  bottom + margin and bottom = `innerHeight` with the alert absent; criterion 4 uses the `duration-error` route only;
+  columns get `overflow-x: hidden` with a new criterion.
+- Branch work: none yet; no implementation exists to keep or discard.
