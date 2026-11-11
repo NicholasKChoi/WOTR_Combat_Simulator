@@ -1,23 +1,24 @@
 # Spec-review checklist
 
-
 The review gate holds every diff to this list in addition to INVARIANTS.md. Apply a section only when
 the diff touches its paths (see INVARIANTS.md).
 
 ## Contracts
+Paths: `pages/api/**`, `docs/api/openapi.json`, `lib/**`, `components/**`.
 
 - [ ] Field, API, and metric names match the Key surfaces section of CONTEXT.md exactly.
 
 ## Scope
 
-- [ ] Nothing listed under Out of scope in CONTEXT.md is implemented. No diff touches `golang/`.
-- [ ] No open question from CONTEXT.md is answered with an invented constant.
+- [ ] Nothing listed under Out of scope in CONTEXT.md or PROJECT.md is implemented. No diff touches `golang/`.
+- [ ] No open question from PROJECT.md is answered with an invented constant.
 
 ## Naming
 
 - [ ] Names state intent, not the one mode that is true today. No dead or aspirational enum values.
 
 ## Site-wide (S1–S3)
+Paths: `utils/**`, `components/layout.*`, `styles/**`, `pages/_app.js`, `pages/index.js`, `pages/apps/**`, `pages/api/**`.
 
 - [ ] S1: no import path from one `pages/apps/*` or `components/apps/<x>/` into another app's files.
 - [ ] S2: every page added under `pages/apps/` has a link in `pages/index.js` and renders inside `Layout`.
@@ -25,6 +26,7 @@ the diff touches its paths (see INVARIANTS.md).
   every list an API route returns (including validation issues) is capped so the response size is bounded.
 
 ## WOTR Combat Simulator (W1–W2)
+Paths: `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `lib/combat-simulator/**`, `pages/api/fight.ts`.
 
 - [ ] W1: any change to dice, leader, casualty, or round logic cites the matching rule in
       `docs/combat-simulator.md`, or updates the doc in the same diff.
@@ -32,12 +34,14 @@ the diff touches its paths (see INVARIANTS.md).
       iteration is read in the next.
 
 ## StarCraft Helper (H1–H3)
+Paths: `pages/apps/starcraft-helper.js`.
 
 - [ ] H1: every retry loop that avoids repeating the last result has an exit when only one result is possible.
 - [ ] H2: map selection filters struck maps first, and the all-struck case renders a user-facing message.
 - [ ] H3: selection uses `utils/shuffle` or an equivalent uniform pick, with no index bias.
 
 ## AoE4 Build Order Simulator (A1–A3)
+Paths: `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `lib/aoe4-build-order/**`, `pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**`.
 
 - [ ] A1: no cost, time, or rate literal in simulation code; every one comes from `data/aoe4-build-order/**` with a patch label.
 - [ ] A2: every spend checks affordability first, and waiting time feeds into the reported timings.

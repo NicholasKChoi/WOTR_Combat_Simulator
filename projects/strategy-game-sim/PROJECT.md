@@ -56,11 +56,8 @@ None.
 
 ## Out of scope
 
-- `golang/` (Go prototype and its create-react-app frontend). Not deployed, and no Go toolchain.
 - AoE4 civilizations other than English.
 - WOTR character and Nazgul leadership (a later milestone).
-- StarCraft Helper: frozen. No tickets touch `pages/apps/starcraft-helper.js`. Its invariants (H1–H3) still
-  apply if a shared-code change affects it.
 - WOTR extensibility (owner, 2026-10-28): leave seams for later termination rules (max rounds, retreat)
   without building them. The battle splits into a per-round step and a loop with a stop check; `Battle`
   takes an options argument (empty in M1); the response and OpenAPI spec allow outcome kinds beyond

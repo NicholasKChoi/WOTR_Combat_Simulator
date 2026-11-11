@@ -1,6 +1,5 @@
 # Invariants
 
-
 Rules no change may break. Spec-review blocks on a violation; tech-lead escalates one to a human.
 Each invariant is scoped to the paths it covers. A reviewer applies it only when the diff touches one
 of those paths.
@@ -60,4 +59,4 @@ Likely break: spending before checking.
 
 ### A3. The same build order and data always produce the same timings
 Likely break: adding randomness or depending on wall-clock time. Revisit if the variation open question
-in CONTEXT.md is decided in favor of a spread.
+in PROJECT.md is decided in favor of a spread.
