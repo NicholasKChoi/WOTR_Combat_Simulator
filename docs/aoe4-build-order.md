@@ -952,6 +952,16 @@ Those of severity `warning` appear in a warnings list. Those of severity `info` 
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
 message shows its `message` text only. With no message of a severity there is no list for it.
 
+Chart controls: each chart's title row also holds collapse (`chart-collapse`), move up and move down buttons. Collapsing a chart
+hides everything under the title row (the series legend, the plot, the marker legend and, on Gather rates, the Per villager checkbox);
+the title and the three buttons stay. The hidden series, the Per villager choice and the pinned run survive a collapse and a move,
+and a collapsed chart draws no step band, markers or pinned lines while the others keep theirs. Move up and move down swap a chart
+with its neighbour; up is disabled on the first chart and down on the last. The default order is Units produced, Gather rates,
+Gathered resources, Floating resources, all expanded. The layout is kept in `localStorage` under `aoe4-build-order.chart-layout`
+as `{ version, order, collapsed }` and applied after the page loads, so the first paint is the default layout. A stored value
+that is not valid JSON or has another version gives the default layout; unknown and duplicate ids are dropped and a missing id
+is appended to the order. When the store is unavailable or blocked, the layout lasts for the page session and no error is shown.
+
 The step table, and the text view's gutter annotations, double as the annotated build order for the charts. Pointing at a row, or focusing a control in it, highlights the row and shades that step's span, from Started to Finished, on every chart; an in-progress step's span runs to the end of the run, a step that starts and finishes in the same second shows as one vertical line, and a waiting or not-reached step, or a row with no run times, shows no band. Pointing at or focusing the start row shades nothing. Moving off the row, or running again, clears the shading. Moving focus between controls of one row keeps it. While the result is stale, a row that still has its times still shades its span.
 
 Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown, unless its text and
