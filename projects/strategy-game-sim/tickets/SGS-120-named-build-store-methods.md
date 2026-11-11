@@ -78,9 +78,10 @@ flowchart TD
 - [ ] `blob-build-store.test.ts` (mocked `@vercel/blob`, the existing `found` helper) pins, per method: `getNamed` calls `get` once with `{ access: 'private', storeId, useCache: false }` on `<env>/named-builds/<id>.json` and returns `{ value, etag }` with the blob's etag; null and `BlobNotFoundError` give `null`; any other error propagates. `replaceNamed('id', json, 'etag-1')` calls `put` exactly once with `{ access: 'private', addRandomSuffix: false, contentType: 'application/json', storeId, allowOverwrite: true, ifMatch: 'etag-1' }` and returns `'replaced'`.
 - [ ] Blob `replaceNamed` failure rows (table test): `BlobPreconditionFailedError` gives `'conflict'` with exactly one `put` call (a retry loop copied from `bumpCounter` fails this); `BlobNotFoundError` gives `'conflict'`; a generic `Error('service down')` rejects with that error (a catch-all returning `'conflict'` fails this); `head` and `get` are not called by `replaceNamed` in any row.
 - [ ] Blob `createNamed` gives `'created'` with `allowOverwrite: false` and no `ifMatch`; when `put` rejects and `head` finds the blob it gives `'exists'`; when `put` rejects and `head` rejects it rethrows the `put` error. Blob `deleteNamed` calls `del` once with the named key and `{ storeId }`, swallows `BlobNotFoundError`, and propagates any other error. (respec 1)
+- [ ] `blob-build-store.test.ts` has no copied create/read tests: the created, exists and rethrow cases run in one `describe.each` over `putBuild` and `createNamed`, and the absent-as-null and error-propagation cases in one `describe.each` over `getBuild` and `getNamed`; per-method differences (the `useCache` check) stay separate. (rework 1)
 - [ ] Blob `deleteBuild` is unchanged: a new row in the existing `describe('deleteBuild')` block makes `del` reject with `BlobNotFoundError` and asserts `deleteBuild` rejects with it (a delete shared with `deleteNamed` that swallows it fails this). (respec 1)
 - [ ] `build-store.acceptance.test.ts` "exports exactly the documented names" passes with no name added by this ticket (an exported etag or per-key helper fails it). (respec 1)
-- [ ] Search criteria hold: every non-test `ifMatch` match under `lib` is in `blob-build-store.ts`, and every non-test `@vercel/blob` import under `lib`, `components` and `pages` is in `blob-build-store.ts` only.
+- [ ] Search criteria hold: every non-test `ifMatch:` option passed to `@vercel/blob` under `lib` is in `blob-build-store.ts` (the HTTP `If-Match` parser `parseIfMatchRevision` in `named-builds.ts` is not one) (rework 1), and every non-test `@vercel/blob` import under `lib`, `components` and `pages` is in `blob-build-store.ts` only.
 - [ ] `npx tsc --noEmit` and `npm run lint:dup` pass (the shared per-key implementations leave no clone), and every test file that builds a `BuildStore` compiles with the four new methods.
 - [ ] The `ARCHITECTURE.md` row names the four methods and the grep in Scope leaves no statement contradicted by the code.
 - [ ] No INVARIANTS.md regressions
@@ -94,3 +95,17 @@ none
 - Underspecified: Scope both shared `deleteBuild` / `deleteNamed` per store and required Blob `deleteNamed` to swallow `BlobNotFoundError` while keeping `deleteBuild` unchanged; it also left the export-list test and the same-bytes etag case unstated.
 - Changed: Blob `deleteBuild` stays a bare `del` and does not share with `deleteNamed` (sharing would turn the DELETE route's 503 into 204); memory and file deletes still share. Added criteria for the unchanged Blob `deleteBuild`, the pinned export list, and a differing-JSON replace input; the live Blob `ifMatch`-on-absent check is out of scope and goes to BACKLOG.
 - Branch work: none yet (ticket not started).
+
+## Rework 1 - 2026-11-10 (review)
+
+Review passed the production code at a12f940 (implementer pass); the only blocking finding is test duplication. Report: reports/SGS-120-review-1.md.
+
+### Findings
+
+- `lib/aoe4-build-order/blob-build-store.test.ts:96-136`: the new `createNamed`/`getNamed` tests at 102, 109, 124, 132 copy the `putBuild`/`getBuild` tests at 47, 54, 63, 77, changing only method and key, although the methods share the `create` and `read` helpers.
+
+### Required fixes
+
+- [x] Replace the copied created/exists/rethrow tests with one `describe.each` over `[putBuild, createNamed]`.
+- [x] Replace the copied absent-as-null/error-propagation tests with one `describe.each` over `[getBuild, getNamed]`; keep the per-method `useCache` assertions separate.
+
