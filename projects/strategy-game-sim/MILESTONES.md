@@ -206,7 +206,7 @@ label markers by the hovered legend kind. The text editor stays readable on narr
 
 ### Exit criteria
 
-Drafted 2026-11-11 from SGS-127 and the owner's 2026-11-11 backlog requests; awaiting owner confirmation.
+Drafted 2026-11-11 from SGS-127 and the owner's 2026-11-11 backlog requests; approved by the owner 2026-11-11 (Q55), with M9.10-M9.13 added from the backlog (Q56: all leftover items except the data freshness CI job).
 
 | id | criterion | kind | covered by | status |
 |----|-----------|------|------------|--------|
@@ -219,3 +219,7 @@ Drafted 2026-11-11 from SGS-127 and the owner's 2026-11-11 backlog requests; awa
 | M9.7 | Marker labels: hovering or keyboard-focusing a marker legend kind labels that kind's markers along the chart top (same stacking and widths), reverting to age-ups on leave/blur; legend items are focusable with an accessible name | code | | open |
 | M9.8 | Editor readability: at 390 px wide the build text column shows at least half the editor width, and at 1280x800 typical lines are not clipped (narrower time columns, hidden finish time on narrow screens, or a toggle) | code | | open |
 | M9.9 | `docs/aoe4-build-order.md` and `ARCHITECTURE.md` describe the changes; Playwright covers saved status, drag/caret controls with persistence, pinned tooltip/legend, the two new chart views, marker-label hover, and the split-layout Tab order; `.jscpd.json` scans `acceptance/` and its findings are fixed | code | | open |
+| M9.10 | Save-path correctness on the Blob/named-build seam: `put` with `allowOverwrite`+`ifMatch` on a missing key is verified against a real Blob store and the store's missing-key rule matches it; a Blob outage no longer multiplies SDK retries by the compare-and-swap attempts, and a lost response to a landed conditional `put` is not reported as `conflict`; `readMyBuilds` no longer wipes every stored edit secret when the stored value fails to parse; `design/M8.md` text fixes (`ReplyTarget.end(chunk?)`, Escape focus target) applied | code | | open |
+| M9.11 | Test-helper dedupe and a guard: the duplicated fake `Storage` and `stubFetch`/`json` helpers move to the shared test helpers and `ARCHITECTURE.md` lists them; the duplication linter (`.jscpd.json`, `npm run lint:dup`) is configured so repeated code in test helpers and test files fails lint (owner, Q56) | code | | open |
+| M9.12 | Split-scroll layout: clearing `duration-error` at 1280x800 scrolled to the end no longer jumps scrollY (scroll anchoring); the sticky run bar no longer covers about half of a 1280x720 viewport when the copy form, link and storage warning are open | code | | open |
+| M9.13 | `tsconfig.json` has `strict: true` and the codebase type-checks under it | code | | open |
