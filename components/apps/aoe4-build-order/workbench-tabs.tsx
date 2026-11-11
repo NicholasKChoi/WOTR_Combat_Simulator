@@ -86,23 +86,27 @@ export function WorkbenchTabs({ active, onSelect, resultsEnabled, split, build, 
                     </button>
                 </div>
             )}
-            <div
-                id="panel-build"
-                data-testid="panel-build"
-                role={split ? undefined : 'tabpanel'}
-                aria-labelledby={split ? undefined : 'tab-build'}
-                hidden={!split && active !== 'build'}
-            >
-                {build}
+            <div className={split ? styles.column : undefined} data-testid={split ? 'build-column' : undefined}>
+                <div
+                    id="panel-build"
+                    data-testid="panel-build"
+                    role={split ? undefined : 'tabpanel'}
+                    aria-labelledby={split ? undefined : 'tab-build'}
+                    hidden={!split && active !== 'build'}
+                >
+                    {build}
+                </div>
             </div>
-            <div
-                id="panel-results"
-                data-testid="panel-results"
-                role={split ? undefined : 'tabpanel'}
-                aria-labelledby={split ? undefined : 'tab-results'}
-                hidden={!split && active !== 'results'}
-            >
-                {results}
+            <div className={split ? styles.column : undefined} data-testid={split ? 'results-column' : undefined}>
+                <div
+                    id="panel-results"
+                    data-testid="panel-results"
+                    role={split ? undefined : 'tabpanel'}
+                    aria-labelledby={split ? undefined : 'tab-results'}
+                    hidden={!split && active !== 'results'}
+                >
+                    {results}
+                </div>
             </div>
         </div>
     )

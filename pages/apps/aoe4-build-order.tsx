@@ -24,6 +24,7 @@ import { mergeExternalEdit } from '../../components/apps/aoe4-build-order/step-t
 import { loadSavedBuild, savedBuildOption } from '../../components/apps/aoe4-build-order/saved-build-loader'
 import { postSimulation } from '../../components/apps/aoe4-build-order/simulate-client'
 import { useAutoRun } from '../../components/apps/aoe4-build-order/use-auto-run'
+import { useRunBarHeight } from '../../components/apps/aoe4-build-order/use-run-bar-height'
 import { useSplitLayout } from '../../components/apps/aoe4-build-order/use-split-layout'
 import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-build-order/workbench-tabs'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
@@ -87,6 +88,8 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
     const [active, setActive] = useState<{ result: SimulateResponse; step: number } | null>(null)
     const initialB = useRef<{ id: string | undefined } | null>(null)
     const pinTouched = useRef(false)
+    const runBarRef = useRef<HTMLFormElement>(null)
+    useRunBarHeight(runBarRef)
     if (router.isReady && initialB.current === null) initialB.current = { id: firstQueryValue(router.query.b) }
     const savedLoadInFlight = router.isReady && initialB.current?.id !== undefined && !loadEnded
     const autoRun = useAutoRun({ text, duration, selected, catalog, hold: !router.isReady || savedLoadInFlight })
@@ -215,6 +218,7 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
             <section className={cn(utilStyles.headingMd, 'container')}>
                 <h1>{pageTitle}</h1>
                 <BuildInput
+                    runBarRef={runBarRef}
                     builds={builds}
                     selected={selected}
                     onBuildSelect={selectBuild}
@@ -244,6 +248,9 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                     split={split}
                     build={
                         <>
+                            <h2 className="h4" id="build-order-heading" data-testid="build-order-heading">
+                                Build order
+                            </h2>
                             {view === 'text' ? (
                                 <BuildTextEditor
                                     text={text}
@@ -254,6 +261,7 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                                     activeStep={activeStep}
                                     onActiveStepChange={onActiveStepChange}
                                     disabled={savedLoadInFlight}
+                                    labelledBy="build-order-heading"
                                 />
                             ) : parsed.ok === true ? (
                                 <StepTable
@@ -287,7 +295,9 @@ export default function AoE4BuildOrder({ builds: prebuilt, catalog }: PageProps)
                     }
                     results={
                         <div>
-                            <h2 className="border-bottom">Results</h2>
+                            <h2 className="h4 border-bottom" data-testid="results-heading">
+                                Results
+                            </h2>
                             <ComparePanel
                                 current={result}
                                 pinned={pin?.result ?? null}

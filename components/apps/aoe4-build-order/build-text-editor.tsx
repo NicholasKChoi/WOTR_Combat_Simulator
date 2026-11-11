@@ -17,6 +17,7 @@ interface BuildTextEditorProps {
     activeStep: number | null
     onActiveStepChange: (runStep: number | null) => void
     disabled?: boolean
+    labelledBy: string
 }
 
 interface AnnotationLineProps {
@@ -50,7 +51,7 @@ function AnnotationLine({ line, annotation, stale, active, onActiveStepChange }:
     )
 }
 
-export function BuildTextEditor({ text, onChange, errorLines, annotations, lines, activeStep, onActiveStepChange, disabled = false }: BuildTextEditorProps) {
+export function BuildTextEditor({ text, onChange, errorLines, annotations, lines, activeStep, onActiveStepChange, disabled = false, labelledBy }: BuildTextEditorProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const typedText = useRef<string | null>(null)
     useEffect(() => {
@@ -64,7 +65,6 @@ export function BuildTextEditor({ text, onChange, errorLines, annotations, lines
     }
     return (
         <div className="mb-3">
-            <label htmlFor="build-order-text">Build order</label>
             {annotations !== null && lines.steps.length > 0 ? <StepKindLegend /> : null}
             <div className={styles.editor}>
                 <ol data-testid="build-order-gutter" aria-hidden="true" className={styles.gutter}>
@@ -99,6 +99,7 @@ export function BuildTextEditor({ text, onChange, errorLines, annotations, lines
                 <textarea
                     ref={textareaRef}
                     id="build-order-text"
+                    aria-labelledby={labelledBy}
                     data-testid="build-order-text"
                     className={cn('form-control font-monospace', styles.textarea)}
                     rows={Math.max(8, rowCount)}
