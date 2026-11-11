@@ -137,7 +137,8 @@ active milestone's design.
   contradicted by the code is blocking.
 - For UI changes, screenshot each touched UI state at 360x760, 768 and 1280px wide and look at them. A
   highlight or error state must change something visible, not just an attribute. Sticky or fixed
-  elements must leave at least 60% of a 360x760 viewport. Messages must read as plain sentences.
+  elements must leave at least 60% of a 360x760 viewport and of a 1280x720 viewport. The text editor must
+  keep at least 50% of the content width at 390px and at 1280px. Messages must read as plain sentences.
 - For layout and chart changes, check the page at 390, 700 and 1280px wide: no horizontal overflow, and
   no overlapping axis, tick or marker labels.
 - Don't mix Bootstrap `d-*`, `flex-*` or spacing utilities with module CSS on the same element (the

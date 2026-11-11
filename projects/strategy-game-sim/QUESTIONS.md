@@ -57,34 +57,10 @@ options: A) approve: add as a backlog item | B) reject: drop it
 recommendation: A: lets the linter catch it before review
 research: reports/retro-20261111.md
 thread: 1570126575691763772
+answered: 2026-11-11T17:41Z discord
 
 M8 retro. Copied acceptance test setup keeps causing rework. This is a code change, so it becomes a BACKLOG item for a ticket.
 - SGS-120 and SGS-125 reworks; four copies already in BACKLOG.
 
 ### Answer
-
-## Q52: Retro P8 (repo): add a LESSONS.md line: tests differing only in method/key/input use describe.each/it.each, and shared fakes are imported, not copied?
-kind: confirmation
-blocks: retro-20261111
-options: A) approve: add the line to $FACTORY_DIR/LESSONS.md | B) reject: drop it
-recommendation: A: one line, prevents repeat reworks
-research: reports/retro-20261111.md
-thread: 1570126578883633362
-
-M8 retro. Same duplication evidence as P7.
-- SGS-120 and SGS-125 reworks for copied tests/fakes.
-
-### Answer
-
-## Q53: Retro P9 (repo): in the REPO.md review checklist, apply the 60% sticky-area limit at 1280x720 too, and require the editor to keep >=50% of content width at 390px and 1280px?
-kind: confirmation
-blocks: retro-20261111
-options: A) approve: edit the REPO.md checklist | B) reject: drop it
-recommendation: A: matches the problems you found in the post-M8 UI check
-research: reports/retro-20261111.md
-thread: 1570126581438091357
-
-M8 retro. Review filed a layout problem as a note that the owner later hit.
-- SGS-125 review filed a 52% sticky bar at 1280x720 as a note; owner UI check found the editor pushed down ~140px and the step gutter taking ~260px of 390px.
-
-### Answer
+A) approve: add as a backlog item
