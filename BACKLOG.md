@@ -39,7 +39,6 @@ pull from here; triage moves an item into a milestone or deletes it.
 - `use-auto-run.ts`: `firstPaintState` repeats the controller's request expression; export `settledFields` from the SGS-100 controller and reuse it. (SGS-102 review 1)
 - `acceptance/aoe4-auto-run.spec.ts:309`: the open-rows test never asserts the two builds differ, so it could go vacuous. (SGS-102 review 1)
 - `acceptance/aoe4-auto-run.spec.ts:189`: two chart ids listed by hand instead of `CHART_IDS`. (SGS-102 review 1)
-- Tooling: install a TypeScript LSP server for this repo (e.g. `typescript-language-server` via a Claude Code LSP plugin, using the repo's `tsconfig.json`) so agents get diagnostics, go-to-definition and find-references while working in task worktrees. (owner request, 2026-11-09)
 - `pages/apps/aoe4-build-order.tsx:168`: `router.replace({pathname, query: {}})` drops every query key, not only `b`; keep other keys. (SGS-105 review 1)
 - `pages/apps/aoe4-build-order.tsx:97`: `initialB.current` is written during render; move it to an initializer in the `isReady` effect. (SGS-105 review 1)
 - `components/apps/aoe4-build-order/saved-build-loader` aborted-signal test is weak: its fetch stub rejects whether or not the signal is aborted. (SGS-105 review 1)
