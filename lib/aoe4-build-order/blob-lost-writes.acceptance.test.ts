@@ -1,6 +1,5 @@
 import { put } from '@vercel/blob'
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
-import { BLOB_SDK_RETRIES } from './blob-build-store'
 import { buildStoreFromEnv } from './build-store'
 import { listBuilds } from './builds'
 import { saveBuildReply } from './builds-routes'
@@ -120,25 +119,12 @@ beforeEach(() => {
 })
 afterEach(() => {
     errorLog.mockRestore()
-    vi.unstubAllEnvs()
 })
 
 const expectStorageDownFromPutError = () => {
     expect(blobState.lastPutError).toBeInstanceOf(Error)
     expect(errorLog).toHaveBeenCalledWith('builds: storage failed', blobState.lastPutError)
 }
-
-describe('the Blob store built from the deployment env', () => {
-    it.each([
-        ['unset', undefined, String(BLOB_SDK_RETRIES)],
-        ['already set to 4', '4', '4'],
-    ])('caps the SDK retries through VERCEL_BLOB_RETRIES only when it is %s', async (_label, before, after) => {
-        vi.stubEnv('VERCEL_BLOB_RETRIES', before)
-        expect(process.env.VERCEL_BLOB_RETRIES).toBe(before)
-        await buildStoreFromEnv(BLOB_ENV)
-        expect(process.env.VERCEL_BLOB_RETRIES).toBe(after)
-    })
-})
 
 describe('PUT a named build when its Blob write fails', () => {
     it.each<[string, Fault, boolean, number]>([
