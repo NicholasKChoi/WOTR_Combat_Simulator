@@ -66,7 +66,7 @@ export function BuildTextEditor({ text, onChange, errorLines, annotations, lines
     return (
         <div className="mb-3">
             {annotations !== null && lines.steps.length > 0 ? <StepKindLegend /> : null}
-            <div className={styles.editor}>
+            <div data-testid="build-order-editor" className={styles.editor}>
                 <ol data-testid="build-order-gutter" aria-hidden="true" className={styles.gutter}>
                     {Array.from({ length: rowCount }, (_, i) => (
                         <li

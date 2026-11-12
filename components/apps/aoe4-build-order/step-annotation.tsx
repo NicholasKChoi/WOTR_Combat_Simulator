@@ -43,7 +43,11 @@ export function annotationToneClass(run: StepRun | undefined, stale: boolean): s
 
 export function StepTimes({ run, labelled }: { run: StepRun; labelled: boolean }) {
     const started = <span data-testid="step-started">{formatStepTime(run.startedAt)}</span>
-    const finished = <span data-testid="step-finished">{finishedText(run)}</span>
+    const finished = (
+        <span data-testid="step-finished" className={labelled ? undefined : styles.gutterEndTime}>
+            {finishedText(run)}
+        </span>
+    )
     return (
         <span className={styles.times}>
             {labelled ? (

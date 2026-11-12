@@ -68,6 +68,12 @@ tbody > tr > td.kindBorder {
     gap: 0.25rem;
 }
 
+@container build-editor (width < 48rem) {
+    .gutterEndTime {
+        display: none;
+    }
+}
+
 .runCell .times {
     display: flex;
     flex-direction: column;

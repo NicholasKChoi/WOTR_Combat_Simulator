@@ -29,14 +29,16 @@
 .editor {
     display: flex;
     align-items: flex-start;
+    container: build-editor / inline-size;
 }
 
 .gutter,
 .annotations,
 .textarea {
     margin: 0;
+    --editor-font-size: 1rem;
     font-family: var(--bs-font-monospace, monospace);
-    font-size: 1rem;
+    font-size: var(--editor-font-size);
     line-height: 1.5;
     padding: 0.375rem 0;
     border: 1px solid transparent;
@@ -69,7 +71,7 @@
 }
 
 .annotations li > span {
-    font-size: 0.8rem;
+    font-size: calc(0.8 * var(--editor-font-size));
     font-variant-numeric: tabular-nums;
 }
 
@@ -92,6 +94,29 @@
     overflow-x: auto;
     resize: none;
     white-space: pre;
+}
+
+@container build-editor (width < 48rem) {
+    .gutter,
+    .annotations,
+    .textarea {
+        --editor-font-size: 0.875rem;
+    }
+
+    .gutter {
+        min-width: 0;
+        padding-right: 0.125rem;
+    }
+
+    .annotations {
+        width: 4.7ch;
+        padding-right: 0;
+    }
+
+    .textarea {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
 }
 
 .runField {
