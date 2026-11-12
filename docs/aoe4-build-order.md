@@ -1000,11 +1000,19 @@ Those of severity `warning` appear in a warnings list. Those of severity `info` 
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
 message shows its `message` text only. With no message of a severity there is no list for it.
 
-Chart controls: each chart's title row also holds collapse (`chart-collapse`), move up and move down buttons. Collapsing a chart
-hides everything under the title row (the series legend, the plot, the marker legend and, on Gather rates, the Per villager checkbox);
-the title and the three buttons stay. The hidden series, the Per villager choice and the pinned run survive a collapse and a move,
-and a collapsed chart draws no step band, markers or pinned lines while the others keep theirs. Move up and move down swap a chart
-with its neighbour; up is disabled on the first chart and down on the last. The default order is Units produced, Gather rates,
+Chart controls: each chart's title row holds, in order, a drag handle (`chart-drag-handle`, a grip button labelled
+"Reorder <title> chart"), the title, a collapse caret (`chart-collapse`) and, on Gather rates, the Per villager checkbox.
+Collapsing a chart hides everything under the title row (the series legend, the plot and the marker legend); the handle, the
+title, the caret and the Per villager checkbox stay visible and usable. The hidden series, the Per villager choice and the
+pinned run survive a collapse and a move, and a collapsed chart draws no step band, markers or pinned lines while the others keep
+theirs. The caret flips between "Collapse <title> chart" and "Expand <title> chart", is toggled by click, Enter or Space, and
+keeps focus. A chart is reordered by dragging its handle with the primary mouse button, or with ArrowUp and ArrowDown while the
+handle is focused; other keys do nothing. A drag starts after the pointer has moved 4px, leaves the order unchanged until the
+drop, and drops the chart where the pointer's height places it among the other charts. Escape or a cancelled pointer ends the
+drag with no change, and a touch drag that starts on the handle does not scroll the page. A collapsed chart reorders like an expanded one. After a
+move that changes the order, the moved chart's handle has focus and a visually hidden status (`chart-order-status`) names the chart
+and its new position out of four; ArrowUp on the first chart and ArrowDown on the last change nothing and announce nothing. A
+visually hidden help text (`chart-reorder-help`) describes the handle's drag and arrow-key use. The default order is Units produced, Gather rates,
 Gathered resources, Floating resources, all expanded. The layout is kept in `localStorage` under `aoe4-build-order.chart-layout`
 as `{ version, order, collapsed }` and applied after the page loads, so the first paint is the default layout. `collapsed`
 holds chart ids and, when the key results panel is collapsed, `key-results`; `order` holds chart ids only. A stored value

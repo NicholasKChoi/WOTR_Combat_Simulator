@@ -15,6 +15,7 @@ import {
     toChartRows,
     toggleHidden,
 } from './chart-rows'
+import { type ChartControls, ChartHeader } from './chart-header'
 import { MarkerLegend, SeriesLegend } from './chart-legend'
 import type { StepSpan } from './step-annotations'
 import styles from './results.module.css'
@@ -74,60 +75,10 @@ interface SeriesChartProps {
     highlight?: StepSpan | null
     headerControls?: ReactNode
     layout?: ChartControls
+    sectionRef?: (element: HTMLElement | null) => void
 }
 
-export interface ChartControls {
-    collapsed: boolean
-    first: boolean
-    last: boolean
-    onToggle(): void
-    onMove(direction: 'up' | 'down'): void
-}
-
-function ChartHeader({ title, bodyId, layout }: { title: string; bodyId: string; layout?: ChartControls }) {
-    return (
-        <div className={styles.chartHeader}>
-            <h3 className="h5">{title}</h3>
-            {layout ? (
-                <div className={styles.chartButtons}>
-                    <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        data-testid="chart-collapse"
-                        aria-label={`${layout.collapsed ? 'Expand' : 'Collapse'} ${title} chart`}
-                        aria-expanded={!layout.collapsed}
-                        aria-controls={bodyId}
-                        onClick={layout.onToggle}
-                    >
-                        {layout.collapsed ? 'Expand' : 'Collapse'}
-                    </button>
-                    <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        data-testid="chart-move-up"
-                        aria-label={`Move ${title} chart up`}
-                        disabled={layout.first}
-                        onClick={() => layout.onMove('up')}
-                    >
-                        Up
-                    </button>
-                    <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        data-testid="chart-move-down"
-                        aria-label={`Move ${title} chart down`}
-                        disabled={layout.last}
-                        onClick={() => layout.onMove('down')}
-                    >
-                        Down
-                    </button>
-                </div>
-            ) : null}
-        </div>
-    )
-}
-
-export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout }: SeriesChartProps) {
+export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout, sectionRef }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
     const [chartWidth, setChartWidth] = useState<number | null>(null)
     const end = Math.max(1, ...times, ...(pinned?.times ?? []))
@@ -155,12 +106,18 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const bodyId = `${testId}-body`
 
     return (
-        <div data-testid={testId} data-label-rows={rows} data-collapsed={collapsed ? 'true' : 'false'} className={styles.chart}>
-            <ChartHeader title={title} bodyId={bodyId} layout={layout} />
+        <div
+            ref={sectionRef}
+            data-testid={testId}
+            data-label-rows={rows}
+            data-collapsed={collapsed ? 'true' : 'false'}
+            data-dragging={layout?.dragging ? 'true' : undefined}
+            className={styles.chart}
+        >
+            <ChartHeader title={title} bodyId={bodyId} layout={layout} controls={headerControls} />
             <div data-testid="chart-body" id={bodyId} hidden={collapsed}>
                 {collapsed ? null : (
                     <>
-                        {headerControls}
                         <ResponsiveContainer width="100%" height={360} onResize={(width) => setChartWidth(width)}>
                             <LineChart
                                 data={toChartRows(times, series, pinned)}
