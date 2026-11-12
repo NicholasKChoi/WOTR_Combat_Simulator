@@ -24,8 +24,8 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-125 | Save panel rewrite: Save as copy, Save a new version | M8 | M8.1,M8.9 | aoe4-build-order | high | SGS-118,SGS-121,SGS-124 | | sgs-125-save-panel | 731699d | integrated | 1 | 137 | tickets/SGS-125-save-panel-rewrite-copy-and-versions.md |
 | SGS-126 | Fix the pin-compare pinned-only legend test fixture | M8 | M8.4 | | low | | | sgs-126-pin-compare-fixture | 80da26a473a3f875d16cdfb91d421fb156714d5c | integrated | | 130 | tickets/SGS-126-pin-compare-pinned-only-legend-fixture.md |
 | SGS-127 | Named-build update 412: weak CDN etag in compare-and-swap | M9 | M9.1 | aoe4-build-order | high | | | sgs-127-blob-strong-etag | 8691f1e | integrated | | 138 | tickets/SGS-127-blob-strong-etag.md |
-| SGS-128 | Shared test helpers and two jscpd gates | M9 | M9.11 | | standard | | | sgs-128-shared-test-helpers-and-jscpd-gates | 9bbe59d | in_review | 1 | 139 | tickets/SGS-128-shared-test-helpers-and-jscpd-gates.md |
-| SGS-129 | Turn on strict in tsconfig | M9 | M9.13 | | low | | | sgs-129-strict-typescript | 75fa929 | in_review | | 140 | tickets/SGS-129-strict-typescript.md |
+| SGS-128 | Shared test helpers and two jscpd gates | M9 | M9.11 | | standard | | | sgs-128-shared-test-helpers-and-jscpd-gates | 802e22208f1bc9dc2ca3dd72ace2ee7e660ff3f3 | integrated | 1 | 139 | tickets/SGS-128-shared-test-helpers-and-jscpd-gates.md |
+| SGS-129 | Turn on strict in tsconfig | M9 | M9.13 | | low | | | sgs-129-strict-typescript | 0d103044bc8aa41f45ad6c53b1576d481f570d47 | integrated | | 140 | tickets/SGS-129-strict-typescript.md |
 | SGS-130 | Blob store retry cap, landed write, live test | M9 | M9.10 | | high | SGS-127,SGS-128 | | | | spec_ready | | | tickets/SGS-130-blob-landed-write-retry-cap.md |
 | SGS-134 | Chart layout model and key-results collapse | M9 | M9.4 | | standard | SGS-128 | | | | spec_ready | | | tickets/SGS-134-chart-layout-model-key-results-collapse.md |
 | SGS-136 | Simulator emits production buildings, OpenAPI 2.6.0 | M9 | M9.6 | | high | SGS-128 | | | | spec_ready | | | tickets/SGS-136-simulate-production-buildings-series.md |
