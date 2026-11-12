@@ -20,11 +20,21 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
 
   // @vercel/blob 2.9 `get` resolves null when the blob answers 404. BlobNotFoundError is also treated
   // as absent.
+  // A fresh read's etag feeds put's ifMatch, which compares against the strong etag. The CDN weakens the
+  // etag (W/"...") of a compressed response, so a fresh read asks for the body uncompressed. The etag
+  // comes from this same response, not a separate head(): a write between the two would pair stale
+  // content with a fresh etag and lose that write.
   const read = async (key: string, fresh: boolean): Promise<StoredWithEtag | null> => {
     try {
-      const result = await get(key, { access: 'private', storeId, ...(fresh ? { useCache: false } : {}) });
+      const result = await get(key, {
+        access: 'private',
+        storeId,
+        ...(fresh ? { useCache: false, headers: { 'accept-encoding': 'identity' } } : {}),
+      });
       if (result === null) return null;
-      return { value: await new Response(result.stream).json(), etag: result.blob.etag };
+      const { etag } = result.blob;
+      if (fresh && etag.startsWith('W/')) throw new Error(`Blob read of ${key} returned a weak etag ${etag}, which ifMatch cannot use`);
+      return { value: await new Response(result.stream).json(), etag };
     } catch (error) {
       if (error instanceof BlobNotFoundError) return null;
       throw error;

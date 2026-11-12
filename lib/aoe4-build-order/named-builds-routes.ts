@@ -108,11 +108,17 @@ async function updateNamedBuild(
     const read = await readStored(store, req.id);
     if (!read.ok) return read.reply;
     if (!sameSecretHash(await editSecretHash(secret), read.stored.secretHash)) return errorReply(403, 'the edit secret does not match');
-    if (revision !== read.stored.revision) return changed();
+    if (revision !== read.stored.revision) {
+      console.error('builds: named build revision mismatch', { id: req.id, ifMatch: revision, stored: read.stored.revision });
+      return changed();
+    }
 
     const updatedAt = new Date(deps.nowMs).toISOString();
     const next: StoredNamedBuild = { ...read.stored, ...checked.record, revision: read.stored.revision + 1, updatedAt };
-    if ((await store.replaceNamed(req.id, JSON.stringify(next), read.etag)) === 'conflict') return changed();
+    if ((await store.replaceNamed(req.id, JSON.stringify(next), read.etag)) === 'conflict') {
+      console.error('builds: named build store etag conflict', { id: req.id, revision: read.stored.revision });
+      return changed();
+    }
     return {
       status: 200,
       headers: { ETag: revisionEtag(next.revision) },
