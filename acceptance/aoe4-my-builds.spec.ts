@@ -9,15 +9,21 @@ import {
   NAMED_BUILDS_PATH,
   SIMULATE_PATH,
   acceptBeforeUnload,
+  blockStorageWrites,
   buildOrderFrom,
   gatedTest,
   type Gate,
   holdNextSimulate,
   holdRequests,
+  isNamedPath,
+  isNamedPost,
+  isNamedPut,
   isSimulatePost,
   namedBuildUrl,
   openPage,
+  reply,
   showTab,
+  stubNamed,
   uniqueClient,
   waitForRun,
 } from './helpers'
@@ -494,9 +500,6 @@ const saveError = (page: Page) => page.getByTestId('save-build-error')
 const unstored = (page: Page) => page.getByTestId('my-builds-unavailable')
 const opacity = (locator: Locator) => locator.evaluate((el) => Number(getComputedStyle(el).opacity))
 
-const isNamedPath = (url: URL) => url.pathname === NAMED_BUILDS_PATH || url.pathname.startsWith(`${NAMED_BUILDS_PATH}/`)
-const isNamedPost = (r: Request) => new URL(r.url()).pathname === NAMED_BUILDS_PATH && r.method() === 'POST'
-const isNamedPut = (r: Request) => new URL(r.url()).pathname.startsWith(`${NAMED_BUILDS_PATH}/`) && r.method() === 'PUT'
 const isSnapshotPost = (r: Request) => new URL(r.url()).pathname.startsWith(BUILDS_PATH) && r.method() === 'POST'
 const isSimulateUrl = (url: URL) => url.pathname === SIMULATE_PATH
 const json = (value: unknown): unknown => JSON.parse(JSON.stringify(value))
@@ -525,24 +528,6 @@ async function storedBuild(page: Page, id: string): Promise<Stored | undefined> 
   const raw = await storedRaw(page)
   return raw === null ? undefined : (JSON.parse(raw) as { builds: Stored[] }).builds.find((build) => build.id === id)
 }
-
-const blockStorageWrites = (page: Page) =>
-  page.addInitScript(() => {
-    Storage.prototype.setItem = () => {
-      throw new DOMException('blocked', 'QuotaExceededError')
-    }
-  })
-
-async function stubNamed(page: Page, method: string, respond: (route: Route) => Promise<void>): Promise<() => Promise<void>> {
-  const handler = (route: Route) => (route.request().method() === method ? respond(route) : route.fallback())
-  await page.route(isNamedPath, handler)
-  return () => page.unroute(isNamedPath, handler)
-}
-
-const reply =
-  (code: number, body: unknown = { error: 'stubbed' }, headers: Record<string, string> = {}) =>
-  (route: Route) =>
-    route.fulfill({ status: code, contentType: 'application/json', headers, body: JSON.stringify(body) })
 
 async function submitCopy(page: Page, name?: string) {
   await copyButton(page).click()

@@ -115,6 +115,9 @@ export function BuildInput({ entries, selected, edited, onBuildSelect, duration,
                     </button>
                 ))}
             </div>
+            <p id="auto-run-status" data-testid="auto-run-status" role="status" data-status={status} className={styles.autoRunStatus}>
+                {autoRunStatusMessage(status, hasResult)}
+            </p>
             <SaveBuild
                 status={status}
                 settled={settled}
@@ -126,9 +129,6 @@ export function BuildInput({ entries, selected, edited, onBuildSelect, duration,
                 onCreated={onCreated}
                 onUpdated={onUpdated}
             />
-            <p id="auto-run-status" data-testid="auto-run-status" role="status" data-status={status} className={styles.autoRunStatus}>
-                {autoRunStatusMessage(status, hasResult)}
-            </p>
         </form>
     )
 }

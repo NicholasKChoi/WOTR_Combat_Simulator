@@ -134,14 +134,31 @@ button.activeView:disabled {
     opacity: 0.5;
 }
 
-.linkPanel,
+.savePanel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1 1 100%;
+    min-width: 0;
+}
+
+.saveRow,
 .copyForm {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    flex: 1 1 100%;
     min-width: 0;
+}
+
+.saveRow {
+    align-items: end;
+}
+
+.saveStatus {
+    margin: 0;
+    align-self: center;
+    color: var(--bs-secondary-color, #6c757d);
 }
 
 .copyForm {
@@ -155,9 +172,22 @@ button.activeView:disabled {
     width: auto;
 }
 
+@media (min-width: 1200px) {
+    .saveRow {
+        flex-wrap: nowrap;
+    }
+
+    .saveRow > button {
+        flex: none;
+    }
+
+    .linkInput {
+        min-width: 8rem;
+    }
+}
+
 .linkHint,
 .saveError,
 .saveNotice {
-    flex: 1 1 100%;
     margin: 0;
 }
