@@ -6,8 +6,8 @@ import { rateCounterKey, savedBuildKey } from './saved-builds';
 
 const COUNTER_ATTEMPTS = 3;
 
-// @vercel/blob reads VERCEL_BLOB_RETRIES from process.env on every request (default 10), and
-// bumpCounter's attempts multiply those retries during an outage.
+// @vercel/blob reads VERCEL_BLOB_RETRIES from process.env on every put, head and del call (default 10; get is
+// not retried), and bumpCounter's attempts multiply those retries during an outage.
 export const BLOB_SDK_RETRIES = 1;
 
 export function createBlobBuildStore(storeId: string, env: string): BuildStore {
