@@ -114,6 +114,17 @@
     overflow-wrap: anywhere;
 }
 
+.compareHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.compareBody {
+    margin-top: 0.5rem;
+}
+
 .dimmed {
     opacity: 0.5;
 }

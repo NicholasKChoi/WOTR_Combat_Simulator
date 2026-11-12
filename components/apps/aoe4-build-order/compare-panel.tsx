@@ -2,6 +2,7 @@ import cn from 'classnames'
 
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
+import { CollapseCaret } from './collapse-caret'
 import { type CompareRow, type KeyValue, compareRows, keyNumbers } from './compare'
 import results from './results.module.css'
 import workbench from './workbench.module.css'
@@ -13,6 +14,8 @@ interface ComparePanelProps {
     alreadyPinned: boolean
     onPin: () => void
     onUnpin: () => void
+    collapsed: boolean
+    onToggleCollapsed: () => void
 }
 
 const DASH = '—'
@@ -35,22 +38,34 @@ function formatDelta(row: CompareRow): string {
 
 const DIRECTION_CLASS = { better: 'text-success', worse: 'text-danger', same: undefined } as const
 
-export function ComparePanel({ current, pinned, pinnedName, alreadyPinned, onPin, onUnpin }: ComparePanelProps) {
+export function ComparePanel({ current, pinned, pinnedName, alreadyPinned, onPin, onUnpin, collapsed, onToggleCollapsed }: ComparePanelProps) {
     return (
-        <div className="mb-3">
-            <button type="button" data-testid="pin-run" className="btn btn-outline-secondary me-2" disabled={current === null || alreadyPinned} onClick={onPin}>
-                Pin this run
-            </button>
-            <button type="button" data-testid="unpin-run" className="btn btn-outline-secondary" disabled={pinned === null} onClick={onUnpin}>
-                Unpin
-            </button>
-            {pinned !== null && pinnedName !== null ? (
-                <span data-testid="pinned-label" className={cn(workbench.pinnedLabel, 'ms-3')}>
-                    Pinned: {pinnedName}, {formatMinSec(pinned.durationSeconds)}
-                </span>
-            ) : null}
-            {current !== null && pinned !== null ? <CompareTable current={current} pinned={pinned} /> : null}
-        </div>
+        <section data-testid="compare-panel" className="mb-3">
+            <div className={workbench.compareHeader}>
+                <h3 className="h5 mb-0" data-testid="compare-heading">
+                    Key results
+                </h3>
+                <CollapseCaret expanded={!collapsed} name="key results" controlsId="compare-body" onToggle={onToggleCollapsed} testId="compare-collapse" />
+                <button type="button" data-testid="pin-run" className="btn btn-outline-secondary" disabled={current === null || alreadyPinned} onClick={onPin}>
+                    Pin this run
+                </button>
+                <button type="button" data-testid="unpin-run" className="btn btn-outline-secondary" disabled={pinned === null} onClick={onUnpin}>
+                    Unpin
+                </button>
+            </div>
+            <div id="compare-body" data-testid="compare-body" className={workbench.compareBody} data-collapsed={collapsed ? 'true' : 'false'} hidden={collapsed}>
+                {collapsed ? null : (
+                    <>
+                        {pinned !== null && pinnedName !== null ? (
+                            <span data-testid="pinned-label" className={workbench.pinnedLabel}>
+                                Pinned: {pinnedName}, {formatMinSec(pinned.durationSeconds)}
+                            </span>
+                        ) : null}
+                        {current !== null && pinned !== null ? <CompareTable current={current} pinned={pinned} /> : null}
+                    </>
+                )}
+            </div>
+        </section>
     )
 }
 

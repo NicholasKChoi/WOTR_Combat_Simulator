@@ -1,22 +1,35 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { browserStorage } from './browser-storage'
-import { type ChartId, type ChartLayout, DEFAULT_CHART_LAYOUT, moveChart, readChartLayout, toggleChartCollapsed, writeChartLayout } from './chart-layout'
+import { type ChartId, type ChartLayout, type LayoutPanelId, DEFAULT_CHART_LAYOUT, moveChart, moveChartTo, readChartLayout, toggleChartCollapsed, writeChartLayout } from './chart-layout'
 
-export function useChartLayout(): { layout: ChartLayout; move(id: ChartId, direction: 'up' | 'down'): void; toggle(id: ChartId): void } {
-    const [layout, setLayout] = useState<ChartLayout>(DEFAULT_CHART_LAYOUT)
+export interface ChartLayoutControls {
+    layout: ChartLayout
+    move(id: ChartId, direction: 'up' | 'down'): void
+    moveTo(id: ChartId, toIndex: number): void
+    toggle(id: LayoutPanelId): void
+}
+
+export function useChartLayout(): ChartLayoutControls {
+    const [state, setState] = useState<{ layout: ChartLayout; loaded: boolean }>({ layout: DEFAULT_CHART_LAYOUT, loaded: false })
+    const readLayout = useRef<ChartLayout | null>(null)
 
     useEffect(() => {
-        setLayout(readChartLayout(browserStorage()))
+        const read = readChartLayout(browserStorage())
+        readLayout.current = read
+        setState({ layout: read, loaded: true })
     }, [])
 
-    function update(next: ChartLayout) {
-        setLayout(next)
-        writeChartLayout(browserStorage(), next)
-    }
+    useEffect(() => {
+        if (!state.loaded || state.layout === readLayout.current) return
+        writeChartLayout(browserStorage(), state.layout)
+    }, [state])
+
+    const update = (change: (prev: ChartLayout) => ChartLayout) => setState((prev) => ({ ...prev, layout: change(prev.layout) }))
 
     return {
-        layout,
-        move: (id, direction) => update(moveChart(layout, id, direction)),
-        toggle: (id) => update(toggleChartCollapsed(layout, id)),
+        layout: state.layout,
+        move: (id, direction) => update((prev) => moveChart(prev, id, direction)),
+        moveTo: (id, toIndex) => update((prev) => moveChartTo(prev, id, toIndex)),
+        toggle: (id) => update((prev) => toggleChartCollapsed(prev, id)),
     }
 }
