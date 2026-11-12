@@ -24,6 +24,7 @@ this list only names the surfaces.
 - AoE4 build checking: `lib/aoe4-build-order/schema.ts` (`checkBuildOrder`, `checkSimInputs`, `buildOrderCatalog`) and `lib/aoe4-build-order/text-to-build.ts` (`textToBuildOrder`), both zod-based.
 - Routes: `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`, `/apps/aoe4-build-order`.
 - AoE4 build library list merges (SGS-124, beside design/M8.md C6): `withMyBuilds(list, mine)` and `withLoadedEntry(list, entry)` in `components/apps/aoe4-build-order/build-library.ts`; acceptance helper `acceptBeforeUnload(page)` in `acceptance/helpers.ts`.
+- AoE4 chart view selection (SGS-137, design/M9.md C7): `gatherRatesSeries(view, run)` and `unitsProducedSeries(view, run)` in `components/apps/aoe4-build-order/result-series.ts`.
 
 ## Design docs
 
