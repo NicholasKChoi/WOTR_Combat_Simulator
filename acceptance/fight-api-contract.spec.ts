@@ -116,8 +116,8 @@ test.describe('real responses', () => {
 
     expect(keys(body)).toEqual(keys(okExample))
     expect(keys(body.outcomes)).toEqual(keys(okExample.outcomes))
-    for (const kind of Object.keys(body.outcomes)) {
-      expect(keys(body.outcomes[kind])).toEqual(keys(okExample.outcomes[kind]))
+    for (const [kind, tally] of Object.entries(body.outcomes)) {
+      expect(keys(tally)).toEqual(keys(okExample.outcomes[kind]))
     }
     expect(keys(body.rounds)).toEqual(keys(okExample.rounds))
     expect(keys(body.survivors)).toEqual(keys(okExample.survivors))
