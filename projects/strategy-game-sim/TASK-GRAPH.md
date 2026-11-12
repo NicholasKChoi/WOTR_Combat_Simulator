@@ -31,7 +31,7 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-136 | Simulator emits production buildings, OpenAPI 2.6.0 | M9 | M9.6 | | high | SGS-128 | | | | spec_ready | | | tickets/SGS-136-simulate-production-buildings-series.md |
 | SGS-140 | Compact text-editor mode below 48rem | M9 | M9.8 | | low | SGS-128 | | | | spec_ready | | | tickets/SGS-140-editor-compact-mode.md |
 | SGS-131 | My builds: no wipe on bad value, backup | M9 | M9.10 | | standard | SGS-128 | | | | spec_ready | | | tickets/SGS-131-my-builds-no-wipe-and-backup.md |
-| SGS-132 | Save panel one row and live Saved status | M9 | M9.3 | | standard | SGS-128 | | | | needs_spec | | | tickets/SGS-132-save-panel-live-status.md |
+| SGS-132 | Save panel one row and live Saved status | M9 | M9.3 | | standard | SGS-128 | | | | spec_ready | | | tickets/SGS-132-save-panel-live-status.md |
 | SGS-135 | Chart header drag handle and caret | M9 | M9.4 | | standard | SGS-134 | | | | spec_ready | | | tickets/SGS-135-chart-header-drag-handle-and-caret.md |
 | SGS-133 | Split-scroll anchoring and run-bar cap | M9 | M9.12 | | standard | SGS-132 | | | | needs_spec | | | tickets/SGS-133-split-scroll-anchoring-and-run-bar-cap.md |
 | SGS-137 | Gather-rates and units-produced view toggles | M9 | M9.6 | | standard | SGS-134,SGS-135,SGS-136,SGS-138 | | | | spec_ready | | | tickets/SGS-137-chart-view-toggles.md |
