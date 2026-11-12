@@ -30,7 +30,7 @@ export interface StepOptions {
 const ACTIONS: readonly BuildStep['action'][] = ['produce', 'pause', 'build', 'research', 'move', 'rally'];
 const TRIGGER_KINDS: StepOptions['triggerKinds'] = ['none', 'time', 'villagers', 'depleted', 'bank'];
 
-function compareCodeUnits(a: string, b: string): number {
+export function compareCodeUnits(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 

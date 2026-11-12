@@ -280,3 +280,51 @@ describe('gatherers', () => {
         }
     })
 })
+
+describe('productionBuildings', () => {
+    const barracks: BuildStep = { action: 'build', building: 'barracks', from: 'sheep' }
+    const countsOf = (result: SimulationResult, baseId: string): number[] => result.productionBuildings.find((s) => s.baseId === baseId)!.counts
+
+    it('starts with capital-town-center at 1 at t=0 and has one count per sample through a duration off the sample grid', () => {
+        const result = run([barracks], { inputs: { durationSeconds: 302 } })
+        expect(302 % result.sampleSeconds).not.toBe(0)
+        expect(result.times.at(-1)).toBe(302)
+        expect(result.productionBuildings.map((s) => [s.baseId, s.name, s.counts[0]])).toEqual([
+            ['capital-town-center', 'Capital Town Center', 1],
+            ['barracks', 'Barracks', 0],
+        ])
+        result.productionBuildings.forEach((s) => expect(s.counts).toHaveLength(result.times.length))
+        expect(countsOf(result, 'barracks').at(-1)).toBe(1)
+    })
+
+    it('leaves a barracks out while it is under construction and counts it from the sample at its completion', () => {
+        const result = run([barracks])
+        const [step] = result.steps
+        const done = sampleIndex(result, step.completedAt!)
+        const building = result.times.flatMap((t, i) => (t >= step.startedAt! && t < step.completedAt! ? [i] : []))
+        expect(building.length).toBeGreaterThan(1)
+        const counts = countsOf(result, 'barracks')
+        expect(building.map((i) => counts[i])).toEqual(building.map(() => 0))
+        expect(counts.slice(done)).toEqual(counts.slice(done).map(() => 1))
+    })
+
+    it('keeps the starting capital-town-center and a built town-center as two series with their own names', () => {
+        const result = run([{ action: 'build', building: 'town-center', from: 'sheep' }], { game, inputs: noHouses })
+        expect(result.steps[0].status).toBe('completed')
+        expect(result.productionBuildings.map((s) => [s.baseId, s.name, s.counts.at(-1)])).toEqual([
+            ['barracks', 'Barracks', 1],
+            ['capital-town-center', 'Capital Town Center', 1],
+            ['town-center', 'Town Center', 1],
+        ])
+    })
+
+    it.each(listBuilds().map((build) => [build.name, build] as const))('is the same for two runs and non-decreasing per series on the prebuilt build %s', (_, build) => {
+        const simulate = () => simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 600 })).productionBuildings
+        const first = simulate()
+        expect(first.length).toBeGreaterThan(1)
+        expect(simulate()).toEqual(first)
+        for (const { counts } of first) {
+            counts.forEach((n, i) => expect(n).toBeGreaterThanOrEqual(counts[i - 1] ?? 0))
+        }
+    })
+})

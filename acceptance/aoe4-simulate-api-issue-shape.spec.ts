@@ -10,10 +10,10 @@ const WARM_UP_TIMEOUT_MS = 60_000
 test.describe.configure({ timeout: 60_000 })
 
 test.describe('BuildOrderIssue in the OpenAPI document', () => {
-  test('suggestion is an optional string property and the document version is 2.5.0', () => {
+  test('suggestion is an optional string property and the document version is 2.6.0', () => {
     expect(issueSchema.properties.suggestion.type).toBe('string')
     expect(issueSchema.required).not.toContain('suggestion')
-    expect(spec.info.version).toBe('2.5.0')
+    expect(spec.info.version).toBe('2.6.0')
   })
 
   test('the issue schema is closed so an undocumented key would be rejected', () => {

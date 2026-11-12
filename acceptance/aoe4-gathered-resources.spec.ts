@@ -64,9 +64,9 @@ test.describe('gathered in the OpenAPI document', () => {
   ajv.addSchema({ $id: 'doc', components: spec.components })
   const validate = ajv.compile({ $ref: 'doc#/components/schemas/SimulationResult' })
 
-  test('is a documented required property of the closed SimulationResult at version 2.5.0', () => {
+  test('is a documented required property of the closed SimulationResult at version 2.6.0', () => {
     const schema = spec.components.schemas.SimulationResult
-    expect(spec.info.version).toBe('2.5.0')
+    expect(spec.info.version).toBe('2.6.0')
     expect(schema.required).toContain('gathered')
     expect(Object.keys(schema.properties.gathered.properties).sort()).toEqual([...RESOURCE_KINDS].sort())
     expect(schema.properties.gathered.additionalProperties).toBe(false)

@@ -308,13 +308,14 @@ describe('repository constraints', () => {
         expect(grep(["(from|import\\()\\s*['\"].*(components|pages)/apps/", '--', 'lib/aoe4-build-order'])).toBe('')
     })
 
-    it('model.ts exports exactly the 25 documented types and the shared lists', () => {
+    it('model.ts exports exactly the 26 documented types and the shared lists', () => {
         const src = readFileSync(new URL('./model.ts', import.meta.url), 'utf8')
         const names = [...src.matchAll(/^export (?:type|interface) ([A-Za-z]+)/gm)].map((m) => m[1]).sort()
         expect(names).toEqual([
             'BuildOrderIssue',
             'BuildOrderLines',
             'BuildOrderNote',
+            'BuildingSeries',
             'ChartMarker',
             'ChartMarkerKind',
             'CivId',

@@ -24,8 +24,8 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.describe('spec structure', () => {
-  test('is version 2.5.0 and documents exactly the route files', () => {
-    expect(spec.info.version).toBe('2.5.0')
+  test('is version 2.6.0 and documents exactly the route files', () => {
+    expect(spec.info.version).toBe('2.6.0')
     expect(keys(spec.paths)).toEqual(routeFilePaths())
     expect([save.operationId, getOperation.operationId, deleteOperation.operationId]).toEqual(['saveBuild', 'getSavedBuild', 'deleteSavedBuild'])
   })
