@@ -1,5 +1,6 @@
 import { RESOURCE_KINDS, type ResourceKind, type SimulationResult } from '../../../lib/aoe4-build-order/model'
 import type { ChartSeries } from './chart-rows'
+import type { GatherRatesView, UnitsProducedView } from './chart-view-toggle'
 
 export function unitSeries(result: SimulationResult): ChartSeries[] {
     return result.unitsProduced.map((u) => ({
@@ -17,12 +18,14 @@ export function resourceSeries(byResource: Record<ResourceKind, number[]>): Char
     }))
 }
 
-export function perVillagerSeries(rates: Record<ResourceKind, number[]>, gatherers: Record<ResourceKind, number[]>): ChartSeries[] {
-    return resourceSeries(rates).map((s) => ({
-        ...s,
-        values: s.values.map((rate, i) => {
-            const count = gatherers[s.key as ResourceKind][i]
-            return count > 0 ? rate / count : 0
-        }),
-    }))
+export function buildingSeries(result: SimulationResult): ChartSeries[] {
+    return result.productionBuildings.map((b) => ({ key: b.baseId, name: b.name, values: b.counts }))
+}
+
+export function gatherRatesSeries(view: GatherRatesView, run: SimulationResult): ChartSeries[] {
+    return resourceSeries(view === 'villagers' ? run.gatherers : run.gatherRates)
+}
+
+export function unitsProducedSeries(view: UnitsProducedView, run: SimulationResult): ChartSeries[] {
+    return view === 'buildings' ? buildingSeries(run) : unitSeries(run)
 }
