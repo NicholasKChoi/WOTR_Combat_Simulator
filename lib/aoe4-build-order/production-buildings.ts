@@ -10,8 +10,9 @@ function hasBuildingEntry(data: GameData, baseId: string): boolean {
 export function productionBuildingIds(data: GameData): ReadonlySet<string> {
   const ids = new Set<string>();
   for (const entry of data.byId.values()) {
-    if (entry.type === 'unit') {
-      entry.producedBy.filter((baseId) => hasBuildingEntry(data, baseId)).forEach((baseId) => ids.add(baseId));
+    if (entry.type !== 'unit') continue;
+    for (const baseId of entry.producedBy) {
+      if (hasBuildingEntry(data, baseId)) ids.add(baseId);
     }
   }
   return ids;
