@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import cn from 'classnames'
 
 import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
@@ -6,6 +6,7 @@ import { resultMessages } from './messages'
 import { InfoMessages, WarningMessages } from './message-lists'
 import { stepSpan } from './step-annotations'
 import { SeriesChart } from './line-chart'
+import { useChartDrag } from './use-chart-drag'
 import type { ChartId } from './chart-layout'
 import type { ChartLayoutControls } from './use-chart-layout'
 import { perVillagerSeries, resourceSeries, unitSeries } from './result-series'
@@ -26,19 +27,17 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
     const messages = resultMessages(result)
     const highlight = activeStep === null ? null : stepSpan(result.steps[activeStep], result.durationSeconds)
     const [perVillager, setPerVillager] = useState(false)
-    const { layout, move, toggle } = chartLayout
+    const { layout, move, moveTo, toggle } = chartLayout
     const container = useRef<HTMLDivElement>(null)
-    const pendingFocus = useRef<{ id: ChartId; direction: 'up' | 'down' } | null>(null)
+    const reorderHelpId = useId()
+    const focusAfterMove = useRef<ChartId | null>(null)
+    const [orderStatus, setOrderStatus] = useState('')
     const gatherRateSeries = (run: SimulationResult) => (perVillager ? perVillagerSeries(run.gatherRates, run.gatherers) : resourceSeries(run.gatherRates))
 
     useEffect(() => {
-        const pending = pendingFocus.current
-        pendingFocus.current = null
-        if (!pending) return
-        const button = (direction: 'up' | 'down') => container.current?.querySelector<HTMLButtonElement>(`[data-testid="${pending.id}"] [data-testid="chart-move-${direction}"]`)
-        const pressed = button(pending.direction)
-        const target = pressed?.disabled ? button(pending.direction === 'up' ? 'down' : 'up') : pressed
-        target?.focus()
+        const id = focusAfterMove.current
+        focusAfterMove.current = null
+        if (id) container.current?.querySelector<HTMLButtonElement>(`[data-testid="${id}"] [data-testid="chart-drag-handle"]`)?.focus()
     }, [layout.order])
 
     const charts: Record<ChartId, { title: string; yLabel: string; series: (run: SimulationResult) => ReturnType<typeof unitSeries>; headerControls?: ReactNode }> = {
@@ -64,11 +63,29 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
         'chart-floating-resources': { title: 'Floating resources', yLabel: 'Resources', series: (run) => resourceSeries(run.floating) },
     }
 
+    const placeChart = (id: ChartId, toIndex: number, apply: () => void) => {
+        focusAfterMove.current = id
+        apply()
+        setOrderStatus(`${charts[id].title} moved to position ${toIndex + 1} of ${layout.order.length}`)
+    }
+    const drag = useChartDrag(layout.order, (id, toIndex) => placeChart(id, toIndex, () => moveTo(id, toIndex)))
+    const moveByKey = (id: ChartId, direction: 'up' | 'down') => {
+        const toIndex = layout.order.indexOf(id) + (direction === 'up' ? -1 : 1)
+        if (toIndex < 0 || toIndex >= layout.order.length) return
+        placeChart(id, toIndex, () => move(id, direction))
+    }
+
     return (
         <div ref={container} data-testid="results-last-good" className={cn(dimmed && styles.dimmed)} aria-describedby={describedByStatus ? 'auto-run-status' : undefined}>
             <WarningMessages messages={messages.warning} />
             <InfoMessages messages={messages.info} expanded={infoExpanded} onToggle={onInfoToggle} />
-            {layout.order.map((id, index) => {
+            <p data-testid="chart-reorder-help" id={reorderHelpId} className="visually-hidden">
+                Drag a chart&apos;s handle, or use the up and down arrow keys on it, to reorder the charts.
+            </p>
+            <p data-testid="chart-order-status" role="status" className="visually-hidden">
+                {orderStatus}
+            </p>
+            {layout.order.map((id) => {
                 const chart = charts[id]
                 return (
                     <SeriesChart
@@ -83,15 +100,14 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
                         pinnedMarkers={pinned?.markers}
                         pinned={pinned ? { times: pinned.times, series: chart.series(pinned) } : undefined}
                         headerControls={chart.headerControls}
+                        sectionRef={drag.sectionRef(id)}
                         layout={{
                             collapsed: layout.collapsed.includes(id),
-                            first: index === 0,
-                            last: index === layout.order.length - 1,
+                            dragging: drag.dragging === id,
+                            reorderHelpId,
                             onToggle: () => toggle(id),
-                            onMove: (direction) => {
-                                pendingFocus.current = { id, direction }
-                                move(id, direction)
-                            },
+                            onMoveKey: (direction) => moveByKey(id, direction),
+                            onHandlePointerDown: (event) => drag.start(id, event),
                         }}
                     />
                 )

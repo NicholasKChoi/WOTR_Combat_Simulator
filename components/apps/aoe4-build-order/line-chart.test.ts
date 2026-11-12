@@ -40,7 +40,7 @@ describe('SeriesChart server render', () => {
 })
 
 describe('chart controls', () => {
-    const controls = { collapsed: false, first: false, last: false, onToggle: () => {}, onMove: () => {} }
+    const controls = { collapsed: false, dragging: false, reorderHelpId: 'help', onToggle: () => {}, onMoveKey: () => {}, onHandlePointerDown: () => {} }
     const series = [{ key: 'a', name: 'A', values: [1, 2] }]
     const renderWith = (layout?: Partial<typeof controls>) =>
         renderToString(
@@ -56,39 +56,22 @@ describe('chart controls', () => {
         )
     const button = (html: string, id: string) => html.match(new RegExp(`<button[^>]*data-testid="${id}"[^>]*>`))?.[0] ?? ''
 
-    it('has no buttons without layout', () => {
+    it('has no handle and no caret without layout', () => {
         const html = renderWith()
-        for (const id of ['chart-collapse', 'chart-move-up', 'chart-move-down']) expect(html).not.toContain(id)
+        for (const id of ['chart-drag-handle', 'chart-collapse']) expect(html).not.toContain(id)
     })
 
-    it('renders the three buttons with the title in their names, in Tab order', () => {
-        const html = renderWith({})
-        const ids = [...html.matchAll(/data-testid="(chart-collapse|chart-move-up|chart-move-down)"/g)].map((m) => m[1])
-        expect(ids).toEqual(['chart-collapse', 'chart-move-up', 'chart-move-down'])
-        for (const id of ids) expect(button(html, id)).toContain('Gather rates chart')
-    })
-
-    it('disables up on the first chart and down on the last only', () => {
-        expect(button(renderWith({ first: true }), 'chart-move-up')).toContain('disabled')
-        expect(button(renderWith({ first: true }), 'chart-move-down')).not.toContain('disabled')
-        expect(button(renderWith({ last: true }), 'chart-move-down')).toContain('disabled')
-        expect(button(renderWith({ last: true }), 'chart-move-up')).not.toContain('disabled')
-        expect(button(renderWith({}), 'chart-move-up')).not.toContain('disabled')
-    })
-
-    it('keeps an empty hidden body whose id is the aria-controls target when collapsed', () => {
+    it('keeps an empty hidden body whose id is the aria-controls target when collapsed, and the header controls visible', () => {
         const html = renderWith({ collapsed: true })
         const controlsId = button(html, 'chart-collapse').match(/aria-controls="([^"]+)"/)?.[1]
         expect(button(html, 'chart-collapse')).toContain('aria-expanded="false"')
         expect(html).toContain('data-collapsed="true"')
-        expect(html).toMatch(new RegExp(`<div[^>]*data-testid="chart-body"[^>]*>`))
         expect(html).toMatch(new RegExp(`<div(?=[^>]*data-testid="chart-body")(?=[^>]*id="${controlsId}")(?=[^>]*hidden)[^>]*></div>`))
         expect(html).not.toContain('chart-series-legend')
-        expect(html).not.toContain('extra-control')
-        expect(html).not.toMatch(/d-flex|flex-wrap/)
+        expect(html).toContain('extra-control')
     })
 
-    it('shows the legend and header controls in a visible body when expanded', () => {
+    it('shows the legend in a visible body when expanded', () => {
         const html = renderWith({})
         const controlsId = button(html, 'chart-collapse').match(/aria-controls="([^"]+)"/)?.[1]
         expect(button(html, 'chart-collapse')).toContain('aria-expanded="true"')
@@ -96,6 +79,11 @@ describe('chart controls', () => {
         expect(html).toMatch(new RegExp(`<div(?=[^>]*data-testid="chart-body")(?=[^>]*id="${controlsId}")(?![^>]*hidden)[^>]*>`))
         expect(html).toContain('chart-series-legend')
         expect(html).toContain('extra-control')
+    })
+
+    it('marks the section dragging only while dragged', () => {
+        expect(renderWith({ dragging: true })).toContain('data-dragging="true"')
+        expect(renderWith({})).not.toContain('data-dragging')
     })
 })
 

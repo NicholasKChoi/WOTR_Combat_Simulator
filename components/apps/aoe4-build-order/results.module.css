@@ -19,14 +19,6 @@
     overflow-wrap: anywhere;
 }
 
-.chartHeader {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: 1rem;
-}
-
-.chartButtons {
-    display: flex;
-    gap: 0.25rem;
+.chart[data-dragging='true'] {
+    opacity: 0.6;
 }
