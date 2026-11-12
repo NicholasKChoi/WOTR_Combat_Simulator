@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
-import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
+import type { ChartMarker, ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
 import {
     type ChartSeries,
     MARKER_COLORS,
@@ -63,6 +63,21 @@ export function placeMarkers(
 
 export const ageUpMarkers = (markers: readonly ChartMarker[]): ChartMarker[] => markers.filter((m) => m.kind === 'age-up')
 
+const hasKind = (markers: readonly ChartMarker[], kind: ChartMarkerKind): boolean => markers.some((m) => m.kind === kind)
+
+// `active` must be a kind that has markers; activeMarkerKind guarantees it.
+export const labelledMarkers = (markers: readonly ChartMarker[], active: ChartMarkerKind | null): ChartMarker[] =>
+    active === null ? ageUpMarkers(markers) : markers.filter((m) => m.kind === active)
+
+export function activeMarkerKind(markers: readonly ChartMarker[], hoverKind: ChartMarkerKind | null, focusKind: ChartMarkerKind | null): ChartMarkerKind | null {
+    return [hoverKind, focusKind].find((kind) => kind !== null && hasKind(markers, kind)) ?? null
+}
+
+// A legend item that unmounts (its kind's markers are gone, or the chart collapsed) fires no mouseleave or blur,
+// so a hover or focus kind it left behind is reset here.
+export const liveMarkerKind = (markers: readonly ChartMarker[], kind: ChartMarkerKind | null, collapsed: boolean): ChartMarkerKind | null =>
+    kind !== null && !collapsed && hasKind(markers, kind) ? kind : null
+
 interface SeriesChartProps {
     testId: string
     title: string
@@ -86,7 +101,15 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const [labelWidths, setLabelWidths] = useState<ReadonlyMap<string, number>>(new Map())
     const measureRef = useRef<SVGTextElement>(null)
     const pinnedAgeUps = ageUpMarkers(pinnedMarkers)
-    const labelled = ageUpMarkers(markers)
+    const collapsed = layout?.collapsed ?? false
+    const [hoverKind, setHoverKind] = useState<ChartMarkerKind | null>(null)
+    const [focusKind, setFocusKind] = useState<ChartMarkerKind | null>(null)
+    const liveHover = liveMarkerKind(markers, hoverKind, collapsed)
+    const liveFocus = liveMarkerKind(markers, focusKind, collapsed)
+    if (liveHover !== hoverKind) setHoverKind(liveHover)
+    if (liveFocus !== focusKind) setFocusKind(liveFocus)
+    const active = activeMarkerKind(markers, liveHover, liveFocus)
+    const labelled = labelledMarkers(markers, active)
     const labelKey = labelled.map(markerLabel).join('\n')
 
     useEffect(() => {
@@ -102,7 +125,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
 
     const placed = chartWidth === null ? [] : placeMarkers(labelled, end, plotWidth, (label) => labelWidths.get(label) ?? estimateLabelWidth(label))
     const rows = placed.reduce((max, p) => Math.max(max, p.row + 1), 0)
-    const collapsed = layout?.collapsed ?? false
+    const placedByMarker = new Map(placed.map((p) => [p.marker, p]))
     const bodyId = `${testId}-body`
 
     return (
@@ -176,29 +199,9 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                         data-to={highlight.to}
                                     />
                                 ) : null}
-                                {placed.map(({ marker, side, row, dx }) => (
-                                    <ReferenceLine
-                                        key={`${marker.kind}:${marker.label}:${marker.at}`}
-                                        x={marker.at}
-                                        stroke={MARKER_COLORS[marker.kind]}
-                                        data-testid="chart-marker"
-                                        data-kind={marker.kind}
-                                        data-label={marker.label}
-                                        data-at={marker.at}
-                                        label={{
-                                            value: markerLabel(marker),
-                                            position: side === 'left' ? 'insideTopLeft' : 'insideTopRight',
-                                            fill: MARKER_COLORS[marker.kind],
-                                            fontSize: LABEL_FONT_SIZE,
-                                            offset: 0,
-                                            dx,
-                                            dy: (row - rows) * LABEL_LINE_HEIGHT,
-                                        }}
-                                    />
-                                ))}
-                                {markers
-                                    .filter((marker) => marker.kind !== 'age-up')
-                                    .map((marker) => (
+                                {markers.map((marker) => {
+                                    const place = placedByMarker.get(marker)
+                                    return (
                                         <ReferenceLine
                                             key={`${marker.kind}:${marker.label}:${marker.at}`}
                                             x={marker.at}
@@ -207,10 +210,22 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                             data-kind={marker.kind}
                                             data-label={marker.label}
                                             data-at={marker.at}
+                                            label={
+                                                place && {
+                                                    value: markerLabel(marker),
+                                                    position: place.side === 'left' ? 'insideTopLeft' : 'insideTopRight',
+                                                    fill: MARKER_COLORS[marker.kind],
+                                                    fontSize: LABEL_FONT_SIZE,
+                                                    offset: 0,
+                                                    dx: place.dx,
+                                                    dy: (place.row - rows) * LABEL_LINE_HEIGHT,
+                                                }
+                                            }
                                         >
-                                            <title>{markerLabel(marker)}</title>
+                                            {place ? null : <title>{markerLabel(marker)}</title>}
                                         </ReferenceLine>
-                                    ))}
+                                    )
+                                })}
                                 {pinnedAgeUps.map((marker) => (
                                     <ReferenceLine
                                         key={`pinned:${marker.label}:${marker.at}`}
@@ -232,7 +247,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             hidden={hidden}
                             onToggle={(key) => setHidden((h) => toggleHidden(h, key))}
                         />
-                        <MarkerLegend markers={markers} />
+                        <MarkerLegend markers={markers} active={active} onHover={setHoverKind} onFocusKind={setFocusKind} />
                         {pinnedLegendShown(pinned, hidden, pinnedAgeUps.length) && <PinnedLegend />}
                     </>
                 )}
