@@ -327,7 +327,7 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
                     </button>
                 </div>
             ) : null}
-            {copy === 'failed' && saved !== null && linkVisible ? (
+            {copy === 'failed' && linkVisible ? (
                 <p data-testid="copy-saved-link-hint" className={styles.linkHint}>
                     Could not copy. Select the link and copy it by hand.
                 </p>
