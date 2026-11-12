@@ -48,25 +48,25 @@ interface StoredValue {
 function readStored(storage: Storage): StoredValue | null {
     const raw = storage.getItem(MY_BUILDS_STORAGE_KEY)
     if (raw === null) return null
-    let elements: unknown[] = []
+    let shape: ReturnType<typeof storedShapeSchema.safeParse>
     try {
-        const shape = storedShapeSchema.safeParse(JSON.parse(raw))
-        if (shape.success) elements = shape.data.builds
-        else return { raw, valid: [], intact: false }
+        shape = storedShapeSchema.safeParse(JSON.parse(raw))
     } catch {
         return { raw, valid: [], intact: false }
     }
-    const valid = elements.flatMap((element) => {
+    if (!shape.success) return { raw, valid: [], intact: false }
+    const valid = shape.data.builds.flatMap((element) => {
         const parsed = myBuildEntrySchema.safeParse(element)
         return parsed.success ? [parsed.data] : []
     })
-    return { raw, valid, intact: valid.length === elements.length }
+    return { raw, valid, intact: valid.length === shape.data.builds.length }
 }
+
+const orderedBuilds = (value: StoredValue | null): MyBuildEntry[] => (value === null ? [] : newestFirst(dedupeById(value.valid)))
 
 export function readMyBuilds(storage: Storage): MyBuildEntry[] {
     try {
-        const value = readStored(storage)
-        return value === null ? [] : newestFirst(dedupeById(value.valid))
+        return orderedBuilds(readStored(storage))
     } catch {
         return []
     }
@@ -86,7 +86,7 @@ export function upsertMyBuild(storage: Storage, entry: MyBuildEntry): { builds: 
     try {
         stored = readStored(storage)
     } catch {}
-    const others = stored === null ? [] : newestFirst(dedupeById(stored.valid)).filter((existing) => existing.id !== entry.id)
+    const others = orderedBuilds(stored).filter((existing) => existing.id !== entry.id)
     const builds = newestFirst([entry, ...others]).slice(0, MY_BUILDS_MAX)
     if (stored !== null && !stored.intact && !backUpUnreadable(storage, stored.raw)) return { builds, persisted: false }
     try {
