@@ -51,6 +51,20 @@ export function postFight(request: APIRequestContext, body: Armies | FightBody, 
   return request.post('/api/fight', { data: body, timeout })
 }
 
+// next dev compiles a route on its first request, which can take longer than a simulation.
+export const WARM_UP_TIMEOUT_MS = 60_000
+
+export type Reason = 'resources' | 'villagers' | 'population' | 'prerequisite'
+export type Timing = {
+  step: number
+  status: 'completed' | 'in-progress' | 'waiting' | 'not-reached'
+  armedAt: number | null
+  startedAt: number | null
+  waitSeconds: number
+  waitingOn: Reason | 'trigger' | 'earlier-step' | null
+  waitBreakdown: Partial<Record<Reason, number>>
+}
+
 export const SIMULATE_PATH = '/api/aoe4-build-order/simulate'
 
 // An `inputs.nodeAmounts` that keeps every finite node from running out.
@@ -96,6 +110,23 @@ export async function openCombatSimulator(page: Page) {
     const form = document.getElementById('fight-form')
     return form !== null && Object.getOwnPropertyNames(form).some((name) => name.startsWith('__reactProps$'))
   })
+}
+
+// Clicks Fight! and waits for the 200 response from /api/fight.
+export async function submitFight(page: Page) {
+  const fightResponse = page.waitForResponse((r) => r.url().endsWith('/api/fight') && r.request().method() === 'POST')
+  await page.getByRole('button', { name: 'Fight!' }).click()
+  expect((await fightResponse).status()).toBe(200)
+}
+
+// The point at `fraction` of a chart's plot width, halfway down, in page coordinates.
+export async function plotPoint(page: Page, chartTestId: string, fraction: number) {
+  const chart = page.getByTestId(chartTestId)
+  await chart.scrollIntoViewIfNeeded()
+  return chart.locator('.recharts-cartesian-grid').evaluate((el, at) => {
+    const r = el.getBoundingClientRect()
+    return { x: r.left + r.width * at, y: r.top + r.height / 2 }
+  }, fraction)
 }
 
 export const AOE4_PAGE = '/apps/aoe4-build-order'
@@ -211,6 +242,18 @@ export async function expectInvalidNoRun(page: Page): Promise<void> {
   await expectNoRun(page)
 }
 
+export const TWO_UNKNOWN_IDS = ['start -> sheep', 'produce knigt from stable', 'produce spearmn from barracks'].join('\n')
+
+// Types TWO_UNKNOWN_IDS into the editor and expects its two issues, on lines 2 and 3, and no run.
+export async function fillTwoUnknownIds(page: Page): Promise<void> {
+  await page.getByTestId('build-order-text').fill(TWO_UNKNOWN_IDS)
+  await expectInvalidNoRun(page)
+  const issues = page.getByTestId('build-order-issue')
+  await expect(issues).toHaveCount(2)
+  await expect(issues.nth(0)).toHaveAttribute('data-line', '2')
+  await expect(issues.nth(1)).toHaveAttribute('data-line', '3')
+}
+
 export const INVALID_PASTE = ['start -> sheep', 'at 8 vils fly capital-town-center'].join('\n')
 
 // The one issue INVALID_PASTE (`at 8 vils fly ...` on line 2) must produce, and no server error list.
@@ -247,6 +290,10 @@ export function postBuild(request: APIRequestContext, body: unknown, client: str
 }
 
 export const NAMED_BUILDS_PATH = '/api/aoe4-build-order/named-builds'
+const SAVE_START = { villagers: { sheep: 6 }, rally: 'sheep' }
+const SAVE_STEPS = [{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 2 }]
+export const saveBody = (name: string) => ({ buildOrder: { civ: 'english', name, start: SAVE_START, steps: SAVE_STEPS }, durationSeconds: 300 })
+
 export const namedBuildUrl = (id: string) => `${NAMED_BUILDS_PATH}/${id}`
 
 export function postNamedBuild(request: APIRequestContext, body: unknown, client: string, timeout = 10_000) {

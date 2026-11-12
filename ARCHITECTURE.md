@@ -43,9 +43,12 @@ This file says where things go. It does not list every file; use `git ls-files` 
 - **Every simulation is bounded.** Every numeric input and every iteration count has a maximum that is
   checked before the work starts.
 - **Game rules live in the design doc.** A change to an app's rules updates `docs/<app>.md` in the same PR.
-- **The AoE4 build order is checked for copied code.** `npm run lint:dup` (config `.jscpd.json`) fails on
-  any duplicated block of at least 8 lines and 70 tokens in its lib, components or API route; shared test
-  helpers live in `lib/aoe4-build-order/test-helpers.ts`.
+- **The AoE4 build order is checked for copied code.** `npm run lint:dup` runs two jscpd configs and fails
+  if either finds a clone. `.jscpd.json` checks the AoE4 lib, components, API route and `acceptance/` for
+  blocks of at least 8 lines and 70 tokens. `.jscpd.tests.json` checks the same paths, limited to test files
+  and test helpers, for blocks of at least 5 lines and 70 tokens. Shared test helpers live in
+  `lib/aoe4-build-order/test-helpers.ts`, `components/apps/aoe4-build-order/storage-test-helpers.ts`,
+  `components/apps/aoe4-build-order/fetch-test-helpers.ts` and `acceptance/helpers.ts`.
 
 ## Adding an app
 

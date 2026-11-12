@@ -28,3 +28,27 @@ export const PRODUCTION_FLOORS: Record<string, ProductionFloor> = {
 };
 
 export const MAX_FLOATING_AT_1200 = 2000;
+
+export type FloorCheck = [label: string, actual: number, bound: number];
+
+export interface FloorSampleSource {
+  gatherRates: { food: number[] };
+  floating: Record<'food' | 'wood' | 'gold' | 'stone', number[]>;
+}
+
+// Each runner asserts atLeast with toBeGreaterThanOrEqual and atMost with toBeLessThanOrEqual.
+export function productionChecks(
+  floors: ProductionFloor,
+  result: FloorSampleSource,
+  sample: number,
+  countOf: (unit: string) => number,
+): { atLeast: FloorCheck[]; atMost: FloorCheck[] } {
+  const units = Object.entries({ villager: floors.villager, ...floors.military });
+  return {
+    atLeast: [
+      ...units.map(([unit, floor]): FloorCheck => [unit, countOf(unit), floor]),
+      ['food per minute', result.gatherRates.food[sample], floors.foodPerMinute],
+    ],
+    atMost: (['food', 'wood', 'gold', 'stone'] as const).map((resource): FloorCheck => [`floating ${resource}`, result.floating[resource][sample], MAX_FLOATING_AT_1200]),
+  };
+}

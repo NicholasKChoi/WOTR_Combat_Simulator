@@ -1,15 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { DEFAULT_ARMIES, fillArmies, openCombatSimulator } from './helpers'
+import { DEFAULT_ARMIES, fillArmies, openCombatSimulator, submitFight } from './helpers'
 
 test('submitting the form fights and renders results', async ({ page }) => {
   await openCombatSimulator(page)
   await fillArmies(page, DEFAULT_ARMIES)
 
-  const fightResponse = page.waitForResponse(
-    (r) => r.url().endsWith('/api/fight') && r.request().method() === 'POST'
-  )
-  await page.getByRole('button', { name: 'Fight!' }).click()
-  expect((await fightResponse).status()).toBe(200)
+  await submitFight(page)
 
   await expect(page.getByRole('heading', { name: 'Army Results', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Fighting Stats', exact: true })).toBeVisible()

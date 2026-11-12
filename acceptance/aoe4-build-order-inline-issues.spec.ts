@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
-import { AOE4_PAGE, INVALID_PASTE, SIMULATE_PATH, expectFlySyntaxIssue, expectInvalidNoRun, openPage, showTab, showView, waitForRun } from './helpers'
+import { AOE4_PAGE, INVALID_PASTE, SIMULATE_PATH, TWO_UNKNOWN_IDS, expectFlySyntaxIssue, expectInvalidNoRun, fillTwoUnknownIds, openPage, showTab, showView, waitForRun } from './helpers'
 
 const textarea = (page: Page) => page.getByTestId('build-order-text')
 const gutterItem = (page: Page, line: number) => page.locator(`[data-testid="build-order-line-number"][data-line="${line}"]`)
@@ -8,7 +8,6 @@ const issues = (page: Page) => page.getByTestId('build-order-issue')
 
 const UNKNOWN_ID_PASTE = ['start -> sheep', 'produce knigt from stable'].join('\n')
 const VALID_PASTE = ['start -> sheep', 'produce knight from stable'].join('\n')
-const TWO_UNKNOWN_IDS = ['start -> sheep', 'produce knigt from stable', 'produce spearmn from barracks'].join('\n')
 const SYNTAX_AND_UNKNOWN_ID_PASTE = ['start -> sheep', 'produce knigt from stable', 'build hous'].join('\n')
 const FIXED_LINE_THREE_PASTE = ['start -> sheep', 'produce knigt from stable', 'produce villager from capital-town-center x3 -> sheep'].join('\n')
 const summary = (page: Page) => page.getByTestId('build-order-issues-summary')
@@ -119,11 +118,7 @@ test.describe('AoE4 build order live issues', () => {
 
   test('every issue is listed in line order and marks its gutter line', async ({ page }) => {
     await openPage(page)
-    await textarea(page).fill(TWO_UNKNOWN_IDS)
-    await expectInvalidNoRun(page)
-    await expect(issues(page)).toHaveCount(2)
-    await expect(issues(page).nth(0)).toHaveAttribute('data-line', '2')
-    await expect(issues(page).nth(1)).toHaveAttribute('data-line', '3')
+    await fillTwoUnknownIds(page)
     await expect(page.locator('[data-testid="build-order-line-number"][data-error="true"]')).toHaveCount(2)
     await expect(gutterItem(page, 1)).not.toHaveAttribute('data-error', /.*/)
   })

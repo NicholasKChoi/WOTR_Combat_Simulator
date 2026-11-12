@@ -1,20 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MY_BUILDS_MAX, MY_BUILDS_STORAGE_KEY, myBuildsAvailable, readMyBuilds, upsertMyBuild, type MyBuildEntry } from './my-builds-storage'
-
-function fakeStorage(initial?: string): Storage & { keys(): string[] } {
-    const map = new Map<string, string>(initial === undefined ? [] : [[MY_BUILDS_STORAGE_KEY, initial]])
-    return {
-        getItem: (key: string) => map.get(key) ?? null,
-        setItem: (key: string, value: string) => void map.set(key, value),
-        removeItem: (key: string) => void map.delete(key),
-        keys: () => [...map.keys()],
-    } as unknown as Storage & { keys(): string[] }
-}
-
-const throwing = (): never => {
-    throw new Error('blocked')
-}
-const throwingStorage = { getItem: throwing, setItem: throwing, removeItem: throwing } as unknown as Storage
+import { fakeStorage, throwingStorage } from './storage-test-helpers'
 
 const id = (n: number): string => `${n}`.padStart(22, 'a')
 const SECRET = 'S'.repeat(43)
@@ -29,32 +15,32 @@ const ids = (builds: readonly MyBuildEntry[]): string[] => builds.map((build) =>
 describe('readMyBuilds', () => {
     it('reads back a valid value with the stored fields', () => {
         const one = entry(1, '2026-11-10T18:00:00Z')
-        expect(readMyBuilds(fakeStorage(stored([one])))).toEqual([one])
+        expect(readMyBuilds(fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([one]) }))).toEqual([one])
     })
 
     it('sorts by parsed instant, newest first', () => {
         const earlier = entry(1, '2026-11-10T18:00:00Z')
         const later = entry(2, '2026-11-10T18:00:00.500Z')
         const newest = entry(3, '2026-11-11T00:00:00Z')
-        expect(ids(readMyBuilds(fakeStorage(stored([earlier, later, newest]))))).toEqual([id(3), id(2), id(1)])
+        expect(ids(readMyBuilds(fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([earlier, later, newest]) })))).toEqual([id(3), id(2), id(1)])
     })
 
     it('keeps the later updatedAt for a duplicate id', () => {
         const old = entry(1, '2026-11-10T10:00:00Z', { revision: 1 })
         const fresh = entry(1, '2026-11-10T12:00:00Z', { revision: 2 })
-        expect(readMyBuilds(fakeStorage(stored([fresh, old])))).toEqual([fresh])
-        expect(readMyBuilds(fakeStorage(stored([old, fresh])))).toEqual([fresh])
+        expect(readMyBuilds(fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([fresh, old]) }))).toEqual([fresh])
+        expect(readMyBuilds(fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([old, fresh]) }))).toEqual([fresh])
     })
 
     it('keeps the earlier stored element for a duplicate id with equal updatedAt', () => {
         const first = entry(1, '2026-11-10T10:00:00Z', { revision: 1 })
         const second = entry(1, '2026-11-10T10:00:00Z', { revision: 2 })
-        expect(readMyBuilds(fakeStorage(stored([first, second])))).toEqual([first])
+        expect(readMyBuilds(fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([first, second]) }))).toEqual([first])
     })
 
     it('keeps the stored order for distinct ids with equal updatedAt', () => {
         const at = '2026-11-10T10:00:00Z'
-        expect(ids(readMyBuilds(fakeStorage(stored([entry(2, at), entry(1, at), entry(3, at)]))))).toEqual([id(2), id(1), id(3)])
+        expect(ids(readMyBuilds(fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([entry(2, at), entry(1, at), entry(3, at)]) })))).toEqual([id(2), id(1), id(3)])
     })
 
     it('drops only the invalid elements', () => {
@@ -71,7 +57,7 @@ describe('readMyBuilds', () => {
             null,
         ]
         const edge = entry(9, at, { name: 'n'.repeat(100) })
-        expect(readMyBuilds(fakeStorage(stored([bad[0], good, ...bad.slice(1), edge])))).toEqual([good, edge])
+        expect(readMyBuilds(fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([bad[0], good, ...bad.slice(1), edge]) }))).toEqual([good, edge])
     })
 
     it.each([
@@ -80,7 +66,7 @@ describe('readMyBuilds', () => {
         ['a missing builds list', '{"version":1}'],
         ['null', 'null'],
     ])('returns [] and removes the key for %s', (_label, raw) => {
-        const storage = fakeStorage(raw)
+        const storage = fakeStorage({ [MY_BUILDS_STORAGE_KEY]: raw })
         expect(readMyBuilds(storage)).toEqual([])
         expect(storage.getItem(MY_BUILDS_STORAGE_KEY)).toBeNull()
     })
@@ -101,7 +87,7 @@ describe('upsertMyBuild', () => {
 
     it('replaces an existing id', () => {
         const other = entry(2, '2026-11-10T09:00:00Z')
-        const storage = fakeStorage(stored([entry(1, '2026-11-10T10:00:00Z'), other]))
+        const storage = fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([entry(1, '2026-11-10T10:00:00Z'), other]) })
         const next = entry(1, '2026-11-10T11:00:00Z', { revision: 2 })
         expect(upsertMyBuild(storage, next).builds).toEqual([next, other])
         expect(readMyBuilds(storage)).toEqual([next, other])
@@ -110,7 +96,7 @@ describe('upsertMyBuild', () => {
     it('caps the list and evicts the oldest entry', () => {
         const base = Date.parse('2026-11-10T00:00:00Z')
         const full = Array.from({ length: MY_BUILDS_MAX }, (_, n) => entry(n + 1, new Date(base + n * 1000).toISOString()))
-        const storage = fakeStorage(stored(full))
+        const storage = fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored(full) })
         const added = entry(99, new Date(base + MY_BUILDS_MAX * 1000).toISOString())
         const { builds } = upsertMyBuild(storage, added)
         expect(builds).toHaveLength(MY_BUILDS_MAX)
@@ -121,7 +107,7 @@ describe('upsertMyBuild', () => {
 
     it('reports persisted false and still returns the new list when setItem throws', () => {
         const one = entry(1, '2026-11-10T10:00:00Z')
-        const storage = { getItem: () => null, setItem: throwing, removeItem: throwing } as unknown as Storage
+        const storage = Object.assign(fakeStorage(), { setItem: throwingStorage.setItem, removeItem: throwingStorage.removeItem })
         expect(upsertMyBuild(storage, one)).toEqual({ builds: [one], persisted: false })
     })
 
@@ -139,7 +125,7 @@ describe('myBuildsAvailable', () => {
     })
 
     it('is true for working storage and leaves the stored list and no extra key', () => {
-        const storage = fakeStorage(stored([entry(1, '2026-11-10T10:00:00Z')]))
+        const storage = fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([entry(1, '2026-11-10T10:00:00Z')]) })
         const before = storage.getItem(MY_BUILDS_STORAGE_KEY)
         expect(myBuildsAvailable(storage)).toBe(true)
         expect(storage.getItem(MY_BUILDS_STORAGE_KEY)).toBe(before)
@@ -147,9 +133,9 @@ describe('myBuildsAvailable', () => {
     })
 
     it.each([
-        ['setItem', { getItem: () => null, setItem: throwing, removeItem: () => undefined }],
-        ['removeItem', { getItem: () => null, setItem: () => undefined, removeItem: throwing }],
-    ])('is false when %s throws', (_label, storage) => {
-        expect(myBuildsAvailable(storage as unknown as Storage)).toBe(false)
+        ['setItem', { setItem: throwingStorage.setItem }],
+        ['removeItem', { removeItem: throwingStorage.removeItem }],
+    ])('is false when %s throws', (_label, throwingMember) => {
+        expect(myBuildsAvailable(Object.assign(fakeStorage(), throwingMember))).toBe(false)
     })
 })

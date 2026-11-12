@@ -1,9 +1,7 @@
 import { test, expect } from '@playwright/test'
 import spearLongbow from '../data/aoe4-build-order/builds/english-spear-longbow-maa-crossbow.json'
-import { postSimulate } from './helpers'
+import { WARM_UP_TIMEOUT_MS, simulateOk } from './helpers'
 
-// next dev compiles the route on its first request, which can take longer than a simulation.
-const WARM_UP_TIMEOUT_MS = 60_000
 const GOLD_NODES = ['gold', 'gold#2', 'gold#3']
 
 type Result = {
@@ -13,11 +11,8 @@ type Result = {
 
 test.describe.configure({ timeout: 60_000 })
 
-async function simulate(request: Parameters<typeof postSimulate>[0], durationSeconds: number, timeout?: number): Promise<Result> {
-  const response = await postSimulate(request, { buildOrder: spearLongbow, inputs: { durationSeconds } }, timeout)
-  expect(response.status(), await response.text()).toBe(200)
-  return response.json()
-}
+const simulate = (request: Parameters<typeof simulateOk>[0], durationSeconds: number, timeout?: number) =>
+  simulateOk<Result>(request, spearLongbow, durationSeconds, timeout)
 
 test.beforeAll(async ({ request }) => {
   await simulate(request, 60, WARM_UP_TIMEOUT_MS)

@@ -30,13 +30,15 @@ async function okBody(request: Parameters<typeof postSimulate>[0], body: unknown
   return response.json()
 }
 
-async function issuesOf(request: Parameters<typeof postSimulate>[0], body: unknown) {
+async function rejected(request: Parameters<typeof postSimulate>[0], body: unknown) {
   const response = await postSimulate(request, body)
   expect(response.status(), await response.text()).toBe(400)
   const json = await response.json()
   expect(json.error).toBe(json.issues[0].message)
-  return json.issues as { code: string; message: string; step?: number; line?: number }[]
+  return json as { error: string; issues: { code: string; message: string; step?: number; line?: number }[]; omittedIssues?: number }
 }
+
+const issuesOf = async (request: Parameters<typeof postSimulate>[0], body: unknown) => (await rejected(request, body)).issues
 
 test.describe('result shape', () => {
   test('a research step returns a timing for each step and a note for an unmodelled effect', async ({ request }) => {
@@ -190,14 +192,6 @@ test.describe('issue cap', () => {
   const order = (steps: unknown[]) => ({ civ: 'english', name: 'Test', start: START, steps })
   const unknownBuildings = (count: number) =>
     Object.fromEntries(Array.from({ length: count }, (_, i) => [`no-such-building-${i + 1}`, 1]))
-
-  async function rejected(request: Parameters<typeof postSimulate>[0], body: unknown) {
-    const response = await postSimulate(request, body)
-    expect(response.status(), await response.text()).toBe(400)
-    const json = await response.json()
-    expect(json.error).toBe(json.issues[0].message)
-    return json as { error: string; issues: { code: string; message: string; step?: number }[]; omittedIssues?: number }
-  }
 
   for (const count of [99, 100]) {
     test(`${count} issues are all listed with no omittedIssues key`, async ({ request }) => {

@@ -1,8 +1,6 @@
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import { test, expect, type APIRequestContext } from '@playwright/test'
-import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020'
 import { DEFAULT_ARMIES, postFight, type FightBody } from './helpers'
+import { expectInvalid, expectValid, schemas, spec } from './openapi-schemas'
 import { OUTCOME_KINDS } from '../lib/combat-simulator/battle'
 import type {
   FightError,
@@ -22,31 +20,9 @@ const WARM_UP_TIMEOUT_MS = 60_000
 
 test.describe.configure({ timeout: 60_000 })
 
-const spec = JSON.parse(readFileSync(join(__dirname, '..', 'docs', 'api', 'openapi.json'), 'utf8'))
-const schemas = spec.components.schemas
 const operation = spec.paths['/api/fight'].post
 const requestExample = operation.requestBody.content['application/json'].example
 const okExample = operation.responses['200'].content['application/json'].example
-
-const ajv = new Ajv2020({ strict: false })
-ajv.addSchema(spec, 'openapi.json')
-
-function validator(name: string): ValidateFunction {
-  const validate = ajv.getSchema(`openapi.json#/components/schemas/${name}`)
-  if (!validate) {
-    throw new Error(`no schema ${name} in docs/api/openapi.json`)
-  }
-  return validate
-}
-
-function expectValid(name: string, data: unknown) {
-  const validate = validator(name)
-  expect(validate(data), JSON.stringify(validate.errors)).toBe(true)
-}
-
-function expectInvalid(name: string, data: unknown) {
-  expect(validator(name)(data)).toBe(false)
-}
 
 function referencedSchemas(node: unknown, found = new Set<string>()): Set<string> {
   if (!node || typeof node !== 'object') return found

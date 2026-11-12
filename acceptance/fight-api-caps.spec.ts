@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
-import { armies, fillArmies, postFight, openCombatSimulator } from './helpers'
+import { armies, fillArmies, postFight, openCombatSimulator, submitFight } from './helpers'
 
 const MAX_HITS_PER_SIDE_PER_ROUND = 5
 const BATTLES = 1000
@@ -118,11 +118,7 @@ test('repeated fights start from fresh armies each time', async ({ request }) =>
 test('Fight! with 10/0/5 vs 0/10/5 renders the Army Results table', async ({ page }) => {
   await openCombatSimulator(page)
   await fillArmies(page, armies([10, 0, 5], [0, 10, 5]))
-  const fightResponse = page.waitForResponse(
-    (r) => r.url().endsWith('/api/fight') && r.request().method() === 'POST'
-  )
-  await page.getByRole('button', { name: 'Fight!' }).click()
-  expect((await fightResponse).status()).toBe(200)
+  await submitFight(page)
   await expect(page.getByRole('heading', { name: 'Army Results', exact: true })).toBeVisible()
   await expect(page.locator('table').first()).toBeVisible()
 })

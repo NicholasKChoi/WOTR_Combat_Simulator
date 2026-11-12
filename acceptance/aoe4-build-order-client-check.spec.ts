@@ -1,11 +1,10 @@
 import { test, expect, type Page } from '@playwright/test'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
-import { AOE4_PAGE, SIMULATE_PATH, buildOrderFrom, expectInvalidNoRun, openPage, showView, waitForRun } from './helpers'
+import { AOE4_PAGE, SIMULATE_PATH, TWO_UNKNOWN_IDS, buildOrderFrom, expectInvalidNoRun, fillTwoUnknownIds, openPage, showView, waitForRun } from './helpers'
 
 const textarea = (page: Page) => page.getByTestId('build-order-text')
 const issues = (page: Page) => page.getByTestId('build-order-issue')
 
-const TWO_UNKNOWN_IDS = ['start -> sheep', 'produce knigt from stable', 'produce spearmn from barracks'].join('\n')
 
 async function expectPostedChecked(page: Page, action: () => Promise<unknown>, readText = () => textarea(page).inputValue()) {
   const response = await waitForRun(page, action)
@@ -51,13 +50,9 @@ test.describe('AoE4 build order page checks the paste before posting', () => {
 
   test('every client issue carries its code and line, in order, and the next valid run removes them', async ({ page }) => {
     await openPage(page)
-    await textarea(page).fill(TWO_UNKNOWN_IDS)
-    await expectInvalidNoRun(page)
-    await expect(issues(page)).toHaveCount(2)
-    await expect(issues(page).nth(0)).toHaveAttribute('data-line', '2')
+    await fillTwoUnknownIds(page)
     await expect(issues(page).nth(0)).toHaveAttribute('data-code', 'unknown-id')
     await expect(issues(page).nth(0)).toContainText('knigt')
-    await expect(issues(page).nth(1)).toHaveAttribute('data-line', '3')
     await expect(issues(page).nth(1)).toHaveAttribute('data-code', 'unknown-id')
     await expect(issues(page).nth(1)).toContainText('spearmn')
 

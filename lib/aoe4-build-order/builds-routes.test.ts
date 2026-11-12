@@ -3,7 +3,7 @@ import { sendReply } from './api-route'
 import { listBuilds } from './builds'
 import { buildStoreFromEnv, createMemoryBuildStore, type BuildStore } from './build-store'
 import { saveBuildReply, savedBuildReply } from './builds-routes'
-import { recordingTarget } from './route-test-support'
+import { INVALID_SAVE_BODIES, bigSource, getterFor, recordingTarget, rejectingGetter, withBroken } from './route-test-support'
 import { SAVE_RATE_LIMIT } from './save-rate-limit'
 import { SAVED_BUILD_MAX_BYTES, checkSaveBuildRequest, savedBuildId, savedBuildPath } from './saved-builds'
 import { buildOrderCatalog } from './schema'
@@ -21,10 +21,6 @@ const ID = 'AbCdEfGhIjK'
 afterEach(() => {
     vi.restoreAllMocks()
 })
-
-const getterFor = (store: BuildStore) => vi.fn(() => Promise.resolve(store))
-const rejectingGetter = () => vi.fn(() => Promise.reject(new Error('no blob')))
-const withBroken = (store: BuildStore, broken: Partial<BuildStore>): BuildStore => ({ ...store, ...broken })
 
 const failClosedGetter = () => vi.fn(() => buildStoreFromEnv({ VERCEL: '1' } as Record<string, string> as NodeJS.ProcessEnv))
 
@@ -68,15 +64,7 @@ describe('saveBuildReply, before any store call', () => {
         expect(store).not.toHaveBeenCalled()
     })
 
-    const tooLong = { ...firstBuild, name: 'n'.repeat(101) }
-    const bigSource = { ...firstBuild, source: '€'.repeat(30_000) }
-    it.each([
-        ['an array body', [], 400],
-        ['an unknown unit id', { buildOrder: { ...firstBuild, steps: [{ action: 'produce', producer: 'capital-town-center', unit: 'knigt' }] }, durationSeconds: 600 }, 400],
-        ['a duration of 59', { ...VALID, durationSeconds: 59 }, 400],
-        ['a name of 101 characters', { buildOrder: tooLong, durationSeconds: 600 }, 400],
-        ['a record over the byte cap', { buildOrder: bigSource, durationSeconds: 600 }, 413],
-    ])('answers %s with the check error, calling no store and spending no slot', async (_label, body, status) => {
+    it.each(INVALID_SAVE_BODIES)('answers %s with the check error, calling no store and spending no slot', async (_label, body, status) => {
         const checked = checkSaveBuildRequest(body, catalog)
         if (checked.ok) throw new Error('expected the body to be refused')
         const store = createMemoryBuildStore()

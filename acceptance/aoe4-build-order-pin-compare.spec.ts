@@ -381,6 +381,12 @@ test.describe('AoE4 build order pin and compare', () => {
 const PIN_KEY = 'aoe4-build-order.pinned-run'
 const BUILDS = listBuilds().map((b) => ({ name: b.name, text: formatBuildOrderText(b) }))
 const label = (page: Page) => page.getByTestId('pinned-label')
+
+async function pinAndExpectLabel(page: Page, name: string) {
+  await pin(page)
+  await expect(label(page)).toHaveText(`Pinned: ${name}, 20:00`)
+}
+
 const storedPin = (page: Page) => page.evaluate((key) => window.localStorage.getItem(key), PIN_KEY)
 const storePin = (page: Page, value: unknown) =>
   page.evaluate(([key, raw]) => window.localStorage.setItem(key, raw), [PIN_KEY, typeof value === 'string' ? value : JSON.stringify(value)])
@@ -448,26 +454,22 @@ test.describe('AoE4 build order pin persistence and label', () => {
     expect(BUILDS.length).toBeGreaterThan(1)
     await openPage(page)
     await showTab(page, 'results')
-    await pin(page)
-    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+    await pinAndExpectLabel(page, BUILDS[0].name)
 
     await page.getByTestId('unpin-run').click()
     await runOk(page, { text: NO_MILITARY_PASTE })
-    await pin(page)
-    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name} (edited), 20:00`)
+    await pinAndExpectLabel(page, `${BUILDS[0].name} (edited)`)
 
     await page.getByTestId('unpin-run').click()
     await showTab(page, 'build')
     page.once('dialog', (dialog) => dialog.accept())
     await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ index: 1 }))
     await runOk(page, { text: DEFAULT_PASTE })
-    await pin(page)
-    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+    await pinAndExpectLabel(page, BUILDS[0].name)
 
     await page.getByTestId('unpin-run').click()
     await runOk(page, { text: NO_MILITARY_PASTE })
-    await pin(page)
-    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[1].name} (edited), 20:00`)
+    await pinAndExpectLabel(page, `${BUILDS[1].name} (edited)`)
 
     await runOk(page, { text: DEFAULT_PASTE })
     await expect(label(page)).toHaveText(`Pinned: ${BUILDS[1].name} (edited), 20:00`)
@@ -658,8 +660,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
     })
     await openPage(page)
     await showTab(page, 'results')
-    await pin(page)
-    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+    await pinAndExpectLabel(page, BUILDS[0].name)
     await expect(page.getByTestId('simulation-error')).toHaveCount(0)
 
     await page.reload()
@@ -758,8 +759,7 @@ test.describe('AoE4 build order pin persistence and label', () => {
     })
     await openPage(page)
     await showTab(page, 'results')
-    await pin(page)
-    await expect(label(page)).toHaveText(`Pinned: ${BUILDS[0].name}, 20:00`)
+    await pinAndExpectLabel(page, BUILDS[0].name)
     await page.getByTestId('unpin-run').click()
     await expect(label(page)).toHaveCount(0)
     await expect(page.getByTestId('simulation-error')).toHaveCount(0)

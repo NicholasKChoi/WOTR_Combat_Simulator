@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
-import { expect } from '@playwright/test'
+import { expect, type APIResponse } from '@playwright/test'
 import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020'
 
 export const spec = JSON.parse(readFileSync(join(__dirname, '..', 'docs', 'api', 'openapi.json'), 'utf8'))
@@ -30,4 +30,31 @@ export function expectValid(name: string, data: unknown) {
 
 export function expectInvalid(name: string, data: unknown) {
   expect(validator(name)(data)).toBe(false)
+}
+
+export const keys = (value: object) => Object.keys(value).sort()
+
+export type Examples = Record<string, { value: any }>
+
+export const examples = (operation: any, status: string): Examples => operation.responses[status].content['application/json'].examples
+
+export async function expectBody(response: APIResponse, status: number, example: { value: unknown }) {
+  expect(response.status(), await response.text()).toBe(status)
+  expect(await response.json()).toEqual(example.value)
+}
+
+// Every component schema name that a path or another schema points to with a $ref.
+export function referencedSchemaNames(): Set<string> {
+  const referenced = new Set<string>()
+  const walk = (node: unknown, owner: string | null) => {
+    if (!node || typeof node !== 'object') return
+    for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+      const target = key === '$ref' && typeof value === 'string' ? value.replace('#/components/schemas/', '') : null
+      if (target !== null && target !== owner) referenced.add(target)
+      walk(value, owner)
+    }
+  }
+  walk(spec.paths, null)
+  for (const [name, schema] of Object.entries(schemas)) walk(schema, name)
+  return referenced
 }

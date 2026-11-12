@@ -1,13 +1,9 @@
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import { test, expect } from '@playwright/test'
 import { DEFAULT_ARMIES, postFight, type FightBody } from './helpers'
-import { routeFilePaths } from './openapi-schemas'
+import { referencedSchemaNames, routeFilePaths, schemas, spec } from './openapi-schemas'
 
 const TIMEOUT = { timeout: 10_000 }
 
-const spec = JSON.parse(readFileSync(join(__dirname, '..', 'docs', 'api', 'openapi.json'), 'utf8'))
-const schemas = spec.components.schemas
 const FIGHT_SCHEMA_NAMES = [
   'ArmyCount',
   'FightError',
@@ -99,17 +95,7 @@ test.describe('spec file shape', () => {
   })
 
   test('references every schema from a path or another schema', () => {
-    const referenced = new Set<string>()
-    const walk = (node: unknown, owner: string | null) => {
-      if (!node || typeof node !== 'object') return
-      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
-        const target = key === '$ref' && typeof value === 'string' ? value.replace('#/components/schemas/', '') : null
-        if (target !== null && target !== owner) referenced.add(target)
-        walk(value, owner)
-      }
-    }
-    walk(spec.paths, null)
-    for (const [name, schema] of Object.entries(schemas)) walk(schema, name)
+    const referenced = referencedSchemaNames()
     expect(Object.keys(schemas).filter((name) => !referenced.has(name)).sort()).toEqual([])
   })
 

@@ -55,6 +55,18 @@ async function openText(page: Page, text: string): Promise<SimulationResult> {
   return (await response.json()) as SimulationResult
 }
 
+async function caretThenHoverThenLeave(page: Page): Promise<SimulationResult> {
+  const result = await openText(page, MIXED_BUILD)
+  await textarea(page).focus()
+  await clickLine(page, LINE_OF.spanning)
+  await expectBandEverywhere(page, result.steps[1])
+  await gutter(page, LINE_OF.instant).hover()
+  await expectBandEverywhere(page, result.steps[0])
+  await page.mouse.move(0, 0)
+  await expectNoBands(page)
+  return result
+}
+
 function expectStatus(result: SimulationResult, step: number, status: StepTiming['status']) {
   expect(result.steps[step].status).toBe(status)
 }
@@ -275,30 +287,13 @@ test.describe('AoE4 compact view in the Text tab', () => {
   })
 
   test('the last event wins between the caret and the gutter hover', async ({ page }) => {
-    const result = await openText(page, MIXED_BUILD)
-    await textarea(page).focus()
-    await clickLine(page, LINE_OF.spanning)
-    await expectBandEverywhere(page, result.steps[1])
-
-    await gutter(page, LINE_OF.instant).hover()
-    await expectBandEverywhere(page, result.steps[0])
-    await page.mouse.move(0, 0)
-    await expectNoBands(page)
-
+    const result = await caretThenHoverThenLeave(page)
     await page.keyboard.press('ArrowRight')
     await expectBandEverywhere(page, result.steps[1])
   })
 
   test('a key release that leaves the caret in place re-shades the caret line after a hover left', async ({ page }) => {
-    const result = await openText(page, MIXED_BUILD)
-    await textarea(page).focus()
-    await clickLine(page, LINE_OF.spanning)
-    await expectBandEverywhere(page, result.steps[1])
-    await gutter(page, LINE_OF.instant).hover()
-    await expectBandEverywhere(page, result.steps[0])
-    await page.mouse.move(0, 0)
-    await expectNoBands(page)
-
+    const result = await caretThenHoverThenLeave(page)
     await page.keyboard.press('Shift')
     await expectBandEverywhere(page, result.steps[1])
   })

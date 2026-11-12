@@ -10,27 +10,9 @@ import {
     toggleChartCollapsed,
     writeChartLayout,
 } from './chart-layout'
+import { fakeStorage, throwingStorage } from './storage-test-helpers'
 
 const [units, rates, gathered, floating] = RESULT_CHART_IDS
-
-function fakeStorage(initial?: string): Storage {
-    const data: Record<string, string> = initial === undefined ? {} : { [CHART_LAYOUT_STORAGE_KEY]: initial }
-    return {
-        getItem: (key: string) => data[key] ?? null,
-        setItem: (key: string, value: string) => {
-            data[key] = value
-        },
-    } as Storage
-}
-
-const throwingStorage = {
-    getItem: () => {
-        throw new Error('blocked')
-    },
-    setItem: () => {
-        throw new Error('blocked')
-    },
-} as unknown as Storage
 
 const custom: ChartLayout = { version: 1, order: [floating, units, rates, gathered], collapsed: [rates, floating] }
 
@@ -124,13 +106,13 @@ describe('chart layout storage', () => {
 
     it('normalises a stored layout that misses an id', () => {
         const raw = JSON.stringify({ version: 1, order: [rates, units, gathered], collapsed: [] })
-        expect(readChartLayout(fakeStorage(raw)).order).toEqual([rates, units, gathered, floating])
+        expect(readChartLayout(fakeStorage({ [CHART_LAYOUT_STORAGE_KEY]: raw })).order).toEqual([rates, units, gathered, floating])
     })
 
     it.each([
         ['a null storage', null],
         ['a getItem that throws', throwingStorage],
-        ['a non-JSON value', fakeStorage('{nope')],
+        ['a non-JSON value', fakeStorage({ [CHART_LAYOUT_STORAGE_KEY]: '{nope' })],
     ])('reads the default for %s', (_label, storage) => {
         expect(readChartLayout(storage)).toEqual(DEFAULT_CHART_LAYOUT)
     })
