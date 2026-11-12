@@ -16,6 +16,7 @@ import {
   copyName,
   copySubmit,
   type Created,
+  editedCopy,
   gatedTest,
   type Gate,
   holdNextSimulate,
@@ -530,15 +531,6 @@ async function saveVersion(page: Page) {
   await saveButton(page).click()
   const response = await responded
   return { request: response.request(), status: response.status(), body: (await response.json()) as Created }
-}
-
-async function editedCopy(page: Page, name = 'My copy'): Promise<Created> {
-  await openPage(page)
-  const { created } = await saveCopy(page, name)
-  await expect(savedLink(page)).toBeVisible()
-  await waitForRun(page, () => textarea(page).fill(VALID_A))
-  await expect(saveButton(page)).toBeEnabled()
-  return created
 }
 
 async function holdCopy(page: Page, name: string): Promise<{ release: () => void; posts: Request[] }> {

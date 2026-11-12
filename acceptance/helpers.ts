@@ -358,6 +358,18 @@ export async function saveCopy(page: Page, name?: string): Promise<{ request: Re
   return { request: response.request(), created: (await response.json()) as Created }
 }
 
+export const EDITED_COPY_TEXT = ['start -> sheep', 'produce knight from stable'].join('\n')
+
+// Opens the page, saves a copy, then edits the text so the run settles and Save a new version is enabled.
+export async function editedCopy(page: Page, name = 'My copy', text = EDITED_COPY_TEXT): Promise<Created> {
+  await openPage(page)
+  const { created } = await saveCopy(page, name)
+  await expect(page.getByTestId('saved-build-link')).toBeVisible()
+  await waitForRun(page, () => page.getByTestId('build-order-text').fill(text))
+  await expect(page.getByTestId('save-build')).toBeEnabled()
+  return created
+}
+
 // Init scripts that make the clipboard refuse a write: a rejecting `writeText` and no clipboard at all.
 export const REFUSED_CLIPBOARDS = [
   {
