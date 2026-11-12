@@ -22,21 +22,20 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q60
+next: Q61
 
-## Q59: SGS-130: how should bumpCounter handle the landed-write check (it lets parallel saves beat the rate limit)?
-kind: decision
+## Q60: Run the SGS-130 live Blob test on PR #142 and send back the logged error class
+kind: repro
 blocks: SGS-130 (Blob store retry cap, landed write, live test), SGS-131 (My builds: no wipe on bad value, backup), SGS-134 (Chart layout model and key-results collapse), SGS-136 (Simulator emits production buildings, OpenAPI 2.6.0), SGS-140 (Compact text-editor mode below 48rem)
-options: A) Drop the read-back check from bumpCounter only: a lost response to a landed write costs at most one extra count (safe side); create and replaceNamed keep it | B) Add a random per-write nonce to the counter JSON so identical text proves the write was ours: keeps the check, but touches the memory and file stores sharing nextCounter and is larger
-recommendation: A: simplest, fails safe toward the limit, no store-contract change
-research: reports/batch-SGS-130-SGS-140-tech-lead-1.md
-thread: 1570246028815503394
-answered: 2026-11-12T01:31Z discord
+options: A) Done, output attached | B) Skip the live run and merge without it: risk is an unmapped Blob error class on ifMatch for a missing key
+recommendation: A: the ticket requires the recorded class before merge
+thread: 1570256157644296212
 
-SGS-130's tech-lead gate found that the new landed-write check in bumpCounter lets parallel saves from one client bypass the 30-per-hour save rate limit, and blocks the whole batch (no PRs opened; SGS-131/134/136/140 are stacked above it). Report: reports/batch-SGS-130-SGS-140-tech-lead-1.md
-- Counter value is only {windowStart,count}; N parallel saves all read k and write k+1, one wins, the rest read back identical text, count as landed: all N saves allowed, counter +1.
-- Before the change a 412 re-read and recounted or ended contended. design/M9.md:521,526 (owner-approved) asked for the check on the counter; its reasoning holds for builds, not a counter.
-- Test blob-build-store.test.ts:322-332 asserts the current behavior; design rows M9.md and ARCHITECTURE.md storage row need updating either way.
+PR #142 (SGS-130) changes Blob store writes and needs one live run only you can do; the stack #143-#146 sits on it, so nothing merges until it is done (auto-merge held).
+1. In the repo, check out branch sgs-130-blob-landed-write-retry-cap (PR #142).
+2. Run: vercel env pull .env.local
+3. Run: npm run test:blob-live
+4. Reply with the error class the test logs for ifMatch on a missing key (expected BlobNotFoundError or BlobPreconditionFailedError), or the full output if it fails.
+Then approve merging the stack; I will update the replaceNamed comment with the recorded class and date.
 
 ### Answer
-A) Drop the read-back check from bumpCounter only: a lost response to a landed write costs at most one extra count (safe side); create and replaceNamed keep it

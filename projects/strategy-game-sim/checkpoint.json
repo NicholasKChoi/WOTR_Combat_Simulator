@@ -1,6 +1,12 @@
 {
   "lastBaseSha": "0ba19707c2fb29e443ebe927d13c3b264d58e3aa",
-  "openPRs": [],
+  "openPRs": [
+    142,
+    143,
+    144,
+    145,
+    146
+  ],
   "retro": {
     "lastRun": "2026-11-11",
     "stateSha": "2622860"

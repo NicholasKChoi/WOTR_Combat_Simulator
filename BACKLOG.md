@@ -57,9 +57,7 @@ pull from here; triage moves an item into a milestone or deletes it.
 - design/M9.md M9.9 criteria-map row describes one Tab walk after Save as copy reaching save-build then the link controls; no page state allows it (save-build is disabled whenever the link shows). Change to the two-state version. Source: SGS-141 re-spec, reports/SGS-141-ticket-2.md
 - `components/apps/aoe4-build-order/pin-storage.ts:24` `readStoredPin` still calls `removeItem` on an unparseable pinned run, the pattern SGS-131 removed from my-builds; lower stakes (no secret). Reported by SGS-131 review.
 - `design/M9.md` C14 (and SGS-140 ticket) assume 1rem = 16px but `styles/global.css:8` sets the root to 18px; other M9 rem sizing may share the assumption. Reported by SGS-140 review.
-- Counter undercount: two simultaneous counter bumps from one client write identical JSON, so the loser counts as landed and the stored count rises by one (SGS-130; design accepts it, matters only if the per-client limit must be exact).
 - `ARCHITECTURE.md` says blob-build-store.ts is the only file importing `@vercel/blob`; test files import it too (SGS-130).
-- `design/M9.md` says English has 15 production building ids; data gives 16 (extra: `wynguard-palace`). Four wynguard ids in unit `producedBy` have no building entry (SGS-136).
 - `useRunBarHeight` rounds with `Math.ceil`, which can leave the document 1px short of the bar page top; SGS-133/141 will be sensitive when bar height changes (SGS-132 implementer).
-- `design/M9.md` Behavior rules "SDK retries" and decision 4A rationale assume `@vercel/blob` `get` retries; in 2.9.0 it does not (value 1 still valid for put/head/del). Design text needs correcting (SGS-130 review).
 - SGS-133 criterion (a) expects run-bar top at 0 after scrolling to end; likely hits the same 1px rounding as SGS-132 and needs a <1px tolerance (SGS-132 re-spec).
+- Three hand-written in-memory Blob fakes (blob-build-store.test.ts:36-63 counterBlob, blob-lost-writes.acceptance.test.ts:22-71, named-build-store.acceptance.test.ts); a shared test-support fake would replace all (SGS-130 review 3).
