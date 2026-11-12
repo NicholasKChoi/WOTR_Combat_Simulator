@@ -6,7 +6,12 @@ import { rateCounterKey, savedBuildKey } from './saved-builds';
 
 const COUNTER_ATTEMPTS = 3;
 
+// @vercel/blob reads VERCEL_BLOB_RETRIES from process.env on every request (default 10), and
+// bumpCounter's attempts multiply those retries during an outage.
+export const BLOB_SDK_RETRIES = 1;
+
 export function createBlobBuildStore(storeId: string, env: string): BuildStore {
+  if (!process.env.VERCEL_BLOB_RETRIES) process.env.VERCEL_BLOB_RETRIES = String(BLOB_SDK_RETRIES);
   const putOptions = { access: 'private', addRandomSuffix: false, contentType: 'application/json', storeId } as const;
 
   const exists = async (key: string): Promise<boolean> => {
@@ -41,11 +46,23 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
     }
   };
 
+  // A put whose response was lost may still have landed, and the SDK's retry of it then fails with 412
+  // or "already exists". Text equality, not a deep compare: a value serialized differently is not ours.
+  const landed = async (key: string, json: string): Promise<boolean> => {
+    try {
+      const stored = await read(key, true);
+      return stored !== null && JSON.stringify(stored.value) === json;
+    } catch {
+      return false;
+    }
+  };
+
   const create = async (key: string, json: string): Promise<PutResult> => {
     try {
       await put(key, json, { ...putOptions, allowOverwrite: false });
       return 'created';
     } catch (error) {
+      if (await landed(key, json)) return 'created';
       if (await exists(key)) return 'exists';
       throw error;
     }
@@ -68,10 +85,12 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
         const update = nextCounter(current?.value ?? null, windowStart, limit);
         if (update === 'refused') return update;
         const write = current === null ? { allowOverwrite: false } : { allowOverwrite: true, ifMatch: current.etag };
+        const json = JSON.stringify(update);
         try {
-          await put(key, JSON.stringify(update), { ...putOptions, ...write });
+          await put(key, json, { ...putOptions, ...write });
           return update;
         } catch (error) {
+          if (await landed(key, json)) return update;
           if (error instanceof BlobPreconditionFailedError) continue;
           if (current === null && (await exists(key))) continue;
           throw error;
@@ -85,13 +104,17 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
     async getNamed(id) {
       return read(namedBuildKey(env, id), true);
     },
-    // No retry: one that re-read the blob for its new etag would overwrite the concurrent writer.
-    // Which error the SDK raises for ifMatch on a deleted blob is unverified, so not-found also conflicts.
+    // No retry: one that re-read the blob for its new etag would overwrite the concurrent writer. The
+    // landed check compares content only and never feeds its etag into a write.
+    // Which error the SDK raises for ifMatch on a deleted blob is unverified (blob-build-store.live.test.ts
+    // records it), so not-found also conflicts.
     async replaceNamed(id, json, etag) {
+      const key = namedBuildKey(env, id);
       try {
-        await put(namedBuildKey(env, id), json, { ...putOptions, allowOverwrite: true, ifMatch: etag });
+        await put(key, json, { ...putOptions, allowOverwrite: true, ifMatch: etag });
         return 'replaced';
       } catch (error) {
+        if (await landed(key, json)) return 'replaced';
         if (error instanceof BlobPreconditionFailedError || error instanceof BlobNotFoundError) return 'conflict';
         throw error;
       }
