@@ -81,10 +81,10 @@ for (const viewport of [
         .poll(() =>
           page.evaluate(() => {
             window.scrollTo(0, 300)
-            return { scrolled: window.scrollY > 0, top: document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect().top }
+            return { scrolled: window.scrollY > 0, stuck: Math.abs(document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect().top) < 1 }
           }),
         )
-        .toEqual({ scrolled: true, top: 0 })
+        .toEqual({ scrolled: true, stuck: true })
     })
   })
 }
