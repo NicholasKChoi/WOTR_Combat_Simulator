@@ -986,15 +986,17 @@ The Gather rates chart has a `Per villager` checkbox, off by default. On, each s
 run is drawn the same way.
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
-it again restores it; the legend has one item per series, named without a suffix: with a pinned run, an item for a series in both runs hides and restores both its lines, and a series only the pinned run has is listed once, with a dashed swatch. With a pinned run, the series legend also holds a key (`chart-pinned-key`) that explains the line styles: solid is the current run and dashed is the pinned run. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. Only `age-up` markers carry a
+it again restores it; the legend has one item per series, named without a suffix: with a pinned run, an item for a series in both runs hides and restores both its lines, and a series only the pinned run has is listed once, with a dashed swatch. The tooltip lists only the current run's series; pinned lines and markers are not in it. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. Only `age-up` markers carry a
 text label `<label> <m:ss>` (for example `Castle 13:24`) above the plot, stacked in rows by their measured width so each stays
 readable; the other kinds have no text label and show `<label> <m:ss>` as a hover title. Tooltip values are shown rounded to
 at most 1 decimal place. A marker legend titled "Markers", in its own row below the series legend, lists one entry per
 kind present: `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
 and `Other` (`#6b6bd6`). A run with no markers draws neither lines nor the marker legend. Clicking a series
 legend item does not hide markers. The pinned run's `age-up` markers (no other kind) are drawn as dashed `6 4`
-vertical lines in the age-up colour without text labels (hover title `<age> (pinned) <m:ss>`), and the marker legend ends with an
-`Age-up (pinned)` item, shown even when the current run has no markers. Messages come from `warnings` and `notes`, `warnings` entries first.
+vertical lines in the age-up colour without text labels (hover title `<age> (pinned) <m:ss>`). The marker legend lists only the
+current run's kinds. A chart that draws at least one pinned line or pinned marker has one entry `dashed = pinned build`
+(`chart-pinned-legend`) after the marker legend; hiding every pinned line through the series legend removes it unless a pinned
+age-up marker is drawn, and showing a series restores it. Messages come from `warnings` and `notes`, `warnings` entries first.
 Those of severity `warning` appear in a warnings list. Those of severity `info` sit behind a toggle reading
 "Show N info messages" ("Show 1 info message" for one); clicking it lists them and the toggle reads
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each

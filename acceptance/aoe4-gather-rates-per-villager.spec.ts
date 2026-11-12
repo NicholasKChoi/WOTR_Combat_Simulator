@@ -105,42 +105,32 @@ test.describe('AoE4 Gather rates per-villager toggle', () => {
     }).toPass()
   })
 
-  test('with a pin, the pinned tooltip value is also per villager and a hidden legend entry stays hidden across the toggle', async ({ page }) => {
+  test('with a pin, a hidden legend entry keeps both its lines undrawn across the toggle while another series keeps both', async ({ page }) => {
     await openPage(page)
-    const pinnedRun = await runOk(page, MIXED_NODES_PASTE)
+    await runOk(page, MIXED_NODES_PASTE)
     await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
-    const current = await runOk(page, SHEEP_ONLY_PASTE)
+    await runOk(page, SHEEP_ONLY_PASTE)
     await showTab(page, 'results')
 
     const chart = page.getByTestId(CHART)
     const line = (key: string) => chart.locator(`path[data-series="${key}"]`)
     const hiddenItem = chart.locator('[data-testid="chart-series-legend-item"][data-series="wood"]')
+    const expectDrawn = async () => {
+      await expect(line('wood')).toHaveCount(0)
+      await expect(line('pinned:wood')).toHaveCount(0)
+      await expect(line('food')).toHaveCount(1)
+      await expect(line('pinned:food')).toHaveCount(1)
+    }
+    await expect(line('wood')).toHaveCount(1)
+    await expect(line('pinned:wood')).toHaveCount(1)
     await hiddenItem.click()
     await expect(hiddenItem).toHaveCSS('opacity', '0.5')
-    await expect(line('wood')).toHaveCount(0)
-
-    const raw = await hoverRead(page, 'Food (pinned)')
-    const idx = samplesAt(current, raw.label)
-    expect(idx.length).toBeGreaterThan(0)
-    expectOneOf(raw.values['Food (pinned)'], rawFood(pinnedRun, idx))
+    await expectDrawn()
 
     await toggle(page).check()
-    await expect(async () => {
-      const reading = await hoverRead(page, 'Food (pinned)')
-      expect(reading.label).toBe(raw.label)
-      expectOneOf(reading.values['Food (pinned)'], perVillagerFood(pinnedRun, idx))
-      expectOneOf(reading.values.Food, perVillagerFood(current, idx))
-    }).toPass()
-
-    // The two runs differ per villager, so a pinned line drawn from the current run's series would fail above.
-    const pinnedPer = perVillagerFood(pinnedRun, idx)
-    const currentPer = perVillagerFood(current, idx)
-    expect(Math.abs(pinnedPer[0] - currentPer[0])).toBeGreaterThan(TOLERANCE)
-
+    await expect(yLabel(page, CHART)).toHaveText('Per villager per minute')
     await expect(hiddenItem).toHaveCSS('opacity', '0.5')
-    await expect(line('wood')).toHaveCount(0)
-    await expect(line('pinned:food')).toHaveCount(1)
-    await expect(line('food')).toHaveCount(1)
+    await expectDrawn()
   })
 })

@@ -3,7 +3,7 @@ import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { AOE4_PAGE, CHART_IDS, acceptBeforeUnload, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, bodyDuration, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, holdNextSimulate, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, CHART_IDS, acceptBeforeUnload, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, bodyDuration, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, holdNextSimulate, isSimulatePost, openPage, plotPoint, showTab, waitForRun } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -82,21 +82,23 @@ test.describe('AoE4 build order pin and compare', () => {
     }
   })
 
-  test('each chart lists a series once and explains the line styles in one pinned key that goes away on unpin', async ({ page }) => {
+  test('each chart lists a series once and has one dashed pinned legend entry that goes away on unpin', async ({ page }) => {
     await openPage(page)
     await runOk(page, { duration: 300 })
-    for (const id of CHART_IDS) await expect(page.getByTestId(id).getByTestId('chart-pinned-key')).toHaveCount(0)
+    for (const id of CHART_IDS) await expect(page.getByTestId(id).getByTestId('chart-pinned-legend')).toHaveCount(0)
     await pin(page)
     await runOk(page, { duration: 600 })
 
     for (const id of CHART_IDS) {
       const chart = page.getByTestId(id)
-      const key = chart.getByTestId('chart-pinned-key')
-      await expect(key).toHaveCount(1)
-      await expect(key).toContainText('current run')
-      await expect(key).toContainText('pinned run')
-      const styles = await key.getByTestId('chart-pinned-key-swatch').evaluateAll((els) => els.map((e) => getComputedStyle(e).borderTopStyle))
-      expect(styles).toEqual(['solid', 'dashed'])
+      const entry = chart.getByTestId('chart-pinned-legend')
+      await expect(entry).toHaveCount(1)
+      await expect(entry).toHaveText('dashed = pinned build')
+      await expect(chart.getByTestId('chart-pinned-key')).toHaveCount(0)
+      await expect(chart.locator('[data-kind="pinned-age-up"]')).toHaveCount(0)
+      await expect(entry.getByTestId('chart-pinned-legend-swatch')).toHaveCSS('border-top-style', 'dashed')
+      expect(await entry.evaluate((el) => el.tagName + String(el.tabIndex))).toBe('P-1')
+      expect(await entry.evaluate((el) => el.previousElementSibling?.getAttribute('data-testid') ?? '')).toMatch(/^chart-(series|marker)-legend$/)
       const keys = await chart.getByTestId('chart-series-legend-item').evaluateAll((els) => els.map((e) => e.getAttribute('data-series')))
       expect(keys.length).toBeGreaterThan(0)
       expect(keys.filter((k) => k?.startsWith('pinned:'))).toEqual([])
@@ -104,7 +106,59 @@ test.describe('AoE4 build order pin and compare', () => {
     }
 
     await page.getByTestId('unpin-run').click()
-    for (const id of CHART_IDS) await expect(page.getByTestId(id).getByTestId('chart-pinned-key')).toHaveCount(0)
+    for (const id of CHART_IDS) await expect(page.getByTestId(id).getByTestId('chart-pinned-legend')).toHaveCount(0)
+  })
+
+  test('the pinned legend entry follows the series legend: hiding every pinned line removes it, showing one restores it, repeatedly', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, { text: NO_MILITARY_PASTE })
+    await pin(page)
+    await runOk(page, { text: DEFAULT_PASTE })
+
+    const chart = page.getByTestId('chart-gather-rates')
+    const entry = chart.getByTestId('chart-pinned-legend')
+    const items = chart.getByTestId('chart-series-legend-item')
+    await expect(chart.getByTestId('chart-pinned-marker')).toHaveCount(0)
+    await expect(path(page, 'chart-gather-rates', 'pinned:food')).toHaveCount(1)
+    await expect(entry).toHaveCount(1)
+    const count = await items.count()
+    expect(count).toBeGreaterThan(1)
+
+    for (let round = 0; round < 2; round++) {
+      for (let i = 0; i < count; i++) await items.nth(i).click()
+      await expect(chart.locator('path[data-series^="pinned:"]')).toHaveCount(0)
+      await expect(entry).toHaveCount(0)
+      await items.first().click()
+      await expect(chart.locator('path[data-series^="pinned:"]')).toHaveCount(1)
+      await expect(entry).toHaveCount(1)
+      for (let i = 1; i < count; i++) await items.nth(i).click()
+      await expect(entry).toHaveCount(1)
+    }
+  })
+
+  test('hovering a chart with a pinned run lists only current-run series in the tooltip while the pinned lines stay drawn', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, { duration: 300 })
+    await pin(page)
+    await runOk(page, { duration: 600 })
+
+    for (const id of RESOURCE_CHARTS) {
+      const chart = page.getByTestId(id)
+      await expect(path(page, id, 'pinned:food')).toHaveCount(1)
+      await expect(path(page, id, 'food')).toHaveCount(1)
+      let names: string[] = []
+      await expect(async () => {
+        const point = await plotPoint(page, id, 0.15)
+        await page.mouse.move(point.x - 3, point.y)
+        await page.mouse.move(point.x, point.y)
+        const tooltip = chart.locator('.recharts-tooltip-wrapper')
+        await expect(tooltip).toBeVisible()
+        names = await tooltip.locator('.recharts-tooltip-item-name').allTextContents()
+        expect(names).toContain('Food')
+      }).toPass()
+      expect(names.filter((n) => n.endsWith('(pinned)'))).toEqual([])
+      expect(((await path(page, id, 'pinned:food').getAttribute('stroke-dasharray')) ?? '').trim()).not.toBe('')
+    }
   })
 
   test('a legend item has a solid swatch in its line colour and hides and restores both lines of its series', async ({ page }) => {

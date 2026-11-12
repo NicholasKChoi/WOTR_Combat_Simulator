@@ -101,6 +101,26 @@ describe('perVillagerSeries', () => {
         expect(series.map((s) => s.values)).toEqual([[1, 2, 3], [2, 2.5, 3], [0, 8, 0], [0, 0, 0]])
     })
 
+    it('builds the pinned rows from the pinned run\'s own rates and gatherers, 0 where it has no gatherers', () => {
+        const current = result()
+        const pinned: SimulationResult = {
+            ...result(),
+            gatherRates: { ...current.gatherRates, food: [8, 10, 6] },
+            gatherers: { ...current.gatherers, food: [4, 0, 3] },
+        }
+        const currentFood = perVillagerSeries(current.gatherRates, current.gatherers)[0].values
+        const pinnedFood = perVillagerSeries(pinned.gatherRates, pinned.gatherers)[0].values
+        expect(currentFood).toEqual([1, 2, 3])
+        expect(pinnedFood).toEqual([2, 0, 2])
+        const rows = toChartRows(
+            current.times,
+            perVillagerSeries(current.gatherRates, current.gatherers),
+            { times: pinned.times, series: perVillagerSeries(pinned.gatherRates, pinned.gatherers) },
+        )
+        expect(rows.map((r) => r['pinned:food'])).toEqual([2, 0, 2])
+        expect(rows.map((r) => r.food)).toEqual([1, 2, 3])
+    })
+
     it('does not mutate its inputs', () => {
         const input = result()
         const before = structuredClone(input)
