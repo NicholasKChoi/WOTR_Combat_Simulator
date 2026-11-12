@@ -1,8 +1,13 @@
-import { test, expect, type Page } from '@playwright/test'
-import { CHART_IDS, SPLIT_MIN_WIDTH, SPLIT_VIEWPORT, TABS_VIEWPORT, WIDE_VIEWPORT, expectNoRun, openPage, scrollInstantly, showTab, showView, waitForRun } from './helpers'
+import { expect, type Page } from '@playwright/test'
+import { CHART_IDS, SPLIT_MIN_WIDTH, SPLIT_VIEWPORT, TABS_VIEWPORT, WIDE_VIEWPORT, blockStorageWrites, copyButton, REFUSED_CLIPBOARDS, expectNoRun, gatedTest, openPage, saveCopy, scrollInstantly, setDurationInPlace, showTab, showView, waitForRun } from './helpers'
+
+const test = gatedTest('aoe4-split-scroll')
 
 const LONG_BUILD = ['start 6 sheep -> sheep', ...Array.from({ length: 40 }, (_, i) => `# note ${i + 1}`), ...Array.from({ length: 6 }, () => 'produce villager from capital-town-center x1')].join('\n')
 const RUN_BAR_HEIGHT = '--aoe4-run-bar-height'
+const SHORT_VIEWPORT = { width: 1280, height: 720 }
+const NARROW_VIEWPORT = { width: 700, height: 900 }
+const CAP_FRACTION = 0.4
 
 const column = (page: Page, id: 'build-column' | 'results-column') => page.getByTestId(id)
 
@@ -197,5 +202,151 @@ test.describe('AoE4 workbench headings', () => {
     await showView(page, 'table')
     await expect(page.getByTestId('step-table-unavailable')).toBeVisible()
     expect(await page.getByTestId('panel-build').evaluate((el) => el.firstElementChild?.getAttribute('data-testid'))).toBe('build-order-heading')
+  })
+})
+
+const barSnapshot = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<{ scrollY: number; barTop: number; barHeight: number; build: number; results: number }>((resolve) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            const top = (id: string) => document.querySelector(`[data-testid="${id}"]`)!.scrollTop
+            const bar = document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect()
+            resolve({ scrollY: window.scrollY, barTop: bar.top, barHeight: bar.height, build: top('build-column'), results: top('results-column') })
+          }),
+        ),
+      ),
+  )
+
+async function openCappedState(page: Page) {
+  await page.setViewportSize(SHORT_VIEWPORT)
+  await blockStorageWrites(page)
+  await page.addInitScript(REFUSED_CLIPBOARDS[0].script)
+  await openPage(page)
+  await saveCopy(page, 'Capped')
+  await page.getByTestId('copy-saved-link').click()
+  await expect(page.getByTestId('copy-saved-link-hint')).toBeVisible()
+  await copyButton(page).click()
+  await expect(page.getByTestId('save-copy-form')).toBeVisible()
+  await page.getByTestId('save-copy-name').fill('')
+  await expect(page.getByTestId('save-copy-name-error')).toBeVisible()
+}
+
+const cappedPrecondition = (page: Page) =>
+  page.evaluate(() => {
+    const el = (id: string) => document.querySelector(`[data-testid="${id}"]`)
+    const shown = (id: string) => {
+      const node = el(id)
+      return node !== null && getComputedStyle(node).display !== 'none' && getComputedStyle(node).visibility !== 'hidden' && (id === 'auto-run-status' || node.getBoundingClientRect().height > 0)
+    }
+    const bar = el('run-bar')!
+    bar.scrollTop = 0
+    return {
+      shown: ['saved-build-link', 'save-copy-form', 'my-builds-unavailable', 'copy-saved-link-hint', 'auto-run-status'].filter((id) => !shown(id)),
+      overflows: bar.scrollHeight > bar.clientHeight,
+      height: bar.getBoundingClientRect().height,
+    }
+  })
+
+test.describe('AoE4 run bar does not move the page and stays capped', () => {
+  test('clearing the duration error at the end of the page keeps the scroll position and the columns', async ({ page }) => {
+    await page.setViewportSize(SPLIT_VIEWPORT)
+    await openLongBuild(page)
+    await scrollColumn(page, 'build-column')
+    await scrollColumn(page, 'results-column')
+    await expectNoRun(page, () => page.getByTestId('duration-seconds').fill('59'))
+    await expect(page.getByTestId('duration-error')).toBeVisible()
+    await page.mouse.move(10, 300)
+    await page.mouse.wheel(0, 5000)
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight - window.scrollY)).toBeLessThanOrEqual(1)
+    const before = await barSnapshot(page)
+    expect(before.scrollY).toBeGreaterThan(0)
+    expect(before.build).toBeGreaterThan(0)
+    expect(before.results).toBeGreaterThan(0)
+
+    await waitForRun(page, () => setDurationInPlace(page, '600'))
+    await expect(page.getByTestId('duration-error')).toHaveCount(0)
+    const after = await barSnapshot(page)
+    expect(after.barHeight).toBeLessThan(before.barHeight)
+    expect(Math.abs(after.scrollY - before.scrollY)).toBeLessThanOrEqual(1)
+    expect(Math.abs(before.barTop)).toBeLessThanOrEqual(1)
+    expect(Math.abs(after.barTop - before.barTop)).toBeLessThanOrEqual(1)
+    expect(after.build).toBe(before.build)
+    expect(after.results).toBe(before.results)
+  })
+
+  test('with the link, the copy form and the storage warning open the bar is capped and scrolls inside', async ({ page }) => {
+    await openCappedState(page)
+    const state = await cappedPrecondition(page)
+    expect(state.shown).toEqual([])
+    expect(state.overflows).toBe(true)
+    expect(state.height).toBeLessThanOrEqual(SHORT_VIEWPORT.height * CAP_FRACTION)
+
+    await scrollInstantly(page, 100_000)
+    await expect
+      .poll(() =>
+        page.evaluate((property) => {
+          const bar = document.querySelector('[data-testid="run-bar"]')!
+          const rect = bar.getBoundingClientRect()
+          const split = document.querySelector('[data-testid="workbench-split"]')!.getBoundingClientRect()
+          const value = parseFloat(getComputedStyle(bar.closest('section')!).getPropertyValue(property))
+          return {
+            propertyFollowsBar: Math.abs(value - (rect.height + parseFloat(getComputedStyle(bar).marginBottom))) <= 1,
+            splitEndsAtViewport: Math.abs(split.bottom - window.innerHeight) <= 1,
+          }
+        }, RUN_BAR_HEIGHT),
+      )
+      .toEqual({ propertyFollowsBar: true, splitEndsAtViewport: true })
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const bar = document.querySelector('[data-testid="run-bar"]')!
+          bar.scrollTop = bar.scrollHeight
+          const rect = bar.getBoundingClientRect()
+          const status = document.querySelector('[data-testid="auto-run-status"]')!.getBoundingClientRect()
+          return status.top >= rect.top && status.bottom <= rect.bottom
+        }),
+      )
+      .toBe(true)
+  })
+
+  const focusRingFits = async (page: Page) => {
+    await page.getByTestId('build-order-select').focus()
+    return page.evaluate(() => {
+      const bar = document.querySelector('[data-testid="run-bar"]')!
+      const select = document.querySelector('[data-testid="build-order-select"]') as HTMLSelectElement
+      const [, , , spread] = (getComputedStyle(select).boxShadow.match(/-?[\d.]+px/g) ?? []).map(parseFloat)
+      const rect = select.getBoundingClientRect()
+      const barRect = bar.getBoundingClientRect()
+      const left = barRect.left + bar.clientLeft
+      const top = barRect.top + bar.clientTop
+      return {
+        ringIsDrawn: spread > 0,
+        noSidewaysScroll: bar.scrollWidth <= bar.clientWidth,
+        ringInside: rect.left - spread >= left && rect.right + spread <= left + bar.clientWidth && rect.top - spread >= top && rect.bottom + spread <= top + bar.clientHeight,
+      }
+    })
+  }
+
+  test('the bar has no sideways scroll and keeps the focus ring of the build select at 768 px wide', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 })
+    await openPage(page)
+    await expect.poll(() => focusRingFits(page)).toEqual({ ringIsDrawn: true, noSidewaysScroll: true, ringInside: true })
+  })
+
+  test('the bar has no sideways scroll and keeps the focus ring of the build select when capped', async ({ page }) => {
+    await openCappedState(page)
+    expect((await cappedPrecondition(page)).overflows).toBe(true)
+    await expect.poll(() => focusRingFits(page)).toEqual({ ringIsDrawn: true, noSidewaysScroll: true, ringInside: true })
+  })
+
+  test('below 768 px the bar is static and has no cap', async ({ page }) => {
+    await page.setViewportSize(NARROW_VIEWPORT)
+    await openPage(page)
+    expect(NARROW_VIEWPORT.width).toBeLessThan(768)
+    const style = await page.getByTestId('run-bar').evaluate((el) => ({ position: getComputedStyle(el).position, maxHeight: getComputedStyle(el).maxHeight }))
+    expect(style).toEqual({ position: 'static', maxHeight: 'none' })
   })
 })
