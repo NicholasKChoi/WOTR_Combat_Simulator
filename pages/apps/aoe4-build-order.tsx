@@ -42,6 +42,7 @@ import { loadSavedBuild } from '../../components/apps/aoe4-build-order/saved-bui
 import { postSimulation } from '../../components/apps/aoe4-build-order/simulate-client'
 import { useAutoRun } from '../../components/apps/aoe4-build-order/use-auto-run'
 import { useRunBarHeight } from '../../components/apps/aoe4-build-order/use-run-bar-height'
+import workbenchStyles from '../../components/apps/aoe4-build-order/workbench.module.css'
 import { useDiscardGuard } from '../../components/apps/aoe4-build-order/use-discard-guard'
 import { useChartLayout } from '../../components/apps/aoe4-build-order/use-chart-layout'
 import { useSplitLayout } from '../../components/apps/aoe4-build-order/use-split-layout'
@@ -339,7 +340,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
             <Head>
                 <title>{pageTitle}</title>
             </Head>
-            <section className={cn(utilStyles.headingMd, 'container')}>
+            <section className={cn(utilStyles.headingMd, 'container', workbenchStyles.pageSection)}>
                 <h1>{pageTitle}</h1>
                 <BuildInput
                     runBarRef={runBarRef}

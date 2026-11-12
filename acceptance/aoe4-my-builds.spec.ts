@@ -11,6 +11,11 @@ import {
   acceptBeforeUnload,
   blockStorageWrites,
   buildOrderFrom,
+  copyButton,
+  copyForm,
+  copyName,
+  copySubmit,
+  type Created,
   gatedTest,
   type Gate,
   holdNextSimulate,
@@ -21,8 +26,11 @@ import {
   isSimulatePost,
   namedBuildUrl,
   openPage,
+  REFUSED_CLIPBOARDS,
   reply,
+  saveCopy,
   showTab,
+  submitCopy,
   stubNamed,
   uniqueClient,
   waitForRun,
@@ -49,7 +57,6 @@ const textarea = (page: Page) => page.getByTestId('build-order-text')
 const duration = (page: Page) => page.getByTestId('duration-seconds')
 const select = (page: Page) => page.getByTestId('build-order-select')
 const saveButton = (page: Page) => page.getByTestId('save-build')
-const copyButton = (page: Page) => page.getByTestId('save-build-copy')
 const loadError = (page: Page) => page.getByTestId('saved-build-error')
 const checkedOption = (page: Page) => select(page).locator('option:checked')
 const groupOptions = (page: Page, group: string) => select(page).locator(`optgroup[label="${group}"] option`)
@@ -489,9 +496,6 @@ const FORBIDDEN = 'You cannot edit this build here. Save a copy instead.'
 const GONE = 'This build no longer exists. Save a copy instead.'
 const GENERIC = 'The build could not be saved. Try again.'
 
-const copyForm = (page: Page) => page.getByTestId('save-copy-form')
-const copyName = (page: Page) => page.getByTestId('save-copy-name')
-const copySubmit = (page: Page) => page.getByTestId('save-copy-submit')
 const copyCancel = (page: Page) => page.getByTestId('save-copy-cancel')
 const nameError = (page: Page) => page.getByTestId('save-copy-name-error')
 const savedLink = (page: Page) => page.getByTestId('saved-build-link')
@@ -514,34 +518,11 @@ interface Stored {
   updatedAt: string
 }
 
-interface Created {
-  id: string
-  path: string
-  editSecret: string
-  revision: number
-  updatedAt: string
-}
-
 const storedRaw = (page: Page) => page.evaluate((key) => window.localStorage.getItem(key), MY_BUILDS_STORAGE_KEY)
 
 async function storedBuild(page: Page, id: string): Promise<Stored | undefined> {
   const raw = await storedRaw(page)
   return raw === null ? undefined : (JSON.parse(raw) as { builds: Stored[] }).builds.find((build) => build.id === id)
-}
-
-async function submitCopy(page: Page, name?: string) {
-  await copyButton(page).click()
-  await expect(copyForm(page)).toBeVisible()
-  if (name !== undefined) await copyName(page).fill(name)
-  await copySubmit(page).click()
-}
-
-async function saveCopy(page: Page, name?: string): Promise<{ request: Request; created: Created }> {
-  const responded = page.waitForResponse((r) => isNamedPost(r.request()))
-  await submitCopy(page, name)
-  const response = await responded
-  expect(response.status(), await response.text()).toBe(201)
-  return { request: response.request(), created: (await response.json()) as Created }
 }
 
 async function saveVersion(page: Page) {
@@ -1204,21 +1185,7 @@ test.describe('link panel', () => {
     await expect(copyLink(page)).toHaveText('Copy link')
   })
 
-  const refused = [
-    {
-      name: 'a rejecting writeText',
-      script: () => {
-        Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('denied')) }, configurable: true })
-      },
-    },
-    {
-      name: 'a missing clipboard',
-      script: () => {
-        Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
-      },
-    },
-  ]
-  for (const { name, script } of refused) {
+  for (const { name, script } of REFUSED_CLIPBOARDS) {
     test(`${name} shows the hand-copy hint and selects the link`, async ({ page }) => {
       await page.addInitScript(script)
       await openPage(page)

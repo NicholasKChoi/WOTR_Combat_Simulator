@@ -330,6 +330,50 @@ export const blockStorageWrites = (page: Page) =>
     }
   })
 
+export interface Created {
+  id: string
+  path: string
+  editSecret: string
+  revision: number
+  updatedAt: string
+}
+
+export const copyButton = (page: Page) => page.getByTestId('save-build-copy')
+export const copyForm = (page: Page) => page.getByTestId('save-copy-form')
+export const copyName = (page: Page) => page.getByTestId('save-copy-name')
+export const copySubmit = (page: Page) => page.getByTestId('save-copy-submit')
+
+export async function submitCopy(page: Page, name?: string) {
+  await copyButton(page).click()
+  await expect(copyForm(page)).toBeVisible()
+  if (name !== undefined) await copyName(page).fill(name)
+  await copySubmit(page).click()
+}
+
+export async function saveCopy(page: Page, name?: string): Promise<{ request: Request; created: Created }> {
+  const responded = page.waitForResponse((r) => isNamedPost(r.request()))
+  await submitCopy(page, name)
+  const response = await responded
+  expect(response.status(), await response.text()).toBe(201)
+  return { request: response.request(), created: (await response.json()) as Created }
+}
+
+// Init scripts that make the clipboard refuse a write: a rejecting `writeText` and no clipboard at all.
+export const REFUSED_CLIPBOARDS = [
+  {
+    name: 'a rejecting writeText',
+    script: () => {
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('denied')) }, configurable: true })
+    },
+  },
+  {
+    name: 'a missing clipboard',
+    script: () => {
+      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
+    },
+  },
+]
+
 export async function stubNamed(page: Page, method: string, respond: (route: Route) => Promise<void>): Promise<() => Promise<void>> {
   const handler = (route: Route) => (route.request().method() === method ? respond(route) : route.fallback())
   await page.route(isNamedPath, handler)

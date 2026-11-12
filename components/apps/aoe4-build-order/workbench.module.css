@@ -5,10 +5,23 @@
     background: var(--bs-body-bg, #fff);
 }
 
+@media (min-width: 768px) {
+    .runBar {
+        max-height: 40dvh;
+        overflow-y: auto;
+        padding-inline: 0.25rem;
+        margin-inline: -0.25rem;
+    }
+}
+
 @media (max-width: 767.98px) {
     .runBar {
         position: static;
     }
+}
+
+.pageSection {
+    overflow-anchor: none;
 }
 
 .workbenchSplit {

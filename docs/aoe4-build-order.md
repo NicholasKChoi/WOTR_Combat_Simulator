@@ -878,7 +878,7 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 
 ### Page
 
-The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls; below that it scrolls with the page. In the side-by-side layout the page only scrolls above the columns, so the bar stays stuck only as far as the page still scrolls. It
+The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls, and it never takes more than 40% of the viewport height: when its content is taller, the bar scrolls inside itself. Below 768 px the bar is not stuck and has no height cap, so it scrolls with the page. The page section turns off the browser's scroll anchoring, so a bar that shrinks does not move the page. In the side-by-side layout the page only scrolls above the columns, so the bar stays stuck only as far as the page still scrolls. It
 holds the build select (labelled Build, see below), the `durationSeconds` number input (default 1200), a text/table toggle,
 a save panel (`save-panel`) on its own row, with the save buttons, Save a new version and Save as copy, and the save status (see below), and the run status (`auto-run-status`), which comes last. There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
 Build and Results sit side by side in two equal columns, both always shown, with no tabs. The two columns fill the viewport below the run bar and each scrolls on its own, so the page does not scroll to reach either column's content. The Build column, the Results column and the tabs carry the headings `Build order` and `Results` at the same size; the text editor's textarea takes its accessible name from the `Build order` heading. Below 1200 px they are two
@@ -926,7 +926,7 @@ with `Fix N issues to run the simulation.` (`Fix 1 issue to run the simulation.`
 issues. Server 400 issues take its place under the editor view, without lines, until a settled input changes the request.
 Gold run-outs and other info notes are in the collapsed info list in Results.
 
-Narrow layout: under 768 px the step rows are cards (their selects and inputs shrink to the card, and each card keeps its kind border), the run bar scrolls with the page and wraps onto several rows with the select and
+Narrow layout: under 768 px the step rows are cards (their selects and inputs shrink to the card, and each card keeps its kind border), the run bar is static and uncapped, scrolls with the page and wraps onto several rows with the select and
 duration input at full width, and the compare tables scroll sideways inside their own boxes. The
 page itself does not scroll sideways at 390 px on either tab, even with a long unbroken token in an issue message.
 The charts are the only column at every width and take the full Results width.
