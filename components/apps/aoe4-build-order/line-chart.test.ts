@@ -99,22 +99,20 @@ describe('age-up markers', () => {
         expect(ageUpMarkers(pinnedMarkers).map((m) => m.label)).toEqual(['Feudal', 'Castle'])
     })
 
-    it('puts the pinned age-up legend item last, with only that item when the current run has no markers', () => {
+    it('lists only the current run\'s marker kinds, and nothing when it has none, whatever the pinned run draws', () => {
         const kinds = (html: string) => [...html.matchAll(/data-testid="chart-marker-legend-item" data-kind="([^"]+)"/g)].map((m) => m[1])
-        expect(kinds(render([], [{ kind: 'age-up', label: 'Feudal', at: 2 }], pinnedMarkers))).toEqual(['age-up', 'pinned-age-up'])
-        const html = render([], [], pinnedMarkers)
-        expect(kinds(html)).toEqual(['pinned-age-up'])
-        expect(html).toContain('Age-up (pinned)')
-    })
-
-    it('has no pinned legend item without pinned age-up markers', () => {
-        expect(render([], [{ kind: 'age-up', label: 'Feudal', at: 2 }], [pinnedMarkers[1]])).not.toContain('pinned-age-up')
-        expect(render([])).not.toContain('pinned-age-up')
+        const html = render([], [{ kind: 'age-up', label: 'Feudal', at: 2 }], pinnedMarkers)
+        expect(kinds(html)).toEqual(['age-up'])
+        expect(html).not.toContain('pinned-age-up')
+        expect(html).not.toContain('Age-up (pinned)')
+        const none = render([], [], pinnedMarkers)
+        expect(none).not.toContain('chart-marker-legend')
+        expect(none).not.toContain('pinned-age-up')
     })
 })
 
-describe('pinned line key', () => {
-    const renderPinned = (pinned?: Parameters<typeof SeriesChart>[0]['pinned']) =>
+describe('pinned legend', () => {
+    const renderPinned = (props: Partial<Parameters<typeof SeriesChart>[0]> = {}) =>
         renderToString(
             createElement(SeriesChart, {
                 testId: 'chart-x',
@@ -122,23 +120,41 @@ describe('pinned line key', () => {
                 yLabel: 'Units',
                 times: [0, 5],
                 series: [{ key: 'a', name: 'A', values: [1, 2] }],
-                pinned,
+                ...props,
             }),
         )
     const pinned = { times: [0, 5], series: [{ key: 'a', name: 'A', values: [3, 4] }] }
+    const pinnedMarkers: ChartMarker[] = [{ kind: 'age-up', label: 'Feudal', at: 2 }]
+    const legendCount = (html: string) => html.match(/data-testid="chart-pinned-legend"/g)?.length ?? 0
 
-    it('renders one key labelled current run and pinned run inside the series legend only with a pinned run', () => {
-        const html = renderPinned(pinned)
-        expect(html.match(/data-testid="chart-pinned-key"/g)).toHaveLength(1)
-        const key = html.slice(html.indexOf('data-testid="chart-pinned-key"'))
-        expect(key).toContain('current run')
-        expect(key).toContain('pinned run')
-        expect(html.indexOf('data-testid="chart-series-legend"')).toBeLessThan(html.indexOf('data-testid="chart-pinned-key"'))
-        expect(renderPinned()).not.toContain('chart-pinned-key')
+    it('renders one dashed entry after the series and marker legends, and not the old pinned key', () => {
+        const html = renderPinned({ pinned, markers: [{ kind: 'age-up', label: 'Feudal', at: 1 }] })
+        expect(legendCount(html)).toBe(1)
+        const entry = html.slice(html.indexOf('data-testid="chart-pinned-legend"'))
+        expect(entry).toMatch(/^[^>]*><span[^>]*data-testid="chart-pinned-legend-swatch"[^>]*data-line-style="dashed"[^>]*><\/span>dashed = pinned build<\/p>/)
+        expect(html.indexOf('data-testid="chart-series-legend"')).toBeLessThan(html.indexOf('data-testid="chart-marker-legend"'))
+        expect(html.indexOf('data-testid="chart-marker-legend"')).toBeLessThan(html.indexOf('data-testid="chart-pinned-legend"'))
+        expect(html).not.toContain('chart-pinned-key')
+        expect(html).not.toMatch(/<button[^>]*chart-pinned-legend/)
+    })
+
+    it('renders when only a pinned age-up marker is drawn', () => {
+        expect(legendCount(renderPinned({ pinnedMarkers }))).toBe(1)
+    })
+
+    it('renders when only a pinned series is given, not when the pinned run has no series and no age-up', () => {
+        expect(legendCount(renderPinned({ pinned }))).toBe(1)
+        expect(legendCount(renderPinned({ pinned: { times: [0], series: [] }, pinnedMarkers: [{ kind: 'economy', label: 'x', at: 1 }] }))).toBe(0)
+    })
+
+    it('renders none without a pinned run, and none when the chart is collapsed', () => {
+        expect(legendCount(renderPinned())).toBe(0)
+        const layout = { collapsed: true, dragging: false, reorderHelpId: 'help', onToggle: () => {}, onMoveKey: () => {}, onHandlePointerDown: () => {} }
+        expect(legendCount(renderPinned({ pinned, pinnedMarkers, layout }))).toBe(0)
     })
 
     it('lists a shared series once', () => {
-        expect(renderPinned(pinned).match(/data-testid="chart-series-legend-item"/g)).toHaveLength(1)
+        expect(renderPinned({ pinned }).match(/data-testid="chart-series-legend-item"/g)).toHaveLength(1)
     })
 })
 

@@ -16,7 +16,7 @@ import {
     toggleHidden,
 } from './chart-rows'
 import { type ChartControls, ChartHeader } from './chart-header'
-import { MarkerLegend, SeriesLegend } from './chart-legend'
+import { MarkerLegend, PinnedLegend, SeriesLegend, pinnedLegendShown } from './chart-legend'
 import type { StepSpan } from './step-annotations'
 import styles from './results.module.css'
 
@@ -144,6 +144,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                         key={pinnedKey(s.key)}
                                         dataKey={pinnedKey(s.key)}
                                         name={`${s.name} (pinned)`}
+                                        tooltipType="none"
                                         data-series={pinnedKey(s.key)}
                                         stroke={pinnedColor(series, s.key, i)}
                                         strokeDasharray="6 4"
@@ -231,7 +232,8 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                             hidden={hidden}
                             onToggle={(key) => setHidden((h) => toggleHidden(h, key))}
                         />
-                        <MarkerLegend markers={markers} pinnedAgeUps={pinnedAgeUps.length > 0} />
+                        <MarkerLegend markers={markers} />
+                        {pinnedLegendShown(pinned, hidden, pinnedAgeUps.length) && <PinnedLegend />}
                     </>
                 )}
             </div>
