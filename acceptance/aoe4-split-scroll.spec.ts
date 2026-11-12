@@ -238,12 +238,12 @@ const cappedPrecondition = (page: Page) =>
     const el = (id: string) => document.querySelector(`[data-testid="${id}"]`)
     const shown = (id: string) => {
       const node = el(id)
-      return node !== null && getComputedStyle(node).display !== 'none' && getComputedStyle(node).visibility !== 'hidden' && (id === 'auto-run-status' || node.getBoundingClientRect().height > 0)
+      return node !== null && getComputedStyle(node).display !== 'none' && getComputedStyle(node).visibility !== 'hidden' && node.getBoundingClientRect().height > 0
     }
     const bar = el('run-bar')!
     bar.scrollTop = 0
     return {
-      shown: ['saved-build-link', 'save-copy-form', 'my-builds-unavailable', 'copy-saved-link-hint', 'auto-run-status'].filter((id) => !shown(id)),
+      shown: ['saved-build-link', 'save-copy-form', 'my-builds-unavailable', 'copy-saved-link-hint'].filter((id) => !shown(id)),
       overflows: bar.scrollHeight > bar.clientHeight,
       height: bar.getBoundingClientRect().height,
     }
@@ -299,17 +299,34 @@ test.describe('AoE4 run bar does not move the page and stays capped', () => {
       )
       .toEqual({ propertyFollowsBar: true, splitEndsAtViewport: true })
 
-    await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const bar = document.querySelector('[data-testid="run-bar"]')!
-          bar.scrollTop = bar.scrollHeight
-          const rect = bar.getBoundingClientRect()
-          const status = document.querySelector('[data-testid="auto-run-status"]')!.getBoundingClientRect()
-          return status.top >= rect.top && status.bottom <= rect.bottom
-        }),
-      )
-      .toBe(true)
+    const content = await page.evaluate(() => {
+      const bar = document.querySelector('[data-testid="run-bar"]')!
+      const notice = document.querySelector('[data-testid="my-builds-unavailable"]')!
+      bar.scrollTop = 0
+      const belowAtTop = notice.getBoundingClientRect().bottom > bar.getBoundingClientRect().bottom
+      bar.scrollTop = bar.scrollHeight - bar.clientHeight
+      const rect = notice.getBoundingClientRect()
+      const barRect = bar.getBoundingClientRect()
+      return { belowAtTop, insideAtMax: rect.top >= barRect.top - 1 && rect.bottom <= barRect.bottom + 1 }
+    })
+    expect(content).toEqual({ belowAtTop: true, insideAtMax: true })
+  })
+
+  test('a control scrolled out of the capped bar scrolls back into it on focus', async ({ page }) => {
+    await openCappedState(page)
+    const aboveAtMax = await page.evaluate(() => {
+      const bar = document.querySelector('[data-testid="run-bar"]')!
+      bar.scrollTop = bar.scrollHeight - bar.clientHeight
+      return document.querySelector('[data-testid="build-order-select"]')!.getBoundingClientRect().top < bar.getBoundingClientRect().top
+    })
+    expect(aboveAtMax).toBe(true)
+    await page.getByTestId('build-order-select').focus()
+    const inside = await page.evaluate(() => {
+      const rect = document.querySelector('[data-testid="build-order-select"]')!.getBoundingClientRect()
+      const barRect = document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect()
+      return rect.top >= barRect.top - 1 && rect.bottom <= barRect.bottom + 1
+    })
+    expect(inside).toBe(true)
   })
 
   const focusRingFits = async (page: Page) => {
