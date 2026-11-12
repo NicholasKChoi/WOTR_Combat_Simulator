@@ -6,7 +6,6 @@ import {
   holdRequests,
   isNamedPost,
   isNamedPut,
-  namedBuildUrl,
   NAMED_BUILDS_PATH,
   openPage,
   reply,
