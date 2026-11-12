@@ -19,7 +19,7 @@ async function createNamed(request: Parameters<typeof postNamedBuild>[0], client
   const response = await postNamedBuild(request, saveBody(`Version ${randomUUID()}`), client)
   expect(response.status(), await response.text()).toBe(201)
   const { id, editSecret } = await response.json()
-  return { id: id as string, owner: (ifMatch: string) => ({ Authorization: `Bearer ${editSecret as string}`, 'If-Match': ifMatch }) }
+  return { id, owner: (ifMatch: string) => ({ Authorization: `Bearer ${editSecret}`, 'If-Match': ifMatch }) }
 }
 
 test('successive version saves each succeed and a reload shows the latest content at its revision', async ({ request }) => {
