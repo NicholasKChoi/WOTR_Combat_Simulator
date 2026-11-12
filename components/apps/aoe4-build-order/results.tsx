@@ -7,7 +7,7 @@ import { InfoMessages, WarningMessages } from './message-lists'
 import { stepSpan } from './step-annotations'
 import { SeriesChart } from './line-chart'
 import type { ChartId } from './chart-layout'
-import { useChartLayout } from './use-chart-layout'
+import type { ChartLayoutControls } from './use-chart-layout'
 import { perVillagerSeries, resourceSeries, unitSeries } from './result-series'
 import styles from './workbench.module.css'
 
@@ -19,13 +19,14 @@ interface ResultsProps {
     describedByStatus: boolean
     infoExpanded: boolean
     onInfoToggle: () => void
+    chartLayout: ChartLayoutControls
 }
 
-export function Results({ result, pinned, activeStep, dimmed, describedByStatus, infoExpanded, onInfoToggle }: ResultsProps) {
+export function Results({ result, pinned, activeStep, dimmed, describedByStatus, infoExpanded, onInfoToggle, chartLayout }: ResultsProps) {
     const messages = resultMessages(result)
     const highlight = activeStep === null ? null : stepSpan(result.steps[activeStep], result.durationSeconds)
     const [perVillager, setPerVillager] = useState(false)
-    const { layout, move, toggle } = useChartLayout()
+    const { layout, move, toggle } = chartLayout
     const container = useRef<HTMLDivElement>(null)
     const pendingFocus = useRef<{ id: ChartId; direction: 'up' | 'down' } | null>(null)
     const gatherRateSeries = (run: SimulationResult) => (perVillager ? perVillagerSeries(run.gatherRates, run.gatherers) : resourceSeries(run.gatherRates))

@@ -998,13 +998,19 @@ the title and the three buttons stay. The hidden series, the Per villager choice
 and a collapsed chart draws no step band, markers or pinned lines while the others keep theirs. Move up and move down swap a chart
 with its neighbour; up is disabled on the first chart and down on the last. The default order is Units produced, Gather rates,
 Gathered resources, Floating resources, all expanded. The layout is kept in `localStorage` under `aoe4-build-order.chart-layout`
-as `{ version, order, collapsed }` and applied after the page loads, so the first paint is the default layout. A stored value
+as `{ version, order, collapsed }` and applied after the page loads, so the first paint is the default layout. `collapsed`
+holds chart ids and, when the key results panel is collapsed, `key-results`; `order` holds chart ids only. A stored value
 that is not valid JSON or has another version gives the default layout; unknown and duplicate ids are dropped and a missing id
-is appended to the order. When the store is unavailable or blocked, the layout lasts for the page session and no error is shown.
+is appended to the order. Loading the page writes nothing: with nothing stored the key stays unset until a chart or the key
+results panel is moved or collapsed. When the store is unavailable or blocked, the layout lasts for the page session and no error is shown.
+
+Key results panel: under the "Results" heading, a "Key results" title row (`compare-heading`) holds a collapse caret
+(`compare-collapse`), then "Pin this run" and "Unpin". Collapsing the panel hides the pinned label and the compare table; the title
+row and both pin buttons stay. Its collapsed state is part of the chart layout above, so it survives a reload.
 
 The step table, and the text view's gutter annotations, double as the annotated build order for the charts. Pointing at a row, or focusing a control in it, highlights the row and shades that step's span, from Started to Finished, on every chart; an in-progress step's span runs to the end of the run, a step that starts and finishes in the same second shows as one vertical line, and a waiting or not-reached step, or a row with no run times, shows no band. Pointing at or focusing the start row shades nothing. Moving off the row, or running again, clears the shading. Moving focus between controls of one row keeps it. While the result is stale, a row that still has its times still shades its span.
 
-Under the "Results" heading, "Pin this run" (`pin-run`, enabled while a result is shown, unless its text and
+In the key results title row, "Pin this run" (`pin-run`, enabled while a result is shown, unless its text and
 duration both equal the pinned run's) keeps the shown result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is
 pinned) drops it. The pin stays through later runs, text and build edits, invalid, rejected and failed inputs, and a reload: the pin is kept in `localStorage` under
 `aoe4-build-order.pinned-run` as the build text, duration and name (not the result), and the page re-runs it on

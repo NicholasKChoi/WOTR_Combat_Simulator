@@ -34,6 +34,7 @@ import { MY_BUILDS_STORAGE_KEY, type MyBuildEntry, myBuildsAvailable, readMyBuil
 import { loadNamedBuild } from '../../components/apps/aoe4-build-order/named-build-client'
 import { clearStoredPin, readStoredPin, writeStoredPin } from '../../components/apps/aoe4-build-order/pin-storage'
 import { ComparePanel } from '../../components/apps/aoe4-build-order/compare-panel'
+import { KEY_RESULTS_PANEL_ID } from '../../components/apps/aoe4-build-order/chart-layout'
 import { Results } from '../../components/apps/aoe4-build-order/results'
 import { StepTable } from '../../components/apps/aoe4-build-order/step-table'
 import { mergeExternalEdit } from '../../components/apps/aoe4-build-order/step-table-model'
@@ -42,6 +43,7 @@ import { postSimulation } from '../../components/apps/aoe4-build-order/simulate-
 import { useAutoRun } from '../../components/apps/aoe4-build-order/use-auto-run'
 import { useRunBarHeight } from '../../components/apps/aoe4-build-order/use-run-bar-height'
 import { useDiscardGuard } from '../../components/apps/aoe4-build-order/use-discard-guard'
+import { useChartLayout } from '../../components/apps/aoe4-build-order/use-chart-layout'
 import { useSplitLayout } from '../../components/apps/aoe4-build-order/use-split-layout'
 import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-build-order/workbench-tabs'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
@@ -157,6 +159,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const resultsEnabled = result !== null || pin !== null
     const shownTab = resultsEnabled ? tab : 'build'
     const split = useSplitLayout()
+    const chartLayout = useChartLayout()
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
     const liveSteps = parsed.ok ? parsed.order.steps : parsed.partial.order.steps
     const stale = useMemo(() => resultsStale({ status, result, shown }, { text, duration, selected }), [status, result, shown, text, duration, selected])
@@ -430,6 +433,8 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                                 alreadyPinned={alreadyPinned}
                                 onPin={pinShownRun}
                                 onUnpin={unpin}
+                                collapsed={chartLayout.layout.collapsed.includes(KEY_RESULTS_PANEL_ID)}
+                                onToggleCollapsed={() => chartLayout.toggle(KEY_RESULTS_PANEL_ID)}
                             />
                             {result !== null ? (
                                 <Results
@@ -440,6 +445,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                                     describedByStatus={statusDescribesResults(stale, status, true)}
                                     infoExpanded={infoExpanded}
                                     onInfoToggle={() => setInfoExpanded((v) => !v)}
+                                    chartLayout={chartLayout}
                                 />
                             ) : null}
                         </div>
