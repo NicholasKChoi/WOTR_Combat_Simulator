@@ -24,23 +24,6 @@ Detail goes in the research report. Each item has this shape:
 
 next: Q64
 
-## Q60: Run the SGS-130 live Blob test on PR #142 and send back the logged error class
-kind: repro
-blocks: SGS-130 (Blob store retry cap, landed write, live test), SGS-131 (My builds: no wipe on bad value, backup), SGS-134 (Chart layout model and key-results collapse), SGS-136 (Simulator emits production buildings, OpenAPI 2.6.0), SGS-140 (Compact text-editor mode below 48rem)
-options: A) Done, output attached | B) Skip the live run and merge without it: risk is an unmapped Blob error class on ifMatch for a missing key
-recommendation: A: the ticket requires the recorded class before merge
-thread: 1570256157644296212
-question: Run the SGS-130 live Blob test on PR #142 (Claude tried 2026-11-12: blocked, it may not pull Vercel credentials) and send back the logged error class
-
-PR #142 (SGS-130) changes Blob store writes and needs one live run only you can do; the stack #143-#146 sits on it, so nothing merges until it is done (auto-merge held).
-1. In the repo, check out branch sgs-130-blob-landed-write-retry-cap (PR #142).
-2. Run: vercel env pull .env.local
-3. Run: npm run test:blob-live
-4. Reply with the error class the test logs for ifMatch on a missing key (expected BlobNotFoundError or BlobPreconditionFailedError), or the full output if it fails.
-Then approve merging the stack; I will update the replaceNamed comment with the recorded class and date.
-
-### Answer
-
 ## Q61: File engine issue: planner outlines name the owner of each shared test/spec/helper?
 kind: confirmation
 blocks: retro
