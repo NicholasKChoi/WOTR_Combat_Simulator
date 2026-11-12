@@ -26,12 +26,12 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-127 | Named-build update 412: weak CDN etag in compare-and-swap | M9 | M9.1 | aoe4-build-order | high | | | sgs-127-blob-strong-etag | 8691f1e | integrated | | 138 | tickets/SGS-127-blob-strong-etag.md |
 | SGS-128 | Shared test helpers and two jscpd gates | M9 | M9.11 | | standard | | | sgs-128-shared-test-helpers-and-jscpd-gates | 802e22208f1bc9dc2ca3dd72ace2ee7e660ff3f3 | integrated | 1 | 139 | tickets/SGS-128-shared-test-helpers-and-jscpd-gates.md |
 | SGS-129 | Turn on strict in tsconfig | M9 | M9.13 | | low | | | sgs-129-strict-typescript | 0d103044bc8aa41f45ad6c53b1576d481f570d47 | integrated | | 140 | tickets/SGS-129-strict-typescript.md |
-| SGS-130 | Blob store retry cap, landed write, live test | M9 | M9.10 | | high | SGS-127,SGS-128 | | | | spec_ready | | | tickets/SGS-130-blob-landed-write-retry-cap.md |
-| SGS-134 | Chart layout model and key-results collapse | M9 | M9.4 | | standard | SGS-128 | | | | spec_ready | | | tickets/SGS-134-chart-layout-model-key-results-collapse.md |
-| SGS-136 | Simulator emits production buildings, OpenAPI 2.6.0 | M9 | M9.6 | | high | SGS-128 | | | | spec_ready | | | tickets/SGS-136-simulate-production-buildings-series.md |
-| SGS-140 | Compact text-editor mode below 48rem | M9 | M9.8 | | low | SGS-128 | | | | spec_ready | | | tickets/SGS-140-editor-compact-mode.md |
-| SGS-131 | My builds: no wipe on bad value, backup | M9 | M9.10 | | standard | SGS-128 | | | | spec_ready | | | tickets/SGS-131-my-builds-no-wipe-and-backup.md |
-| SGS-132 | Save panel one row and live Saved status | M9 | M9.3 | | standard | SGS-128 | | | | spec_ready | | | tickets/SGS-132-save-panel-live-status.md |
+| SGS-130 | Blob store retry cap, landed write, live test | M9 | M9.10 | | high | SGS-127,SGS-128 | | sgs-130-blob-landed-write-retry-cap | 73693ef | tested | | | tickets/SGS-130-blob-landed-write-retry-cap.md |
+| SGS-134 | Chart layout model and key-results collapse | M9 | M9.4 | | standard | SGS-128 | | sgs-134-chart-layout-model-key-results-collapse | a5e866c | tested | | | tickets/SGS-134-chart-layout-model-key-results-collapse.md |
+| SGS-136 | Simulator emits production buildings, OpenAPI 2.6.0 | M9 | M9.6 | | high | SGS-128 | | sgs-136-simulate-production-buildings-series | bbaa171 | tested | | | tickets/SGS-136-simulate-production-buildings-series.md |
+| SGS-140 | Compact text-editor mode below 48rem | M9 | M9.8 | | low | SGS-128 | | sgs-140-editor-compact-mode | 72be9db | tested | | | tickets/SGS-140-editor-compact-mode.md |
+| SGS-131 | My builds: no wipe on bad value, backup | M9 | M9.10 | | standard | SGS-128 | | sgs-131-my-builds-no-wipe-and-backup | c03940d | tested | | | tickets/SGS-131-my-builds-no-wipe-and-backup.md |
+| SGS-132 | Save panel one row and live Saved status | M9 | M9.3 | | standard | SGS-128 | | sgs-132-save-panel-live-status | 5957bea | integrated | 1 | 141 | tickets/SGS-132-save-panel-live-status.md |
 | SGS-135 | Chart header drag handle and caret | M9 | M9.4 | | standard | SGS-134 | | | | spec_ready | | | tickets/SGS-135-chart-header-drag-handle-and-caret.md |
 | SGS-133 | Split-scroll anchoring and run-bar cap | M9 | M9.12 | | standard | SGS-132 | | | | spec_ready | | | tickets/SGS-133-split-scroll-anchoring-and-run-bar-cap.md |
 | SGS-137 | Gather-rates and units-produced view toggles | M9 | M9.6 | | standard | SGS-134,SGS-135,SGS-136,SGS-138 | | | | spec_ready | | | tickets/SGS-137-chart-view-toggles.md |

@@ -85,3 +85,18 @@ flowchart TD
 ## Open questions
 
 none
+
+## Rework 1 - 2026-11-11 (review, text)
+
+Review bounced tip 0144aca (report reports/SGS-130-review-1.md); no other gate has passed it. Code and tests are correct; two wording fixes, both `(text)`.
+
+### Findings
+- `ARCHITECTURE.md:24` (text): the storage row wrongly says "otherwise the put error decides the outcome" (wrong for `create`, `blob-build-store.ts:65-67`) and wrongly says `@vercel/blob` reads the retries as a "per-call retry count" (`get` makes one request in 2.9.0).
+- `lib/aoe4-build-order/blob-build-store.ts:9-10` (text): "every request" is wrong; `get` is not retried.
+
+### Required fixes
+- [ ] In `ARCHITECTURE.md` replace the two sentences ("When a Blob `put` throws ... otherwise the put error decides the outcome. Creating the store sets ... a value already set is kept.") with exactly: "When a Blob `put` throws (in `create`, `bumpCounter` or `replaceNamed`), the store makes a fresh read of the key and counts the write as done when the stored value, serialized with `JSON.stringify`, is the exact text it sent, since a write whose response was lost may have landed before the SDK's retry failed. Otherwise `create` gives `exists` when `head` finds the key and rethrows the put error when it does not; `replaceNamed` gives `conflict` for a precondition or not-found error and rethrows any other; `bumpCounter` tries again after a 412 or when the counter it was creating now exists, rethrows any other error, and gives `contended` after its third attempt. Creating the store sets `VERCEL_BLOB_RETRIES` to `BLOB_SDK_RETRIES` (1) when that variable is unset or empty (`@vercel/blob` reads it as the retry count of each `put`, `head` and `del` call, default 10; `get` makes a single request); a value already set is kept."
+- [ ] In `lib/aoe4-build-order/blob-build-store.ts` lines 9-10 replace the comment with exactly:
+  `// @vercel/blob reads VERCEL_BLOB_RETRIES from process.env on every put, head and del call (default 10; get is`
+  `// not retried), and bumpCounter's attempts multiply those retries during an outage.`
+- [ ] Change nothing else; run unit tests, tsc, lint:dup.
