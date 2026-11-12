@@ -4,6 +4,7 @@
     "scripts": {
         "dev": "next dev",
         "test": "vitest run",
+        "test:blob-live": "BLOB_LIVE=1 vitest run lib/aoe4-build-order/blob-build-store.live.test.ts",
         "acceptance": "playwright test",
         "smoke:preview": "node scripts/smoke-preview.mjs",
         "acceptance:setup": "playwright install chromium",

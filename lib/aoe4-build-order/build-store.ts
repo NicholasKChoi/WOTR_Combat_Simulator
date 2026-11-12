@@ -32,7 +32,7 @@ export interface BuildStore {
   createNamed(id: string, json: string): Promise<PutResult>;
   // Always a fresh read, never a cached one.
   getNamed(id: string): Promise<StoredWithEtag | null>;
-  // Compare-and-swap: writes only when the key exists and its etag is still `etag`; never retries.
+  // Compare-and-swap: writes only when the key exists and its etag is still `etag`; never re-reads the etag to try again.
   replaceNamed(id: string, json: string, etag: string): Promise<ReplaceResult>;
   deleteNamed(id: string): Promise<void>;
 }

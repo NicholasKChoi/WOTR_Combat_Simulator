@@ -1,6 +1,6 @@
 import { BlobNotFoundError, BlobPreconditionFailedError, del, get, head, put } from '@vercel/blob'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createBlobBuildStore } from './blob-build-store'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { BLOB_SDK_RETRIES, createBlobBuildStore } from './blob-build-store'
 
 vi.mock('@vercel/blob', async (importOriginal) => {
     const original = await importOriginal<typeof import('@vercel/blob')>()
@@ -32,11 +32,58 @@ function compressed(value: unknown, etag: string) {
 
 const counterPuts = () => vi.mocked(put).mock.calls.map(([key, body, options]) => ({ key, body: JSON.parse(body as string), options }))
 
+// One counter blob whose put honors ifMatch and allowOverwrite: false; events logs each get and put by count.
+function counterBlob(initial: { windowStart: number; count: number } | null) {
+    let blob = initial === null ? null : { value: initial, etag: '"e0"' }
+    let etags = 0
+    const events: string[] = []
+    const rejection = ({ allowOverwrite, ifMatch }: { allowOverwrite?: boolean; ifMatch?: string }) => {
+        if (ifMatch === undefined) return blob !== null && !allowOverwrite ? new Error('already exists') : null
+        if (blob === null) return new BlobNotFoundError()
+        return blob.etag === ifMatch ? null : new BlobPreconditionFailedError()
+    }
+    vi.mocked(get).mockImplementation(async () => {
+        events.push(`get ${blob?.value.count ?? 'none'}`)
+        return blob === null ? null : found(blob.value, blob.etag)
+    })
+    vi.mocked(head).mockImplementation(async () => {
+        if (blob === null) throw new BlobNotFoundError()
+        return {} as Awaited<ReturnType<typeof head>>
+    })
+    vi.mocked(put).mockImplementation(async (_key, body, options) => {
+        const value = JSON.parse(body as string)
+        const error = rejection(options as { allowOverwrite?: boolean; ifMatch?: string })
+        events.push(`put ${value.count}${error === null ? '' : ' failed'}`)
+        if (error !== null) throw error
+        etags += 1
+        blob = { value, etag: `"e${etags}"` }
+        return {} as Awaited<ReturnType<typeof put>>
+    })
+    return { events, storedCount: () => blob?.value.count }
+}
+
 beforeEach(() => {
     vi.mocked(put).mockReset().mockResolvedValue({} as Awaited<ReturnType<typeof put>>)
     vi.mocked(get).mockReset().mockResolvedValue(null)
     vi.mocked(head).mockReset().mockRejectedValue(new BlobNotFoundError())
     vi.mocked(del).mockReset().mockResolvedValue(undefined)
+})
+
+describe('createBlobBuildStore', () => {
+    afterEach(() => {
+        vi.unstubAllEnvs()
+    })
+
+    it.each([
+        ['unset', undefined, String(BLOB_SDK_RETRIES)],
+        ['empty', '', String(BLOB_SDK_RETRIES)],
+        ['set to 5', '5', '5'],
+    ])('caps the SDK retries through VERCEL_BLOB_RETRIES when it is %s', (_label, before, after) => {
+        vi.stubEnv('VERCEL_BLOB_RETRIES', before)
+        expect(process.env.VERCEL_BLOB_RETRIES).toBe(before)
+        store()
+        expect(process.env.VERCEL_BLOB_RETRIES).toBe(after)
+    })
 })
 
 describe.each([
@@ -48,10 +95,19 @@ describe.each([
         expect(put).toHaveBeenCalledExactlyOnceWith(key, '{"a":1}', { ...PUT_OPTIONS, allowOverwrite: false })
     })
 
-    it('reports exists when put fails and the blob is there', async () => {
+    it('reports created when put fails but a fresh read shows the JSON it sent', async () => {
         vi.mocked(put).mockRejectedValue(new Error('already exists'))
+        vi.mocked(get).mockResolvedValue(found({ a: 1 }))
+        expect(await store()[method](id, '{"a":1}')).toBe('created')
+        expect(get).toHaveBeenCalledExactlyOnceWith(key, FRESH_GET_OPTIONS)
+        expect(head).not.toHaveBeenCalled()
+    })
+
+    it('reports exists when put fails and the blob holds other content', async () => {
+        vi.mocked(put).mockRejectedValue(new Error('already exists'))
+        vi.mocked(get).mockResolvedValue(found({ a: 2 }))
         vi.mocked(head).mockResolvedValue({} as Awaited<ReturnType<typeof head>>)
-        expect(await store()[method](id, '{}')).toBe('exists')
+        expect(await store()[method](id, '{"a":1}')).toBe('exists')
         expect(head).toHaveBeenCalledExactlyOnceWith(key, { storeId: STORE_ID })
     })
 
@@ -167,18 +223,42 @@ describe('replaceNamed', () => {
     })
 
     const serviceDown = new Error('service down')
+    const preconditionFailed = new BlobPreconditionFailedError()
+    const sent = { revision: 2 }
+    const storedAs = (value: unknown) => () => vi.mocked(get).mockResolvedValue(found(value, '"landed-etag"'))
+    const nothingStored = () => vi.mocked(get).mockResolvedValue(null)
+    const readThrows = () => vi.mocked(get).mockRejectedValue(new Error('read failed'))
+    const weakEtagRead = () => vi.mocked(get).mockResolvedValue(compressed(sent, WEAK_ETAG))
     it.each([
-        ['BlobPreconditionFailedError', new BlobPreconditionFailedError(), 'conflict'],
-        ['BlobNotFoundError', new BlobNotFoundError(), 'conflict'],
-        ['any other error', serviceDown, serviceDown],
-    ])('maps a put rejecting with %s after one put and no read', async (_label, putError, expected) => {
+        ['BlobPreconditionFailedError', 'our JSON stored', preconditionFailed, storedAs(sent), 'replaced'],
+        ['BlobPreconditionFailedError', 'other JSON stored', preconditionFailed, storedAs({ revision: 3 }), 'conflict'],
+        ['BlobPreconditionFailedError', 'nothing stored', preconditionFailed, nothingStored, 'conflict'],
+        ['BlobPreconditionFailedError', 'a read that throws', preconditionFailed, readThrows, 'conflict'],
+        ['BlobPreconditionFailedError', 'a weak etag read of our JSON', preconditionFailed, weakEtagRead, 'conflict'],
+        ['BlobNotFoundError', 'nothing stored', new BlobNotFoundError(), nothingStored, 'conflict'],
+        ['any other error', 'our JSON stored', serviceDown, storedAs(sent), 'replaced'],
+        ['any other error', 'other JSON stored', serviceDown, storedAs({ revision: 3 }), serviceDown],
+        ['any other error', 'nothing stored', serviceDown, nothingStored, serviceDown],
+        ['any other error', 'a read that throws', serviceDown, readThrows, serviceDown],
+        ['any other error', 'a weak etag read of our JSON', serviceDown, weakEtagRead, serviceDown],
+    ])('maps a put rejecting with %s and %s after one put and one fresh read', async (_label, _stored, putError, arrange, expected) => {
         vi.mocked(put).mockRejectedValue(putError)
-        const result = store().replaceNamed(NAMED_ID, '{"revision":2}', 'etag-1')
+        arrange()
+        const result = store().replaceNamed(NAMED_ID, JSON.stringify(sent), 'etag-1')
         if (expected instanceof Error) await expect(result).rejects.toBe(expected)
         else expect(await result).toBe(expected)
-        expect(put).toHaveBeenCalledOnce()
+        expect(put).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, JSON.stringify(sent), { ...PUT_OPTIONS, allowOverwrite: true, ifMatch: 'etag-1' })
+        expect(get).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, FRESH_GET_OPTIONS)
         expect(head).not.toHaveBeenCalled()
-        expect(get).not.toHaveBeenCalled()
+    })
+
+    it.each([
+        ['key order', '{"name":"a","revision":2}', { revision: 2, name: 'a' }],
+        ['whitespace', '{"name": "a", "revision": 2}', { name: 'a', revision: 2 }],
+    ])('does not count the same data with a different %s as landed', async (_label, json, stored) => {
+        vi.mocked(put).mockRejectedValue(preconditionFailed)
+        vi.mocked(get).mockResolvedValue(found(stored))
+        expect(await store().replaceNamed(NAMED_ID, json, 'etag-1')).toBe('conflict')
     })
 })
 
@@ -243,12 +323,12 @@ describe('bumpCounter', () => {
     })
 
     it('retries a changed etag with the etag of the new read', async () => {
-        vi.mocked(get).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, 'etag-1')).mockResolvedValueOnce(found({ windowStart: W, count: 2 }, 'etag-2'))
+        vi.mocked(get).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, 'etag-1')).mockImplementation(async () => found({ windowStart: W, count: 3 }, 'etag-2'))
         vi.mocked(put).mockRejectedValueOnce(new BlobPreconditionFailedError())
-        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: 3 })
+        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: 4 })
         expect(counterPuts().map(({ body, options }) => [body.count, options.ifMatch])).toStrictEqual([
             [2, 'etag-1'],
-            [3, 'etag-2'],
+            [4, 'etag-2'],
         ])
     })
 
@@ -261,15 +341,50 @@ describe('bumpCounter', () => {
     })
 
     it('retries a create that lost to another writer', async () => {
-        vi.mocked(get).mockResolvedValueOnce(null).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, 'etag-1'))
+        vi.mocked(get).mockResolvedValueOnce(null).mockImplementation(async () => found({ windowStart: W, count: 2 }, 'etag-2'))
         vi.mocked(put).mockRejectedValueOnce(new Error('already exists'))
         vi.mocked(head).mockResolvedValue({} as Awaited<ReturnType<typeof head>>)
-        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: 2 })
+        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: 3 })
         expect(put).toHaveBeenCalledTimes(2)
     })
 
     it.each([
-        ['an update', () => vi.mocked(get).mockResolvedValue(found({ windowStart: W, count: 1 }))],
+        ['an update rejected with 412', found({ windowStart: W, count: 1 }, 'etag-1'), new BlobPreconditionFailedError(), 2, 'etag-1'],
+        ['a create rejected as already existing', null, new Error('already exists'), 1, undefined],
+    ])('starts a new attempt after %s even when the stored value is the JSON it sent', async (_label, current, putError, sent, firstIfMatch) => {
+        vi.mocked(get).mockResolvedValueOnce(current).mockImplementation(async () => found({ windowStart: W, count: sent }, 'etag-2'))
+        vi.mocked(put).mockRejectedValueOnce(putError)
+        vi.mocked(head).mockResolvedValue({} as Awaited<ReturnType<typeof head>>)
+        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: sent + 1 })
+        expect(counterPuts().map(({ body, options }) => [body.count, options.ifMatch])).toStrictEqual([
+            [sent, firstIfMatch],
+            [sent + 1, 'etag-2'],
+        ])
+        expect(get).toHaveBeenCalledTimes(2)
+    })
+
+    it('rethrows a network error on an update after one put even when the stored value is the JSON it sent', async () => {
+        const putError = new Error('fetch failed')
+        vi.mocked(get).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, 'etag-1')).mockImplementation(async () => found({ windowStart: W, count: 2 }, 'etag-2'))
+        vi.mocked(put).mockRejectedValue(putError)
+        await expect(store().bumpCounter('c', W, LIMIT)).rejects.toBe(putError)
+        expect(put).toHaveBeenCalledOnce()
+        expect(get).toHaveBeenCalledOnce()
+    })
+
+    it.each([
+        ['an existing counter', { windowStart: W, count: 4 }, 4, ['get 4', 'get 4', 'put 5', 'put 5 failed', 'get 5', 'put 6']],
+        ['an absent counter', null, 0, ['get none', 'get none', 'put 1', 'put 1 failed', 'get 1', 'put 2']],
+    ])('gives two parallel bumps over %s different updates, the loser re-reading before its second put', async (_label, initial, before, events) => {
+        const blob = counterBlob(initial)
+        const results = await Promise.all([store().bumpCounter('c', W, LIMIT), store().bumpCounter('c', W, LIMIT)])
+        expect(results.map((result) => (result as { count: number }).count).sort((a, b) => a - b)).toStrictEqual([before + 1, before + 2])
+        expect(blob.storedCount()).toBe(before + 2)
+        expect(blob.events).toStrictEqual(events)
+    })
+
+    it.each([
+        ['an update', () => vi.mocked(get).mockImplementation(async () => found({ windowStart: W, count: 1 }))],
         ['a create', () => vi.mocked(get).mockResolvedValue(null)],
     ])('propagates any other put error on %s after one attempt', async (_label, arrange) => {
         arrange()
