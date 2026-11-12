@@ -4,6 +4,7 @@ import { buildStoreFromEnv } from './build-store'
 import { listBuilds } from './builds'
 import { saveBuildReply } from './builds-routes'
 import { createNamedBuildReply, namedBuildReply } from './named-builds-routes'
+import { SAVE_RATE_LIMIT } from './save-rate-limit'
 import { buildOrderCatalog } from './schema'
 import { ENGLISH } from './test-helpers'
 
@@ -16,7 +17,13 @@ type PutOptions = { allowOverwrite?: boolean; ifMatch?: string }
 
 const blobs = new Map<string, { body: string; etag: string }>()
 const faults = new Map<string, Fault[]>()
-const blobState = { etags: 0, weakReadsAfterFault: false, weakReads: false, lastPutError: undefined as unknown }
+const blobState = {
+    etags: 0,
+    weakReadsAfterFault: false,
+    weakReads: false,
+    lastPutError: undefined as unknown,
+    beforeRead: undefined as ((key: string) => Promise<void> | undefined) | undefined,
+}
 const kindOf = (key: string) => key.split('/')[1]
 
 vi.mock('@vercel/blob', async (importOriginal) => {
@@ -58,6 +65,7 @@ vi.mock('@vercel/blob', async (importOriginal) => {
             return {}
         }),
         get: vi.fn(async (key: string) => {
+            await blobState.beforeRead?.(key)
             const found = blobs.get(key)
             if (found === undefined) return null
             const etag = blobState.weakReads ? `W/${found.etag}` : found.etag
@@ -102,6 +110,23 @@ function failNext(kind: string, ...queued: Fault[]) {
     faults.set(kind, queued)
 }
 
+// Holds the first `readers` counter reads until all have arrived, so parallel saves read the same count
+// instead of running one after another.
+function holdCounterReads(readers: number) {
+    let release = () => {}
+    const allArrived = new Promise<void>((resolve) => (release = resolve))
+    let arrived = 0
+    blobState.beforeRead = (key) => {
+        if (kindOf(key) !== 'rate-limit') return undefined
+        arrived += 1
+        if (arrived === readers) {
+            blobState.beforeRead = undefined
+            release()
+        }
+        return allArrived
+    }
+}
+
 async function namedBuildOnFile() {
     const reply = await createNamed()
     expect(reply.status).toBe(201)
@@ -113,7 +138,7 @@ let errorLog: MockInstance<typeof console.error>
 beforeEach(() => {
     blobs.clear()
     faults.clear()
-    Object.assign(blobState, { weakReadsAfterFault: false, weakReads: false, lastPutError: undefined })
+    Object.assign(blobState, { weakReadsAfterFault: false, weakReads: false, lastPutError: undefined, beforeRead: undefined })
     vi.mocked(put).mockClear()
     errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -189,13 +214,25 @@ describe('the save rate counter when its Blob write fails', () => {
     it.each<[string, Fault]>([
         ['the SDK retry runs into the counter write that landed', 'retried'],
         ['the connection drops after the counter write lands', 'dropped'],
-    ])('answers 201 on a first save and stores a count at most one above the accepted saves when %s', async (_label, fault) => {
+    ])('answers 201 on a first save and charges one extra count, not a read-back, when %s', async (_label, fault) => {
         expect(blobs.has(COUNTER_KEY)).toBe(false)
         failNext('rate-limit', fault)
         const reply = await saveBuild()
         expect(reply.status).toBe(201)
         expect(putsTo('builds')).toHaveLength(1)
-        expect([1, 2]).toContain(stored(COUNTER_KEY).count)
+        expect(putsTo('rate-limit')).toHaveLength(2)
+        expect(stored(COUNTER_KEY)).toEqual({ windowStart: NOW, count: 2 })
+    })
+
+    it('lets only one of three parallel saves from one client through when one save is left in the window', async () => {
+        const lastSlot = { windowStart: NOW, count: SAVE_RATE_LIMIT.maxSaves - 1 }
+        blobs.set(COUNTER_KEY, { body: JSON.stringify(lastSlot), etag: '"seeded"' })
+        holdCounterReads(3)
+        const replies = await Promise.all([saveBuild(), saveBuild(), saveBuild()])
+        expect(putsTo('rate-limit').map(([, , options]) => options.ifMatch)).toEqual(['"seeded"', '"seeded"', '"seeded"'])
+        expect(replies.map((reply) => reply.status).sort()).toEqual([201, 429, 429])
+        expect(stored(COUNTER_KEY)).toEqual({ windowStart: NOW, count: SAVE_RATE_LIMIT.maxSaves })
+        expect(putsTo('builds')).toHaveLength(1)
     })
 
     it('answers 503 and stores no build when the connection drops after a counter update lands', async () => {
