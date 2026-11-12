@@ -14,6 +14,9 @@ const COUNTER_KEY = 'preview/rate-limit/c.json'
 const NAMED_ID = 'Nm3_k9-QaB0Nm3_k9-QaB0'
 const NAMED_KEY = `preview/named-builds/${NAMED_ID}.json`
 const PUT_OPTIONS = { access: 'private', addRandomSuffix: false, contentType: 'application/json', storeId: STORE_ID }
+const FRESH_GET_OPTIONS = { access: 'private', storeId: STORE_ID, useCache: false, headers: { 'accept-encoding': 'identity' } }
+const WEAK_ETAG = 'W/"abc"'
+const STRONG_ETAG = '"abc"'
 const W = 3_600_000 * 1_000
 const LIMIT = 30
 
@@ -21,6 +24,10 @@ const store = () => createBlobBuildStore(STORE_ID, 'preview')
 
 function found(value: unknown, etag = 'etag-1') {
     return { statusCode: 200, stream: new Response(JSON.stringify(value)).body, headers: new Headers(), blob: { etag } } as unknown as Awaited<ReturnType<typeof get>>
+}
+
+function compressed(value: unknown, etag: string) {
+    return { ...found(value, etag), headers: new Headers({ 'content-encoding': 'br' }) } as Awaited<ReturnType<typeof get>>
 }
 
 const counterPuts = () => vi.mocked(put).mock.calls.map(([key, body, options]) => ({ key, body: JSON.parse(body as string), options }))
@@ -80,6 +87,12 @@ describe('getBuild', () => {
         expect(await store().getBuild(ID)).toStrictEqual({ version: 1 })
         expect(get).toHaveBeenCalledExactlyOnceWith(BUILD_KEY, { access: 'private', storeId: STORE_ID })
     })
+
+    it('returns the stored value for a weak etag and sends no headers option', async () => {
+        vi.mocked(get).mockResolvedValue(compressed({ version: 1 }, WEAK_ETAG))
+        expect(await store().getBuild(ID)).toStrictEqual({ version: 1 })
+        expect(get).toHaveBeenCalledExactlyOnceWith(BUILD_KEY, { access: 'private', storeId: STORE_ID })
+    })
 })
 
 describe('deleteBuild', () => {
@@ -99,7 +112,51 @@ describe('getNamed', () => {
     it('reads the value and the blob etag without the cache', async () => {
         vi.mocked(get).mockResolvedValue(found({ revision: 3 }, 'etag-3'))
         expect(await store().getNamed(NAMED_ID)).toStrictEqual({ value: { revision: 3 }, etag: 'etag-3' })
-        expect(get).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, { access: 'private', storeId: STORE_ID, useCache: false })
+        expect(get).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, FRESH_GET_OPTIONS)
+    })
+
+    it('takes the strong etag from the get response and makes no head call', async () => {
+        vi.mocked(get).mockResolvedValue(found({ revision: 3 }, STRONG_ETAG))
+        vi.mocked(head).mockResolvedValue({ etag: '"other"' } as Awaited<ReturnType<typeof head>>)
+        expect(await store().getNamed(NAMED_ID)).toStrictEqual({ value: { revision: 3 }, etag: STRONG_ETAG })
+        expect(head).not.toHaveBeenCalled()
+    })
+})
+
+describe.each([
+    ['getNamed', NAMED_KEY, () => store().getNamed(NAMED_ID)],
+    ['bumpCounter', COUNTER_KEY, () => store().bumpCounter('c', W, LIMIT)],
+] as const)('%s with a compressed response', (_method, key, call) => {
+    const body = { windowStart: W, count: 1, marker: 'Body-Marker-q7Z' }
+
+    it('rejects a weak etag before any put, naming the key but not the body', async () => {
+        vi.mocked(get).mockResolvedValue(compressed(body, WEAK_ETAG))
+        const error = await call().then(
+            () => null,
+            (rejected: unknown) => rejected,
+        )
+        expect(error).toBeInstanceOf(Error)
+        const { message } = error as Error
+        expect(message).toContain(key)
+        expect(message).toContain('weak etag')
+        expect(message).not.toContain(body.marker)
+        expect(put).not.toHaveBeenCalled()
+    })
+})
+
+describe('a strong etag from get', () => {
+    it('is the ifMatch of replaceNamed after getNamed', async () => {
+        vi.mocked(get).mockResolvedValue(found({ revision: 1 }, STRONG_ETAG))
+        const blob = store()
+        const current = await blob.getNamed(NAMED_ID)
+        expect(await blob.replaceNamed(NAMED_ID, '{"revision":2}', current?.etag ?? '')).toBe('replaced')
+        expect(put).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, '{"revision":2}', { ...PUT_OPTIONS, allowOverwrite: true, ifMatch: STRONG_ETAG })
+    })
+
+    it('is the ifMatch of the bumpCounter put', async () => {
+        vi.mocked(get).mockResolvedValue(found({ windowStart: W, count: 1 }, STRONG_ETAG))
+        await store().bumpCounter('c', W, LIMIT)
+        expect(counterPuts().map(({ options }) => options.ifMatch)).toStrictEqual([STRONG_ETAG])
     })
 })
 
@@ -144,7 +201,7 @@ describe('deleteNamed', () => {
 describe('bumpCounter', () => {
     it('creates an absent counter without overwrite or ifMatch', async () => {
         expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: 1 })
-        expect(get).toHaveBeenCalledExactlyOnceWith(COUNTER_KEY, { access: 'private', storeId: STORE_ID, useCache: false })
+        expect(get).toHaveBeenCalledExactlyOnceWith(COUNTER_KEY, FRESH_GET_OPTIONS)
         expect(counterPuts()).toStrictEqual([
             {
                 key: COUNTER_KEY,

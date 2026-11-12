@@ -405,6 +405,35 @@ describe('namedBuildReply, PUT store rows', () => {
         expect(await storedValue(inner, id)).toStrictEqual(JSON.parse(competitor))
     })
 
+    it.each(['getNamed', 'bumpCounter'] as const)('answers 503, not 412, and logs it when %s rejects a weak etag', async (method) => {
+        const error = silenceErrors()
+        const store = createMemoryBuildStore()
+        const { id, editSecret } = await created(store)
+        const weak = new Error(`Blob read of preview/named-builds/${id}.json returned a weak etag W/"abc", which ifMatch cannot use`)
+        expect(await put(withBroken(store, { [method]: () => Promise.reject(weak) }), id, editSecret)).toStrictEqual(STORAGE_DOWN)
+        expect(error).toHaveBeenCalledExactlyOnceWith('builds: storage failed', weak)
+    })
+
+    it('answers 412 for a stale revision and for a store conflict, logging each with its own line, the id and no secret', async () => {
+        async function logged412(wrap: (store: BuildStore) => BuildStore, ifMatch: string) {
+            const store = createMemoryBuildStore()
+            const { id, editSecret } = await created(store)
+            const hash = await editSecretHash(editSecret)
+            const error = silenceErrors()
+            expect(await put(wrap(store), id, editSecret, { ifMatch })).toStrictEqual(CHANGED)
+            expect(error).toHaveBeenCalledOnce()
+            const strings = loggedStrings(error.mock.calls)
+            expect(strings.some((value) => value.includes(id))).toBe(true)
+            expect(strings.filter((value) => value.includes(editSecret) || value.includes(hash))).toStrictEqual([])
+            const [[line]] = error.mock.calls
+            error.mockRestore()
+            return line
+        }
+        const stale = await logged412((store) => store, '"2"')
+        const conflict = await logged412((store) => withBroken(store, { replaceNamed: async () => 'conflict' as const }), '"1"')
+        expect(stale).not.toBe(conflict)
+    })
+
     it('answers 503 when replaceNamed throws', async () => {
         silenceErrors()
         const store = createMemoryBuildStore()
