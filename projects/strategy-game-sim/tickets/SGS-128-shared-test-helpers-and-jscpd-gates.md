@@ -50,7 +50,7 @@ Single-component change outside the core control loop; no diagram required.
 ## Acceptance criteria
 
 - [ ] `npm run lint:dup` exits 0 and runs both `.jscpd.json` and `.jscpd.tests.json`; it exits non-zero when either one finds a clone
-- [ ] `.jscpd.json` scans `acceptance/` at its existing 8-line and 70-token minimum, and `.jscpd.tests.json` scans the same paths at a 5-line minimum limited to test and helper files; both thresholds stay 0, and neither config nor any scanned file carries an `ignore` entry or a `jscpd:ignore` marker
+- [ ] `.jscpd.json` scans `acceptance/` at its existing 8-line and 70-token minimum, and `.jscpd.tests.json` scans the same paths at a 5-line minimum limited to test and helper files; both thresholds stay 0, both configs set `maxLines` high enough (5000) that no file is skipped for length (rework 1), the 5-line check's file list includes `acceptance/helpers.ts` (rework 1), and neither config nor any scanned file carries an `ignore` entry or a `jscpd:ignore` marker
 - [ ] (respec 1) `git grep -n "function fakeStorage\|throwingStorage =\|const throwing =" -- '*.test.ts'` finds nothing (at the base it finds the three copies in `pin-storage.test.ts`, `chart-layout.test.ts` and `my-builds-storage.test.ts`); those files import `fakeStorage` and `throwingStorage` from `storage-test-helpers.ts`
 - [ ] (respec 1) `git grep -n "function stubFetch\|stubGlobal('fetch'" -- '*.test.ts'` finds nothing (at the base it finds `saved-build-loader.test.ts` and `simulate-client.test.ts`); every match outside test files is in `fetch-test-helpers.ts`. Each local fetch helper left in a test file differs in signature or return from every `fetch-test-helpers.ts` export and is listed with the reason in the implementer's report
 - [ ] (respec 1) `storage-test-helpers.test.ts` shows each of `getItem`, `setItem`, `removeItem`, `clear`, `key` and reading `length` on `throwingStorage` throws (a test fails if any member returns); and that `fakeStorage` seeded with two entries returns them, and that `setItem`, `removeItem` and `clear` change `getItem`, `keys()` and `length` accordingly
@@ -70,3 +70,18 @@ none
 - Underspecified: the probe could not fail (no partner for a pasted old body); the size hid ~19 clone folds behind a mid-run split clause; clone placement ignored the cross-app and Vitest-to-Playwright clones and invariant S1; the fetch-helper rule, the `throwingStorage` members, the `fakeStorage` members and the seeding at call sites were undefined.
 - Changed: probe pastes the shared helper's body; size stated as ~500 lines of test code as one unit with the reason; per-clone placement rules and S1 added; fetch helpers move only on a matching signature and return (`simulate-client.test.ts` in, `auto-run.test.ts` out); both storage helpers implement or throw on every `Storage` member, with a helper test; call sites seed through the record and partial throwing storages reuse the shared helpers; dropped the unverified-assumption on `pattern`, which `lint:dup` exercises for real.
 - No branch work exists yet; nothing to keep or discard.
+
+## Rework 1 - 2026-11-11 (review)
+
+Review report: reports/SGS-128-review-1.md. Passed-tip for other gates: none yet. Bounced tip: 16efd1a.
+
+Findings:
+- `.jscpd.tests.json:3`: jscpd prefixes each glob with the scanned path, so `acceptance/helpers.ts` becomes `acceptance/**/acceptance/helpers.ts` and matches nothing; the 5-line check never scans `acceptance/helpers.ts`.
+- `.jscpd.json` and `.jscpd.tests.json`: both skip files over jscpd's default `maxLines` 1000 (`acceptance/aoe4-my-builds.spec.ts` 1307 lines, `lib/aoe4-build-order/schema.test.ts` 1007). With `--max-lines 5000` both configs find 2 clones: a 19-line fixture setup repeated at `acceptance/aoe4-my-builds.spec.ts:45-64` and `acceptance/aoe4-save-open.spec.ts:38-57`, and a 9-line "controls locked while loading" block repeated at `aoe4-my-builds.spec.ts:338-347` and `:438-447`.
+- `ARCHITECTURE.md:48-49` claim is false until the first finding is fixed; no text change needed after that.
+
+Required fixes:
+- [x] In `.jscpd.tests.json` use the pattern `{**/*.test.ts,**/*.spec.ts,**/*test-helpers.ts,**/route-test-support.ts,helpers.ts}` (checked by the reviewer: 137 files including `acceptance/helpers.ts`, 0 clones); confirm with `--debug` that `acceptance/helpers.ts` is listed
+- [x] Add `"maxLines": 5000` to both `.jscpd.json` and `.jscpd.tests.json`
+- [x] Fold the 19-line fixture setup into a `gatedTest(prefix)` factory in `acceptance/helpers.ts` used by both specs; fold the 9-line locked-while-loading block into one local helper in `aoe4-my-builds.spec.ts`; no assertion removed
+- [x] `npm run lint:dup` exits 0 with both configs; `npx tsc --noEmit` and `npm test` pass

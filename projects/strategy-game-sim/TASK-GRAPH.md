@@ -23,9 +23,9 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-124 | Page: library select, edited marker, discard guard, ?n= load | M8 | M8.1,M8.6,M8.9 | aoe4-build-order | high | SGS-114,SGS-122,SGS-123 | | sgs-124-page-library | a0d658a | integrated | 1 | 136 | tickets/SGS-124-page-library-select-edited-marker-discard-guard.md |
 | SGS-125 | Save panel rewrite: Save as copy, Save a new version | M8 | M8.1,M8.9 | aoe4-build-order | high | SGS-118,SGS-121,SGS-124 | | sgs-125-save-panel | 731699d | integrated | 1 | 137 | tickets/SGS-125-save-panel-rewrite-copy-and-versions.md |
 | SGS-126 | Fix the pin-compare pinned-only legend test fixture | M8 | M8.4 | | low | | | sgs-126-pin-compare-fixture | 80da26a473a3f875d16cdfb91d421fb156714d5c | integrated | | 130 | tickets/SGS-126-pin-compare-pinned-only-legend-fixture.md |
-| SGS-127 | Named-build update 412: weak CDN etag in compare-and-swap | M9 | M9.1 | aoe4-build-order | high | | | sgs-127-blob-strong-etag | | needs_review | | | tickets/SGS-127-blob-strong-etag.md |
-| SGS-128 | Shared test helpers and two jscpd gates | M9 | M9.11 | | standard | | | sgs-128-shared-test-helpers-and-jscpd-gates | | needs_review | | | tickets/SGS-128-shared-test-helpers-and-jscpd-gates.md |
-| SGS-129 | Turn on strict in tsconfig | M9 | M9.13 | | low | | | sgs-129-strict-typescript | | needs_review | | | tickets/SGS-129-strict-typescript.md |
+| SGS-127 | Named-build update 412: weak CDN etag in compare-and-swap | M9 | M9.1 | aoe4-build-order | high | | | sgs-127-blob-strong-etag | 8691f1e | in_review | | 138 | tickets/SGS-127-blob-strong-etag.md |
+| SGS-128 | Shared test helpers and two jscpd gates | M9 | M9.11 | | standard | | | sgs-128-shared-test-helpers-and-jscpd-gates | 9bbe59d | in_review | 1 | 139 | tickets/SGS-128-shared-test-helpers-and-jscpd-gates.md |
+| SGS-129 | Turn on strict in tsconfig | M9 | M9.13 | | low | | | sgs-129-strict-typescript | 75fa929 | in_review | | 140 | tickets/SGS-129-strict-typescript.md |
 | SGS-130 | Blob store retry cap, landed write, live test | M9 | M9.10 | | high | SGS-127,SGS-128 | | | | spec_ready | | | tickets/SGS-130-blob-landed-write-retry-cap.md |
 | SGS-134 | Chart layout model and key-results collapse | M9 | M9.4 | | standard | SGS-128 | | | | spec_ready | | | tickets/SGS-134-chart-layout-model-key-results-collapse.md |
 | SGS-136 | Simulator emits production buildings, OpenAPI 2.6.0 | M9 | M9.6 | | high | SGS-128 | | | | spec_ready | | | tickets/SGS-136-simulate-production-buildings-series.md |
@@ -33,7 +33,7 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-131 | My builds: no wipe on bad value, backup | M9 | M9.10 | | standard | SGS-128 | | | | spec_ready | | | tickets/SGS-131-my-builds-no-wipe-and-backup.md |
 | SGS-132 | Save panel one row and live Saved status | M9 | M9.3 | | standard | SGS-128 | | | | spec_ready | | | tickets/SGS-132-save-panel-live-status.md |
 | SGS-135 | Chart header drag handle and caret | M9 | M9.4 | | standard | SGS-134 | | | | spec_ready | | | tickets/SGS-135-chart-header-drag-handle-and-caret.md |
-| SGS-133 | Split-scroll anchoring and run-bar cap | M9 | M9.12 | | standard | SGS-132 | | | | needs_spec | | | tickets/SGS-133-split-scroll-anchoring-and-run-bar-cap.md |
+| SGS-133 | Split-scroll anchoring and run-bar cap | M9 | M9.12 | | standard | SGS-132 | | | | spec_ready | | | tickets/SGS-133-split-scroll-anchoring-and-run-bar-cap.md |
 | SGS-137 | Gather-rates and units-produced view toggles | M9 | M9.6 | | standard | SGS-134,SGS-135,SGS-136,SGS-138 | | | | spec_ready | | | tickets/SGS-137-chart-view-toggles.md |
 | SGS-138 | Pinned runs: no tooltip entries, one legend entry | M9 | M9.5 | | low | SGS-135 | | | | spec_ready | | | tickets/SGS-138-pinned-runs-no-tooltip-one-legend-entry.md |
 | SGS-139 | Marker legend hover and focus labels | M9 | M9.7 | | standard | SGS-138 | | | | spec_ready | | | tickets/SGS-139-marker-legend-hover-focus-labels.md |

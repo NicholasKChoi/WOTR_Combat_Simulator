@@ -22,4 +22,20 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q58
+next: Q59
+
+## Q58: Did the #138 preview pass the live-Blob version-save check (SGS-127)?
+kind: repro
+blocks: SGS-127 (Named-build update 412: weak CDN etag in compare-and-swap), SGS-128 (Shared test helpers and two jscpd gates), SGS-129 (Turn on strict in tsconfig)
+options: A) Passed: saves 200, link loads | B) Failed: 503 weak etag (paste the log line)
+recommendation: A: nothing to decide until you run it
+research: reports/SGS-127-review-1.md
+thread: 1570235520104271982
+
+SGS-127 (named-build 412 fix) is ready as draft PR #138 but its ticket forbids merging until the live-Blob preview check passes; only you have Blob credentials. #139 and #140 are stacked on it.
+- Open the #138 Vercel preview, save a named build, then Save a new version twice (revisions 2 and 3); open the named-build link.
+- Pass: every save answers 200 and the link loads.
+- Fail: any 503 with 'returned a weak etag' in the function log -> do not merge; the ticket goes back to needs_spec.
+- On merge: delete debug/named-build-412-diagnostics (local and origin); the factory drops the BACKLOG bullet.
+
+### Answer
