@@ -1,8 +1,9 @@
 import { createElement } from 'react'
-import { renderToString } from 'react-dom/server'
+import { renderToStaticMarkup, renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
-import { type PlacedMarker, SeriesChart, ageUpMarkers, placeMarkers } from './line-chart'
+import type { ChartMarker, ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
+import { MarkerLegend } from './chart-legend'
+import { type PlacedMarker, SeriesChart, activeMarkerKind, ageUpMarkers, labelledMarkers, liveMarkerKind, placeMarkers } from './line-chart'
 import { markerLabel } from './chart-rows'
 
 const render = (series: Parameters<typeof SeriesChart>[0]['series'], markers?: ChartMarker[], pinnedMarkers?: ChartMarker[]) =>
@@ -29,8 +30,11 @@ describe('SeriesChart server render', () => {
             { kind: 'age-up', label: 'Feudal', at: 2 },
             { kind: 'blacksmith', label: 'iron-undermesh', at: 5 },
         ])
-        const items = [...html.matchAll(/data-testid="chart-marker-legend-item"[^>]*data-kind="([^"]+)"[^>]*>(?:<span[^>]*><\/span>)?([^<]*)/g)]
-        expect(items.map((m) => [m[1], m[2]])).toEqual([['age-up', 'Age-up'], ['blacksmith', 'Blacksmith']])
+        const items = [...html.matchAll(/<li class="list-inline-item"><button type="button"[^>]*data-testid="chart-marker-legend-item"[^>]*data-kind="([^"]+)"[^>]*aria-label="([^"]+)"[^>]*><span[^>]*><\/span>([^<]*)<\/button><\/li>/g)]
+        expect(items.map((m) => [m[1], m[2], m[3]])).toEqual([
+            ['age-up', 'Show Age-up marker labels', 'Age-up'],
+            ['blacksmith', 'Show Blacksmith marker labels', 'Blacksmith'],
+        ])
     })
 
     it('has no marker legend when markers are empty or omitted', () => {
@@ -212,5 +216,62 @@ describe('placeMarkers', () => {
     it('pins a label that fits on neither side to the left edge', () => {
         const [p] = placeMarkers([marker(100, 'x')], 200, 200, () => 150)
         expect(p).toMatchObject({ side: 'left', dx: -100 })
+    })
+})
+
+describe('marker labelling', () => {
+    const markers: ChartMarker[] = [
+        { kind: 'economy', label: 'Wheelbarrow', at: 1 },
+        { kind: 'age-up', label: 'Feudal', at: 2 },
+        { kind: 'economy', label: 'Horticulture', at: 3 },
+        { kind: 'age-up', label: 'Castle', at: 4 },
+    ]
+    const labels = (list: ChartMarker[]) => list.map((m) => m.label)
+
+    it.each([
+        [null, ['Feudal', 'Castle']],
+        ['economy', ['Wheelbarrow', 'Horticulture']],
+        ['age-up', ['Feudal', 'Castle']],
+        ['blacksmith', []],
+    ] as const)('labelledMarkers(markers, %s) keeps exactly that set, in input order', (active, expected) => {
+        expect(labels(labelledMarkers(markers, active))).toEqual(expected)
+    })
+
+    it.each<[string, ChartMarkerKind | null, ChartMarkerKind | null, ChartMarkerKind | null]>([
+        ['neither set', null, null, null],
+        ['hover with markers', 'economy', null, 'economy'],
+        ['hover without markers, no focus', 'blacksmith', null, null],
+        ['hover without markers, focus with markers', 'blacksmith', 'age-up', 'age-up'],
+        ['hover and focus both with markers', 'economy', 'age-up', 'economy'],
+        ['focus only, with markers', null, 'age-up', 'age-up'],
+        ['focus without markers', null, 'other', null],
+    ])('activeMarkerKind: %s', (_name, hover, focus, expected) => {
+        expect(activeMarkerKind(markers, hover, focus)).toBe(expected)
+    })
+
+    it.each<[string, ChartMarkerKind | null, boolean, ChartMarkerKind | null]>([
+        ['null kind', null, false, null],
+        ['kind with markers, expanded', 'economy', false, 'economy'],
+        ['kind with no markers left', 'blacksmith', false, null],
+        ['kind with markers, collapsed', 'economy', true, null],
+    ])('liveMarkerKind: %s', (_name, kind, collapsed, expected) => {
+        expect(liveMarkerKind(markers, kind, collapsed)).toBe(expected)
+    })
+
+    describe('MarkerLegend markup', () => {
+        const html = (active: ChartMarkerKind | null) =>
+            renderToStaticMarkup(createElement(MarkerLegend, { markers, active, onHover: () => {}, onFocusKind: () => {} }))
+        const activeKinds = (markup: string) => [...markup.matchAll(/data-kind="([^"]+)" data-active="true"/g)].map((m) => m[1])
+
+        it('marks only the item whose kind is active', () => {
+            expect(activeKinds(html('economy'))).toEqual(['economy'])
+            expect(activeKinds(html('age-up'))).toEqual(['age-up'])
+            expect(html(null)).not.toContain('data-active')
+        })
+
+        it('renders one button per kind present, in kind order, and nothing without markers', () => {
+            expect([...html(null).matchAll(/<li class="list-inline-item"><button[^>]*data-kind="([^"]+)"/g)].map((m) => m[1])).toEqual(['age-up', 'economy'])
+            expect(renderToStaticMarkup(createElement(MarkerLegend, { markers: [], active: null, onHover: () => {}, onFocusKind: () => {} }))).toBe('')
+        })
     })
 })

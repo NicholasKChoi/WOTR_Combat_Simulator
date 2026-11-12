@@ -1,6 +1,6 @@
 import cn from 'classnames'
 
-import { CHART_MARKER_KINDS, type ChartMarker } from '../../../lib/aoe4-build-order/model'
+import { CHART_MARKER_KINDS, type ChartMarker, type ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
 import { type ChartSeries, MARKER_COLORS, MARKER_KIND_LABELS, type PinnedSeries, isLineHidden, legendItems, pinnedKey } from './chart-rows'
 import styles from './results.module.css'
 
@@ -57,7 +57,14 @@ export function PinnedLegend() {
     )
 }
 
-export function MarkerLegend({ markers }: { markers: readonly ChartMarker[] }) {
+interface MarkerLegendProps {
+    markers: readonly ChartMarker[]
+    active: ChartMarkerKind | null
+    onHover(kind: ChartMarkerKind | null): void
+    onFocusKind(kind: ChartMarkerKind | null): void
+}
+
+export function MarkerLegend({ markers, active, onHover, onFocusKind }: MarkerLegendProps) {
     const kinds = CHART_MARKER_KINDS.filter((kind) => markers.some((m) => m.kind === kind))
     if (kinds.length === 0) return null
     return (
@@ -65,12 +72,25 @@ export function MarkerLegend({ markers }: { markers: readonly ChartMarker[] }) {
             <h4 className="h6 mb-1">Markers</h4>
             <ul className="list-inline mb-0">
                 {kinds.map((kind) => (
-                    <li key={kind} className="list-inline-item" data-testid="chart-marker-legend-item" data-kind={kind}>
-                        <span
-                            className="d-inline-block me-1 align-middle"
-                            style={{ width: 2, height: 14, backgroundColor: MARKER_COLORS[kind] }}
-                        />
-                        {MARKER_KIND_LABELS[kind]}
+                    <li key={kind} className="list-inline-item">
+                        <button
+                            type="button"
+                            className={styles.markerButton}
+                            data-testid="chart-marker-legend-item"
+                            data-kind={kind}
+                            data-active={kind === active ? 'true' : undefined}
+                            aria-label={`Show ${MARKER_KIND_LABELS[kind]} marker labels`}
+                            onMouseEnter={() => onHover(kind)}
+                            onMouseLeave={() => onHover(null)}
+                            onFocus={() => onFocusKind(kind)}
+                            onBlur={() => onFocusKind(null)}
+                        >
+                            <span
+                                className="d-inline-block me-1 align-middle"
+                                style={{ width: 2, height: 14, backgroundColor: MARKER_COLORS[kind] }}
+                            />
+                            {MARKER_KIND_LABELS[kind]}
+                        </button>
                     </li>
                 ))}
             </ul>
