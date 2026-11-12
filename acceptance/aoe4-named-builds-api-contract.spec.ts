@@ -25,8 +25,8 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.describe('spec structure', () => {
-  test('is version 2.5.0, has both named-builds paths, and every operationId is non-empty and unique', () => {
-    expect(spec.info.version).toBe('2.5.0')
+  test('is version 2.6.0, has both named-builds paths, and every operationId is non-empty and unique', () => {
+    expect(spec.info.version).toBe('2.6.0')
     expect(spec.paths).toHaveProperty([NAMED_BUILDS_PATH])
     expect(spec.paths).toHaveProperty([BY_ID])
     const ids = Object.values<any>(spec.paths).flatMap((path) => Object.values<any>(path).map((operation) => operation.operationId).filter((id) => id !== undefined))

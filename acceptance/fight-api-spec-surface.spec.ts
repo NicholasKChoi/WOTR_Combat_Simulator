@@ -22,6 +22,7 @@ const AOE4_SCHEMA_NAMES = [
   'BuildOrderNote',
   'BuildStart',
   'BuildStep',
+  'BuildingSeries',
   'BuildsError',
   'ChartMarker',
   'ChartMarkerKind',

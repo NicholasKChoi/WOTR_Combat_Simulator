@@ -15,6 +15,7 @@ import type { HouseDemand } from './houses';
 import { isLandmark } from './landmarks';
 import { ageMarker, compareMarkers } from './markers';
 import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
+import { productionBuildingSeries } from './production-buildings';
 import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 
@@ -971,6 +972,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
   const gathered = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
   const spent: Record<SpendCategory, number[]> = { villagers: [], military: [], buildings: [], research: [] };
   const spawnedPopulation: number[] = [];
+  const buildingSamples: ReadonlyMap<string, number>[] = [];
   let sample = 0;
   while (sample < times.length) {
     runInstant(engine);
@@ -992,6 +994,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
         spent[category].push(engine.spent[category]);
       }
       spawnedPopulation.push(engine.spawnedPopulation);
+      buildingSamples.push(new Map(engine.buildings));
     }
     if (sample === times.length) {
       break;
@@ -1017,6 +1020,7 @@ export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: Si
     sampleSeconds: SAMPLE_SECONDS,
     times,
     unitsProduced: unitSeries(engine, times),
+    productionBuildings: productionBuildingSeries(data, buildingSamples),
     gatherRates,
     gatherers,
     floating,

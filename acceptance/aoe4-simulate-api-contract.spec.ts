@@ -9,6 +9,7 @@ import type {
   BuildOrderIssue,
   BuildOrderNote,
   BuildStart,
+  BuildingSeries,
   ChartMarker,
   NodeDepletion,
   SimWarning,
@@ -40,7 +41,7 @@ function objectVariants(schema: Schema): Schema[] {
 }
 
 const REQUEST_SCHEMAS = ['SimulateRequest', 'BuildOrder', 'BuildStart', 'BuildStep', 'Trigger', 'SimInputOverrides', 'TripInputOverrides']
-const RESPONSE_SCHEMAS = ['SimulateError', 'SimulationResult', 'UnitSeries', 'StepTiming', 'BuildOrderIssue', 'BuildOrderNote', 'NodeDepletion', 'ChartMarker']
+const RESPONSE_SCHEMAS = ['SimulateError', 'SimulationResult', 'UnitSeries', 'BuildingSeries', 'StepTiming', 'BuildOrderIssue', 'BuildOrderNote', 'NodeDepletion', 'ChartMarker']
 const SHARED_SCHEMAS = ['GatherNodeId', 'ResourceKind', 'SpendCategory', 'CivId', 'FiniteGatherNodeId', 'DepositRef', 'NodeRef', 'FiniteNodeRef', 'Severity', 'StepWait', 'SimWarning', 'ChartMarkerKind']
 
 const PRODUCE = { action: 'produce', producer: 'capital-town-center', unit: 'villager' }
@@ -317,6 +318,23 @@ test.describe('real responses against the schemas', () => {
     expectInvalid('SimulationResult', extra)
   })
 
+  test('every productionBuildings series of a real 200 validates as a BuildingSeries; a missing key or an extra one does not', async ({ request }) => {
+    const body = await expect200(request, requestExamples.buildOrder.value)
+    expect(body.productionBuildings[0].baseId).toBe('capital-town-center')
+    for (const series of body.productionBuildings) {
+      expectValid('BuildingSeries', series)
+      expect(series.counts).toHaveLength(body.times.length)
+    }
+
+    const { productionBuildings, ...withoutSeries } = body
+    expect(productionBuildings.length).toBeGreaterThan(0)
+    expectInvalid('SimulationResult', withoutSeries)
+
+    const extra = structuredClone(body)
+    extra.productionBuildings[0].extra = 1
+    expectInvalid('SimulationResult', extra)
+  })
+
   test('a real 400 validates; an issue with an extra property does not', async ({ request }) => {
     const body = await expect400(request, buildOrderBody([{ ...PRODUCE, producer: 'house' }]))
     const mutated = structuredClone(body)
@@ -456,6 +474,7 @@ test.describe('exported types match the spec', () => {
     sampleSeconds: true,
     times: true,
     unitsProduced: true,
+    productionBuildings: true,
     gatherRates: true,
     gatherers: true,
     floating: true,
@@ -486,6 +505,7 @@ test.describe('exported types match the spec', () => {
     { code: true, severity: true, message: true, step: true, waitingOn: true, at: true },
   ]
   const unitSeries: Record<keyof UnitSeries, true> = { unitId: true, baseId: true, name: true, tier: true, counts: true }
+  const buildingSeries: Record<keyof BuildingSeries, true> = { baseId: true, name: true, counts: true }
   const stepTiming: Record<keyof StepTiming, true> = { step: true, status: true, armedAt: true, startedAt: true, completedAt: true, waitSeconds: true, waitingOn: true, waitBreakdown: true }
   const buildOrderIssue: Record<keyof BuildOrderIssue, true> = { code: true, message: true, step: true, line: true, suggestion: true }
   const buildOrderNote: Record<keyof BuildOrderNote, true> = { code: true, severity: true, message: true, step: true, tech: true, properties: true }
@@ -499,6 +519,7 @@ test.describe('exported types match the spec', () => {
     BuildStart: buildStart,
     SimulationResult: simulationResult,
     UnitSeries: unitSeries,
+    BuildingSeries: buildingSeries,
     StepTiming: stepTiming,
     BuildOrderIssue: buildOrderIssue,
     BuildOrderNote: buildOrderNote,

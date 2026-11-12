@@ -763,6 +763,14 @@ A `SimulationResult` holds:
   a higher tier's series, and a series whose units all moved stays listed at 0. The series of one `baseId`
   sum to its cumulative produced units. Starting units are not produced and never appear in it, so every
   series starts at 0.
+- `productionBuildings`: one `BuildingSeries` (`baseId`, `name`, `counts`) per production building. A building
+  `baseId` is a production building when some unit entry of the civ's data lists it in `producedBy`; the
+  set comes from the data only, so `house` is not one and the starting `capital-town-center` and a built
+  `town-center` are two series. Age tiers of one `baseId` are one series, and `name` is its lowest-age
+  building entry's name. `counts` are the completed instances at each sample, starting buildings included;
+  a building under construction is not counted, and one completing at a sample time is counted at that
+  sample. Series are ordered by the first sample with a count above 0, then by `baseId` in code-unit order.
+  A production building with no completed instance at any sample has no series.
 - `gatherRates`: per `ResourceKind` (`food`, `wood`, `gold`, `stone`), the income rate per minute.
 - `gatherers`: per `ResourceKind`, the number of villagers gathering that resource at each sample (those counted in
   `gatherRates`; walking, building and idle villagers are not).

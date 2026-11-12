@@ -95,6 +95,13 @@ export interface UnitSeries {
   counts: number[];
 }
 
+// counts are the completed instances of baseId at each sample; under-construction buildings are not counted.
+export interface BuildingSeries {
+  baseId: string;
+  name: string;
+  counts: number[];
+}
+
 export interface StepTiming {
   step: number;
   status: 'completed' | 'in-progress' | 'waiting' | 'not-reached';
@@ -126,6 +133,8 @@ export interface SimulationResult {
   sampleSeconds: number;
   times: number[];
   unitsProduced: UnitSeries[];
+  // One per production building with a completed instance at some sample, sorted by its first such sample, then baseId.
+  productionBuildings: BuildingSeries[];
   // Per minute.
   gatherRates: Record<ResourceKind, number[]>;
   // Villagers gathering each resource; the divisor of gatherRates.

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Strategy Game Simulator API",
-    "version": "2.5.0",
+    "version": "2.6.0",
     "description": "HTTP API of the strategy game simulator site."
   },
   "paths": {
@@ -332,6 +332,27 @@
                             2,
                             2,
                             3
+                          ]
+                        }
+                      ],
+                      "productionBuildings": [
+                        {
+                          "baseId": "capital-town-center",
+                          "name": "Capital Town Center",
+                          "counts": [
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1
                           ]
                         }
                       ],
@@ -815,6 +836,51 @@
                             4,
                             4,
                             4
+                          ]
+                        }
+                      ],
+                      "productionBuildings": [
+                        {
+                          "baseId": "capital-town-center",
+                          "name": "Capital Town Center",
+                          "counts": [
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1,
+                            1
                           ]
                         }
                       ],
@@ -4129,6 +4195,7 @@
           "sampleSeconds",
           "times",
           "unitsProduced",
+          "productionBuildings",
           "gatherRates",
           "gatherers",
           "floating",
@@ -4175,6 +4242,13 @@
               "$ref": "#/components/schemas/UnitSeries"
             },
             "description": "One series per unit entry and tier that held a produced unit at some instant, ordered by that first instant, then unitId; starting units never appear."
+          },
+          "productionBuildings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BuildingSeries"
+            },
+            "description": "One series per production building baseId (a building that some unit entry lists as a producer) with a completed instance at some sample, ordered by that first sample, then baseId by code-unit comparison. A production building never completed in the run has no series."
           },
           "gatherRates": {
             "type": "object",
@@ -4490,6 +4564,34 @@
               "minimum": 0
             },
             "description": "Produced units at this entry's tier at each sample time; a series whose units all moved to a higher tier stays at 0."
+          }
+        }
+      },
+      "BuildingSeries": {
+        "type": "object",
+        "description": "Completed instances of one production building baseId over time. Buildings under construction are not counted.",
+        "required": [
+          "baseId",
+          "name",
+          "counts"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "baseId": {
+            "type": "string",
+            "description": "aoe4world baseId of the building."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the building's lowest-age entry."
+          },
+          "counts": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "Completed instances of this building at each sample time, starting buildings included."
           }
         }
       },
