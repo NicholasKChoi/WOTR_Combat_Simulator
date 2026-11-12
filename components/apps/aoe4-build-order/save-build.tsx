@@ -24,14 +24,17 @@ interface SaveBuildProps {
 }
 
 type CopyState = 'idle' | 'copied' | 'failed'
-type Saver = 'copy' | 'version'
 type SaveOutcome<R> = { ok: true; response: R } | NamedSaveFailure
 
-interface Saved {
-    link: string
+export type Saver = 'copy' | 'version'
+
+export interface SavedStatus {
     input: LiveInput
     by: Saver
+    revision: number
 }
+
+type Saved = SavedStatus & { link: string }
 
 interface Lock {
     key: string
@@ -49,6 +52,11 @@ function validName(name: string): boolean {
 function remember(entry: MyBuildEntry): boolean {
     const storage = browserStorage()
     return storage !== null && myBuildsAvailable(storage) && upsertMyBuild(storage, entry).persisted
+}
+
+export function saveStatusText(saved: SavedStatus | null, settled: LiveInput, saving: boolean): string {
+    if (saving || saved === null || !sameInput(saved.input, settled)) return ''
+    return saved.by === 'version' ? `Saved version ${saved.revision}` : 'Saved'
 }
 
 export function SaveBuild({ status, settled, conversion, busy, entry, editSecret, edited, onCreated, onUpdated }: SaveBuildProps) {
@@ -130,11 +138,11 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
         return { outcome, current: sameInput(input, settledNow.current) }
     }
 
-    function showSuccess(path: string, input: LiveInput, by: Saver, persisted: boolean, current: boolean) {
+    function showSuccess(path: string, input: LiveInput, by: Saver, revision: number, persisted: boolean, current: boolean) {
         if (current) {
             setError(null)
             setCopy('idle')
-            setSaved({ link: window.location.origin + path, input, by })
+            setSaved({ link: window.location.origin + path, input, by, revision })
         }
         if (!persisted) setUnstored(current ? input : settledNow.current)
     }
@@ -161,7 +169,7 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
         }
         const { response } = outcome
         const persisted = remember({ id: response.id, name, editSecret: response.editSecret, revision: 1, updatedAt: response.updatedAt })
-        showSuccess(response.path, { ...input, selected: entryKey.named(response.id) }, 'copy', persisted, current)
+        showSuccess(response.path, { ...input, selected: entryKey.named(response.id) }, 'copy', 1, persisted, current)
         onCreated(response, input, name)
     }
 
@@ -182,7 +190,7 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
         }
         const { response } = outcome
         const persisted = remember({ id, name, editSecret, revision: response.revision, updatedAt: response.updatedAt })
-        showSuccess(response.path, input, 'version', persisted, current)
+        showSuccess(response.path, input, 'version', response.revision, persisted, current)
         onUpdated(response, input)
     }
 
@@ -226,32 +234,60 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
         else copyButton.current?.focus()
     }
 
+    function onLinkKeyDown(e: KeyboardEvent<HTMLInputElement | HTMLButtonElement>) {
+        if (e.key !== 'Escape') return
+        e.preventDefault()
+        hideLink()
+    }
+
     return (
-        <>
-            {showVersion ? (
+        <div data-testid="save-panel" className={styles.savePanel}>
+            <div data-testid="save-row" className={styles.saveRow}>
+                {showVersion ? (
+                    <button
+                        ref={versionButton}
+                        type="button"
+                        data-testid="save-build"
+                        className={cn('btn btn-outline-primary', styles.saveButton)}
+                        disabled={!canSaveVersion}
+                        aria-busy={busy ? 'true' : undefined}
+                        onClick={saveVersion}
+                    >
+                        Save a new version
+                    </button>
+                ) : null}
                 <button
-                    ref={versionButton}
+                    ref={copyButton}
                     type="button"
-                    data-testid="save-build"
+                    data-testid="save-build-copy"
                     className={cn('btn btn-outline-primary', styles.saveButton)}
-                    disabled={!canSaveVersion}
+                    disabled={!canSave}
                     aria-busy={busy ? 'true' : undefined}
-                    onClick={saveVersion}
+                    onClick={openForm}
                 >
-                    Save a new version
+                    Save as copy
                 </button>
-            ) : null}
-            <button
-                ref={copyButton}
-                type="button"
-                data-testid="save-build-copy"
-                className={cn('btn btn-outline-primary', styles.saveButton)}
-                disabled={!canSave}
-                aria-busy={busy ? 'true' : undefined}
-                onClick={openForm}
-            >
-                Save as copy
-            </button>
+                <p data-testid="save-status" role="status" aria-live="polite" aria-atomic="true" className={styles.saveStatus}>
+                    {saveStatusText(saved, settled, saving)}
+                </p>
+                {saved !== null && linkVisible ? (
+                    <>
+                        <input
+                            ref={linkInput}
+                            type="text"
+                            readOnly
+                            data-testid="saved-build-link"
+                            aria-label="Link to this saved build"
+                            className={cn('form-control', styles.linkInput)}
+                            value={saved.link}
+                            onKeyDown={onLinkKeyDown}
+                        />
+                        <button type="button" data-testid="copy-saved-link" className="btn btn-outline-secondary" onClick={copyLink} onKeyDown={onLinkKeyDown}>
+                            {copy === 'copied' ? 'Copied' : 'Copy link'}
+                        </button>
+                    </>
+                ) : null}
+            </div>
             {formOpen ? (
                 <div
                     role="group"
@@ -291,33 +327,10 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
                     </button>
                 </div>
             ) : null}
-            {saved !== null && linkVisible ? (
-                <div
-                    className={styles.linkPanel}
-                    onKeyDown={(e) => {
-                        if (e.key !== 'Escape') return
-                        e.preventDefault()
-                        hideLink()
-                    }}
-                >
-                    <input
-                        ref={linkInput}
-                        type="text"
-                        readOnly
-                        data-testid="saved-build-link"
-                        aria-label="Link to this saved build"
-                        className={cn('form-control', styles.linkInput)}
-                        value={saved.link}
-                    />
-                    <button type="button" data-testid="copy-saved-link" className="btn btn-outline-secondary" onClick={copyLink}>
-                        {copy === 'copied' ? 'Copied' : 'Copy link'}
-                    </button>
-                    {copy === 'failed' ? (
-                        <p data-testid="copy-saved-link-hint" className={styles.linkHint}>
-                            Could not copy. Select the link and copy it by hand.
-                        </p>
-                    ) : null}
-                </div>
+            {copy === 'failed' && linkVisible ? (
+                <p data-testid="copy-saved-link-hint" className={styles.linkHint}>
+                    Could not copy. Select the link and copy it by hand.
+                </p>
             ) : null}
             {unstoredVisible ? (
                 <p data-testid="my-builds-unavailable" role="status" className={cn('text-warning-emphasis', styles.saveNotice)}>
@@ -329,6 +342,6 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
                     {error.message}
                 </p>
             ) : null}
-        </>
+        </div>
     )
 }

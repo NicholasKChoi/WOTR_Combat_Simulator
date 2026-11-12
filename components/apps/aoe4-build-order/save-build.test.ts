@@ -8,7 +8,7 @@ import { ENGLISH } from '../../../lib/aoe4-build-order/test-helpers'
 import { textToBuildOrder } from '../../../lib/aoe4-build-order/text-to-build'
 import type { AutoRunStatus } from './auto-run'
 import { entryKey, type LibraryEntry, savedMineEntry, templateEntries } from './build-library'
-import { SaveBuild } from './save-build'
+import { type SavedStatus, SaveBuild, saveStatusText } from './save-build'
 
 const shipped = listBuilds()[0]
 const input = { text: formatBuildOrderText(shipped), duration: '1200' }
@@ -78,5 +78,40 @@ describe('SaveBuild', () => {
         const html = render({ busy: true })
         expect(button(html, 'save-build')).toContain('aria-busy="true"')
         expect(button(html, 'save-build-copy')).toContain('aria-busy="true"')
+    })
+
+    it('puts the save row first in the panel, holding the shown buttons in order and then an empty status', () => {
+        const html = render({})
+        const row = /^<div data-testid="save-panel"[^>]*><div data-testid="save-row"[^>]*>(.*?)<\/div>/.exec(html)?.[1]
+        const ids = [...(row ?? '').matchAll(/data-testid="([^"]+)"/g)].map((m) => m[1])
+        expect(ids).toEqual(['save-build', 'save-build-copy', 'save-status'])
+        const status = /<p [^>]*data-testid="save-status"[^>]*>(.*?)<\/p>/.exec(html)
+        expect(status?.[1]).toBe('')
+        expect(status?.[0]).toContain('role="status"')
+        expect(status?.[0]).toContain('aria-live="polite"')
+        expect(status?.[0]).toContain('aria-atomic="true"')
+    })
+})
+
+describe('saveStatusText', () => {
+    const settled = { ...input, selected: mine.key }
+    const saved = (by: SavedStatus['by'], revision: number, changed: Partial<typeof settled> = {}): SavedStatus => ({
+        input: { ...settled, ...changed },
+        by,
+        revision,
+    })
+
+    it.each<[string, SavedStatus | null, boolean, string]>([
+        ['a create', saved('copy', 1), false, 'Saved'],
+        ['an update at revision 4', saved('version', 4), false, 'Saved version 4'],
+        ['an update at revision 11', saved('version', 11), false, 'Saved version 11'],
+        ['a save in flight after a create', saved('copy', 1), true, ''],
+        ['a save in flight after an update', saved('version', 4), true, ''],
+        ['no save, as after a failed one', null, false, ''],
+        ['a text edit since the save', saved('copy', 1, { text: `${input.text}\nextra` }), false, ''],
+        ['a duration edit since the save', saved('version', 2, { duration: '900' }), false, ''],
+        ['another build selected since the save', saved('copy', 1, { selected: 'template:other' }), false, ''],
+    ])('for %s reads the saved text only when idle and unchanged', (_, state, saving, expected) => {
+        expect(saveStatusText(state, settled, saving)).toBe(expected)
     })
 })

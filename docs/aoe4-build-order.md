@@ -871,8 +871,8 @@ starts. `rally` and `pause` complete the instant they start; `build` completes w
 ### Page
 
 The page is `/apps/aoe4-build-order`. At 768 px and wider a run bar stays at the top of the viewport while the page scrolls; below that it scrolls with the page. In the side-by-side layout the page only scrolls above the columns, so the bar stays stuck only as far as the page still scrolls. It
-holds the build select (labelled Build, see below), the `durationSeconds` number input (default 1200), a text/table toggle and the
-run status (`auto-run-status`) and the save buttons, Save a new version and Save as copy (see below). There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
+holds the build select (labelled Build, see below), the `durationSeconds` number input (default 1200), a text/table toggle,
+a save panel (`save-panel`) on its own row, with the save buttons, Save a new version and Save as copy, and the save status (see below), and the run status (`auto-run-status`), which comes last. There is no run button: the page re-runs the simulation on edit. Below the bar, at 1200 px and wider,
 Build and Results sit side by side in two equal columns, both always shown, with no tabs. The two columns fill the viewport below the run bar and each scrolls on its own, so the page does not scroll to reach either column's content. The Build column, the Results column and the tabs carry the headings `Build order` and `Results` at the same size; the text editor's textarea takes its accessible name from the `Build order` heading. Below 1200 px they are two
 tabs, Build and Results; Results is enabled while there is a result or a pinned run. No run selects a tab (one exception: opening a `?n=` or `?b=` link, see below), and
 the page never scrolls by itself. Switching tabs changes nothing else, and both panels stay mounted. While the Results tab is shown the Text and Table buttons are disabled (the active view stays marked), so in the tabs layout the toggle is usable on the Build tab only; in the side-by-side layout the tab never disables it. The tabs follow the WAI-ARIA tabs keyboard model: the arrow keys, Home and End move between the enabled tabs and select the one they reach, and the tab list is one tab stop. The layout follows the viewport width live, with no reload and no new run, and neither panel is remounted by a switch, so editor focus and text, an uncommitted table cell and the chart state carry across it. The tab selected before a resize to the side-by-side layout is kept, and the tabs layout shows it again after a resize back. When the page is opened directly, its first paint is the tabs layout and it switches to the side-by-side layout after it loads. In the side-by-side layout the step table wraps to fit the Build panel's column, a table that still cannot fit scrolls inside its own box (`step-table-scroll`), and the Build panel itself never scrolls sideways. The Build panel shows one editor view
@@ -1085,13 +1085,22 @@ key, so you can edit this build only until you close the page.` (`my-builds-unav
 updates this tab's My builds.
 
 The link is the page's origin plus `?n=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
-(`copy-saved-link`) in the run bar, and focus moves to the link with its text selected. Copy reads `Copied` once
+(`copy-saved-link`) in the save row, and focus moves to the link with its text selected. Copy reads `Copied` once
 the clipboard accepts the link; when the browser refuses it, the link stays selected and the page says `Could not
-copy. Select the link and copy it by hand.` Escape in the link panel hides it and returns focus to the button that
-saved, or to Save as copy when that button is disabled. The link and any save error go away on the first settled
-change of the text, the duration or the selected build (not while the edit is still inside the pause). A save
+copy. Select the link and copy it by hand.` Escape with focus on the link or on Copy link hides the link and returns focus to the button that
+saved, or to Save as copy when that button is disabled; Escape on a save button does nothing. The link, the save
+status and any save error go away on the first settled change of the text, the duration or the selected build (not while the edit is still inside the pause). A save
 answered after the settled input changed shows no link and no error. Opening the link anywhere but the browser that
 made it opens the build read-only, as a shared build; Save as copy still works there.
+
+The save panel's first child is the save row (`save-row`). In order it holds Save a new version (when shown), Save as
+copy, the save status (`save-status`), and, while the link is shown, the link and Copy link. The Save as copy form, the
+Copy hint, the storage warning and the save error sit below the row, in the panel, not in it. From 1200 px up the
+row does not wrap and the link field shrinks to fit; below that the row wraps in that order, so the status stays
+right after the buttons. The status element is always present and is announced politely (`role="status"`). It
+reads `Saved` after Save as copy and `Saved version <revision>` after Save a new version, with the revision from the
+response, and is empty while a save is in flight, after a failed save, and whenever the link is not shown. It stays
+for as long as the link does, with no timer, so a second save replaces its text. A failed save also hides the link.
 
 The page no longer creates `?b=` links. Links made by an earlier version of the page and by the `saveBuild` route
 still open:

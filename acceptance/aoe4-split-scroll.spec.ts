@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { CHART_IDS, SPLIT_MIN_WIDTH, SPLIT_VIEWPORT, TABS_VIEWPORT, WIDE_VIEWPORT, expectNoRun, openPage, showTab, showView, waitForRun } from './helpers'
+import { CHART_IDS, SPLIT_MIN_WIDTH, SPLIT_VIEWPORT, TABS_VIEWPORT, WIDE_VIEWPORT, expectNoRun, openPage, scrollInstantly, showTab, showView, waitForRun } from './helpers'
 
 const LONG_BUILD = ['start 6 sheep -> sheep', ...Array.from({ length: 40 }, (_, i) => `# note ${i + 1}`), ...Array.from({ length: 6 }, () => 'produce villager from capital-town-center x1')].join('\n')
 const RUN_BAR_HEIGHT = '--aoe4-run-bar-height'
@@ -64,7 +64,10 @@ test.describe('AoE4 split layout scrolls the columns separately', () => {
         .toBe(true)
       await scrollColumn(page, id)
       await expect.poll(async () => (await scrollTops(page))[id === 'build-column' ? 'build' : 'results']).toBeGreaterThan(0)
-      await expect.poll(() => page.evaluate(() => window.scrollY < document.documentElement.scrollHeight - window.innerHeight)).toBe(true)
+      await scrollInstantly(page, 0)
+      await expect
+        .poll(() => page.evaluate(() => ({ room: window.scrollY < document.documentElement.scrollHeight - window.innerHeight, scrollable: document.documentElement.scrollHeight - window.innerHeight > 0 })))
+        .toEqual({ room: true, scrollable: true })
       const before = await scrollTops(page)
       const box = (await column(page, id).boundingBox())!
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)

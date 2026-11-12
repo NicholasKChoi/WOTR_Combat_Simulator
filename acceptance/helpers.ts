@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { test as base, expect, type APIRequestContext, type Page, type Request, type Response } from '@playwright/test'
+import { test as base, expect, type APIRequestContext, type Page, type Request, type Response, type Route } from '@playwright/test'
 import { RESULT_CHART_IDS } from '../components/apps/aoe4-build-order/chart-layout'
 import { AUTO_RUN_DEBOUNCE_MS, type AutoRunStatus } from '../components/apps/aoe4-build-order/auto-run'
 import { FINITE_GATHER_NODES, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
@@ -319,6 +319,27 @@ const SAVE_STEPS = [{ action: 'produce', producer: 'capital-town-center', unit: 
 export const saveBody = (name: string) => ({ buildOrder: { civ: 'english', name, start: SAVE_START, steps: SAVE_STEPS }, durationSeconds: 300 })
 
 export const namedBuildUrl = (id: string) => `${NAMED_BUILDS_PATH}/${id}`
+export const isNamedPath = (url: URL) => url.pathname === NAMED_BUILDS_PATH || url.pathname.startsWith(`${NAMED_BUILDS_PATH}/`)
+export const isNamedPost = (r: Request) => new URL(r.url()).pathname === NAMED_BUILDS_PATH && r.method() === 'POST'
+export const isNamedPut = (r: Request) => new URL(r.url()).pathname.startsWith(`${NAMED_BUILDS_PATH}/`) && r.method() === 'PUT'
+
+export const blockStorageWrites = (page: Page) =>
+  page.addInitScript(() => {
+    Storage.prototype.setItem = () => {
+      throw new DOMException('blocked', 'QuotaExceededError')
+    }
+  })
+
+export async function stubNamed(page: Page, method: string, respond: (route: Route) => Promise<void>): Promise<() => Promise<void>> {
+  const handler = (route: Route) => (route.request().method() === method ? respond(route) : route.fallback())
+  await page.route(isNamedPath, handler)
+  return () => page.unroute(isNamedPath, handler)
+}
+
+export const reply =
+  (code: number, body: unknown = { error: 'stubbed' }, headers: Record<string, string> = {}) =>
+  (route: Route) =>
+    route.fulfill({ status: code, contentType: 'application/json', headers, body: JSON.stringify(body) })
 
 export function postNamedBuild(request: APIRequestContext, body: unknown, client: string, timeout = 10_000) {
   return request.post(NAMED_BUILDS_PATH, { data: body, headers: { 'x-forwarded-for': client }, timeout })
