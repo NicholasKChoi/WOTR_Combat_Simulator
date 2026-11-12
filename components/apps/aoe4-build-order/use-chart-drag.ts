@@ -4,18 +4,14 @@ import type { ChartId } from './chart-layout'
 
 const DRAG_THRESHOLD_PX = 4
 
-interface DragSession {
-    cancel(): void
-}
-
 export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, toIndex: number) => void) {
     const [dragging, setDragging] = useState<ChartId | null>(null)
     const sections = useRef(new Map<ChartId, HTMLElement>())
     const latest = useRef({ order, onDrop })
     latest.current = { order, onDrop }
-    const session = useRef<DragSession | null>(null)
+    const session = useRef<(() => void) | null>(null)
 
-    useEffect(() => () => session.current?.cancel(), [])
+    useEffect(() => () => session.current?.(), [])
 
     const targetIndex = (id: ChartId, pointerY: number): number => {
         const midpoints = latest.current.order.flatMap((other) => {
@@ -40,14 +36,13 @@ export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, to
         const finish = () => {
             handle.removeEventListener('pointermove', onMove)
             handle.removeEventListener('pointerup', onUp)
-            handle.removeEventListener('pointercancel', cancel)
-            handle.removeEventListener('lostpointercapture', cancel)
+            handle.removeEventListener('pointercancel', finish)
+            handle.removeEventListener('lostpointercapture', finish)
             document.removeEventListener('keydown', onKey, true)
             if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId)
             session.current = null
             setDragging(null)
         }
-        const cancel = () => finish()
         const onMove = (move: globalThis.PointerEvent) => {
             if (!active && Math.hypot(move.clientX - startX, move.clientY - startY) >= DRAG_THRESHOLD_PX) {
                 active = true
@@ -65,10 +60,10 @@ export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, to
 
         handle.addEventListener('pointermove', onMove)
         handle.addEventListener('pointerup', onUp)
-        handle.addEventListener('pointercancel', cancel)
-        handle.addEventListener('lostpointercapture', cancel)
+        handle.addEventListener('pointercancel', finish)
+        handle.addEventListener('lostpointercapture', finish)
         document.addEventListener('keydown', onKey, true)
-        session.current = { cancel }
+        session.current = finish
     }
 
     const sectionRef = (id: ChartId) => (element: HTMLElement | null) => {
