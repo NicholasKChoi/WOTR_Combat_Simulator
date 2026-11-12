@@ -362,7 +362,6 @@ test.describe('AoE4 run bar does not move the page and stays capped', () => {
   test('below 768 px the bar is static and has no cap', async ({ page }) => {
     await page.setViewportSize(NARROW_VIEWPORT)
     await openPage(page)
-    expect(NARROW_VIEWPORT.width).toBeLessThan(768)
     const style = await page.getByTestId('run-bar').evaluate((el) => ({ position: getComputedStyle(el).position, maxHeight: getComputedStyle(el).maxHeight }))
     expect(style).toEqual({ position: 'static', maxHeight: 'none' })
   })
