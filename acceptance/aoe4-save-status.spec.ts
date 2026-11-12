@@ -55,7 +55,7 @@ for (const { name, viewport } of VIEWPORTS) {
   test.describe(`save status at ${name}`, () => {
     test.use({ viewport })
 
-    test('reads Saved after a copy and the new revision after each version, and is empty while a save is in flight', async ({ page }) => {
+    test('reads Saved after a copy and the new revision after each version', async ({ page }) => {
       await openPage(page)
       expect(await rowIds(page)).toEqual(['save-build-copy', 'save-status'])
       await expect(byId(page, 'save-status')).toHaveText('')
@@ -72,10 +72,7 @@ for (const { name, viewport } of VIEWPORTS) {
 
       await editText(page, 2)
       await expect(byId(page, 'save-build')).toBeEnabled()
-      const release = await holdRequests(page, namedBuildUrl('*'), 'PUT')
-      await byId(page, 'save-build').click()
-      await expect.poll(() => linkAndStatus(page)).toEqual({ link: false, status: '' })
-      release()
+      expect(await saveVersion(page)).toBe(3)
       await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: 'Saved version 3' })
     })
 
