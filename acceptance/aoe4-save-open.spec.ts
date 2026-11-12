@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { test as base, expect, type Page, type Request, type Route } from '@playwright/test'
+import { expect, type Page, type Request, type Route } from '@playwright/test'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { AUTO_RUN_DEBOUNCE_MS } from '../components/apps/aoe4-build-order/auto-run'
@@ -7,6 +7,7 @@ import {
   AOE4_PAGE,
   BUILDS_PATH,
   buildOrderFrom,
+  gatedTest,
   buildPath,
   isSimulatePost,
   openPage,
@@ -27,28 +28,7 @@ const DEFAULT = BUILDS[0]
 const VALID_A = ['start -> sheep', 'produce knight from stable'].join('\n')
 const ABSENT_ID = 'AAAAAAAAAAA'
 
-interface Gate {
-  opened: Promise<void>
-  open: () => void
-}
-
-// `gate` is released in fixture teardown, so a route handler that waits on it never outlives the test.
-const test = base.extend<{ client: string; gate: Gate }>({
-  client: async ({}, use) => {
-    await use(uniqueClient('aoe4-save-open'))
-  },
-  extraHTTPHeaders: async ({ client }, use) => {
-    await use({ 'x-forwarded-for': client })
-  },
-  gate: async ({ page: _page }, use) => {
-    let open!: () => void
-    const opened = new Promise<void>((resolve) => {
-      open = resolve
-    })
-    await use({ opened, open })
-    open()
-  },
-})
+const test = gatedTest('aoe4-save-open')
 
 const status = (page: Page) => page.getByTestId('auto-run-status')
 const textarea = (page: Page) => page.getByTestId('build-order-text')

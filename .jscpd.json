@@ -4,5 +4,6 @@
   "minTokens": 70,
   "minLines": 8,
   "threshold": 0,
+  "maxLines": 5000,
   "gitignore": true
 }

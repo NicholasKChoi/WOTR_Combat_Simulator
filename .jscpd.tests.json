@@ -1,9 +1,10 @@
 {
   "path": ["lib/aoe4-build-order", "components/apps/aoe4-build-order", "pages/api/aoe4-build-order", "acceptance"],
-  "pattern": "**/{*.test.ts,*.spec.ts,*test-helpers.ts,route-test-support.ts,acceptance/helpers.ts}",
+  "pattern": "{**/*.test.ts,**/*.spec.ts,**/*test-helpers.ts,**/route-test-support.ts,helpers.ts}",
   "format": ["typescript", "tsx"],
   "minTokens": 70,
   "minLines": 5,
   "threshold": 0,
+  "maxLines": 5000,
   "gitignore": true
 }

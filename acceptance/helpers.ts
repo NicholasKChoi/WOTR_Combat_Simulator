@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { expect, type APIRequestContext, type Page, type Request, type Response } from '@playwright/test'
+import { test as base, expect, type APIRequestContext, type Page, type Request, type Response } from '@playwright/test'
 import { RESULT_CHART_IDS } from '../components/apps/aoe4-build-order/chart-layout'
 import { AUTO_RUN_DEBOUNCE_MS, type AutoRunStatus } from '../components/apps/aoe4-build-order/auto-run'
 import { FINITE_GATHER_NODES, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
@@ -284,6 +284,30 @@ export const BUILDS_PATH = '/api/aoe4-build-order/builds'
 export const buildPath = (id: string) => `${BUILDS_PATH}/${id}`
 
 export const uniqueClient = (spec: string) => `${spec}-${randomUUID()}`
+
+export interface Gate {
+  opened: Promise<void>
+  open: () => void
+}
+
+// `gate` is released in fixture teardown, so a route handler that waits on it never outlives the test.
+export const gatedTest = (prefix: string) =>
+  base.extend<{ client: string; gate: Gate }>({
+    client: async ({}, use) => {
+      await use(uniqueClient(prefix))
+    },
+    extraHTTPHeaders: async ({ client }, use) => {
+      await use({ 'x-forwarded-for': client })
+    },
+    gate: async ({ page: _page }, use) => {
+      let open!: () => void
+      const opened = new Promise<void>((resolve) => {
+        open = resolve
+      })
+      await use({ opened, open })
+      open()
+    },
+  })
 
 export function postBuild(request: APIRequestContext, body: unknown, client: string, timeout = 10_000) {
   return request.post(BUILDS_PATH, { data: body, headers: { 'x-forwarded-for': client }, timeout })
