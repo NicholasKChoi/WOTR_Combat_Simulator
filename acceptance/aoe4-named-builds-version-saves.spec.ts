@@ -1,15 +1,8 @@
 import { randomUUID } from 'crypto'
 import { test, expect } from '@playwright/test'
-import { namedBuildUrl, postNamedBuild, putNamedBuild, uniqueClient } from './helpers'
-
-// next dev compiles each route on its first request, which can take longer than a save.
-const WARM_UP_TIMEOUT_MS = 60_000
+import { namedBuildUrl, postNamedBuild, putNamedBuild, saveBody, uniqueClient, WARM_UP_TIMEOUT_MS } from './helpers'
 
 test.describe.configure({ timeout: 60_000 })
-
-const START = { villagers: { sheep: 6 }, rally: 'sheep' }
-const STEPS = [{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 2 }]
-const saveBody = (name: string) => ({ buildOrder: { civ: 'english', name, start: START, steps: STEPS }, durationSeconds: 300 })
 
 test.beforeAll(async ({ request }) => {
   await postNamedBuild(request, saveBody(`warm-up ${randomUUID()}`), uniqueClient('version-save-warm-up'), WARM_UP_TIMEOUT_MS)
