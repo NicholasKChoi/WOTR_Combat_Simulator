@@ -35,10 +35,10 @@
 .markerButton:hover,
 .markerButton[data-active='true'] {
     background-color: rgba(13, 110, 253, 0.12);
-    border-color: #0d6efd;
+    border-color: var(--bs-primary, #0d6efd);
 }
 
 .markerButton:focus-visible {
-    outline: 2px solid #0d6efd;
+    outline: 2px solid var(--bs-primary, #0d6efd);
     outline-offset: 2px;
 }

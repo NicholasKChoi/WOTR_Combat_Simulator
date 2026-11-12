@@ -23,7 +23,8 @@ async function setup(page: Page): Promise<Setup> {
   expect(response.status()).toBe(200)
   await showTab(page, 'results')
   const result = (await response.json()) as SimulationResult
-  const kind = CHART_MARKER_KINDS.find((k) => k !== 'age-up' && result.markers.some((m) => m.kind === k))
+  const count = (k: ChartMarkerKind) => result.markers.filter((m) => m.kind === k).length
+  const kind = CHART_MARKER_KINDS.filter((k) => k !== 'age-up' && count(k) > 0).sort((a, b) => count(b) - count(a))[0]
   expect(kind, 'the build has a non-age-up marker kind').toBeDefined()
   expect(result.markers.some((m) => m.kind === 'age-up')).toBe(true)
   return { result, chart: page.getByTestId(CHART), kind: kind! }
@@ -65,6 +66,7 @@ test.describe('AoE4 chart marker labels', () => {
     await expectLabels(chart, labelsOf(result, kind))
     await expect.poll(() => chart.locator('svg text.recharts-label', { hasText: ageUps[0] }).count()).toBe(0)
 
+    expect(labelsOf(result, kind).length).toBeGreaterThanOrEqual(2)
     await expect
       .poll(() =>
         chart.locator('svg text.recharts-label').evaluateAll((els) => {
