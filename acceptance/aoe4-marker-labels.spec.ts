@@ -118,6 +118,22 @@ test.describe('AoE4 chart marker labels', () => {
     await away(page)
     await expect(item(chart, 'age-up')).toHaveAttribute('data-active', 'true')
     await expect(item(chart, kind)).not.toHaveAttribute('data-active', 'true')
+    await expectLabels(chart, labelsOf(result, 'age-up'))
+  })
+
+  test('clicking an item only focuses it: the labels stay with the focus and are not sticky after blur', async ({ page }) => {
+    const { result, chart, kind } = await setup(page)
+    await item(chart, kind).click()
+    await expect(item(chart, kind)).toBeFocused()
+    await away(page)
+    await expect(item(chart, kind)).toHaveAttribute('data-active', 'true')
+    await expectLabels(chart, labelsOf(result, kind))
+    await item(chart, kind).click()
+    await away(page)
+    await expectLabels(chart, labelsOf(result, kind))
+    await item(chart, kind).blur()
+    await expect(item(chart, kind)).not.toHaveAttribute('data-active', 'true')
+    await expectLabels(chart, labelsOf(result, 'age-up'))
   })
 
   test('collapsing a chart while an item is hovered clears the hover', async ({ page }) => {
