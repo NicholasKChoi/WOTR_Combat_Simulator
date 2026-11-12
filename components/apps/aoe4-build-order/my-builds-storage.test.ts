@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MY_BUILDS_MAX, MY_BUILDS_STORAGE_KEY, myBuildsAvailable, readMyBuilds, upsertMyBuild, type MyBuildEntry } from './my-builds-storage'
+import { MY_BUILDS_BACKUP_KEY, MY_BUILDS_MAX, MY_BUILDS_STORAGE_KEY, myBuildsAvailable, readMyBuilds, upsertMyBuild, type MyBuildEntry } from './my-builds-storage'
 import { fakeStorage, throwingStorage } from './storage-test-helpers'
 
 const id = (n: number): string => `${n}`.padStart(22, 'a')
@@ -10,6 +10,31 @@ function entry(n: number, updatedAt: string, extra: Partial<MyBuildEntry> = {}):
 }
 
 const stored = (builds: unknown[]): string => JSON.stringify({ version: 1, builds })
+const AT = '2026-11-10T10:00:00Z'
+
+function recorded(entries: Record<string, string> = {}, overrides: Partial<Storage> = {}): { storage: ReturnType<typeof fakeStorage>; calls: string[] } {
+    const storage = fakeStorage(entries)
+    const calls: string[] = []
+    const { getItem, setItem, removeItem } = storage
+    Object.assign(storage, {
+        getItem: (key: string) => (calls.push(`get:${key}`), getItem(key)),
+        setItem: (key: string, value: string) => (calls.push(`set:${key}`), setItem(key, value)),
+        removeItem: (key: string) => (calls.push(`remove:${key}`), removeItem(key)),
+        ...overrides,
+    })
+    return { storage, calls }
+}
+
+const writesOf = (calls: readonly string[]): string[] => calls.filter((call) => !call.startsWith('get:'))
+
+const unreadable: [string, string][] = [
+    ['non-JSON text', '{nope'],
+    ['version 2', '{"version":2,"builds":[]}'],
+    ['a missing builds list', '{"version":1}'],
+    ['null', 'null'],
+]
+const withInvalidElement = stored([entry(1, AT), entry(2, AT, { revision: 0 })])
+
 const ids = (builds: readonly MyBuildEntry[]): string[] => builds.map((build) => build.id)
 
 describe('readMyBuilds', () => {
@@ -60,15 +85,19 @@ describe('readMyBuilds', () => {
         expect(readMyBuilds(fakeStorage({ [MY_BUILDS_STORAGE_KEY]: stored([bad[0], good, ...bad.slice(1), edge]) }))).toEqual([good, edge])
     })
 
-    it.each([
-        ['non-JSON text', '{nope'],
-        ['version 2', '{"version":2,"builds":[]}'],
-        ['a missing builds list', '{"version":1}'],
-        ['null', 'null'],
-    ])('returns [] and removes the key for %s', (_label, raw) => {
-        const storage = fakeStorage({ [MY_BUILDS_STORAGE_KEY]: raw })
+    it.each(unreadable)('returns [] and leaves the value untouched for %s', (_label, raw) => {
+        const { storage, calls } = recorded({ [MY_BUILDS_STORAGE_KEY]: raw })
         expect(readMyBuilds(storage)).toEqual([])
-        expect(storage.getItem(MY_BUILDS_STORAGE_KEY)).toBeNull()
+        expect(storage.getItem(MY_BUILDS_STORAGE_KEY)).toBe(raw)
+        expect(storage.keys()).toEqual([MY_BUILDS_STORAGE_KEY])
+        expect(writesOf(calls)).toEqual([])
+    })
+
+    it('leaves a value with an invalid element untouched and returns the valid ones', () => {
+        const { storage, calls } = recorded({ [MY_BUILDS_STORAGE_KEY]: withInvalidElement })
+        expect(ids(readMyBuilds(storage))).toEqual([id(1)])
+        expect(storage.getItem(MY_BUILDS_STORAGE_KEY)).toBe(withInvalidElement)
+        expect(writesOf(calls)).toEqual([])
     })
 
     it('returns [] for an absent key and a throwing storage', () => {
@@ -116,6 +145,57 @@ describe('upsertMyBuild', () => {
         upsertMyBuild(storage, entry(1, '2026-11-10T10:00:00Z'))
         const raw: unknown = JSON.parse(storage.getItem(MY_BUILDS_STORAGE_KEY) ?? 'null')
         expect(Object.keys(raw as object).sort()).toEqual(['builds', 'version'])
+    })
+
+    it.each([...unreadable, ['an invalid element', withInvalidElement]])('backs up %s verbatim before writing the list', (_label, raw) => {
+        const { storage, calls } = recorded({ [MY_BUILDS_STORAGE_KEY]: raw })
+        const result = upsertMyBuild(storage, entry(5, AT))
+        expect(result.persisted).toBe(true)
+        expect(ids(result.builds)).toContain(id(5))
+        expect(storage.getItem(MY_BUILDS_BACKUP_KEY)).toBe(raw)
+        expect(writesOf(calls)).toEqual([`set:${MY_BUILDS_BACKUP_KEY}`, `set:${MY_BUILDS_STORAGE_KEY}`])
+        expect(readMyBuilds(storage)).toEqual(result.builds)
+    })
+
+    it('keeps an existing backup when a later unreadable value is replaced', () => {
+        const { storage } = recorded({ [MY_BUILDS_STORAGE_KEY]: '{nope', [MY_BUILDS_BACKUP_KEY]: 'first' })
+        const result = upsertMyBuild(storage, entry(5, AT))
+        expect(result.persisted).toBe(true)
+        expect(storage.getItem(MY_BUILDS_BACKUP_KEY)).toBe('first')
+        expect(readMyBuilds(storage)).toEqual(result.builds)
+    })
+
+    it('writes no list and keeps the original value when the backup write throws', () => {
+        const { storage, calls } = recorded({ [MY_BUILDS_STORAGE_KEY]: '{nope' })
+        const setItem = storage.setItem
+        storage.setItem = (key, value) => (key === MY_BUILDS_BACKUP_KEY ? throwingStorage.setItem(key, value) : setItem(key, value))
+        const added = entry(5, AT)
+        expect(upsertMyBuild(storage, added)).toEqual({ builds: [added], persisted: false })
+        expect(storage.getItem(MY_BUILDS_STORAGE_KEY)).toBe('{nope')
+        expect(calls).not.toContain(`set:${MY_BUILDS_STORAGE_KEY}`)
+    })
+
+    it.each([
+        ['missing', {}],
+        ['intact', { [MY_BUILDS_STORAGE_KEY]: stored([entry(1, AT)]) }],
+    ])('touches no backup key over a %s value', (_label, seed) => {
+        const { storage, calls } = recorded(seed)
+        expect(upsertMyBuild(storage, entry(5, AT)).persisted).toBe(true)
+        expect(calls.filter((call) => call.endsWith(MY_BUILDS_BACKUP_KEY))).toEqual([])
+        expect(storage.keys()).toEqual([MY_BUILDS_STORAGE_KEY])
+    })
+
+    it('writes the list without touching the backup key when getItem throws', () => {
+        const { storage, calls } = recorded({}, { getItem: throwingStorage.getItem })
+        const added = entry(5, AT)
+        expect(upsertMyBuild(storage, added)).toEqual({ builds: [added], persisted: true })
+        expect(calls).toEqual([`set:${MY_BUILDS_STORAGE_KEY}`])
+    })
+
+    it('reports persisted false when getItem and the list write both throw', () => {
+        const { storage } = recorded({}, { getItem: throwingStorage.getItem, setItem: throwingStorage.setItem })
+        const added = entry(5, AT)
+        expect(upsertMyBuild(storage, added)).toEqual({ builds: [added], persisted: false })
     })
 })
 

@@ -1082,7 +1082,10 @@ which holds the newest 50 builds: the 51st save evicts the oldest, which then op
 still works. The secret is sent only as the update's `Authorization` header, never in the address. When the
 browser cannot store the list, the save still succeeds and the page says `This browser could not store the edit
 key, so you can edit this build only until you close the page.` (`my-builds-unavailable`). A save in another tab
-updates this tab's My builds.
+updates this tab's My builds. A stored list the page cannot read, or one with an unreadable entry, is never deleted
+by reading it. Before the next save replaces it, the page copies the stored text to
+`aoe4-build-order.my-builds.backup` unless that key already holds a copy; if the copy cannot be written, the save
+does not replace the list.
 
 The link is the page's origin plus `?n=<id>`. It is shown read-only (`saved-build-link`) with a Copy link button
 (`copy-saved-link`) in the save row, and focus moves to the link with its text selected. Copy reads `Copied` once

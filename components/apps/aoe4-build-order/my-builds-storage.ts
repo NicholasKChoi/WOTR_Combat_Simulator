@@ -5,6 +5,7 @@ import { SAVED_NAME_MAX_CHARS } from '../../../lib/aoe4-build-order/saved-builds
 
 export const MY_BUILDS_STORAGE_KEY = 'aoe4-build-order.my-builds'
 export const MY_BUILDS_MAX = 50
+export const MY_BUILDS_BACKUP_KEY = 'aoe4-build-order.my-builds.backup'
 
 const PROBE_KEY = 'aoe4-build-order.my-builds-probe'
 
@@ -38,28 +39,56 @@ function dedupeById(entries: readonly MyBuildEntry[]): MyBuildEntry[] {
     return entries.filter((entry, index) => winner.get(entry.id) === index)
 }
 
+interface StoredValue {
+    raw: string
+    valid: MyBuildEntry[]
+    intact: boolean
+}
+
+function readStored(storage: Storage): StoredValue | null {
+    const raw = storage.getItem(MY_BUILDS_STORAGE_KEY)
+    if (raw === null) return null
+    let elements: unknown[] = []
+    try {
+        const shape = storedShapeSchema.safeParse(JSON.parse(raw))
+        if (shape.success) elements = shape.data.builds
+        else return { raw, valid: [], intact: false }
+    } catch {
+        return { raw, valid: [], intact: false }
+    }
+    const valid = elements.flatMap((element) => {
+        const parsed = myBuildEntrySchema.safeParse(element)
+        return parsed.success ? [parsed.data] : []
+    })
+    return { raw, valid, intact: valid.length === elements.length }
+}
+
 export function readMyBuilds(storage: Storage): MyBuildEntry[] {
     try {
-        const raw = storage.getItem(MY_BUILDS_STORAGE_KEY)
-        if (raw === null) return []
-        try {
-            const shape = storedShapeSchema.safeParse(JSON.parse(raw))
-            if (shape.success) {
-                const valid = shape.data.builds.flatMap((element) => {
-                    const parsed = myBuildEntrySchema.safeParse(element)
-                    return parsed.success ? [parsed.data] : []
-                })
-                return newestFirst(dedupeById(valid))
-            }
-        } catch {}
-        storage.removeItem(MY_BUILDS_STORAGE_KEY)
-    } catch {}
-    return []
+        const value = readStored(storage)
+        return value === null ? [] : newestFirst(dedupeById(value.valid))
+    } catch {
+        return []
+    }
+}
+
+function backUpUnreadable(storage: Storage, raw: string): boolean {
+    try {
+        if (storage.getItem(MY_BUILDS_BACKUP_KEY) === null) storage.setItem(MY_BUILDS_BACKUP_KEY, raw)
+        return true
+    } catch {
+        return false
+    }
 }
 
 export function upsertMyBuild(storage: Storage, entry: MyBuildEntry): { builds: MyBuildEntry[]; persisted: boolean } {
-    const others = readMyBuilds(storage).filter((existing) => existing.id !== entry.id)
+    let stored: StoredValue | null = null
+    try {
+        stored = readStored(storage)
+    } catch {}
+    const others = stored === null ? [] : newestFirst(dedupeById(stored.valid)).filter((existing) => existing.id !== entry.id)
     const builds = newestFirst([entry, ...others]).slice(0, MY_BUILDS_MAX)
+    if (stored !== null && !stored.intact && !backUpUnreadable(storage, stored.raw)) return { builds, persisted: false }
     try {
         storage.setItem(MY_BUILDS_STORAGE_KEY, JSON.stringify({ version: 1, builds }))
         return { builds, persisted: true }
