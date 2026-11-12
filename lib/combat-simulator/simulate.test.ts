@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Army, BaseArmy } from './army'
 import { Battle, DiceRoller, OUTCOME_KINDS, battleOutcome } from './battle'
+import type { OutcomeTally } from './fight-api'
 import { BattleRecord, MAX_BATTLES, OutcomeAccumulator, simulateBattles } from './simulate'
 
 function record(outcome: string, overrides: Partial<BattleRecord> = {}): BattleRecord {
@@ -58,7 +59,8 @@ describe('outcomes', () => {
             kinds,
         )
         expect(Object.keys(summary.outcomes)).toEqual(kinds)
-        expect(summary.outcomes['extra']).toEqual({ count: 2, frequency: 0.4 })
+        const outcomes: Record<string, OutcomeTally> = summary.outcomes
+        expect(outcomes['extra']).toEqual({ count: 2, frequency: 0.4 })
         expect(summary.outcomes.attacker.count).toBe(1)
         expect(summary.outcomes.defender.count).toBe(1)
         expect(summary.outcomes.tie.count).toBe(1)
@@ -195,7 +197,8 @@ describe('simulateBattles', () => {
     ])('classifies every battle with rolls $faces as $kind', ({ faces, kind }) => {
         const summary = simulateBattles({ regulars: 2, elites: 0, leaders: 0 }, { regulars: 2, elites: 0, leaders: 0 }, 4, cyclingRoller(faces))
         expect(summary.battles).toBe(4)
-        expect(summary.outcomes[kind].count).toBe(4)
+        const outcomes: Record<string, OutcomeTally> = summary.outcomes
+        expect(outcomes[kind].count).toBe(4)
         expect(sum(Object.values(summary.outcomes).map((t) => t.count))).toBe(4)
         expect(summary.rounds).toEqual({ mean: 1, median: 1, p10: 1, p90: 1 })
     })
