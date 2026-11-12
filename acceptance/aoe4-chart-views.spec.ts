@@ -27,7 +27,7 @@ async function runOk(page: Page, text: string): Promise<SimulationResult> {
 }
 
 const chart = (page: Page, id: string) => page.getByTestId(id)
-const yLabel = (page: Page, id: string) => chart(page, id).locator('.recharts-label')
+const yLabel = (page: Page, id: string) => chart(page, id).locator('text.recharts-label[transform^="rotate(-90"]')
 const option = (page: Page, id: string, view: string) => chart(page, id).locator(`[data-testid="chart-view-option"][data-view="${view}"]`)
 const legendNames = (page: Page, id: string) => chart(page, id).getByTestId('chart-series-legend-item').allTextContents()
 const line = (page: Page, id: string, key: string) => chart(page, id).locator(`path[data-series="${key}"]`)

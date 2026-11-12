@@ -1,3 +1,5 @@
+import cn from 'classnames'
+
 export interface ChartView<V extends string> {
     value: V
     label: string
@@ -23,8 +25,10 @@ export function ChartViewToggle<V extends string>({ name, views, value, onChange
                     data-testid="chart-view-option"
                     data-view={view.value}
                     aria-pressed={view.value === value}
-                    className={view.value === value ? 'btn btn-secondary' : 'btn btn-outline-secondary'}
-                    onClick={() => view.value !== value && onChange(view.value)}
+                    className={cn('btn', view.value === value ? 'btn-secondary' : 'btn-outline-secondary')}
+                    onClick={() => {
+                        if (view.value !== value) onChange(view.value)
+                    }}
                 >
                     {view.label}
                 </button>
