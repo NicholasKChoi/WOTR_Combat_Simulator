@@ -30,6 +30,7 @@ blocks: SGS-130 (Blob store retry cap, landed write, live test), SGS-131 (My bui
 options: A) Done, output attached | B) Skip the live run and merge without it: risk is an unmapped Blob error class on ifMatch for a missing key
 recommendation: A: the ticket requires the recorded class before merge
 thread: 1570256157644296212
+question: Run the SGS-130 live Blob test on PR #142 (Claude tried 2026-11-12: blocked, it may not pull Vercel credentials) and send back the logged error class
 
 PR #142 (SGS-130) changes Blob store writes and needs one live run only you can do; the stack #143-#146 sits on it, so nothing merges until it is done (auto-merge held).
 1. In the repo, check out branch sgs-130-blob-landed-write-retry-cap (PR #142).
