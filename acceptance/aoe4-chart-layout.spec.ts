@@ -160,19 +160,24 @@ test.describe('AoE4 chart collapse and reorder', () => {
     await expect.poll(async () => [await activeTestId(page), await activeChart(page)]).toEqual(['chart-drag-handle', GATHERED])
   })
 
-  test('ArrowUp on the first chart and ArrowDown on the last change nothing, keep focus and do not scroll', async ({ page }) => {
-    await openResults(page)
-    await control(page, UNITS, 'chart-drag-handle').focus()
-    const scrollY = await page.evaluate(() => window.scrollY)
-    await page.keyboard.press('ArrowUp')
-    await control(page, FLOATING, 'chart-drag-handle').focus()
-    await page.keyboard.press('ArrowDown')
-    await expectLayout(page, DEFAULT_ORDER)
-    await expect(status(page)).toHaveText('')
-    expect([await activeTestId(page), await activeChart(page)]).toEqual(['chart-drag-handle', FLOATING])
-    expect(await page.evaluate(() => window.scrollY)).toBe(scrollY)
-    expect(await stored(page)).toBeNull()
-  })
+  for (const [id, key] of [[UNITS, 'ArrowUp'], [FLOATING, 'ArrowDown']] as const) {
+    test(`${key} on the ${id === UNITS ? 'first' : 'last'} chart changes nothing, keeps focus and does not scroll the page`, async ({ page }) => {
+      await openResults(page)
+      const handle = control(page, id, 'chart-drag-handle')
+      await handle.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
+      await handle.focus()
+      const before = await page.evaluate(() => ({ y: window.scrollY, max: document.documentElement.scrollHeight - window.innerHeight }))
+      expect(before.y).toBeGreaterThan(0)
+      expect(before.y).toBeLessThan(before.max)
+      await page.keyboard.press(key)
+      await page.waitForTimeout(500)
+      expect(await page.evaluate(() => window.scrollY)).toBe(before.y)
+      await expectLayout(page, DEFAULT_ORDER)
+      await expect(status(page)).toHaveText('')
+      expect([await activeTestId(page), await activeChart(page)]).toEqual(['chart-drag-handle', id])
+      expect(await stored(page)).toBeNull()
+    })
+  }
 
   test('ArrowUp on the first chart leaves the announcement of the last real move unchanged', async ({ page }) => {
     await openResults(page)

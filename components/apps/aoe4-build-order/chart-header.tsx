@@ -1,4 +1,5 @@
 import type { PointerEvent, ReactNode } from 'react'
+import cn from 'classnames'
 import { CollapseCaret } from './collapse-caret'
 import styles from './chart-header.module.css'
 
@@ -30,7 +31,7 @@ export function ChartHeader({ title, bodyId, layout, controls }: ChartHeaderProp
             {layout ? (
                 <button
                     type="button"
-                    className={`btn btn-sm btn-outline-secondary ${styles.dragHandle}`}
+                    className={cn(styles.dragHandle, 'btn btn-sm btn-outline-secondary')}
                     data-testid="chart-drag-handle"
                     aria-label={`Reorder ${title} chart`}
                     aria-keyshortcuts="ArrowUp ArrowDown"
