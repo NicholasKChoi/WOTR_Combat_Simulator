@@ -976,14 +976,18 @@ A 200 draws four line charts, each with a series legend titled "Series" (one tog
 
 | chart | series keys | series names |
 |---|---|---|
-| Units produced | each `unitsProduced` `unitId`, in result order | `<name> (tier <tier>)` |
-| Gather rates (per minute) | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
+| Units produced (Units view) | each `unitsProduced` `unitId`, in result order | `<name> (tier <tier>)` |
+| Gather rates (Rate view) | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Gathered resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 
-The Gather rates chart has a `Per villager` checkbox, off by default. On, each series shows `gatherRates` divided by
-`gatherers` at the same sample (0 where `gatherers` is 0) and the y axis label reads `Per villager per minute`; a pinned
-run is drawn the same way.
+The table lists each chart's default view. Gather rates and Units produced each have a two-option view toggle
+(`chart-view-toggle`, buttons `chart-view-option` with `aria-pressed`); the other two charts have none. Gather rates offers
+Rate (the default, `gatherRates`, y axis label `Per minute`) and Villagers (`gatherers`, keys and names as the resource rows, y axis
+label `Villagers`). Units produced offers Units (the default, y axis label `Count`) and Buildings (each `productionBuildings`
+entry, key `baseId`, name `name`, in result order, y axis label `Buildings`). The choice is not stored and resets on reload. The
+pinned run follows the view, drawn from its own `gatherers` or `productionBuildings` (matched to the current lines by key); a building
+only the pinned run has gets only a dashed line.
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
 it again restores it; the legend has one item per series, named without a suffix: with a pinned run, an item for a series in both runs hides and restores both its lines, and a series only the pinned run has is listed once, with a dashed swatch. The tooltip lists only the current run's series; pinned lines and markers are not in it. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. Only `age-up` markers carry a
@@ -1003,9 +1007,9 @@ Those of severity `warning` appear in a warnings list. Those of severity `info` 
 message shows its `message` text only. With no message of a severity there is no list for it.
 
 Chart controls: each chart's title row holds, in order, a drag handle (`chart-drag-handle`, a grip button labelled
-"Reorder <title> chart"), the title, a collapse caret (`chart-collapse`) and, on Gather rates, the Per villager checkbox.
+"Reorder <title> chart"), the title, a collapse caret (`chart-collapse`) and, on Gather rates and Units produced, the view toggle.
 Collapsing a chart hides everything under the title row (the series legend, the plot and the marker legend); the handle, the
-title, the caret and the Per villager checkbox stay visible and usable. The hidden series, the Per villager choice and the
+title, the caret and the view toggle stay visible and usable. The hidden series, the chosen view and the
 pinned run survive a collapse and a move, and a collapsed chart draws no step band, markers or pinned lines while the others keep
 theirs. The caret flips between "Collapse <title> chart" and "Expand <title> chart", is toggled by click, Enter or Space, and
 keeps focus. A chart is reordered by dragging its handle with the primary mouse button, or with ArrowUp and ArrowDown while the

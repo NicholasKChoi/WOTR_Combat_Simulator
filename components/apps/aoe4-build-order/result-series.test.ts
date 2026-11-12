@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
 import { toChartRows } from './chart-rows'
-import { perVillagerSeries, resourceSeries, unitSeries } from './result-series'
+import { buildingSeries, gatherRatesSeries, resourceSeries, unitSeries, unitsProducedSeries } from './result-series'
 
 function result(): SimulationResult {
     return {
@@ -80,51 +80,59 @@ describe('resourceSeries', () => {
     })
 })
 
-describe('perVillagerSeries', () => {
-    const zeros = [0, 0, 0]
-
-    it.each([
-        ['divides each rate by its count', [120, 60, 0], [4, 2, 0], [30, 30, 0]],
-        ['gives 0, not Infinity, for a positive rate with no villagers', [90, 45, 30], [3, 0, 1], [30, 0, 30]],
-        ['gives 0, not NaN, for a zero rate with no villagers', [0, 0, 0], [0, 0, 0], [0, 0, 0]],
-    ])('%s', (_, food, gatherers, expected) => {
-        const rates = { food, wood: zeros, gold: zeros, stone: zeros }
-        const counts = { food: gatherers, wood: zeros, gold: zeros, stone: zeros }
-        expect(perVillagerSeries(rates, counts)[0].values).toEqual(expected)
-    })
-
-    it('keeps the keys, names and order of resourceSeries and divides each resource by its own count', () => {
-        const input = result()
-        const series = perVillagerSeries(input.gatherRates, input.gatherers)
-        const raw = resourceSeries(input.gatherRates)
-        expect(series.map((s) => [s.key, s.name])).toEqual(raw.map((s) => [s.key, s.name]))
-        expect(series.map((s) => s.values)).toEqual([[1, 2, 3], [2, 2.5, 3], [0, 8, 0], [0, 0, 0]])
-    })
-
-    it('builds the pinned rows from the pinned run\'s own rates and gatherers, 0 where it has no gatherers', () => {
-        const current = result()
-        const pinned: SimulationResult = {
+describe('buildingSeries', () => {
+    it('maps baseId to key, name and counts to values, in the result order', () => {
+        const input = {
             ...result(),
-            gatherRates: { ...current.gatherRates, food: [8, 10, 6] },
-            gatherers: { ...current.gatherers, food: [4, 0, 3] },
+            productionBuildings: [
+                { baseId: 'town-center', name: 'Town Center', counts: [1, 1, 2] },
+                { baseId: 'barracks', name: 'Barracks', counts: [0, 1, 1] },
+            ],
         }
-        const currentFood = perVillagerSeries(current.gatherRates, current.gatherers)[0].values
-        const pinnedFood = perVillagerSeries(pinned.gatherRates, pinned.gatherers)[0].values
-        expect(currentFood).toEqual([1, 2, 3])
-        expect(pinnedFood).toEqual([2, 0, 2])
-        const rows = toChartRows(
-            current.times,
-            perVillagerSeries(current.gatherRates, current.gatherers),
-            { times: pinned.times, series: perVillagerSeries(pinned.gatherRates, pinned.gatherers) },
-        )
-        expect(rows.map((r) => r['pinned:food'])).toEqual([2, 0, 2])
-        expect(rows.map((r) => r.food)).toEqual([1, 2, 3])
+        expect(buildingSeries(input)).toEqual([
+            { key: 'town-center', name: 'Town Center', values: [1, 1, 2] },
+            { key: 'barracks', name: 'Barracks', values: [0, 1, 1] },
+        ])
     })
 
-    it('does not mutate its inputs', () => {
-        const input = result()
-        const before = structuredClone(input)
-        perVillagerSeries(input.gatherRates, input.gatherers)
-        expect(input).toEqual(before)
+    it('returns no series for a run without production buildings', () => {
+        expect(buildingSeries({ ...result(), productionBuildings: [] })).toEqual([])
+    })
+})
+
+describe('gatherRatesSeries', () => {
+    const input = result()
+
+    it('plots gatherRates in the rate view and gatherers in the villagers view, per resource', () => {
+        expect(input.gatherers).not.toEqual(input.gatherRates)
+        expect(gatherRatesSeries('rate', input)).toEqual(resourceSeries(input.gatherRates))
+        expect(gatherRatesSeries('villagers', input)).toEqual(resourceSeries(input.gatherers))
+        expect(gatherRatesSeries('villagers', input).map((s) => s.values)).toEqual([[1, 1, 1], [2, 2, 2], [0, 1, 0], [0, 0, 0]])
+    })
+
+    it('reads only the run it is given, so a pinned run keeps its own gatherers', () => {
+        const pinned: SimulationResult = { ...result(), gatherers: { ...input.gatherers, food: [4, 0, 3] } }
+        const rows = toChartRows(input.times, gatherRatesSeries('villagers', input), {
+            times: pinned.times,
+            series: gatherRatesSeries('villagers', pinned),
+        })
+        expect(rows.map((r) => r.food)).toEqual([1, 1, 1])
+        expect(rows.map((r) => r['pinned:food'])).toEqual([4, 0, 3])
+    })
+})
+
+describe('unitsProducedSeries', () => {
+    const input = result()
+
+    it('plots unitSeries in the units view and buildingSeries in the buildings view', () => {
+        expect(input.productionBuildings.length).toBeGreaterThan(0)
+        expect(unitsProducedSeries('units', input)).toEqual(unitSeries(input))
+        expect(unitsProducedSeries('buildings', input)).toEqual(buildingSeries(input))
+        expect(unitsProducedSeries('buildings', input).map((s) => s.key)).toEqual(['barracks'])
+    })
+
+    it('reads only the run it is given', () => {
+        const other: SimulationResult = { ...result(), productionBuildings: [{ baseId: 'stable', name: 'Stable', counts: [0, 0, 1] }] }
+        expect(unitsProducedSeries('buildings', other).map((s) => s.key)).toEqual(['stable'])
     })
 })

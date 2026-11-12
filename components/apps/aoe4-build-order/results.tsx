@@ -9,8 +9,18 @@ import { SeriesChart } from './line-chart'
 import { useChartDrag } from './use-chart-drag'
 import type { ChartId } from './chart-layout'
 import type { ChartLayoutControls } from './use-chart-layout'
-import { perVillagerSeries, resourceSeries, unitSeries } from './result-series'
+import { ChartViewToggle, type ChartView, type GatherRatesView, type UnitsProducedView } from './chart-view-toggle'
+import { gatherRatesSeries, resourceSeries, unitSeries, unitsProducedSeries } from './result-series'
 import styles from './workbench.module.css'
+
+const GATHER_RATES_VIEWS: readonly ChartView<GatherRatesView>[] = [
+    { value: 'rate', label: 'Rate' },
+    { value: 'villagers', label: 'Villagers' },
+]
+const UNITS_PRODUCED_VIEWS: readonly ChartView<UnitsProducedView>[] = [
+    { value: 'units', label: 'Units' },
+    { value: 'buildings', label: 'Buildings' },
+]
 
 interface ResultsProps {
     result: SimulationResult
@@ -26,13 +36,13 @@ interface ResultsProps {
 export function Results({ result, pinned, activeStep, dimmed, describedByStatus, infoExpanded, onInfoToggle, chartLayout }: ResultsProps) {
     const messages = resultMessages(result)
     const highlight = activeStep === null ? null : stepSpan(result.steps[activeStep], result.durationSeconds)
-    const [perVillager, setPerVillager] = useState(false)
+    const [gatherRatesView, setGatherRatesView] = useState<GatherRatesView>('rate')
+    const [unitsProducedView, setUnitsProducedView] = useState<UnitsProducedView>('units')
     const { layout, move, moveTo, toggle } = chartLayout
     const container = useRef<HTMLDivElement>(null)
     const reorderHelpId = useId()
     const focusAfterMove = useRef<ChartId | null>(null)
     const [orderStatus, setOrderStatus] = useState('')
-    const gatherRateSeries = (run: SimulationResult) => (perVillager ? perVillagerSeries(run.gatherRates, run.gatherers) : resourceSeries(run.gatherRates))
 
     useEffect(() => {
         const id = focusAfterMove.current
@@ -41,23 +51,17 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
     }, [layout.order])
 
     const charts: Record<ChartId, { title: string; yLabel: string; series: (run: SimulationResult) => ReturnType<typeof unitSeries>; headerControls?: ReactNode }> = {
-        'chart-units-produced': { title: 'Units produced', yLabel: 'Units', series: unitSeries },
+        'chart-units-produced': {
+            title: 'Units produced',
+            yLabel: unitsProducedView === 'buildings' ? 'Buildings' : 'Count',
+            series: (run) => unitsProducedSeries(unitsProducedView, run),
+            headerControls: <ChartViewToggle name="Units produced" views={UNITS_PRODUCED_VIEWS} value={unitsProducedView} onChange={setUnitsProducedView} />,
+        },
         'chart-gather-rates': {
             title: 'Gather rates',
-            yLabel: perVillager ? 'Per villager per minute' : 'Per minute',
-            series: gatherRateSeries,
-            headerControls: (
-                <label className="form-check">
-                    <input
-                        type="checkbox"
-                        data-testid="gather-rates-per-villager"
-                        className="form-check-input"
-                        checked={perVillager}
-                        onChange={(e) => setPerVillager(e.target.checked)}
-                    />
-                    <span className="form-check-label">Per villager</span>
-                </label>
-            ),
+            yLabel: gatherRatesView === 'villagers' ? 'Villagers' : 'Per minute',
+            series: (run) => gatherRatesSeries(gatherRatesView, run),
+            headerControls: <ChartViewToggle name="Gather rates" views={GATHER_RATES_VIEWS} value={gatherRatesView} onChange={setGatherRatesView} />,
         },
         'chart-gathered-resources': { title: 'Gathered resources', yLabel: 'Resources', series: (run) => resourceSeries(run.gathered) },
         'chart-floating-resources': { title: 'Floating resources', yLabel: 'Resources', series: (run) => resourceSeries(run.floating) },
