@@ -32,6 +32,36 @@ function compressed(value: unknown, etag: string) {
 
 const counterPuts = () => vi.mocked(put).mock.calls.map(([key, body, options]) => ({ key, body: JSON.parse(body as string), options }))
 
+// One counter blob whose put honors ifMatch and allowOverwrite: false; events logs each get and put by count.
+function counterBlob(initial: { windowStart: number; count: number } | null) {
+    let blob = initial === null ? null : { value: initial, etag: '"e0"' }
+    let etags = 0
+    const events: string[] = []
+    const rejection = ({ allowOverwrite, ifMatch }: { allowOverwrite?: boolean; ifMatch?: string }) => {
+        if (ifMatch === undefined) return blob !== null && !allowOverwrite ? new Error('already exists') : null
+        if (blob === null) return new BlobNotFoundError()
+        return blob.etag === ifMatch ? null : new BlobPreconditionFailedError()
+    }
+    vi.mocked(get).mockImplementation(async () => {
+        events.push(`get ${blob?.value.count ?? 'none'}`)
+        return blob === null ? null : found(blob.value, blob.etag)
+    })
+    vi.mocked(head).mockImplementation(async () => {
+        if (blob === null) throw new BlobNotFoundError()
+        return {} as Awaited<ReturnType<typeof head>>
+    })
+    vi.mocked(put).mockImplementation(async (_key, body, options) => {
+        const value = JSON.parse(body as string)
+        const error = rejection(options as { allowOverwrite?: boolean; ifMatch?: string })
+        events.push(`put ${value.count}${error === null ? '' : ' failed'}`)
+        if (error !== null) throw error
+        etags += 1
+        blob = { value, etag: `"e${etags}"` }
+        return {} as Awaited<ReturnType<typeof put>>
+    })
+    return { events, storedCount: () => blob?.value.count }
+}
+
 beforeEach(() => {
     vi.mocked(put).mockReset().mockResolvedValue({} as Awaited<ReturnType<typeof put>>)
     vi.mocked(get).mockReset().mockResolvedValue(null)
@@ -292,7 +322,6 @@ describe('bumpCounter', () => {
         expect(await blob.bumpCounter('c', W, LIMIT + 1)).toStrictEqual({ windowStart: W, count: LIMIT + 1 })
     })
 
-    // Each failed put is followed by a read-back; these show a counter other writers moved past ours.
     it('retries a changed etag with the etag of the new read', async () => {
         vi.mocked(get).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, 'etag-1')).mockImplementation(async () => found({ windowStart: W, count: 3 }, 'etag-2'))
         vi.mocked(put).mockRejectedValueOnce(new BlobPreconditionFailedError())
@@ -303,11 +332,11 @@ describe('bumpCounter', () => {
         ])
     })
 
-    it('reports contended after three changed etags whose read-backs differ', async () => {
-        for (const etag of ['etag-1', 'etag-2', 'etag-3']) vi.mocked(get).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, etag)).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, etag))
+    it('reports contended after three changed etags', async () => {
+        for (const etag of ['etag-1', 'etag-2', 'etag-3']) vi.mocked(get).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, etag))
         vi.mocked(put).mockRejectedValue(new BlobPreconditionFailedError())
         expect(await store().bumpCounter('c', W, LIMIT)).toBe('contended')
-        expect(get).toHaveBeenCalledTimes(6)
+        expect(get).toHaveBeenCalledTimes(3)
         expect(counterPuts().map(({ options }) => options.ifMatch)).toStrictEqual(['etag-1', 'etag-2', 'etag-3'])
     })
 
@@ -320,15 +349,38 @@ describe('bumpCounter', () => {
     })
 
     it.each([
-        ['an update rejected with 412', found({ windowStart: W, count: 1 }, 'etag-1'), new BlobPreconditionFailedError(), 2],
-        ['an update rejected with a network error', found({ windowStart: W, count: 1 }, 'etag-1'), new Error('fetch failed'), 2],
-        ['a create rejected as already existing', null, new Error('already exists'), 1],
-    ])('returns the update after one put for %s when the read-back shows the JSON it sent', async (_label, current, putError, count) => {
-        vi.mocked(get).mockResolvedValueOnce(current).mockResolvedValueOnce(found({ windowStart: W, count }, 'etag-9'))
-        vi.mocked(put).mockRejectedValue(putError)
-        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count })
-        expect(put).toHaveBeenCalledOnce()
+        ['an update rejected with 412', found({ windowStart: W, count: 1 }, 'etag-1'), new BlobPreconditionFailedError(), 2, 'etag-1'],
+        ['a create rejected as already existing', null, new Error('already exists'), 1, undefined],
+    ])('starts a new attempt after %s even when the stored value is the JSON it sent', async (_label, current, putError, sent, firstIfMatch) => {
+        vi.mocked(get).mockResolvedValueOnce(current).mockImplementation(async () => found({ windowStart: W, count: sent }, 'etag-2'))
+        vi.mocked(put).mockRejectedValueOnce(putError)
+        vi.mocked(head).mockResolvedValue({} as Awaited<ReturnType<typeof head>>)
+        expect(await store().bumpCounter('c', W, LIMIT)).toStrictEqual({ windowStart: W, count: sent + 1 })
+        expect(counterPuts().map(({ body, options }) => [body.count, options.ifMatch])).toStrictEqual([
+            [sent, firstIfMatch],
+            [sent + 1, 'etag-2'],
+        ])
         expect(get).toHaveBeenCalledTimes(2)
+    })
+
+    it('rethrows a network error on an update after one put even when the stored value is the JSON it sent', async () => {
+        const putError = new Error('fetch failed')
+        vi.mocked(get).mockResolvedValueOnce(found({ windowStart: W, count: 1 }, 'etag-1')).mockImplementation(async () => found({ windowStart: W, count: 2 }, 'etag-2'))
+        vi.mocked(put).mockRejectedValue(putError)
+        await expect(store().bumpCounter('c', W, LIMIT)).rejects.toBe(putError)
+        expect(put).toHaveBeenCalledOnce()
+        expect(get).toHaveBeenCalledOnce()
+    })
+
+    it.each([
+        ['an existing counter', { windowStart: W, count: 4 }, 4, ['get 4', 'get 4', 'put 5', 'put 5 failed', 'get 5', 'put 6']],
+        ['an absent counter', null, 0, ['get none', 'get none', 'put 1', 'put 1 failed', 'get 1', 'put 2']],
+    ])('gives two parallel bumps over %s different updates, the loser re-reading before its second put', async (_label, initial, before, events) => {
+        const blob = counterBlob(initial)
+        const results = await Promise.all([store().bumpCounter('c', W, LIMIT), store().bumpCounter('c', W, LIMIT)])
+        expect(results.map((result) => (result as { count: number }).count).sort((a, b) => a - b)).toStrictEqual([before + 1, before + 2])
+        expect(blob.storedCount()).toBe(before + 2)
+        expect(blob.events).toStrictEqual(events)
     })
 
     it.each([

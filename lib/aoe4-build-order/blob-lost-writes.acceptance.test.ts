@@ -189,12 +189,25 @@ describe('the save rate counter when its Blob write fails', () => {
     it.each<[string, Fault]>([
         ['the SDK retry runs into the counter write that landed', 'retried'],
         ['the connection drops after the counter write lands', 'dropped'],
-    ])('charges one save, with one counter put, when %s', async (_label, fault) => {
+    ])('answers 201 on a first save and stores a count at most one above the accepted saves when %s', async (_label, fault) => {
+        expect(blobs.has(COUNTER_KEY)).toBe(false)
         failNext('rate-limit', fault)
         const reply = await saveBuild()
         expect(reply.status).toBe(201)
+        expect(putsTo('builds')).toHaveLength(1)
+        expect([1, 2]).toContain(stored(COUNTER_KEY).count)
+    })
+
+    it('answers 503 and stores no build when the connection drops after a counter update lands', async () => {
+        expect((await saveBuild()).status).toBe(201)
         expect(stored(COUNTER_KEY)).toMatchObject({ count: 1 })
+        vi.mocked(put).mockClear()
+        failNext('rate-limit', 'dropped')
+        const reply = await saveBuild()
+        expect(reply).toMatchObject({ status: 503, body: STORAGE_DOWN })
+        expectStorageDownFromPutError()
         expect(putsTo('rate-limit')).toHaveLength(1)
+        expect(putsTo('builds')).toHaveLength(0)
     })
 
     it('answers 429 with Retry-After 1 after three counter puts when every attempt loses to a concurrent bump', async () => {

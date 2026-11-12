@@ -7,7 +7,7 @@ import { rateCounterKey, savedBuildKey } from './saved-builds';
 const COUNTER_ATTEMPTS = 3;
 
 // @vercel/blob reads VERCEL_BLOB_RETRIES from process.env on every put, head and del call (default 10; get is
-// not retried), and bumpCounter's attempts multiply those retries during an outage.
+// not retried), and bumpCounter's attempts multiply those retries.
 export const BLOB_SDK_RETRIES = 1;
 
 export function createBlobBuildStore(storeId: string, env: string): BuildStore {
@@ -46,8 +46,9 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
     }
   };
 
-  // A put whose response was lost may still have landed, and the SDK's retry of it then fails with 412
-  // or "already exists". Text equality, not a deep compare: a value serialized differently is not ours.
+  // For build writes only. A put whose response was lost may still have landed, and the SDK's retry of it
+  // then fails with 412 or "already exists". Text equality, not a deep compare: a value serialized
+  // differently is not ours.
   const landed = async (key: string, json: string): Promise<boolean> => {
     try {
       const stored = await read(key, true);
@@ -85,12 +86,12 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
         const update = nextCounter(current?.value ?? null, windowStart, limit);
         if (update === 'refused') return update;
         const write = current === null ? { allowOverwrite: false } : { allowOverwrite: true, ifMatch: current.etag };
-        const json = JSON.stringify(update);
         try {
-          await put(key, json, { ...putOptions, ...write });
+          await put(key, JSON.stringify(update), { ...putOptions, ...write });
           return update;
         } catch (error) {
-          if (await landed(key, json)) return update;
+          // No landed read-back: parallel saves from one client write identical counter JSON, so it would
+          // count every losing writer as landed and let them all pass the limit.
           if (error instanceof BlobPreconditionFailedError) continue;
           if (current === null && (await exists(key))) continue;
           throw error;
