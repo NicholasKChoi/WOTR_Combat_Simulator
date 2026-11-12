@@ -1,19 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PIN_STORAGE_KEY, clearStoredPin, readStoredPin, writeStoredPin, type StoredPin } from './pin-storage'
-
-function fakeStorage(initial?: string): Storage {
-    const map = new Map<string, string>(initial === undefined ? [] : [[PIN_STORAGE_KEY, initial]])
-    return {
-        getItem: (key: string) => map.get(key) ?? null,
-        setItem: (key: string, value: string) => void map.set(key, value),
-        removeItem: (key: string) => void map.delete(key),
-    } as Storage
-}
-
-const throwing = (): never => {
-    throw new Error('blocked')
-}
-const throwingStorage = { getItem: throwing, setItem: throwing, removeItem: throwing } as unknown as Storage
+import { fakeStorage, throwingStorage } from './storage-test-helpers'
 
 const pin: StoredPin = { version: 1, name: 'ENG 1TC', text: 'start -> sheep', durationSeconds: 1200 }
 
@@ -29,7 +16,7 @@ describe('pin storage', () => {
     })
 
     it('ignores extra fields', () => {
-        expect(readStoredPin(fakeStorage(JSON.stringify({ ...pin, result: {} })))).toEqual(pin)
+        expect(readStoredPin(fakeStorage({ [PIN_STORAGE_KEY]: JSON.stringify({ ...pin, result: {} }) }))).toEqual(pin)
     })
 
     it.each([
@@ -44,7 +31,7 @@ describe('pin storage', () => {
         ['an infinite duration', '{"version":1,"name":"a","text":"b","durationSeconds":1e999}'],
         ['a string duration', JSON.stringify({ ...pin, durationSeconds: '1200' })],
     ])('drops %s and removes the key', (_label, raw) => {
-        const storage = fakeStorage(raw)
+        const storage = fakeStorage({ [PIN_STORAGE_KEY]: raw })
         expect(readStoredPin(storage)).toBeNull()
         expect(storage.getItem(PIN_STORAGE_KEY)).toBeNull()
     })

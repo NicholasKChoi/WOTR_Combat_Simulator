@@ -5,7 +5,7 @@ import { loadGameData } from './data'
 import { nodeKindOf } from './model'
 import type { NodeRef } from './model'
 import { formatBuildOrderText, parseBuildOrderText } from './parse-text'
-import { MAX_FLOATING_AT_1200, PRODUCTION_FLOORS } from './production-floors'
+import { PRODUCTION_FLOORS, productionChecks } from './production-floors'
 import { buildOrderCatalog, checkBuildOrder, resolveSimInputs } from './schema'
 import { simulateBuildOrder } from './simulate'
 import { countAt, ENGLISH, inputsFor, sampleIndex } from './test-helpers'
@@ -78,14 +78,9 @@ describe.each(listBuilds().map((build) => [build.name, build] as const))('prebui
         const floors = PRODUCTION_FLOORS[build.name]
         expect(floors, 'production floors for the build').toBeDefined()
         const result = simulateTo(1200)
-        const i = sampleIndex(result, 1200)
-        for (const [unit, floor] of [['villager', floors.villager], ...Object.entries(floors.military)] as [string, number][]) {
-            expect(countAt(result, unit, 1200), unit).toBeGreaterThanOrEqual(floor)
-        }
-        expect(result.gatherRates.food[i], 'food per minute').toBeGreaterThanOrEqual(floors.foodPerMinute)
-        for (const resource of ['food', 'wood', 'gold', 'stone'] as const) {
-            expect(result.floating[resource][i], `floating ${resource}`).toBeLessThanOrEqual(MAX_FLOATING_AT_1200)
-        }
+        const { atLeast, atMost } = productionChecks(floors, result, sampleIndex(result, 1200), (unit) => countAt(result, unit, 1200))
+        for (const [label, actual, floor] of atLeast) expect(actual, label).toBeGreaterThanOrEqual(floor)
+        for (const [label, actual, cap] of atMost) expect(actual, label).toBeLessThanOrEqual(cap)
     })
 
     it.each([1200, 1800, 3600])('leaves no villager waiting for a farm by %i s', (horizon) => {

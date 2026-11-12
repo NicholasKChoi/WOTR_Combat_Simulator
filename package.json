@@ -7,7 +7,7 @@
         "acceptance": "playwright test",
         "smoke:preview": "node scripts/smoke-preview.mjs",
         "acceptance:setup": "playwright install chromium",
-        "lint:dup": "jscpd"
+        "lint:dup": "jscpd && jscpd --config .jscpd.tests.json"
     },
     "engines": {
         "node": "24.x"

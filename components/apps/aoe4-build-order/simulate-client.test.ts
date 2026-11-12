@@ -1,17 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { BuildOrder, BuildOrderIssue } from '../../../lib/aoe4-build-order/model'
+import { lastCall, reply, stubFetch } from './fetch-test-helpers'
 import { postSimulation, readRejection, simulationFailureMessage } from './simulate-client'
 
 const buildOrder: BuildOrder = { civ: 'english', name: 'Test', start: { villagers: { sheep: 6 }, rally: 'sheep' }, steps: [] }
 const issue: BuildOrderIssue = { code: 'invalid', message: 'line 2: not enough food', line: 2 }
-
-function stubFetch() {
-    const fetch = vi.fn((_url: string, init: RequestInit) =>
-        init.signal?.aborted ? Promise.reject(new DOMException('aborted', 'AbortError')) : Promise.resolve(new Response('{}')),
-    )
-    vi.stubGlobal('fetch', fetch)
-    return fetch
-}
 
 afterEach(() => {
     vi.unstubAllGlobals()
@@ -19,11 +12,11 @@ afterEach(() => {
 
 describe('postSimulation', () => {
     it('posts the build order and duration as JSON with the given signal', async () => {
-        const fetch = stubFetch()
+        const fetch = stubFetch(reply({}))
         const signal = new AbortController().signal
         await postSimulation(buildOrder, 900, signal)
         expect(fetch).toHaveBeenCalledTimes(1)
-        const [url, init] = fetch.mock.calls[0]
+        const [url, init] = lastCall(fetch)
         expect(url).toBe('/api/aoe4-build-order/simulate')
         expect(init.method).toBe('POST')
         expect(new Headers(init.headers).get('Content-Type')).toBe('application/json')
@@ -32,13 +25,13 @@ describe('postSimulation', () => {
     })
 
     it('passes no signal when none is given', async () => {
-        const fetch = stubFetch()
+        const fetch = stubFetch(reply({}))
         await postSimulation(buildOrder, 900)
-        expect(fetch.mock.calls[0][1].signal).toBeUndefined()
+        expect(lastCall(fetch)[1].signal).toBeUndefined()
     })
 
     it('rejects with an AbortError when the signal is aborted', async () => {
-        stubFetch()
+        stubFetch(reply({}))
         const abort = new AbortController()
         abort.abort()
         await expect(postSimulation(buildOrder, 900, abort.signal)).rejects.toMatchObject({ name: 'AbortError' })

@@ -1,8 +1,6 @@
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import { test, expect, type APIRequestContext } from '@playwright/test'
-import Ajv2020, { type ValidateFunction } from 'ajv/dist/2020'
 import { SIMULATE_PATH, postSimulate, postSimulateRaw } from './helpers'
+import { expectInvalid, expectValid, schemas, spec } from './openapi-schemas'
 import { SIM_INPUT_BOUNDS } from '../lib/aoe4-build-order/schema'
 import { FINITE_GATHER_NODES, FINITE_NODE_REFS, NODE_REFS, SEVERITIES } from '../lib/aoe4-build-order/model'
 import type { SimInputOverrides, SimulateError, SimulateRequest, TripInputOverrides } from '../lib/aoe4-build-order/api'
@@ -26,32 +24,10 @@ const WARM_UP_TIMEOUT_MS = 60_000
 
 test.describe.configure({ timeout: 60_000 })
 
-const spec = JSON.parse(readFileSync(join(__dirname, '..', 'docs', 'api', 'openapi.json'), 'utf8'))
-const schemas = spec.components.schemas
 const operation = spec.paths[SIMULATE_PATH].post
 const requestExamples = operation.requestBody.content['application/json'].examples
 const okExamples = operation.responses['200'].content['application/json'].examples
 const errorExamples = operation.responses['400'].content['application/json'].examples
-
-const ajv = new Ajv2020({ strict: false })
-ajv.addSchema(spec, 'openapi.json')
-
-function validator(name: string): ValidateFunction {
-  const validate = ajv.getSchema(`openapi.json#/components/schemas/${name}`)
-  if (!validate) {
-    throw new Error(`no schema ${name} in docs/api/openapi.json`)
-  }
-  return validate
-}
-
-function expectValid(name: string, data: unknown) {
-  const validate = validator(name)
-  expect(validate(data), JSON.stringify(validate.errors)).toBe(true)
-}
-
-function expectInvalid(name: string, data: unknown) {
-  expect(validator(name)(data)).toBe(false)
-}
 
 function keys(value: object) {
   return Object.keys(value).sort()

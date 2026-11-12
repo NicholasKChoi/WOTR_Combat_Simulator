@@ -1,4 +1,4 @@
-import { test as base, expect, type Locator, type Page, type Request, type Route } from '@playwright/test'
+import { expect, type Locator, type Page, type Request, type Route } from '@playwright/test'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { AUTO_RUN_DEBOUNCE_MS } from '../components/apps/aoe4-build-order/auto-run'
@@ -10,6 +10,8 @@ import {
   SIMULATE_PATH,
   acceptBeforeUnload,
   buildOrderFrom,
+  gatedTest,
+  type Gate,
   holdNextSimulate,
   holdRequests,
   isSimulatePost,
@@ -34,28 +36,7 @@ const REMOTE_TEXT = ['start -> sheep', 'produce knight from stable'].join('\n')
 const REMOTE_ORDER = (name: string) => ({ ...JSON.parse(JSON.stringify(buildOrderFrom(REMOTE_TEXT))), name })
 const REMOTE_FORMATTED = formatBuildOrderText(buildOrderFrom(REMOTE_TEXT))
 
-interface Gate {
-  opened: Promise<void>
-  open: () => void
-}
-
-// `gate` is released in fixture teardown, so a route handler that waits on it never outlives the test.
-const test = base.extend<{ client: string; gate: Gate }>({
-  client: async ({}, use) => {
-    await use(uniqueClient('aoe4-my-builds'))
-  },
-  extraHTTPHeaders: async ({ client }, use) => {
-    await use({ 'x-forwarded-for': client })
-  },
-  gate: async ({ page: _page }, use) => {
-    let open!: () => void
-    const opened = new Promise<void>((resolve) => {
-      open = resolve
-    })
-    await use({ opened, open })
-    open()
-  },
-})
+const test = gatedTest('aoe4-my-builds')
 
 const status = (page: Page) => page.getByTestId('auto-run-status')
 const textarea = (page: Page) => page.getByTestId('build-order-text')
@@ -67,6 +48,15 @@ const loadError = (page: Page) => page.getByTestId('saved-build-error')
 const checkedOption = (page: Page) => select(page).locator('option:checked')
 const groupOptions = (page: Page, group: string) => select(page).locator(`optgroup[label="${group}"] option`)
 const groupLabels = (page: Page) => select(page).locator('optgroup').evaluateAll((groups) => groups.map((g) => g.getAttribute('label')))
+
+async function expectLockedWithoutRun(page: Page, posts: Request[]) {
+  for (const locator of [select(page), duration(page), textarea(page), copyButton(page)]) {
+    await expect(locator).toBeDisabled()
+    await expect(locator).toHaveAttribute('aria-busy', 'true')
+  }
+  await page.waitForTimeout(AUTO_RUN_DEBOUNCE_MS + 300)
+  expect(posts).toHaveLength(0)
+}
 
 const isNamedGet = (r: Request) => new URL(r.url()).pathname.startsWith(`${NAMED_BUILDS_PATH}/`) && r.method() === 'GET'
 const isNamedUrl = (url: URL) => url.pathname.startsWith(`${NAMED_BUILDS_PATH}/`)
@@ -336,12 +326,7 @@ test.describe('opening ?n=', () => {
     const posts = track(page, isSimulatePost)
     await page.goto(`${AOE4_PAGE}?n=${SHARED_ID}`)
     await expect(status(page)).toHaveAttribute('data-status', 'loading')
-    for (const locator of [select(page), duration(page), textarea(page), copyButton(page)]) {
-      await expect(locator).toBeDisabled()
-      await expect(locator).toHaveAttribute('aria-busy', 'true')
-    }
-    await page.waitForTimeout(AUTO_RUN_DEBOUNCE_MS + 300)
-    expect(posts).toHaveLength(0)
+    await expectLockedWithoutRun(page, posts)
 
     gate.open()
     await expect(status(page)).toHaveAttribute('data-status', 'current')
@@ -436,12 +421,7 @@ test.describe('choosing a My builds entry', () => {
     const posts = track(page, isSimulatePost)
 
     await select(page).selectOption({ label: OLDER.name })
-    for (const locator of [select(page), duration(page), textarea(page), copyButton(page)]) {
-      await expect(locator).toBeDisabled()
-      await expect(locator).toHaveAttribute('aria-busy', 'true')
-    }
-    await page.waitForTimeout(AUTO_RUN_DEBOUNCE_MS + 300)
-    expect(posts).toHaveLength(0)
+    await expectLockedWithoutRun(page, posts)
 
     gate.open()
     await expect(textarea(page)).toHaveValue(REMOTE_FORMATTED)

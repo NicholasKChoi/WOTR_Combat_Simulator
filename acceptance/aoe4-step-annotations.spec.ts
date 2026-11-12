@@ -31,6 +31,22 @@ async function openTable(page: Page, text?: string) {
   await expect(page.getByTestId('step-run').first()).toBeVisible()
 }
 
+async function legendColors(page: Page) {
+  const legend = await page
+    .getByTestId('step-kind-legend')
+    .locator('[data-kind]')
+    .evaluateAll((els) => els.map((el) => [el.getAttribute('data-kind'), getComputedStyle(el).borderLeftColor]))
+  return new Map(legend as [string, string][])
+}
+
+async function openLongestBuildTable(page: Page) {
+  const longest = listBuilds().reduce((best, build) => (build.steps.length > best.steps.length ? build : best))
+  await openPage(page)
+  await page.getByTestId('build-order-select').selectOption({ label: longest.name })
+  await expect(status(page)).toHaveAttribute('data-status', 'current')
+  await showView(page, 'table')
+}
+
 async function expectDescribedByStatus(page: Page, message: string) {
   await expect(lastGood(page)).toHaveAttribute('aria-describedby', 'auto-run-status')
   const described = await page.evaluate(() => {
@@ -59,10 +75,7 @@ test.describe('AoE4 step run cells', () => {
 
   test('a run cell shares its kind colour with the legend item, and the badge is absent only for the other kind', async ({ page }) => {
     await openTable(page)
-    const legend = await page
-      .getByTestId('step-kind-legend')
-      .locator('[data-kind]')
-      .evaluateAll((els) => els.map((el) => [el.getAttribute('data-kind'), getComputedStyle(el).borderLeftColor]))
+    const colorOf = await legendColors(page)
     const cells = await rows(page).evaluateAll((els) =>
       els.map((el) => ({
         kind: el.getAttribute('data-kind'),
@@ -70,7 +83,6 @@ test.describe('AoE4 step run cells', () => {
         badges: el.querySelectorAll('[data-testid="step-kind-badge"]').length,
       })),
     )
-    const colorOf = new Map(legend as [string, string][])
     for (const cell of cells) {
       expect(cell.badges).toBe(cell.kind === 'other' ? 0 : 1)
       if (cell.kind !== 'other') expect(cell.color).toBe(colorOf.get(cell.kind!))
@@ -290,11 +302,7 @@ test.describe('AoE4 step table layout beside Results', () => {
   test.use({ viewport: SPLIT_VIEWPORT })
 
   test('the longest prebuilt step table fits the Build panel and the editor is not clipped', async ({ page }) => {
-    const longest = listBuilds().reduce((best, build) => (build.steps.length > best.steps.length ? build : best))
-    await openPage(page)
-    await page.getByTestId('build-order-select').selectOption({ label: longest.name })
-    await expect(status(page)).toHaveAttribute('data-status', 'current')
-    await showView(page, 'table')
+    await openLongestBuildTable(page)
     await expect(page.getByTestId('step-started').first()).toBeVisible()
     await expect
       .poll(() =>
@@ -329,11 +337,7 @@ test.describe('AoE4 step table layout beside Results', () => {
   })
 
   test('badges stay on one line and each select is wide enough for its selected option', async ({ page }) => {
-    const longest = listBuilds().reduce((best, build) => (build.steps.length > best.steps.length ? build : best))
-    await openPage(page)
-    await page.getByTestId('build-order-select').selectOption({ label: longest.name })
-    await expect(status(page)).toHaveAttribute('data-status', 'current')
-    await showView(page, 'table')
+    await openLongestBuildTable(page)
     await expect(page.getByTestId('step-run').first()).toBeVisible()
     const measured = await page.evaluate(() => {
       const px = (value: string) => parseFloat(value) || 0
@@ -369,17 +373,13 @@ test.describe('AoE4 step run cells in the narrow card layout', () => {
 
   test('every run cell keeps a 4px kind border in its legend colour', async ({ page }) => {
     await openTable(page)
-    const legend = await page
-      .getByTestId('step-kind-legend')
-      .locator('[data-kind]')
-      .evaluateAll((els) => els.map((el) => [el.getAttribute('data-kind'), getComputedStyle(el).borderLeftColor]))
+    const colorOf = await legendColors(page)
     const cells = await rows(page).evaluateAll((els) =>
       els.map((el) => {
         const style = getComputedStyle(el.querySelector('[data-testid="step-run"]')!)
         return { kind: el.getAttribute('data-kind'), width: style.borderLeftWidth, color: style.borderLeftColor }
       }),
     )
-    const colorOf = new Map(legend as [string, string][])
     const colored = cells.filter((c) => c.kind !== 'other')
     expect(colored.length).toBeGreaterThan(0)
     for (const cell of colored) {

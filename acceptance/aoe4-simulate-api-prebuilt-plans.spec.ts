@@ -4,7 +4,7 @@ import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
 import english1tcCouncilHall from '../data/aoe4-build-order/builds/english-1tc-council-hall.json'
 import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
 import spearLongbow from '../data/aoe4-build-order/builds/english-spear-longbow-maa-crossbow.json'
-import { postSimulate, simulateOk } from './helpers'
+import { simulateOk } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -28,18 +28,15 @@ const plans = [
 
 test.describe.configure({ timeout: 60_000 })
 
-const simulate = (request: Parameters<typeof postSimulate>[0], build: unknown, durationSeconds: number, timeout?: number) =>
-  simulateOk<Result>(request, build, durationSeconds, timeout)
-
 test.beforeAll(async ({ request }) => {
-  await simulate(request, spearLongbow, 60, WARM_UP_TIMEOUT_MS)
+  await simulateOk<Result>(request, spearLongbow, 60, WARM_UP_TIMEOUT_MS)
 })
 
 test.describe('each prebuilt build stays a runnable version of its plan', () => {
   for (const { build, units } of plans) {
     for (const durationSeconds of [1200, 3600]) {
       test(`${build.name} at ${durationSeconds} s: no step waits and every non-reaction step has started`, async ({ request }) => {
-        const { steps } = await simulate(request, build, durationSeconds)
+        const { steps } = await simulateOk<Result>(request, build, durationSeconds)
         const defs = build.steps as Step[]
         expect(steps.filter((s) => s.status === 'waiting')).toEqual([])
         expect(steps.filter((s) => !defs[s.step].reaction && s.startedAt === null)).toEqual([])
@@ -48,12 +45,12 @@ test.describe('each prebuilt build stays a runnable version of its plan', () => 
     }
 
     test(`${build.name} leaves no villager stuck or at an empty resource through 1800 s`, async ({ request }) => {
-      const { warnings } = await simulate(request, build, 1800)
+      const { warnings } = await simulateOk<Result>(request, build, 1800)
       expect(warnings.filter((w) => w.code === 'idle-arrival' || w.code === 'step-stuck')).toEqual([])
     })
 
     test(`${build.name} produces exactly its plan's unit types by 3600 s`, async ({ request }) => {
-      const { unitsProduced } = await simulate(request, build, 3600)
+      const { unitsProduced } = await simulateOk<Result>(request, build, 3600)
       const produced = unitsProduced.filter((u) => u.counts[u.counts.length - 1] > 0).map((u) => u.baseId)
       expect([...new Set(produced)].sort()).toEqual(units)
     })
@@ -64,7 +61,7 @@ test.describe('each prebuilt build stays a runnable version of its plan', () => 
     const index = defs.findIndex((s) => s.unit === 'man-at-arms')
     const trigger = defs[index].trigger
     expect(trigger?.kind).toBe('time')
-    const { steps, ages } = await simulate(request, spearLongbow, 1200)
+    const { steps, ages } = await simulateOk<Result>(request, spearLongbow, 1200)
     const castle = ages.find((a) => a.age === 3)?.reachedAt
     expect(castle).toBeLessThanOrEqual(1200)
     expect(trigger?.seconds).toBeGreaterThanOrEqual(castle as number)

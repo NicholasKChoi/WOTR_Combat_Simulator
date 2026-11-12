@@ -1,22 +1,9 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
-import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
-
-// next dev compiles the route on its first request, which can take longer than a simulation.
-const WARM_UP_TIMEOUT_MS = 60_000
+import { INFINITE_NODES, WARM_UP_TIMEOUT_MS, buildOrderFrom, postSimulate, type Timing } from './helpers'
 
 test.describe.configure({ timeout: 60_000 })
 
-type Reason = 'resources' | 'villagers' | 'population' | 'prerequisite'
-type Timing = {
-  step: number
-  status: 'completed' | 'in-progress' | 'waiting' | 'not-reached'
-  armedAt: number | null
-  startedAt: number | null
-  waitSeconds: number
-  waitingOn: Reason | 'trigger' | 'earlier-step' | null
-  waitBreakdown: Partial<Record<Reason, number>>
-}
 type Warning = { code: string; severity: string; node?: string; at: number; idleVillagers?: number; step?: number }
 type Result = {
   sampleSeconds: number

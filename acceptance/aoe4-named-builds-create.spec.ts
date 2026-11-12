@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { test, expect } from '@playwright/test'
-import { NAMED_BUILDS_PATH, namedBuildUrl, postNamedBuild, putNamedBuild, uniqueClient } from './helpers'
+import { NAMED_BUILDS_PATH, namedBuildUrl, postNamedBuild, putNamedBuild, saveBody, uniqueClient } from './helpers'
 import { expectValid } from './openapi-schemas'
 import { SAVE_RATE_LIMIT } from '../lib/aoe4-build-order/save-rate-limit'
 
@@ -8,9 +8,6 @@ const WARM_UP_TIMEOUT_MS = 60_000
 
 test.describe.configure({ timeout: 60_000 })
 
-const START = { villagers: { sheep: 6 }, rally: 'sheep' }
-const STEPS = [{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 2 }]
-const saveBody = (name: string) => ({ buildOrder: { civ: 'english', name, start: START, steps: STEPS }, durationSeconds: 300 })
 
 test.beforeAll(async ({ request }) => {
   await postNamedBuild(request, saveBody(`warm-up ${randomUUID()}`), uniqueClient('named-create-warm-up'), WARM_UP_TIMEOUT_MS)

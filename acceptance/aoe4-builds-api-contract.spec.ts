@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
-import { test, expect, type APIRequestContext } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { BUILDS_PATH, buildPath, postBuild, uniqueClient } from './helpers'
-import { expectInvalid, expectValid, routeFilePaths, schemas, spec } from './openapi-schemas'
+import { examples, expectBody, expectInvalid, expectValid, keys, referencedSchemaNames, routeFilePaths, schemas, spec } from './openapi-schemas'
 import { SAVE_RATE_LIMIT } from '../lib/aoe4-build-order/save-rate-limit'
 import { SAVED_BUILD_ID_PATTERN } from '../lib/aoe4-build-order/saved-builds'
 import { SIM_INPUT_BOUNDS } from '../lib/aoe4-build-order/schema'
@@ -16,15 +16,7 @@ const getOperation = spec.paths[BY_ID].get
 const deleteOperation = spec.paths[BY_ID].delete
 const NEW_SCHEMAS = ['SaveBuildRequest', 'SaveBuildResponse', 'SavedBuild', 'SavedBuildWithId', 'BuildsError']
 
-type Examples = Record<string, { value: any }>
 const requestExample = save.requestBody.content['application/json'].examples.buildOrder.value
-const examples = (operation: any, status: string): Examples => operation.responses[status].content['application/json'].examples
-const keys = (value: object) => Object.keys(value).sort()
-
-async function expectBody(response: Awaited<ReturnType<APIRequestContext['get']>>, status: number, example: { value: unknown }) {
-  expect(response.status(), await response.text()).toBe(status)
-  expect(await response.json()).toEqual(example.value)
-}
 
 test.beforeAll(async ({ request }) => {
   await postBuild(request, requestExample, uniqueClient('builds-contract-warm-up'), WARM_UP_TIMEOUT_MS)
@@ -56,17 +48,7 @@ test.describe('spec structure', () => {
   })
 
   test('the five new schemas exist and each is referenced from a path or another schema', () => {
-    const referenced = new Set<string>()
-    const walk = (node: unknown, owner: string | null) => {
-      if (!node || typeof node !== 'object') return
-      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
-        const target = key === '$ref' && typeof value === 'string' ? value.replace('#/components/schemas/', '') : null
-        if (target !== null && target !== owner) referenced.add(target)
-        walk(value, owner)
-      }
-    }
-    walk(spec.paths, null)
-    for (const [name, schema] of Object.entries(schemas)) walk(schema, name)
+    const referenced = referencedSchemaNames()
     for (const name of NEW_SCHEMAS) {
       expect(schemas, name).toHaveProperty(name)
       expect(referenced.has(name), name).toBe(true)

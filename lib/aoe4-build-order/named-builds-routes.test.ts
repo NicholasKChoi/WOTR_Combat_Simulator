@@ -11,7 +11,7 @@ import {
     type RandomBytes,
 } from './named-builds'
 import { createNamedBuildReply, namedBuildReply } from './named-builds-routes'
-import { recordingTarget } from './route-test-support'
+import { INVALID_SAVE_BODIES, getterFor, recordingTarget, rejectingGetter, withBroken } from './route-test-support'
 import { SAVE_RATE_LIMIT } from './save-rate-limit'
 import { checkSaveBuildRequest } from './saved-builds'
 import { buildOrderCatalog } from './schema'
@@ -34,25 +34,13 @@ const CHANGED = { status: 412, body: { error: 'the build has changed since that 
 const MISMATCH = { status: 403, body: { error: 'the edit secret does not match' } }
 const TOO_MANY = { status: 429, headers: { 'Retry-After': '3600' }, body: { error: 'too many saves from this client; try again later' } }
 
-const tooLong = { ...firstBuild, name: 'n'.repeat(101) }
-const bigSource = { ...firstBuild, source: '€'.repeat(30_000) }
-const INVALID_BODIES: [string, unknown, number][] = [
-    ['a string body', 'build', 400],
-    ['an array body', [], 400],
-    ['an unknown unit id', { buildOrder: { ...firstBuild, steps: [{ action: 'produce', producer: 'capital-town-center', unit: 'knigt' }] }, durationSeconds: 600 }, 400],
-    ['a duration of 59', { ...VALID, durationSeconds: 59 }, 400],
-    ['a name of 101 characters', { buildOrder: tooLong, durationSeconds: 600 }, 400],
-    ['a record over the byte cap', { buildOrder: bigSource, durationSeconds: 600 }, 413],
-]
+const INVALID_BODIES: [string, unknown, number][] = [['a string body', 'build', 400], ...INVALID_SAVE_BODIES]
 
 afterEach(() => {
     vi.restoreAllMocks()
 })
 
 const fixedRandom: RandomBytes = (count) => Uint8Array.from({ length: count }, (_, index) => (index * 7 + count) % 256)
-const getterFor = (store: BuildStore) => vi.fn(() => Promise.resolve(store))
-const rejectingGetter = () => vi.fn(() => Promise.reject(new Error('no blob')))
-const withBroken = (store: BuildStore, broken: Partial<BuildStore>): BuildStore => ({ ...store, ...broken })
 const bearer = (secret: string) => `Bearer ${secret}`
 const silenceErrors = () => vi.spyOn(console, 'error').mockImplementation(() => {})
 

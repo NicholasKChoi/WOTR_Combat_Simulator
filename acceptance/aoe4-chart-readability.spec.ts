@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { MARKER_COLORS, markerLabel } from '../components/apps/aoe4-build-order/chart-rows'
-import { CHART_IDS, openPage, showTab, waitForRun } from './helpers'
+import { CHART_IDS, openPage, plotPoint, showTab, waitForRun } from './helpers'
 
 const BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
 const HOVER_FRACTION = 0.5
@@ -69,11 +69,7 @@ test.describe('AoE4 chart readability', () => {
     await runKnightLongbow(page)
     for (const id of ['chart-gather-rates', 'chart-floating-resources']) {
       const chart = page.getByTestId(id)
-      await chart.scrollIntoViewIfNeeded()
-      const point = await chart.locator('.recharts-cartesian-grid').evaluate((el, fraction) => {
-        const r = el.getBoundingClientRect()
-        return { x: r.left + r.width * fraction, y: r.top + r.height / 2 }
-      }, HOVER_FRACTION)
+      const point = await plotPoint(page, id, HOVER_FRACTION)
       await page.mouse.move(point.x, point.y)
       const tooltip = chart.locator('.recharts-tooltip-wrapper')
       await expect(tooltip).toBeVisible()

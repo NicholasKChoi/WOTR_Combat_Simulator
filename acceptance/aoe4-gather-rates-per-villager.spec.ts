@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
-import { CHART_IDS, openPage, showTab, waitForRun } from './helpers'
+import { CHART_IDS, openPage, plotPoint, showTab, waitForRun } from './helpers'
 
 const CHART = 'chart-gather-rates'
 const HOVER_FRACTION = 0.15
@@ -22,12 +22,7 @@ const yLabel = (page: Page, chart: string) => page.getByTestId(chart).locator('.
 const toggle = (page: Page) => page.getByTestId('gather-rates-per-villager')
 
 async function hoverPlot(page: Page) {
-  const chart = page.getByTestId(CHART)
-  await chart.scrollIntoViewIfNeeded()
-  const point = await chart.locator('.recharts-cartesian-grid').evaluate((el, fraction) => {
-    const r = el.getBoundingClientRect()
-    return { x: r.left + r.width * fraction, y: r.top + r.height / 2 }
-  }, HOVER_FRACTION)
+  const point = await plotPoint(page, CHART, HOVER_FRACTION)
   await page.mouse.move(point.x - 3, point.y)
   await page.mouse.move(point.x, point.y)
 }
