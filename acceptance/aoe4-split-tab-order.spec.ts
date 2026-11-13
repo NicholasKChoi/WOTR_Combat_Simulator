@@ -28,23 +28,36 @@ const readFocus = (page: Page, charts: readonly string[]): Promise<Stop> =>
     }
   }, charts)
 
-async function lastChart(page: Page): Promise<string> {
-  const rendered = await page.evaluate((ids) => Array.from(document.querySelectorAll('[data-testid]')).map((el) => el.getAttribute('data-testid') ?? '').filter((id) => (ids as readonly string[]).includes(id)), CHART_IDS)
-  expect(rendered, 'every chart section is rendered').toHaveLength(CHART_IDS.length)
-  return rendered[rendered.length - 1]
+const renderedCharts = (page: Page): Promise<string[]> =>
+  page.evaluate((ids) => Array.from(document.querySelectorAll('[data-testid]')).map((el) => el.getAttribute('data-testid') ?? '').filter((id) => (ids as readonly string[]).includes(id)), CHART_IDS)
+
+async function expectChartsRendered(page: Page) {
+  expect(await renderedCharts(page), 'every chart section is rendered').toHaveLength(CHART_IDS.length)
 }
 
+// Ends on the first of: both of the last chart's stops seen, focus leaving that chart after being inside it, or
+// MAX_PRESSES. A missing stop is reported by the assertions on the returned stops, never thrown here.
 async function walk(page: Page): Promise<Stop[]> {
-  const last = await lastChart(page)
+  const last = (await renderedCharts(page)).at(-1) ?? null
   await byId(page, 'build-order-select').focus()
   const stops: Stop[] = []
+  let handleSeen = false
+  let caretSeen = false
+  let entered = false
   for (let press = 0; press < MAX_PRESSES; press++) {
     await page.keyboard.press('Tab')
     const stop = await readFocus(page, CHART_IDS)
     stops.push(stop)
-    if (stop.id === 'chart-collapse' && stop.chart === last) return stops
+    if (stop.chart !== last) {
+      if (entered) break
+      continue
+    }
+    entered = true
+    handleSeen ||= stop.id === 'chart-drag-handle'
+    caretSeen ||= stop.id === 'chart-collapse'
+    if (handleSeen && caretSeen) break
   }
-  throw new Error(`the caret of ${last} was not reached in ${MAX_PRESSES} presses; stops: ${stops.map((s) => s.id).join(', ')}`)
+  return stops
 }
 
 type Step = string | ((stop: Stop) => boolean)
@@ -68,18 +81,20 @@ const inResultsColumn = (stop: Stop) => stop.column === 'results-column'
 
 const positionOf = (page: Page, id: string) => page.evaluate((testId) => Array.from(document.querySelectorAll('*')).indexOf(document.querySelector(`[data-testid="${testId}"]`)!), id)
 
-function expectChartControlsOrder(stops: Stop[]) {
+async function expectChartControlsOrder(page: Page, stops: Stop[]) {
   const caret = stops.findIndex((stop) => stop.id === 'compare-collapse')
   expect(caret, 'the key-results caret is a stop').toBeGreaterThanOrEqual(0)
   const handles = stops.map((stop, i) => ({ stop, i })).filter(({ stop }) => stop.id === 'chart-drag-handle')
-  expect(handles.map(({ stop }) => stop.chart).sort(), 'every chart section has a handle stop').toEqual([...CHART_IDS].sort())
   for (const { i } of handles) expect(i, 'compare-collapse comes before every handle').toBeGreaterThan(caret)
+  const indexOf = (id: string, chart: string) => stops.findIndex((stop) => stop.id === id && stop.chart === chart)
   for (const chart of CHART_IDS) {
-    const handle = stops.findIndex((stop) => stop.id === 'chart-drag-handle' && stop.chart === chart)
-    const collapse = stops.findIndex((stop) => stop.id === 'chart-collapse' && stop.chart === chart)
-    expect(collapse, `${chart} has a caret stop`).toBeGreaterThanOrEqual(0)
-    expect(handle, `${chart} handle comes before its caret`).toBeLessThan(collapse)
+    const handle = indexOf('chart-drag-handle', chart)
+    const collapse = indexOf('chart-collapse', chart)
+    if (handle >= 0 && collapse >= 0) expect(handle, `${chart} handle comes before its caret`).toBeLessThan(collapse)
   }
+  await expectChartsRendered(page)
+  expect(handles.map(({ stop }) => stop.chart).sort(), 'every chart section has a handle stop').toEqual([...CHART_IDS].sort())
+  for (const chart of CHART_IDS) expect(indexOf('chart-collapse', chart), `${chart} has a caret stop`).toBeGreaterThanOrEqual(0)
 }
 
 async function expectNoPositiveTabindex(page: Page) {
@@ -97,6 +112,7 @@ test.describe('AoE4 split layout Tab order', () => {
     await expect(byId(page, 'save-build')).toBeEnabled()
     const stops = await walk(page)
     expectInOrder(stops, ['duration-seconds', 'editor-view-text', 'save-build', 'save-build-copy', inBuildColumn, inResultsColumn])
+    await expectChartsRendered(page)
     await expectNoPositiveTabindex(page)
   })
 
@@ -109,7 +125,7 @@ test.describe('AoE4 split layout Tab order', () => {
     expectInOrder(stops, ['duration-seconds', 'editor-view-text', 'save-build-copy', 'saved-build-link', 'copy-saved-link', inBuildColumn, inResultsColumn])
     expect(stops.map((stop) => stop.id)).not.toContain('save-build')
     expect(await positionOf(page, 'save-build')).toBeLessThan(await positionOf(page, 'save-build-copy'))
-    expectChartControlsOrder(stops)
+    await expectChartControlsOrder(page, stops)
     await expectNoPositiveTabindex(page)
   })
 })

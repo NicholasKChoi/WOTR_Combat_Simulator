@@ -4,6 +4,8 @@ import { AOE4_PAGE, SIMULATE_PATH, expectNoRun, holdNextSimulate, isSimulatePost
 
 const UNKNOWN_ID = ['start -> sheep', 'produce knigt from stable'].join('\n')
 const FIRST_BUILD = listBuilds()[0].name
+// Long enough for a response that leaks past a held request to land and flip the status before the held run is released.
+const HELD_RESPONSE_WAIT_MS = 1000
 
 const status = (page: Page) => page.getByTestId('auto-run-status')
 const textarea = (page: Page) => page.getByTestId('build-order-text')
@@ -38,6 +40,8 @@ test.describe('AoE4 build order auto-run page contract', () => {
     await page.goto(AOE4_PAGE)
     await expect(status(page)).toHaveAttribute('data-status', 'running')
     await expect(status(page)).toHaveText('Computing the simulation.')
+    await page.waitForTimeout(HELD_RESPONSE_WAIT_MS)
+    await expect(status(page)).toHaveAttribute('data-status', 'running')
     expect(answered).toEqual([])
     release()
     await expect(status(page)).toHaveAttribute('data-status', 'current')

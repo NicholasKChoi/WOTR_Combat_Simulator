@@ -90,9 +90,15 @@ function buildMethods(env: string, text: TextByKey): Omit<BuildStore, 'bumpCount
   };
 }
 
-export function createMemoryBuildStore(env = 'development'): BuildStore {
-  const builds = new Map<string, string>();
-  const counters = new Map<string, CounterUpdate>();
+export interface MemoryBacking {
+  builds: Map<string, string>;
+  counters: Map<string, CounterUpdate>;
+}
+
+const newMemoryBacking = (): MemoryBacking => ({ builds: new Map(), counters: new Map() });
+
+// Stores given the same backing share its maps, so tests can run two envs over one storage.
+export function createMemoryBuildStore(env = 'development', { builds, counters }: MemoryBacking = newMemoryBacking()): BuildStore {
   const readNow = (key: string): string | null => builds.get(key) ?? null;
   return {
     ...buildMethods(env, {
