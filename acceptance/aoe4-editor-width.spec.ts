@@ -167,3 +167,32 @@ test.describe('AoE4 text editor compact boundary', () => {
     })
   }
 })
+
+test.describe('AoE4 Build panel has no horizontal overflow', () => {
+  const viewports = [
+    { width: 360, height: 760 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 800 },
+  ]
+  for (const viewport of viewports) {
+    test(`at ${viewport.width} px with the text and table views`, async ({ page }) => {
+      await page.setViewportSize(viewport)
+      await openPage(page)
+      for (const view of ['text', 'table'] as const) {
+        await showView(page, view)
+        await expect(page.getByTestId(view === 'text' ? 'build-order-editor' : 'step-table')).toBeVisible()
+        await expect
+          .poll(() =>
+            page.evaluate(() => {
+              const panel = document.querySelector('[data-testid="panel-build"]') as HTMLElement
+              return {
+                page: document.documentElement.scrollWidth - window.innerWidth,
+                panel: panel.scrollWidth - panel.clientWidth,
+              }
+            }),
+          )
+          .toEqual({ page: 0, panel: 0 })
+      }
+    })
+  }
+})
