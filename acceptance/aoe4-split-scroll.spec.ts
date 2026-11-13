@@ -359,6 +359,59 @@ test.describe('AoE4 run bar does not move the page and stays capped', () => {
     await expect.poll(() => focusRingFits(page)).toEqual({ ringIsDrawn: true, noSidewaysScroll: true, ringInside: true })
   })
 
+  test('a control scrolled in from the top of the capped bar shows its whole focus ring', async ({ page }) => {
+    await openCappedState(page)
+    const state = await page.evaluate(() => {
+      const bar = document.querySelector('[data-testid="run-bar"]')!
+      bar.scrollTop = bar.scrollHeight - bar.clientHeight
+      const rect = document.querySelector('[data-testid="build-order-select"]')!.getBoundingClientRect()
+      return { overflows: bar.scrollHeight > bar.clientHeight, startsAbove: rect.top < bar.getBoundingClientRect().top }
+    })
+    expect(state).toEqual({ overflows: true, startsAbove: true })
+    await page.getByTestId('build-order-select').focus()
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const bar = document.querySelector('[data-testid="run-bar"]')!
+          const select = document.querySelector('[data-testid="build-order-select"]')!
+          const [, , , spread] = (getComputedStyle(select).boxShadow.match(/-?[\d.]+px/g) ?? []).map(parseFloat)
+          return { ringIsDrawn: spread > 0, ringTopGap: select.getBoundingClientRect().top - spread - (bar.getBoundingClientRect().top + bar.clientTop) >= 0 }
+        }),
+      )
+      .toEqual({ ringIsDrawn: true, ringTopGap: true })
+  })
+
+  test('with a fractional bar height the page end brings the bar to the top and the workbench to the bottom exactly', async ({ page }) => {
+    await page.setViewportSize(SPLIT_VIEWPORT)
+    await openPage(page)
+    await page.getByTestId('run-bar').evaluate((bar) => {
+      const space = bar.getBoundingClientRect().height + parseFloat(getComputedStyle(bar).marginBottom)
+      const filler = document.createElement('div')
+      filler.style.height = `${(1.1 - (space % 1)) % 1 + 1}px`
+      bar.append(filler)
+    })
+    await expect
+      .poll(() =>
+        page.evaluate((property) => {
+          const bar = document.querySelector('[data-testid="run-bar"]')!
+          const value = parseFloat(getComputedStyle(bar.closest('section')!).getPropertyValue(property))
+          const space = bar.getBoundingClientRect().height + parseFloat(getComputedStyle(bar).marginBottom)
+          return { fractional: !Number.isInteger(bar.getBoundingClientRect().height), propertyUpdated: Math.abs(value - space) < 1 }
+        }, RUN_BAR_HEIGHT),
+      )
+      .toEqual({ fractional: true, propertyUpdated: true })
+    await scrollInstantly(page, 100_000)
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const bar = document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect()
+          const split = document.querySelector('[data-testid="workbench-split"]')!.getBoundingClientRect()
+          return { barAtTop: Math.abs(bar.top) < 0.05, splitAtBottom: Math.abs(split.bottom - window.innerHeight) < 0.5 }
+        }),
+      )
+      .toEqual({ barAtTop: true, splitAtBottom: true })
+  })
+
   test('below 768 px the bar is static and has no cap', async ({ page }) => {
     await page.setViewportSize(NARROW_VIEWPORT)
     await openPage(page)

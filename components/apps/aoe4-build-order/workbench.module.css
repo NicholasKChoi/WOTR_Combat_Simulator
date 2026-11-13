@@ -9,6 +9,7 @@
     .runBar {
         max-height: 40dvh;
         overflow-y: auto;
+        scroll-padding-block: 0.25rem;
         padding-inline: 0.25rem;
         margin-inline: -0.25rem;
     }
