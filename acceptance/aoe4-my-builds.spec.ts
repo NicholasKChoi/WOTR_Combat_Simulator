@@ -917,6 +917,32 @@ test.describe('reopening and new versions', () => {
     await expect(checkedOption(page)).toHaveText('Tab B build (edited)')
     await expect(textarea(page)).toHaveValue(VALID_A)
   })
+
+  test('another tab changing an unrelated key leaves My builds, and clearing storage there removes them', async ({ page, context }) => {
+    await seedTwo(page)
+    await openPage(page)
+    await expect(groupOptions(page, 'My builds')).toHaveText([NEWER.name, OLDER.name])
+
+    await page.evaluate((key) => {
+      const seen: Array<string | null> = []
+      ;(window as unknown as { seenStorageKeys: Array<string | null> }).seenStorageKeys = seen
+      window.addEventListener('storage', (event) => seen.push(event.key))
+      window.localStorage.removeItem(key)
+    }, MY_BUILDS_STORAGE_KEY)
+    await expect(groupOptions(page, 'My builds')).toHaveText([NEWER.name, OLDER.name])
+
+    const other = await context.newPage()
+    await openPage(other)
+    await other.evaluate(() => window.localStorage.setItem('unrelated-key', 'x'))
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { seenStorageKeys: Array<string | null> }).seenStorageKeys))
+      .toContain('unrelated-key')
+    await expect(groupOptions(page, 'My builds')).toHaveText([NEWER.name, OLDER.name])
+
+    await other.evaluate(() => window.localStorage.clear())
+    await expect(groupOptions(page, 'My builds')).toHaveCount(0)
+    await expect(groupOptions(page, 'Templates')).toHaveText(BUILDS.map((b) => b.name))
+  })
 })
 
 test.describe('save failures', () => {

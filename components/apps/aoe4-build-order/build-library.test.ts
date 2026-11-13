@@ -18,11 +18,12 @@ import {
     runName,
     savedMineEntry,
     templateEntries,
+    withCreatedEntry,
     withLoadedEntry,
     withMyBuilds,
     type LibraryEntry,
 } from './build-library'
-import type { MyBuildEntry } from './my-builds-storage'
+import { MY_BUILDS_MAX, type MyBuildEntry } from './my-builds-storage'
 
 const ID = 'a'.repeat(22)
 const B_ID = 'b'.repeat(22)
@@ -253,4 +254,59 @@ describe('runName', () => {
     ])('gives %s', (_label, list, text, selectedKey, expected) => {
         expect(runName(list, text, selectedKey)).toBe(expected)
     })
+})
+
+describe('withCreatedEntry', () => {
+    const template = templateEntries([{ name: 'T1', text: 'start -> sheep' }])[0]
+    const link = linkEntry(LINK_ID, { version: 1, buildOrder: firstOrder, durationSeconds: 600 })
+    const mineAt = (n: number): LibraryEntry => savedMineEntry(`id${n}`.padEnd(22, 'x'), `Mine ${n}`, { text: 't', duration: '600' }, 1)
+    const created = savedMineEntry(ID, 'Created', { text: 't', duration: '600' }, 1)
+    const names = (list: readonly LibraryEntry[]) => list.map((entry) => entry.name)
+
+    it('puts the entry first among My builds without moving it ahead of earlier entries', () => {
+        const list = [template, link, mineAt(1), template2(), mineAt(2)]
+        expect(list.findIndex((entry) => entry.kind === 'mine')).toBeGreaterThan(0)
+        expect(names(withCreatedEntry(list, created, ''))).toEqual(['T1', link.name, 'Created', 'Mine 1', 'T2', 'Mine 2'])
+    })
+
+    it('appends after every entry when the list holds no My builds', () => {
+        expect(names(withCreatedEntry([template, link], created, ''))).toEqual(['T1', link.name, 'Created'])
+    })
+
+    it('replaces an entry with the same key instead of adding a second', () => {
+        const stale = { ...created, name: 'Stale' }
+        const result = withCreatedEntry([template, mineAt(1), stale, mineAt(2)], created, '')
+        expect(names(result)).toEqual(['T1', 'Created', 'Mine 1', 'Mine 2'])
+    })
+
+    describe('at the cap', () => {
+        const full = Array.from({ length: MY_BUILDS_MAX }, (_, n) => mineAt(n))
+        const mineNames = (list: readonly LibraryEntry[]) => names(list.filter((entry) => entry.kind === 'mine'))
+
+        it('drops the oldest My build, the last in list order', () => {
+            const result = withCreatedEntry([template, ...full], created, '')
+            expect(mineNames(result)).toHaveLength(MY_BUILDS_MAX)
+            expect(mineNames(result)[0]).toBe('Created')
+            expect(mineNames(result)).not.toContain(`Mine ${MY_BUILDS_MAX - 1}`)
+            expect(names(result)[0]).toBe('T1')
+        })
+
+        it('keeps the selected entry when it is the oldest and drops the next oldest', () => {
+            const oldest = full[MY_BUILDS_MAX - 1]
+            const result = withCreatedEntry(full, created, oldest.key)
+            expect(mineNames(result)).toHaveLength(MY_BUILDS_MAX)
+            expect(mineNames(result)).toContain(oldest.name)
+            expect(mineNames(result)).toContain('Created')
+            expect(mineNames(result)).not.toContain(`Mine ${MY_BUILDS_MAX - 2}`)
+        })
+
+        it('does not trim a list below the cap', () => {
+            expect(mineNames(withCreatedEntry(full.slice(1), created, ''))).toHaveLength(MY_BUILDS_MAX)
+            expect(mineNames(withCreatedEntry(full.slice(1), created, ''))).toContain('Mine 1')
+        })
+    })
+
+    function template2(): LibraryEntry {
+        return templateEntries([{ name: 'T2', text: 'start -> boar' }])[0]
+    }
 })

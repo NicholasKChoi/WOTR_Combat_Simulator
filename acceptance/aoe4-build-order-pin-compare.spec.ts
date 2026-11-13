@@ -620,14 +620,17 @@ test.describe('AoE4 build order pin persistence and label', () => {
     ['version 2', { ...restoreStored, version: 2 }],
     ['a missing field', { version: 1, name: 'x', text: DEFAULT_PASTE }],
   ] as const) {
-    test(`a stored pin with ${name} is dropped`, async ({ page }) => {
+    test(`a stored pin with ${name} is ignored and left in storage until a Pin replaces it`, async ({ page }) => {
+      const raw = typeof stored === 'string' ? stored : JSON.stringify(stored)
       await openPage(page)
       await storePin(page, stored)
       const posts = trackPosts(page, isRestore)
       await page.reload()
       await expectNoPin(page)
-      await expect.poll(() => storedPin(page)).toBeNull()
+      expect(await storedPin(page)).toBe(raw)
       expect(posts).toHaveLength(0)
+      await pinAndExpectLabel(page, BUILDS[0].name)
+      expect(JSON.parse((await storedPin(page)) ?? 'null')).toEqual(validStored)
     })
   }
 
@@ -784,9 +787,22 @@ test.describe('AoE4 build order pin persistence and label', () => {
     expect(await storedPin(page)).toBeNull()
   })
 
+  for (const [name, stored] of [
+    ['a numeric name', { ...restoreStored, name: 7 }],
+    ['a null duration', { ...restoreStored, durationSeconds: null }],
+  ] as const) {
+    test(`a stored pin with ${name} shows no pin, makes no request and stays in storage`, async ({ page }) => {
+      await openPage(page)
+      await storePin(page, stored)
+      const posts = trackPosts(page, isRestore)
+      await page.reload()
+      await expectNoPin(page)
+      expect(await storedPin(page)).toBe(JSON.stringify(stored))
+      expect(posts).toHaveLength(0)
+    })
+  }
+
   for (const [name, stored, requests] of [
-    ['a numeric name', { ...restoreStored, name: 7 }, 0],
-    ['a null duration', { ...restoreStored, durationSeconds: null }, 0],
     ['a text over the length cap', { ...restoreStored, text: 'start -> sheep\n'.repeat(2000) }, 0],
     ['a duration the route rejects', { ...restoreStored, durationSeconds: 99_999_999 }, 1],
   ] as const) {

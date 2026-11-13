@@ -1,7 +1,7 @@
 import type { NamedBuild } from '../../../lib/aoe4-build-order/named-builds'
 import { formatBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
 import { SAVED_NAME_MAX_CHARS, type SavedBuild } from '../../../lib/aoe4-build-order/saved-builds'
-import type { MyBuildEntry } from './my-builds-storage'
+import { MY_BUILDS_MAX, type MyBuildEntry } from './my-builds-storage'
 
 export type LibraryEntryKind = 'template' | 'mine' | 'shared' | 'link'
 
@@ -78,6 +78,22 @@ export function withMyBuilds(list: readonly LibraryEntry[], mine: readonly Libra
     const mineKeys = new Set(mine.map((entry) => entry.key))
     const kept = list.filter((entry) => !mineKeys.has(entry.key))
     return [...kept, ...mine.map((entry) => ({ ...entry, loaded: listed.get(entry.key)?.loaded ?? entry.loaded }))]
+}
+
+export function withCreatedEntry(list: readonly LibraryEntry[], entry: LibraryEntry, selectedKey: string): LibraryEntry[] {
+    const others = list.filter((listed) => listed.key !== entry.key)
+    const firstMine = others.findIndex((listed) => listed.kind === 'mine')
+    const at = firstMine === -1 ? others.length : firstMine
+    const placed = [...others.slice(0, at), entry, ...others.slice(at)]
+    let excess = placed.filter((listed) => listed.kind === 'mine').length - MY_BUILDS_MAX
+    const dropped = new Set<string>()
+    for (let i = placed.length - 1; i >= 0 && excess > 0; i--) {
+        const { key, kind } = placed[i]
+        if (kind !== 'mine' || key === selectedKey) continue
+        dropped.add(key)
+        excess--
+    }
+    return placed.filter((listed) => !dropped.has(listed.key))
 }
 
 export function withLoadedEntry(list: readonly LibraryEntry[], entry: LibraryEntry): LibraryEntry[] {

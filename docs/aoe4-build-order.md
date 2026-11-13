@@ -1038,8 +1038,9 @@ In the key results title row, "Pin this run" (`pin-run`, enabled while a result 
 duration both equal the pinned run's) keeps the shown result as the pinned run, and "Unpin" (`unpin-run`, enabled while a run is
 pinned) drops it. The pin stays through later runs, text and build edits, invalid, rejected and failed inputs, and a reload: the pin is kept in `localStorage` under
 `aoe4-build-order.pinned-run` as the build text, duration and name (not the result), and the page re-runs it on
-load. A stored value that is not valid, a text that no longer converts, or a response that is not ok (400 or 5xx)
-from the re-run drops it; only a failed request (the network) keeps it, and no pin is shown. A Pin or Unpin made before the re-run finishes wins. The label
+load. A stored value that is not valid is ignored and left in `localStorage` (the next Pin overwrites it); a
+text that no longer converts, or a response that is not ok (400 or 5xx) from the re-run, drops it; only a failed
+request (the network) keeps it, and no pin is shown. A Pin or Unpin made before the re-run finishes wins. The label
 `pinned-label` reads `Pinned: <name>, <m:ss>`. The name comes from the shown result's input: the name of the entry selected when that input was sent if its text equals the input exactly, else the name of the first entry whose text does (an opened build by its stored name, without the ` (<id>)` of its select label), else `<name> (edited)` for the selected entry,
 and `Custom build` when no entry is selected. The charts (`results-last-good`) and the step table's run cells dim together whenever the shown result no longer
 describes the live input: when its text or its duration differs from the live text or duration, and on `invalid`, `rejected` and
@@ -1112,8 +1113,10 @@ The create response carries the build's edit secret once. The page keeps it only
 which holds the newest 50 builds: the 51st save evicts the oldest, which then opens read-only here, and its link
 still works. The secret is sent only as the update's `Authorization` header, never in the address. When the
 browser cannot store the list, the save still succeeds and the page says `This browser could not store the edit
-key, so you can edit this build only until you close the page.` (`my-builds-unavailable`). A save in another tab
-updates this tab's My builds. A stored list the page cannot read, or one with an unreadable entry, is never deleted
+key, so you can edit this build only until you close the page.` (`my-builds-unavailable`). A save in another tab,
+or another tab clearing the storage, updates this tab's My builds. After a save here, this tab's list also holds
+at most 50 My builds: the new build goes first among them and the oldest in list order is dropped, never the
+selected one. A stored list the page cannot read, or one with an unreadable entry, is never deleted
 by reading it. Before the next save replaces it, the page copies the stored text to
 `aoe4-build-order.my-builds.backup` unless that key already holds a copy; if the copy cannot be written, the save
 does not replace the list.

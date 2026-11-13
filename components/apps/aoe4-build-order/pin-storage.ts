@@ -21,7 +21,6 @@ export function readStoredPin(storage: Storage): StoredPin | null {
             const value: unknown = JSON.parse(raw)
             if (isStoredPin(value)) return { version: 1, name: value.name, text: value.text, durationSeconds: value.durationSeconds }
         } catch {}
-        storage.removeItem(PIN_STORAGE_KEY)
     } catch {}
     return null
 }
