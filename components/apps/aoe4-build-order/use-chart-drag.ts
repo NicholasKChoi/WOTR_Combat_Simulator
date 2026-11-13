@@ -71,5 +71,5 @@ export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, to
         else sections.current.delete(id)
     }
 
-    return { dragging, start, sectionRef }
+    return { dragging, start, sectionRef, sessionActive: () => session.current !== null }
 }

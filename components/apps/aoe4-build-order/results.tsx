@@ -67,16 +67,18 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
         'chart-floating-resources': { title: 'Floating resources', yLabel: 'Resources', series: (run) => resourceSeries(run.floating) },
     }
 
-    const placeChart = (id: ChartId, toIndex: number, apply: () => void) => {
+    const announceMove = (id: ChartId, toIndex: number) => {
         focusAfterMove.current = id
-        apply()
         setOrderStatus(`${charts[id].title} moved to position ${toIndex + 1} of ${layout.order.length}`)
     }
-    const drag = useChartDrag(layout.order, (id, toIndex) => placeChart(id, toIndex, () => moveTo(id, toIndex)))
+    const drag = useChartDrag(layout.order, (id, toIndex) => {
+        moveTo(id, toIndex)
+        announceMove(id, toIndex)
+    })
     const moveByKey = (id: ChartId, direction: 'up' | 'down') => {
-        const toIndex = layout.order.indexOf(id) + (direction === 'up' ? -1 : 1)
-        if (toIndex < 0 || toIndex >= layout.order.length) return
-        placeChart(id, toIndex, () => move(id, direction))
+        if (drag.sessionActive()) return
+        const toIndex = move(id, direction)
+        if (toIndex !== null) announceMove(id, toIndex)
     }
 
     return (

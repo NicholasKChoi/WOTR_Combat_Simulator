@@ -1015,7 +1015,7 @@ title, the caret and the view toggle stay visible and usable. The hidden series,
 pinned run survive a collapse and a move, and a collapsed chart draws no step band, markers or pinned lines while the others keep
 theirs. The caret flips between "Collapse <title> chart" and "Expand <title> chart", is toggled by click, Enter or Space, and
 keeps focus. A chart is reordered by dragging its handle with the primary mouse button, or with ArrowUp and ArrowDown while the
-handle is focused; other keys do nothing. A drag starts after the pointer has moved 4px, leaves the order unchanged until the
+handle is focused; other keys do nothing, and the arrow keys do nothing while a pointer drag is in progress (from pointer down until it ends). A drag starts after the pointer has moved 4px, leaves the order unchanged until the
 drop, and drops the chart where the pointer's height places it among the other charts. Escape or a cancelled pointer ends the
 drag with no change, and a touch drag that starts on the handle does not scroll the page. A collapsed chart reorders like an expanded one. After a
 move that changes the order, the moved chart's handle has focus and a visually hidden status (`chart-order-status`) names the chart
