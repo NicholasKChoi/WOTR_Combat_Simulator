@@ -1,6 +1,7 @@
 import { BlobError, BlobNotFoundError, BlobPreconditionFailedError, del, get, head, put } from '@vercel/blob'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BLOB_SDK_RETRIES, createBlobBuildStore } from './blob-build-store'
+import { installBlobFake } from './blob-fake-test-helpers'
 
 vi.mock('@vercel/blob', async (importOriginal) => {
     const original = await importOriginal<typeof import('@vercel/blob')>()
@@ -32,34 +33,27 @@ function compressed(value: unknown, etag: string) {
 
 const counterPuts = () => vi.mocked(put).mock.calls.map(([key, body, options]) => ({ key, body: JSON.parse(body as string), options }))
 
-// One counter blob whose put honors ifMatch and allowOverwrite: false; events logs each get and put by count.
+// A counter blob seeded at etag "e0" on the shared fake; events logs each get and put by count.
 function counterBlob(initial: { windowStart: number; count: number } | null) {
-    let blob = initial === null ? null : { value: initial, etag: '"e0"' }
-    let etags = 0
+    const fake = installBlobFake({ put: vi.mocked(put), get: vi.mocked(get), head: vi.mocked(head), del: vi.mocked(del) }, { BlobNotFoundError, BlobPreconditionFailedError })
     const events: string[] = []
-    const rejection = ({ allowOverwrite, ifMatch }: { allowOverwrite?: boolean; ifMatch?: string }) => {
-        if (ifMatch === undefined) return blob !== null && !allowOverwrite ? new Error('already exists') : null
-        if (blob === null) return new BlobNotFoundError()
-        return blob.etag === ifMatch ? null : new BlobPreconditionFailedError()
+    const storedCount = () => (fake.has(COUNTER_KEY) ? JSON.parse(fake.body(COUNTER_KEY) ?? 'null').count : undefined)
+    if (initial !== null) fake.seed(COUNTER_KEY, JSON.stringify(initial), '"e0"')
+    fake.beforeRead = () => {
+        events.push(`get ${storedCount() ?? 'none'}`)
+        return undefined
     }
-    vi.mocked(get).mockImplementation(async () => {
-        events.push(`get ${blob?.value.count ?? 'none'}`)
-        return blob === null ? null : found(blob.value, blob.etag)
-    })
-    vi.mocked(head).mockImplementation(async () => {
-        if (blob === null) throw new BlobNotFoundError()
-        return {} as Awaited<ReturnType<typeof head>>
-    })
-    vi.mocked(put).mockImplementation(async (_key, body, options) => {
-        const value = JSON.parse(body as string)
-        const error = rejection(options as { allowOverwrite?: boolean; ifMatch?: string })
-        events.push(`put ${value.count}${error === null ? '' : ' failed'}`)
-        if (error !== null) throw error
-        etags += 1
-        blob = { value, etag: `"e${etags}"` }
-        return {} as Awaited<ReturnType<typeof put>>
-    })
-    return { events, storedCount: () => blob?.value.count }
+    fake.aroundPut = (_key, body, _options, write) => {
+        const { count } = JSON.parse(body)
+        try {
+            write()
+        } catch (error) {
+            events.push(`put ${count} failed`)
+            throw error
+        }
+        events.push(`put ${count}`)
+    }
+    return { events, storedCount }
 }
 
 beforeEach(() => {
