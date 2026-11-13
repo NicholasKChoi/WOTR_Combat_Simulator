@@ -16,19 +16,19 @@ pull from here; triage moves an item into a milestone or deletes it.
   techs are combat-only, so by the v1 coverage decision they cost resources and queue time but their effects are
   ignored. Decide whether a follow-up adds overlay rows for (2)-(3).
 
-- **AoE4 results charts: real table UI.** Render the chart rows as a real table so collapsed rows look cleaner.
+- (milestone) **AoE4 results charts: real table UI.** Render the chart rows as a real table so collapsed rows look cleaner.
   (owner UI/UX feedback, 2026-11-12)
 - (standalone bug) **AoE4 Buildings line chart: overlapping lines.** Many buildings share the same count (1 or 2), so their lines Priority: medium
   stack on that value and the owner cannot tell which buildings are there. Adjust the chart so each building stays
   identifiable. (owner UI/UX feedback, 2026-11-12)
-- **AoE4 chart markers: one shared control.** Define the markers in one place for all charts; clicking a marker
+- (milestone) **AoE4 chart markers: one shared control.** Define the markers in one place for all charts; clicking a marker
   shows or hides its vertical line on every chart. (owner UI/UX feedback, 2026-11-12)
-- **AoE4 build order: one step, many of the same action.** Let a step repeat its action a set number of times
+- (milestone) **AoE4 build order: one step, many of the same action.** Let a step repeat its action a set number of times
   (e.g. "build Farm from wood x9") instead of entering nine identical steps; the simulator runs each repetition
   as that many copies of the step. (owner feature request, 2026-11-13)
-- **AoE4 My builds: rename a saved build.** Let the owner rename a named build in the library without saving a
+- (milestone) **AoE4 My builds: rename a saved build.** Let the owner rename a named build in the library without saving a
   copy; the new name shows everywhere the build is listed and links to it keep working. (owner feature request, 2026-11-13)
-- **AoE4 build order: research occupies its building.** Each research runs at a specific building (attack
+- (milestone) **AoE4 build order: research occupies its building.** Each research runs at a specific building (attack
   upgrades at the Blacksmith; spearman veterancy at the Barracks, archer upgrades at the Archery Range). The
   simulator should require that building to exist and should block its production queue for the research's
   duration, so units queued there pause until the research finishes. (owner feature request, 2026-11-13)
@@ -51,15 +51,9 @@ pull from here; triage moves an item into a milestone or deletes it.
   play (e.g. age-up and unit-out times from pro-game replays or published builds). Wider than the existing
   provisional-gather-rates item above, which it would absorb. Recommended: milestone, priority high. (discovery
   milestone 2026-11-13, discovery/milestone-20261113-1.md)
-- **AoE4: import/export builds in the community overlay / aoe4guides format.** Users cannot bring shared guides in
-  or take a tuned build to the in-game overlay. The overlay's JSON schema could not be retrieved, so the first ticket
-  must fetch a real export. Recommended: milestone, priority medium. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 - (milestone) **AoE4: show and track the game patch on every result and saved build.** The game patches about monthly (17.0 on
   2026-10-22) while the snapshot (17.0.12182) is refreshed by hand, so old saved builds silently change meaning.
   Recommended: milestone (small), priority medium. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
-- **WOTR combat: add max rounds and retreat.** The seams exist and WOTR is the least developed app; check the rules
-  against the rulebook before specifying (leadership by characters and Nazgul stays out per PROJECT.md).
-  Recommended: milestone, priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 - **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 - (standalone bug) Priority: high **WOTR combat: dice hit on 6 only; the rules say 5 or 6.** `calculateCombatRollResults` in
@@ -68,6 +62,3 @@ pull from here; triage moves an item into a milestone or deletes it.
   War of the Ring 2E (Dized rules): "Each die rolled scores a hit on a result of '5' or '6.'" If so, every WOTR odds
   number is off (1/6 vs 1/3 per die). Owner to confirm the rule. Recommended: standalone bug, priority high (doc and
   code in one PR). (discovery milestone 2026-11-13, standard, discovery/milestone-20261113-2.md)
-- (milestone) **WOTR combat: siege battles (city, fortification, stronghold).** Attacker hits only on 6 in round 1 (from a 1E FAQ;
-  verify against the 2E rulebook); a besieged army cannot retreat. Shares the retreat seam with the max-rounds-and-retreat
-  idea; do after the dice fix. Recommended: milestone, priority low-medium. (discovery milestone 2026-11-13, standard, discovery/milestone-20261113-2.md)
