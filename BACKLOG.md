@@ -27,3 +27,6 @@ pull from here; triage moves an item into a milestone or deletes it.
   shows or hides its vertical line on every chart. (owner UI/UX feedback, 2026-11-12)
 - `reread` (the My builds storage listener in the AoE4 build-order page) does not check `myBuildsAvailable(storage)` before rereading; unchanged from base. Found by SGS-147 implementer (reports/SGS-147-implementer-1.md).
 - LESSONS candidate (acceptance/**): Playwright `hover()`/`focus()` smooth-scroll the page and the resulting `pointerenter` events change state after an assertion passed; scroll targets into view instantly before hover/focus sequences. From SGS-150 (reports/SGS-150-implementer-1.md).
+- docs/aoe4-build-order.md pinned-series color: the doc omits that the palette index wraps by modulo (`pinnedColor`). Non-blocking note from SGS-152 review 2.
+- `scripts/smoke-preview.mjs` route handler swallows `route.fetch`/`route.abort` errors in an empty catch, hiding a failed bypass reroute (SGS-153 implementer).
+- `scripts/smoke-preview.mjs`: the `browser.close()` rejection path has no test (SGS-153 implementer).

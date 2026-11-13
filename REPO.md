@@ -48,7 +48,7 @@ criticalPaths:                    # a change to what these decide, or their sign
     symbols: [simulateBattles]
     why: battles stay independent (W2)
 
-babysit: false                    # no .github/workflows; the only check is the Vercel preview deploy
+babysit: false                    # the only PR check is the Vercel preview deploy; the one workflow is scheduled, not per-PR
 stacking: footer                  # retro 2026-11-01: native gh-stack links made `gh pr merge` refuse stacked PRs; engine has no `none` yet
 
 tracker:
@@ -77,7 +77,7 @@ prAuthor: "@me"
 
 ## CI behavior
 
-No GitHub Actions workflows. The only PR check is the Vercel preview deployment, reported as the commit
+One GitHub Actions workflow, `AoE4 data freshness` (`.github/workflows/`), runs on a weekly schedule and `workflow_dispatch` only, never on PRs; it compares the English AoE4 snapshot with upstream. The only PR check is the Vercel preview deployment, reported as the commit
 status `Vercel – wotr-combat-simulator` (project `nicholas-chois-projects/wotr-combat-simulator`, linked
 2026-10-29), plus a `vercel` bot comment with the preview URL. A failed Vercel build is the signal that
 `next build` broke. Builds take about a minute. No documented flakes.
