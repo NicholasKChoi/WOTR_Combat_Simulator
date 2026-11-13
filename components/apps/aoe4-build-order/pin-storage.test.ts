@@ -30,10 +30,17 @@ describe('pin storage', () => {
         ['a null duration', JSON.stringify({ ...pin, durationSeconds: null })],
         ['an infinite duration', '{"version":1,"name":"a","text":"b","durationSeconds":1e999}'],
         ['a string duration', JSON.stringify({ ...pin, durationSeconds: '1200' })],
-    ])('drops %s and removes the key', (_label, raw) => {
+    ])('reads %s as no pin and leaves the stored value', (_label, raw) => {
         const storage = fakeStorage({ [PIN_STORAGE_KEY]: raw })
         expect(readStoredPin(storage)).toBeNull()
-        expect(storage.getItem(PIN_STORAGE_KEY)).toBeNull()
+        expect(storage.getItem(PIN_STORAGE_KEY)).toBe(raw)
+    })
+
+    it('replaces an unreadable value on the next write', () => {
+        const storage = fakeStorage({ [PIN_STORAGE_KEY]: '{nope' })
+        expect(readStoredPin(storage)).toBeNull()
+        writeStoredPin(storage, pin)
+        expect(readStoredPin(storage)).toEqual(pin)
     })
 
     it('clears the key', () => {

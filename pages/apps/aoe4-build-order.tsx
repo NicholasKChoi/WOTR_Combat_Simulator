@@ -25,6 +25,7 @@ import {
     runName,
     savedMineEntry,
     templateEntries,
+    withCreatedEntry,
     withLoadedEntry,
     withMyBuilds,
     type LibraryEntry,
@@ -217,7 +218,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     useEffect(() => {
         function reread(event: StorageEvent) {
             const storage = browserStorage()
-            if (event.key !== MY_BUILDS_STORAGE_KEY || storage === null) return
+            if ((event.key !== null && event.key !== MY_BUILDS_STORAGE_KEY) || storage === null) return
             const stored = readMyBuilds(storage)
             setEntries((list) => withRereadMyBuilds(list, mineEntries(stored), selected))
             setSecrets((known) => ({ ...known, ...secretsOf(stored) }))
@@ -304,7 +305,8 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     function recordCreated(response: CreateNamedBuildResponse, input: LiveInput, name: string) {
         const entry = savedMineEntry(response.id, name, input, 1)
         setSecrets((known) => ({ ...known, [response.id]: response.editSecret }))
-        setEntries((list) => [entry, ...list.filter((listed) => listed.key !== entry.key)])
+        const selectedBefore = selectedRef.current
+        setEntries((list) => withCreatedEntry(list, entry, selectedBefore))
         if (!sameInput(input, settledRef.current)) return
         setSelected(entry.key)
         autoRun.flush({ text: input.text, duration: input.duration, selected: entry.key })
