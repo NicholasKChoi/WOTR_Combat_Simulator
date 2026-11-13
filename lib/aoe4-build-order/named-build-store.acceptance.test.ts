@@ -3,55 +3,23 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BlobNotFoundError } from '@vercel/blob';
+import { blobFake } from './blob-fake-test-helpers';
 import { buildStoreFromEnv, type BuildStore } from './build-store';
-
-// A fake Blob service with etags, ifMatch and a CDN cache that serves the first body it saw for a key
-// unless the caller passes useCache: false.
-interface Stored {
-  body: string;
-  etag: string;
-}
-const blobs = new Map<string, Stored>();
-const cdn = new Map<string, Stored>();
-let etagCounter = 0;
 
 vi.mock('@vercel/blob', async (importOriginal) => {
   const original = await importOriginal<typeof import('@vercel/blob')>();
-  return {
-    ...original,
-    put: vi.fn(async (key: string, body: string, options: { allowOverwrite?: boolean; ifMatch?: string }) => {
-      const current = blobs.get(key);
-      if (options.ifMatch !== undefined) {
-        if (!current) throw new original.BlobNotFoundError();
-        if (current.etag !== options.ifMatch) throw new original.BlobPreconditionFailedError();
-      } else if (current && !options.allowOverwrite) {
-        throw new Error('This blob already exists');
-      }
-      blobs.set(key, { body, etag: `etag-${++etagCounter}` });
-      return {};
-    }),
-    get: vi.fn(async (key: string, options: { useCache?: boolean }) => {
-      const fresh = blobs.get(key);
-      if (!fresh) return null;
-      if (!cdn.has(key)) cdn.set(key, fresh);
-      const served = options.useCache === false ? fresh : cdn.get(key)!;
-      return { statusCode: 200, stream: new Response(served.body).body, headers: new Headers(), blob: { etag: served.etag } };
-    }),
-    head: vi.fn(async (key: string) => {
-      if (!blobs.has(key)) throw new original.BlobNotFoundError();
-      return {};
-    }),
-    del: vi.fn(async (key: string) => {
-      if (!blobs.delete(key)) throw new original.BlobNotFoundError();
-    }),
-  };
+  const { installBlobFake } = await import('./blob-fake-test-helpers');
+  const mocks = { put: vi.fn(), get: vi.fn(), head: vi.fn(), del: vi.fn() };
+  installBlobFake(mocks, original, { cdn: true });
+  return { ...original, ...mocks };
 });
+
+const fake = blobFake();
 
 let dir: string;
 beforeEach(async () => {
   dir = await mkdtemp(path.join(tmpdir(), 'named-store-acceptance-'));
-  blobs.clear();
-  cdn.clear();
+  fake.reset();
 });
 afterEach(async () => {
   await rm(dir, { recursive: true, force: true });

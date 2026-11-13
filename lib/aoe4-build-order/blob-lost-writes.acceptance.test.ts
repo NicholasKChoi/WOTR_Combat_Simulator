@@ -1,5 +1,6 @@
-import { BlobNotFoundError, put } from '@vercel/blob'
+import { BlobError, BlobNotFoundError, put } from '@vercel/blob'
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
+import { blobFake } from './blob-fake-test-helpers'
 import { buildStoreFromEnv } from './build-store'
 import { listBuilds } from './builds'
 import { saveBuildReply } from './builds-routes'
@@ -15,73 +16,31 @@ import { ENGLISH } from './test-helpers'
 // store answers for ifMatch on an absent key.
 // A racer object: another client writes racer(sent) to the key first.
 type Fault = 'retried' | 'dropped' | 'outage' | 'deleted' | 'deletedPlain' | { racer: (sent: string) => string }
-type PutOptions = { allowOverwrite?: boolean; ifMatch?: string }
-
-const blobs = new Map<string, { body: string; etag: string }>()
 const faults = new Map<string, Fault[]>()
-const blobState = {
-    etags: 0,
-    weakReadsAfterFault: false,
-    weakReads: false,
-    lastPutError: undefined as unknown,
-    headFailure: undefined as Error | undefined,
-    beforeRead: undefined as ((key: string) => Promise<void> | undefined) | undefined,
-}
 const kindOf = (key: string) => key.split('/')[1]
 
 vi.mock('@vercel/blob', async (importOriginal) => {
     const sdk = await importOriginal<typeof import('@vercel/blob')>()
-    const store = (key: string, body: string) => {
-        blobState.etags += 1
-        blobs.set(key, { body, etag: `"e${blobState.etags}"` })
-    }
-    const write = (key: string, body: string, options: PutOptions) => {
-        const existing = blobs.get(key)
-        if (options.ifMatch === undefined) {
-            if (existing && !options.allowOverwrite) throw new Error('This blob already exists')
-        } else if (existing === undefined) {
-            throw new sdk.BlobNotFoundError()
-        } else if (existing.etag !== options.ifMatch) {
-            throw new sdk.BlobPreconditionFailedError()
-        }
-        store(key, body)
-    }
-    const faultyWrite = (key: string, body: string, options: PutOptions) => {
-        const fault = faults.get(kindOf(key))?.shift()
-        if (fault !== undefined && blobState.weakReadsAfterFault) blobState.weakReads = true
-        if (fault === 'outage') throw new Error('fetch failed')
-        if (fault === 'deleted' || fault === 'deletedPlain') blobs.delete(key)
-        if (fault === 'deletedPlain') throw new sdk.BlobError('The specified key does not exist.')
-        if (typeof fault === 'object') store(key, fault.racer(body))
-        write(key, body, options)
-        if (fault === 'retried') write(key, body, options)
-        if (fault === 'dropped') throw new Error('socket hang up')
-    }
-    return {
-        ...sdk,
-        put: vi.fn(async (key: string, body: string, options: PutOptions) => {
-            try {
-                faultyWrite(key, body, options)
-            } catch (error) {
-                blobState.lastPutError = error
-                throw error
-            }
-            return {}
-        }),
-        get: vi.fn(async (key: string) => {
-            await blobState.beforeRead?.(key)
-            const found = blobs.get(key)
-            if (found === undefined) return null
-            const etag = blobState.weakReads ? `W/${found.etag}` : found.etag
-            return { statusCode: 200, stream: new Response(found.body).body, headers: new Headers(), blob: { etag } }
-        }),
-        head: vi.fn(async (key: string) => {
-            if (blobState.headFailure) throw blobState.headFailure
-            if (!blobs.has(key)) throw new sdk.BlobNotFoundError()
-            return {}
-        }),
-    }
+    const { installBlobFake } = await import('./blob-fake-test-helpers')
+    const mocks = { put: vi.fn(), get: vi.fn(), head: vi.fn(), del: vi.fn() }
+    installBlobFake(mocks, sdk)
+    return { ...sdk, ...mocks }
 })
+
+const fake = blobFake()
+let weakReadsAfterFault = false
+
+fake.aroundPut = (key, body, _options, write) => {
+    const fault = faults.get(kindOf(key))?.shift()
+    if (fault !== undefined && weakReadsAfterFault) fake.weakReads = true
+    if (fault === 'outage') throw new Error('fetch failed')
+    if (fault === 'deleted' || fault === 'deletedPlain') fake.remove(key)
+    if (fault === 'deletedPlain') throw new BlobError('The specified key does not exist.')
+    if (typeof fault === 'object') fake.store(key, fault.racer(body))
+    write()
+    if (fault === 'retried') write()
+    if (fault === 'dropped') throw new Error('socket hang up')
+}
 
 const BLOB_ENV = { NODE_ENV: 'test', BUILDS_STORE_ID: 'store_x', VERCEL: '1', VERCEL_ENV: 'preview' } as const
 const catalog = buildOrderCatalog(ENGLISH)
@@ -108,7 +67,7 @@ const updateNamed = (id: string, editSecret: string) =>
         { ...deps, env: 'preview' },
     )
 const namedKey = (id: string) => `preview/named-builds/${id}.json`
-const stored = (key: string) => JSON.parse(blobs.get(key)?.body ?? 'null')
+const stored = (key: string) => JSON.parse(fake.body(key) ?? 'null')
 const putsTo = (kind: string) => vi.mocked(put).mock.calls.filter(([key]) => kindOf(key) === kind)
 
 function failNext(kind: string, ...queued: Fault[]) {
@@ -121,11 +80,11 @@ function holdCounterReads(readers: number) {
     let release = () => {}
     const allArrived = new Promise<void>((resolve) => (release = resolve))
     let arrived = 0
-    blobState.beforeRead = (key) => {
+    fake.beforeRead = (key) => {
         if (kindOf(key) !== 'rate-limit') return undefined
         arrived += 1
         if (arrived === readers) {
-            blobState.beforeRead = undefined
+            fake.beforeRead = undefined
             release()
         }
         return allArrived
@@ -141,9 +100,9 @@ async function namedBuildOnFile() {
 
 let errorLog: MockInstance<typeof console.error>
 beforeEach(() => {
-    blobs.clear()
+    fake.reset()
     faults.clear()
-    Object.assign(blobState, { weakReadsAfterFault: false, weakReads: false, lastPutError: undefined, headFailure: undefined, beforeRead: undefined })
+    weakReadsAfterFault = false
     vi.mocked(put).mockClear()
     errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -152,8 +111,8 @@ afterEach(() => {
 })
 
 const expectStorageDownFromPutError = () => {
-    expect(blobState.lastPutError).toBeInstanceOf(Error)
-    expect(errorLog).toHaveBeenCalledWith('builds: storage failed', blobState.lastPutError)
+    expect(fake.lastPutError).toBeInstanceOf(Error)
+    expect(errorLog).toHaveBeenCalledWith('builds: storage failed', fake.lastPutError)
 }
 
 describe('PUT a named build when its Blob write fails', () => {
@@ -168,7 +127,7 @@ describe('PUT a named build when its Blob write fails', () => {
     ])('%s', async (_label, fault, readBackFails, status) => {
         const { id, editSecret } = await namedBuildOnFile()
         failNext('named-builds', fault)
-        blobState.weakReadsAfterFault = readBackFails
+        weakReadsAfterFault = readBackFails
         const reply = await updateNamed(id, editSecret)
         expect(reply.status).toBe(status)
         if (status === 200) {
@@ -184,7 +143,7 @@ describe('PUT a named build when its Blob write fails', () => {
 
     it('answers 412 with one put on the etag it read when the build is deleted before the write, and recreates nothing', async () => {
         const { id, editSecret } = await namedBuildOnFile()
-        const readEtag = blobs.get(namedKey(id))?.etag
+        const readEtag = fake.etag(namedKey(id))
         expect(readEtag).toMatch(/^"e\d+"$/)
         failNext('named-builds', 'deleted')
         const reply = await updateNamed(id, editSecret)
@@ -192,7 +151,7 @@ describe('PUT a named build when its Blob write fails', () => {
         const puts = putsTo('named-builds')
         expect(puts).toHaveLength(1)
         expect(puts[0][2]).toMatchObject({ allowOverwrite: true, ifMatch: readEtag })
-        expect(blobs.has(namedKey(id))).toBe(false)
+        expect(fake.has(namedKey(id))).toBe(false)
     })
 })
 
@@ -201,20 +160,20 @@ describe('PUT a named build deleted before the write when put raises a plain Blo
         const { id, editSecret } = await namedBuildOnFile()
         failNext('named-builds', 'deletedPlain')
         const reply = await updateNamed(id, editSecret)
-        expect(blobState.lastPutError).not.toBeInstanceOf(BlobNotFoundError)
+        expect(fake.lastPutError).not.toBeInstanceOf(BlobNotFoundError)
         expect(reply).toMatchObject({ status: 412, body: CHANGED })
         expect(putsTo('named-builds')).toHaveLength(1)
-        expect(blobs.has(namedKey(id))).toBe(false)
+        expect(fake.has(namedKey(id))).toBe(false)
     })
 
     it('answers 503 with the put error when head fails for a reason other than not-found', async () => {
         const { id, editSecret } = await namedBuildOnFile()
         failNext('named-builds', 'deletedPlain')
-        blobState.headFailure = new Error('head: connection reset')
+        fake.headFailure = new Error('head: connection reset')
         const reply = await updateNamed(id, editSecret)
         expect(reply).toMatchObject({ status: 503, body: STORAGE_DOWN })
-        expect(errorLog).toHaveBeenCalledWith('builds: storage failed', blobState.lastPutError)
-        expect(errorLog).not.toHaveBeenCalledWith('builds: storage failed', blobState.headFailure)
+        expect(errorLog).toHaveBeenCalledWith('builds: storage failed', fake.lastPutError)
+        expect(errorLog).not.toHaveBeenCalledWith('builds: storage failed', fake.headFailure)
     })
 })
 
@@ -229,7 +188,7 @@ describe('saving a new build when its Blob create fails', () => {
         ['POST named-builds answers 503 when the store is down', createNamed, 'named-builds', 'outage', false, 503, STORAGE_DOWN],
     ])('%s', async (_label, save, kind, fault, readBackFails, status, body) => {
         failNext(kind, fault)
-        blobState.weakReadsAfterFault = readBackFails
+        weakReadsAfterFault = readBackFails
         const reply = await save()
         expect(reply.status).toBe(status)
         if (body !== null) expect(reply.body).toEqual(body)
@@ -242,7 +201,7 @@ describe('the save rate counter when its Blob write fails', () => {
         ['the SDK retry runs into the counter write that landed', 'retried'],
         ['the connection drops after the counter write lands', 'dropped'],
     ])('answers 201 on a first save and charges one extra count, not a read-back, when %s', async (_label, fault) => {
-        expect(blobs.has(COUNTER_KEY)).toBe(false)
+        expect(fake.has(COUNTER_KEY)).toBe(false)
         failNext('rate-limit', fault)
         const reply = await saveBuild()
         expect(reply.status).toBe(201)
@@ -253,7 +212,7 @@ describe('the save rate counter when its Blob write fails', () => {
 
     it('lets only one of three parallel saves from one client through when one save is left in the window', async () => {
         const lastSlot = { windowStart: NOW, count: SAVE_RATE_LIMIT.maxSaves - 1 }
-        blobs.set(COUNTER_KEY, { body: JSON.stringify(lastSlot), etag: '"seeded"' })
+        fake.seed(COUNTER_KEY, JSON.stringify(lastSlot), '"seeded"')
         holdCounterReads(3)
         const replies = await Promise.all([saveBuild(), saveBuild(), saveBuild()])
         expect(putsTo('rate-limit').map(([, , options]) => options.ifMatch)).toEqual(['"seeded"', '"seeded"', '"seeded"'])
