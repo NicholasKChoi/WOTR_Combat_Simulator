@@ -418,6 +418,32 @@ test.describe('default node amounts', () => {
 })
 
 test.describe('the default English 1TC build with default amounts', () => {
+  test('keeps every step start before the first depletion as in the infinite-node run, and warns once per depleted node', async ({ request }) => {
+    const finite = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 3600 } })
+    const infinite = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 3600, nodeAmounts: INFINITE_NODES } })
+
+    const depletedAts = finite.depletions.flatMap((d) => (d.depletedAt === null ? [] : [d.depletedAt]))
+    expect(depletedAts.length, 'a node depletes within the horizon').toBeGreaterThan(0)
+    const earliest = Math.min(...depletedAts)
+    const early = finite.steps.filter((s) => s.startedAt !== null && s.startedAt < earliest)
+    expect(early.length, 'a step starts before the first depletion').toBeGreaterThan(0)
+    for (const s of early) expect(infinite.steps[s.step].startedAt, `step ${s.step}`).toBe(s.startedAt)
+
+    for (const row of finite.depletions) {
+      const warnings = finite.warnings.filter((w) => w.code === 'node-depleted' && w.node === row.node)
+      if (row.depletedAt === null) {
+        expect(warnings, row.node).toEqual([])
+        continue
+      }
+      expect(warnings, row.node).toHaveLength(1)
+      const [warning] = warnings
+      expect(warning.at).toBe(row.depletedAt)
+      expect(Number.isInteger(warning.idleVillagers), row.node).toBe(true)
+      expect(warning.idleVillagers!).toBeGreaterThanOrEqual(0)
+      expect(warning.severity, row.node).toBe(warning.idleVillagers! > 0 ? 'warning' : 'info')
+    }
+  })
+
   test('runs gold deposit 1 out at 3305.17 s and moves its villagers to gold#2 at that instant', async ({ request }) => {
     const result = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 3600 } })
 

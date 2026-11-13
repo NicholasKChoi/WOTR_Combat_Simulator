@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { SIMULATE_PATH, buildOrderFrom, postSimulate, postSimulateRaw } from './helpers'
+import { schemas } from './openapi-schemas'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -41,6 +42,29 @@ async function rejected(request: Parameters<typeof postSimulate>[0], body: unkno
 const issuesOf = async (request: Parameters<typeof postSimulate>[0], body: unknown) => (await rejected(request, body)).issues
 
 test.describe('result shape', () => {
+  test('a villager-only order returns every result field, aligned to the times axis', async ({ request }) => {
+    const order = buildOrderFrom(VILLAGERS_TEXT)
+    // A larger count could hit the population cap before the horizon.
+    expect(order.steps).toEqual([expect.objectContaining({ unit: 'villager', count: 3 })])
+    const response = await postSimulate(request, { buildOrder: order })
+    expect(response.status()).toBe(200)
+    expect(response.headers()['content-type']).toContain('application/json')
+    const body = await response.json()
+    expect(Object.keys(body).sort()).toEqual(Object.keys(schemas.SimulationResult.properties).sort())
+    expect(body.times[0]).toBe(0)
+    expect(body.times[body.times.length - 1]).toBe(body.durationSeconds)
+    expect(body.times).toHaveLength(body.durationSeconds / body.sampleSeconds + 1)
+    expect(body.unitsProduced.length).toBeGreaterThan(0)
+    for (const series of body.unitsProduced) expect(series.counts).toHaveLength(body.times.length)
+    for (const series of Object.values(body.gatherRates) as number[][]) expect(series).toHaveLength(body.times.length)
+    const villagers = body.unitsProduced.find((s: { baseId: string }) => s.baseId === 'villager')
+    expect(villagers, 'a villager series').toBeDefined()
+    // The default villager order keeps producing after the step, so the end may exceed the step count.
+    expect(villagers.counts.at(-1)).toBeGreaterThanOrEqual(3)
+    villagers.counts.forEach((count: number, i: number) => expect(count, `villagers at ${body.times[i]} s`).toBeGreaterThanOrEqual(villagers.counts[i - 1] ?? 0))
+    expect(body.steps).toEqual([expect.objectContaining({ step: 0, status: 'completed' })])
+  })
+
   test('a research step returns a timing for each step and a note for an unmodelled effect', async ({ request }) => {
     const body = await okBody(request, { buildOrder: buildOrderFrom(RESEARCH_TEXT) })
     expect(body.steps).toHaveLength(2)

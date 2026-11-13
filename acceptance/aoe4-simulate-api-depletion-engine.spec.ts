@@ -13,6 +13,9 @@ type Result = {
   times: number[]
   gatherRates: Record<string, number[]>
   floating: Record<string, number[]>
+  gathered: Record<string, number[]>
+  spent: Record<string, number[]>
+  unitsProduced: { baseId: string; counts: number[] }[]
   steps: { status: string; startedAt: number | null; completedAt: number | null; waitSeconds: number }[]
   depletions: { node: string; amount: number | null; depletedAt: number | null }[]
   warnings: Warning[]
@@ -43,6 +46,20 @@ test.beforeAll(async ({ request }) => {
 test.describe('a node with a finite stock', () => {
   const AMOUNT = 601
   const start = { villagers: { berry: 3, wood: 3 }, rally: 'wood' }
+
+  test('runs out at an instant between samples and gathers exactly its stock', async ({ request }) => {
+    const result = await simulate(request, order(start, [PAUSE], { nodeAmounts: { berry: AMOUNT } }))
+
+    const row = depletionOf(result, 'berry')!
+    expect(row.depletedAt, 'the berry stock runs out').not.toBeNull()
+    expect(row.amount).toBe(AMOUNT)
+    expect(row.depletedAt! % result.sampleSeconds).not.toBe(0)
+
+    const rise = (series: number[]) => last(series) - series[0]
+    expect(rise(result.gathered.food)).toBeCloseTo(AMOUNT, 5)
+    // The default villager order pays food, so the bank alone rises by less than the stock.
+    expect(rise(result.floating.food) + rise(result.spent.villagers)).toBeCloseTo(AMOUNT, 5)
+  })
 
   test('leaves its gatherers idle: the food rate drops to zero and the bank stops rising', async ({ request }) => {
     const result = await simulate(request, order(start, [PAUSE], { nodeAmounts: { berry: AMOUNT } }))
@@ -99,6 +116,23 @@ test.describe('villagers arriving at a dry node', () => {
     expect(result.warnings[1]).toMatchObject({ severity: 'warning', at: 10, idleVillagers: 3 })
   })
 
+  test('produced villagers rallied to it add to a single idle-arrival warning', async ({ request }) => {
+    const COUNT = 2
+    const produce = { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: COUNT, rally: 'berry', walkSeconds: 5 }
+    const result = await simulate(request, order({ villagers: { sheep: 6 }, rally: 'sheep' }, [produce], { nodeAmounts: { berry: 0 } }))
+
+    const arrivals = warningsOf(result, 'idle-arrival', 'berry')
+    expect(arrivals, 'an idle-arrival warning for berry').not.toHaveLength(0)
+    const villagers = last(result.unitsProduced.find((s) => s.baseId === 'villager')!.counts)
+    expect(villagers, 'the produce step spawns its villagers by the horizon').toBeGreaterThanOrEqual(COUNT)
+    expect(arrivals).toHaveLength(1)
+    expect(arrivals[0]).toMatchObject({ severity: 'warning' })
+    expect(arrivals[0].at).toBeGreaterThan(0)
+    // The producer's rally persists, so villagers the default order makes later also walk to the dry node.
+    expect(arrivals[0].idleVillagers).toBeGreaterThanOrEqual(COUNT)
+    expect(arrivals[0].idleVillagers).toBeLessThanOrEqual(villagers)
+  })
+
   test('villagers the run-out itself made idle are not counted as arrivals', async ({ request }) => {
     const result = await simulate(request, order({ villagers: { berry: 3, wood: 3 }, rally: 'wood' }, [PAUSE], { nodeAmounts: { berry: 601 } }))
 
@@ -153,6 +187,20 @@ test.describe('move all', () => {
 
 test.describe('numbered gold deposits', () => {
   const start = { villagers: { gold: 2, 'gold#2': 4 }, rally: 'gold' }
+
+  test('run out independently: deposit 1 made infinite leaves deposit 2 on the same run-out instant', async ({ request }) => {
+    const bothFinite = await simulate(request, order(start, [PAUSE], { nodeAmounts: { gold: 100, 'gold#2': 300 } }))
+    const firstInfinite = await simulate(request, order(start, [PAUSE], { nodeAmounts: { gold: null, 'gold#2': 300 } }))
+
+    const both = depletionOf(bothFinite, 'gold#2')!
+    expect(both.depletedAt, 'deposit 2 runs out').not.toBeNull()
+    const second = depletionOf(firstInfinite, 'gold#2')!
+    expect(second.node).toBe(both.node)
+    expect(second.amount).toBe(both.amount)
+    // The two runs differ by float rounding, so deep equality on depletedAt would flake.
+    expect(Math.abs(second.depletedAt! - both.depletedAt!)).toBeLessThan(1e-6)
+    expect(depletionOf(firstInfinite, 'gold')).toEqual({ node: 'gold', amount: null, depletedAt: null })
+  })
 
   test('credit each deposit its full stock', async ({ request }) => {
     const result = await simulate(request, order(start, [PAUSE], { nodeAmounts: { gold: 100, 'gold#2': 300 } }))

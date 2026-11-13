@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import english1tc from '../data/aoe4-build-order/builds/english-1tc.json'
 import rules from '../data/aoe4-build-order/rules/english.json'
 import snapshot from '../data/aoe4-build-order/aoe4world/english.json'
-import { buildOrderFrom, postSimulate } from './helpers'
+import { INFINITE_NODES, buildOrderFrom, postSimulate } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -76,6 +76,26 @@ test.describe('spent on the prebuilt English build', () => {
     expect(body.spent.villagers[at(0)]).toBe(costOf('villager'))
     expect(body.spawnedPopulation[at(15)]).toBe(body.spawnedPopulation[0])
     expect(body.spawnedPopulation[at(20)]).toBe(body.spawnedPopulation[0] + popcapOf('villager'))
+  })
+
+  test('counts an auto-house under buildings when the order has no house step', async ({ request }) => {
+    const PRODUCED = 40
+    const buildOrder = {
+      civ: 'english',
+      name: 'Auto houses',
+      start: { villagers: { sheep: 6 }, rally: 'sheep' },
+      steps: [{ action: 'produce', producer: 'capital-town-center', unit: 'villager', count: PRODUCED }],
+    }
+    const body = await simulate(request, { buildOrder, inputs: { nodeAmounts: INFINITE_NODES } })
+    const villagers = last(body.unitsProduced.find((s) => s.baseId === 'villager')!.counts)
+    expect(villagers, 'every produced villager is paid and spawned by the horizon').toBeGreaterThanOrEqual(PRODUCED)
+    // Continuous producers pay ahead of spawning, so the spend is not exactly the produced count times the cost.
+    expect(last(body.spent.villagers) % costOf('villager')).toBe(0)
+    expect(last(body.spent.villagers)).toBeGreaterThanOrEqual(villagers * costOf('villager'))
+    expect(last(body.spent.buildings)).toBeGreaterThan(0)
+    expect(last(body.spent.buildings) % costOf('house')).toBe(0)
+    expect(last(body.spent.military)).toBe(0)
+    expect(last(body.spent.research)).toBe(0)
   })
 })
 
