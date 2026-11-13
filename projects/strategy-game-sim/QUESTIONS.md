@@ -22,7 +22,7 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q94
+next: Q95
 
 ## Q74: AoE4 My builds page: check storage is available before rereading on a storage event?
 kind: decision
@@ -65,5 +65,19 @@ SGS-156 (auto-houses plan ahead for wood) passed spec-gate and is ready, but the
 - Run in a normal terminal in the repo (WOTR_Combat_Simulator):
 - git worktree add -b sgs-156-aoe4-auto-houses-plan-ahead-for-wood .claude/code-factory/worktrees/sgs-156-aoe4-auto-houses-plan-ahead-for-wood main
 - Then drive again; the row is already ready (set branch=sgs-156-aoe4-auto-houses-plan-ahead-for-wood).
+
+### Answer
+
+## Q94: Create a task worktree outside the sandbox so SGS-160 can be built
+kind: handoff
+blocks: SGS-160 (fix results-split spec chart id filter)
+options: A) Done | B) Not now
+recommendation: A: SGS-160 waits on it
+thread: 1570939910377050165
+
+SGS-160 (fix results-split spec chart id filter) passed spec-gate and is ready, but the drive sandbox cannot write .git/worktrees, so its implementer cannot start. Same blocker as Q91 and Q93.
+- Run in a normal terminal in the repo (WOTR_Combat_Simulator):
+- git worktree add -b sgs-160-fix-results-split-spec-chart-id-filter .claude/code-factory/worktrees/sgs-160-fix-results-split-spec-chart-id-filter main
+- Then drive again; the row is already ready (set branch=sgs-160-fix-results-split-spec-chart-id-filter).
 
 ### Answer
