@@ -12,6 +12,7 @@ This file says where things go. It does not list every file; use `git ls-files` 
   `.ts`/`.tsx`, so write new files as `.ts`/`.tsx`.
 - Node 24.x (`engines.node` in `package.json`).
 - Styling: Bootstrap 5 utility classes plus CSS modules. Combine class names with `classnames` (`cn`).
+  The site root font size is 18px (`styles/global.css`), so 1rem is 18px: convert rem figures at 18.
 - `golang/` is a retired prototype. It is not deployed and not maintained.
 
 ## Where files go

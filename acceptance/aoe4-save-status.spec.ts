@@ -174,6 +174,24 @@ test.describe('layout', () => {
       return { row: box(row), items: ids.map(byTestId), overflow: row ? row.scrollWidth - row.clientWidth : 0 }
     }, LINK_ROW)
 
+  async function expectOneLine(page: Page) {
+    await saveCopy(page)
+    await expect(byId(page, 'save-status')).toHaveText('Saved')
+    await expect
+      .poll(async () => {
+        const { row, items, overflow } = await rects(page)
+        const [version, copy, status, link, copyLink] = items
+        const tops = [version, copy, link, copyLink].map((item) => item!.top)
+        return {
+          aligned: Math.max(...tops) - Math.min(...tops) <= 2,
+          statusOnLine: status!.top < copy!.bottom && status!.bottom > copy!.top,
+          oneLine: row!.height <= copy!.height + 2,
+          overflow,
+        }
+      })
+      .toEqual({ aligned: true, statusOnLine: true, oneLine: true, overflow: 0 })
+  }
+
   test.describe('at 1280x800', () => {
     test.use({ viewport: WIDE })
 
@@ -185,21 +203,24 @@ test.describe('layout', () => {
 
     test('the buttons, status, link and Copy link share one line', async ({ page }) => {
       await openPage(page)
+      await expectOneLine(page)
+    })
+  })
+
+  test.describe('at the one-line threshold', () => {
+    test('at 1200 px the row shares one line and does not overflow', async ({ page }) => {
+      await page.setViewportSize({ width: 1200, height: 800 })
+      await openPage(page)
+      await expectOneLine(page)
+    })
+
+    test('at 1199 px the row keeps DOM order and does not overflow', async ({ page }) => {
+      await page.setViewportSize({ width: 1199, height: 800 })
+      await openPage(page)
       await saveCopy(page)
       await expect(byId(page, 'save-status')).toHaveText('Saved')
-      await expect
-        .poll(async () => {
-          const { row, items, overflow } = await rects(page)
-          const [version, copy, status, link, copyLink] = items
-          const tops = [version, copy, link, copyLink].map((item) => item!.top)
-          return {
-            aligned: Math.max(...tops) - Math.min(...tops) <= 2,
-            statusOnLine: status!.top < copy!.bottom && status!.bottom > copy!.top,
-            oneLine: row!.height <= copy!.height + 2,
-            overflow,
-          }
-        })
-        .toEqual({ aligned: true, statusOnLine: true, oneLine: true, overflow: 0 })
+      expect(await rowIds(page)).toEqual(LINK_ROW)
+      await expect.poll(async () => (await rects(page)).overflow).toBe(0)
     })
   })
 
