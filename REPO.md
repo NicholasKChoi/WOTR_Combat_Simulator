@@ -6,7 +6,7 @@ host: github.com                  # gh repo view
 repo: NicholasKChoi/WOTR_Combat_Simulator   # gh repo view
 baseBranch: main                  # gh repo view defaultBranchRef
 stateBranch: code-factory-state
-stateVersion: 2                   # last migration applied; set by init and /code-factory:upgrade
+stateVersion: 3                   # last migration applied; set by init and /code-factory:upgrade
 pushState: true
 worktreeRoot: worktrees
 
@@ -75,6 +75,12 @@ prAuthor: "@me"
 triage:
   auto: false                     # true: tag untagged BACKLOG.md items with the triage recommendation
                                   #   instead of asking (a drop is still asked); manage.md Backlog intake
+discovery:                        # scheduled scanners that file backlog items (pipelines/discovery.md);
+                                  #   each runs at most once per interval (30m, 24h, 7d); "" turns it off
+  docs: 24h                       # docs made stale or missing by merges (only when the base moved)
+  standalone: 24h                 # base CI failures, open issues, dependency alerts, new TODOs, lint drift
+  milestone: 7d                   # where the product stands in its field; web research, always asked
+  maxItems: none                  # owner: no limit on items one scanner files per run (default 5)
 ---
 
 # Repo notes
