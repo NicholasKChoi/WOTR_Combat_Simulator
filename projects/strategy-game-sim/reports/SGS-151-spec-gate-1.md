@@ -1,0 +1,21 @@
+# SGS-151 spec-gate report 1
+
+Base read: origin/main (41b3ed3). Verdict: **NEEDS_SPEC** (two small, mechanical gaps; scope itself is grounded and sound).
+Risk tier: **low** confirmed (test-only; no strongModelTriggers or criticalPaths touched; no production file changes).
+
+## Verified
+- All three fakes exist as described: `counterBlob` in `blob-build-store.test.ts` (event log, `"eN"` etags, `get` with no `useCache` handling), the `vi.mock` block in `blob-lost-writes.acceptance.test.ts` (key map, `Fault` queue, `weakReads`, `beforeRead`, `lastPutError`), and the one in `named-build-store.acceptance.test.ts` (key map plus `cdn` map honoring `useCache: false`, and `del`).
+- `route-test-support.ts` and `test-helpers.ts` exist in `lib/aoe4-build-order/`. Vitest `include` is `lib/**/*.test.ts`, so a non-`.test.ts` support module is not collected. The acceptance files here are `.acceptance.test.ts` under `lib/` and are collected by `npm test`.
+- No test asserts a literal etag format or error message that the fakes produce. The `etag-N` and `"eN"` formats differ between the copies and unifying them is safe. Tests assert only that etags differ or equal what was read. The store matches on `BlobNotFoundError` / `BlobPreconditionFailedError` `instanceof` only, never on the "already exists" message.
+- The fake's rules match the criteria. No other file in the repo mocks `@vercel/blob`; the live test is out of scope.
+- ARCHITECTURE.md does not describe the test fakes, so no doc goes stale. Depends-on none, Contracts n/a, On merge `none` is correct, Unverified assumptions `none` is acceptable (the fake models SDK behavior already relied on by the existing tests; the live test covers the real service).
+
+## Gaps
+1. **Acceptance criteria #2 ("Exactly one implementation ... exists in test code; none of the three test files re-implements them") - a search/reading criterion over code with no test or typecheck behind it.** An implementer or reviewer can only confirm it by grepping. Proposed fix: drop it as a separate criterion and fold it into #1 and #3: "each of the three files gets its `put`/`get`/`head`/`del` behavior from the shared module (the `vi.mock('@vercel/blob')` factories delegate to it), and the shared module's own test (#3) is the only test of the write rules." If a removal check is wanted, the proof is that `named-build-store.acceptance.test.ts` and `blob-lost-writes.acceptance.test.ts` still pass with no local `Map` of blobs, which review reads from the diff. Do not use a grep.
+2. **Invariants field says `none`, but the ticket touches `lib/aoe4-build-order/**`, the Paths of A1-A3 in INVARIANTS.md.** The field must name entries whose Paths it touches or is adjacent to. Proposed fix: `A1, A2, A3 (path match only; test-only change, behavior untouched)`. Criterion #7 "No INVARIANTS.md regressions" then reads consistently.
+
+## Notes (non-blocking)
+- Import-cycle hazard to tell the implementer: the shared module needs `BlobNotFoundError` / `BlobPreconditionFailedError`. If it statically imports `@vercel/blob` while a test's `vi.mock('@vercel/blob', factory)` factory is itself importing the shared module, the import is circular. Safest is for the factory to pass the real SDK error classes (from `importOriginal`) into the fake's constructor. This is an implementation detail and may stay unspecified, but is worth one line in Scope.
+- `.jscpd.tests.json` `pattern` lists support files by name (`*test-helpers.ts`, `route-test-support.ts`). A new module with another name is scanned only by the main `.jscpd.json` (minLines 8), not the stricter tests config (minLines 5). Naming it `*test-helpers.ts` or `*-test-support.ts` with a pattern update is optional; today's `npm run lint:dup` passing is the criterion.
+- The `counterBlob` event log (`get 4`, `put 5 failed`) is counter-JSON specific. Scope already allows layering it in the test; keep it there rather than in the shared fake.
+- The existing `blob-build-store.test.ts` mixes `vi.fn` + per-test `mockResolvedValue` with `counterBlob`'s `mockImplementation`. The shared fake should install onto the same `vi.fn` mocks so `toHaveBeenCalledExactlyOnceWith` assertions keep working; Scope's "mocks stay in each test file" supports this.

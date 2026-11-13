@@ -1,13 +1,15 @@
-# SGS-153 ticket report 1
+# SGS-153 ticket 1 (re-spec)
 
-Ticket: projects/strategy-game-sim/tickets/SGS-153-smoke-script-hardening.md
-Title: SGS-153: Harden the preview smoke script and its spec
-Type Chore, Priority medium, Milestone none, Risk low, Component aoe4-build-order, Depends on none, On merge none. LOC about 40.
+File: tickets/SGS-153-smoke-script-hardening.md (rewritten in place, Re-spec 1 appended, five criteria tagged `(respec 1)`). `ticket-lint.py` clean.
 
-Summary: Covers SGS-106 review notes 1, 2, 4 and 5. Script: a 3xx fails its step (no redirect following), the browser route never forwards the bypass header to another origin (including redirect targets), and the unreachable `FAIL smoke:` fallback is removed. Spec: signal-killed child is not exit 0, `run` defaults to the sentinel secret so no row inherits the shell's, and redirect rows are added. Docs: the smoke subsection of docs/aoe4-build-order.md gets a redirect statement. Lint passed. Read at origin/main; no search found a `FAIL smoke` mention in the doc.
+Why it was wrong: I left the open-step redirect outcome to the implementer instead of reading Playwright, treated `FAIL smoke:` as unreachable without checking `browser.close()`, and wrote two criteria a spec could not run.
 
-Diagrams: none (single component).
+Findings folded in:
+1. Playwright 1.64.1 `types.d.ts` (Route `continue` Details): the `headers` override applies to the routed request and the redirects it initiates, and the handler is not invoked again for the redirected request. So routing cannot guard the redirect target. The single end state is that `open` fails on a same-origin 3xx (page document and subresource, both rows). The handler uses `route.fetch` with `maxRedirects: 0`, fulfills non-3xx responses, and aborts and records a 3xx. The expected result is PASS save, PASS read back, `FAIL open` naming the status, exit 1, no request to the second origin, build deleted, and no wait for the 30 s timeout.
+2. `browser.close()` rejection is acknowledged. `main` sets exit code 1 and rethrows any non-`StepFailure` error after the `finally` cleanup, so stderr gets the error and stdout gets nothing. The search criterion is replaced by a behavior criterion (unreadable fixture: non-zero exit, empty stdout, no stub requests).
+3. The secret criterion is now a test that sets `process.env` to another value, restores it in `finally`, and asserts the stub requests carry only the sentinel.
+Also: a 3xx on save with the secret unset prints `FAIL save` and exits 1, not 2. The signal proof is a permanent test, so `run` takes an optional script path.
 
-Open questions: none. Unverified assumption listed: how the installed Playwright applies a `route.continue` header override to redirects (the ticket makes the implementer establish it, with a fallback of failing the open step on a cross-origin redirect).
+Open questions: none. Overlap with other tickets: none found.
 
-Overlap: none with open tickets checked. Notes 3 and 6 and the design/M6.md repeat-row fix are out of scope.
+Not run: I did not run the spec or mutation checks. The criteria were checked by reading the script and spec at origin/main.
