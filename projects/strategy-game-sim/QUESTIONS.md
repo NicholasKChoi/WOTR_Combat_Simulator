@@ -22,7 +22,7 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q89
+next: Q91
 
 ## Q66: Design doc: fix the wrong keyboard-Tab description after "Save as copy"?
 kind: decision
@@ -30,6 +30,7 @@ blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: E: only the design document is wrong; no app behavior changes
 thread: 1570872009876054153
+answered: 2026-11-13T19:11Z discord
 
 Only you decide if a wording fix to a design note is worth a ticket; nothing else waits on it.
 - The design row says one Tab walk after Save as copy reaches the save button, then the link controls.
@@ -37,6 +38,7 @@ Only you decide if a wording fix to a design note is worth a ticket; nothing els
 - Fix is to describe the two states separately. Found while re-specifying the Save-panel ticket.
 
 ### Answer
+E) docs: edit a doc only
 
 ## Q67: Design doc: make "clear the copy name" a required step in the Save-panel check?
 kind: decision
@@ -44,6 +46,7 @@ blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: E: only the design row changes; the ticket already calls the step optional
 thread: 1570872014099587082
+answered: 2026-11-13T18:56Z discord
 
 Only you decide whether to spend a ticket on a doc wording fix; nothing else waits on it.
 - The check that the notice sits below the bar bottom at top scroll only works with the name cleared (error showing).
@@ -51,6 +54,7 @@ Only you decide whether to spend a ticket on a doc wording fix; nothing else wai
 - The ticket calls the step optional; the design row should say required. Found in review.
 
 ### Answer
+E) docs: edit a doc only
 
 ## Q68: AoE4 results charts: show the chart rows as a real table?
 kind: decision
@@ -72,6 +76,7 @@ blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: A: plain cause (equal counts stack); medium priority since you cannot read which buildings exist
 thread: 1570872020529446922
+answered: 2026-11-13T19:11Z discord
 
 You saw this on the chart; you decide how much it matters and whether a bug fix or a redesign is wanted.
 - Many buildings have the same count (1 or 2), so their lines sit on top of each other.
@@ -79,6 +84,7 @@ You saw this on the chart; you decide how much it matters and whether a bug fix 
 - Fix could be small (offset, labels) or bigger (different chart); pick D if you want it designed.
 
 ### Answer
+A) standalone bug: one small fix PR
 
 ## Q70: AoE4 charts: one shared marker control that shows or hides a vertical line on every chart?
 kind: decision
@@ -312,9 +318,39 @@ options: A) Release the hold until builders exist: no stall risk; house may star
 recommendation: A: no deadlock, and with no builders today's behavior is the right fallback
 research: reports/SGS-156-ticket-1.md
 thread: 1570873015481409539
+answered: 2026-11-13T19:13Z discord
 
 SGS-156 (auto-houses plan ahead for wood) holds a due house's cost back from steps and unit orders until the house starts. Open case: the house is due and affordable, but there are too few gatherers to pull builders (houseBuilderSource).
 - Hold: wood stays reserved even though no house can start; a step that would free builders never runs, so the build can stall.
 - Release: steps can spend the wood, and the house waits for builders, as it does today.
+
+### Answer
+B) Keep holding: house starts the moment builders free up; can stall steps
+
+## Q89: WOTR combat: dice hit on 6 only, but the 2E rules say 5 or 6. Fix it?
+kind: decision
+blocks: backlog
+options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
+recommendation: A: plain cause, visible wrong odds; priority high
+research: ../../discovery/milestone-20261113-2.md
+
+Only you can say whether the 6-only rule was on purpose; if not, every WOTR odds number the app shows is wrong.
+- The code hits only on a 6 (battle.ts: threshold 5, test is die > 5); the doc says the same.
+- War of the Ring 2E rules: a die hits on 5 or 6. That doubles hit chance per die (1/6 to 1/3).
+- Fix is small: doc and code in one PR. Pick F if 6-only is intended.
+
+### Answer
+
+## Q90: WOTR combat: add siege battles (city, fortification, stronghold)?
+kind: decision
+blocks: backlog
+options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
+recommendation: D: new behavior needing a small design; bundle with max rounds and retreat
+research: ../../discovery/milestone-20261113-2.md
+
+Adds a new battle type, so only you decide whether WOTR gets more scope now.
+- Sieges (city, fortification, stronghold) are not out of scope in PROJECT.md.
+- Rules: attacker hits only on 6 in round 1 (1E FAQ, check 2E); besieged armies cannot retreat.
+- Shares the retreat seam with Q85 (max rounds and retreat); best after the dice fix.
 
 ### Answer
