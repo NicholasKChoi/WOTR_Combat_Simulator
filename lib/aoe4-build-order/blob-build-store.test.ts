@@ -1,4 +1,4 @@
-import { BlobNotFoundError, BlobPreconditionFailedError, del, get, head, put } from '@vercel/blob'
+import { BlobError, BlobNotFoundError, BlobPreconditionFailedError, del, get, head, put } from '@vercel/blob'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BLOB_SDK_RETRIES, createBlobBuildStore } from './blob-build-store'
 
@@ -223,6 +223,7 @@ describe('replaceNamed', () => {
     })
 
     const serviceDown = new Error('service down')
+    const missingKey = new BlobError('The specified key does not exist.')
     const preconditionFailed = new BlobPreconditionFailedError()
     const sent = { revision: 2 }
     const storedAs = (value: unknown) => () => vi.mocked(get).mockResolvedValue(found(value, '"landed-etag"'))
@@ -236,17 +237,11 @@ describe('replaceNamed', () => {
         ['BlobPreconditionFailedError', 'a read that throws', preconditionFailed, readThrows, 'conflict'],
         ['BlobPreconditionFailedError', 'a weak etag read of our JSON', preconditionFailed, weakEtagRead, 'conflict'],
         ['BlobNotFoundError', 'nothing stored', new BlobNotFoundError(), nothingStored, 'conflict'],
-        ['any other error', 'our JSON stored', serviceDown, storedAs(sent), 'replaced'],
-        ['any other error', 'other JSON stored', serviceDown, storedAs({ revision: 3 }), serviceDown],
-        ['any other error', 'nothing stored', serviceDown, nothingStored, serviceDown],
-        ['any other error', 'a read that throws', serviceDown, readThrows, serviceDown],
-        ['any other error', 'a weak etag read of our JSON', serviceDown, weakEtagRead, serviceDown],
+        ['a plain BlobError', 'our JSON stored', missingKey, storedAs(sent), 'replaced'],
     ])('maps a put rejecting with %s and %s after one put and one fresh read', async (_label, _stored, putError, arrange, expected) => {
         vi.mocked(put).mockRejectedValue(putError)
         arrange()
-        const result = store().replaceNamed(NAMED_ID, JSON.stringify(sent), 'etag-1')
-        if (expected instanceof Error) await expect(result).rejects.toBe(expected)
-        else expect(await result).toBe(expected)
+        expect(await store().replaceNamed(NAMED_ID, JSON.stringify(sent), 'etag-1')).toBe(expected)
         expect(put).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, JSON.stringify(sent), { ...PUT_OPTIONS, allowOverwrite: true, ifMatch: 'etag-1' })
         expect(get).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, FRESH_GET_OPTIONS)
         expect(head).not.toHaveBeenCalled()
@@ -259,6 +254,23 @@ describe('replaceNamed', () => {
         vi.mocked(put).mockRejectedValue(preconditionFailed)
         vi.mocked(get).mockResolvedValue(found(stored))
         expect(await store().replaceNamed(NAMED_ID, json, 'etag-1')).toBe('conflict')
+    })
+
+    const headFailure = new Error('head down')
+    it.each([
+        ['head reports the key absent', missingKey, nothingStored, () => vi.mocked(head).mockRejectedValue(new BlobNotFoundError()), 'conflict'],
+        ['head reports the key absent', serviceDown, readThrows, () => vi.mocked(head).mockRejectedValue(new BlobNotFoundError()), 'conflict'],
+        ['head finds the key present', missingKey, storedAs({ revision: 3 }), () => vi.mocked(head).mockResolvedValue({} as Awaited<ReturnType<typeof head>>), missingKey],
+        ['head fails for another reason', missingKey, nothingStored, () => vi.mocked(head).mockRejectedValue(headFailure), missingKey],
+        ['head fails with a plain BlobError', missingKey, nothingStored, () => vi.mocked(head).mockRejectedValue(new BlobError('boom')), missingKey],
+    ])('maps an unrecognized put error when %s after one head of the key', async (_label, putError, arrange, arrangeHead, expected) => {
+        vi.mocked(put).mockRejectedValue(putError)
+        arrange()
+        arrangeHead()
+        const result = store().replaceNamed(NAMED_ID, JSON.stringify(sent), 'etag-1')
+        if (expected instanceof Error) await expect(result).rejects.toBe(expected)
+        else expect(await result).toBe(expected)
+        expect(head).toHaveBeenCalledExactlyOnceWith(NAMED_KEY, { storeId: STORE_ID })
     })
 })
 

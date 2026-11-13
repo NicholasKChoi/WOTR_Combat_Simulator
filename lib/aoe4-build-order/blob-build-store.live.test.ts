@@ -1,7 +1,7 @@
 // Opt-in check against a real Vercel Blob store: `vercel env pull .env.local`, then `npm run test:blob-live`.
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { BlobNotFoundError, del, put } from '@vercel/blob'
+import { BlobError, BlobNotFoundError, del, put } from '@vercel/blob'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createBlobBuildStore } from './blob-build-store'
 import { namedBuildKey, newNamedBuildId } from './named-builds'
@@ -35,7 +35,7 @@ describe.skipIf(process.env.BLOB_LIVE !== '1')('Blob store against a real store'
             (rejected: unknown) => rejected,
         )
         console.log(`put with ifMatch on a missing key raised ${error instanceof Error ? error.constructor.name : String(error)}`)
-        expect(error).toBeInstanceOf(Error)
+        expect((error as Error).constructor).toBe(BlobError)
     })
 
     it('reports a conflict for replaceNamed on a missing id and creates no blob', async () => {
