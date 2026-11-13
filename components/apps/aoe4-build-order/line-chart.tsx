@@ -174,7 +174,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                         dot={false}
                                         connectNulls={false}
                                         isAnimationActive={false}
-                                        hide={isLineHidden(hidden, pinnedKey(s.key))}
+                                        hide={isLineHidden(hidden, s.key)}
                                     />
                                 ))}
                                 {highlight && highlight.from < highlight.to ? (

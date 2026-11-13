@@ -79,8 +79,8 @@ export function legendItems(series: readonly ChartSeries[], pinned?: PinnedSerie
     return [...items, ...pinnedOnly]
 }
 
-export function isLineHidden(hidden: ReadonlySet<string>, lineKey: string): boolean {
-    return hidden.has(lineKey.startsWith(PINNED_PREFIX) ? lineKey.slice(PINNED_PREFIX.length) : lineKey)
+export function isLineHidden(hidden: ReadonlySet<string>, seriesKey: string): boolean {
+    return hidden.has(seriesKey)
 }
 
 export function toggleHidden(hidden: ReadonlySet<string>, key: string): Set<string> {
