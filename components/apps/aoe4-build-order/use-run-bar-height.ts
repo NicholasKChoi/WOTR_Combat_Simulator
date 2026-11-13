@@ -9,7 +9,7 @@ export function useRunBarHeight(ref: RefObject<HTMLElement | null>): void {
         if (!form || !section || typeof ResizeObserver === 'undefined') return
         const write = () => {
             const margin = parseFloat(getComputedStyle(form).marginBottom) || 0
-            section.style.setProperty(RUN_BAR_HEIGHT_PROPERTY, `${Math.ceil(form.getBoundingClientRect().height + margin)}px`)
+            section.style.setProperty(RUN_BAR_HEIGHT_PROPERTY, `${form.getBoundingClientRect().height + margin}px`)
         }
         write()
         const observer = new ResizeObserver(write)
