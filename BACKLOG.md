@@ -18,3 +18,10 @@ pull from here; triage moves an item into a milestone or deletes it.
 
 - design/M9.md M9.9 criteria-map row describes one Tab walk after Save as copy reaching save-build then the link controls; no page state allows it (save-build is disabled whenever the link shows). Change to the two-state version. Source: SGS-141 re-spec, reports/SGS-141-ticket-2.md
 - design/M9.md row M9.12 (b): clearing the copy name (save-copy-name-error shown) is required for the (c) "notice below bar bottom at scrollTop 0" check (339px vs 306px content in a 287px bar); the ticket calls it optional. Make it required in the design row. Reported by SGS-133 review-1.
+- **AoE4 results charts: real table UI.** Render the chart rows as a real table so collapsed rows look cleaner.
+  (owner UI/UX feedback, 2026-11-12)
+- **AoE4 Buildings line chart: overlapping lines.** Many buildings share the same count (1 or 2), so their lines
+  stack on that value and the owner cannot tell which buildings are there. Adjust the chart so each building stays
+  identifiable. (owner UI/UX feedback, 2026-11-12)
+- **AoE4 chart markers: one shared control.** Define the markers in one place for all charts; clicking a marker
+  shows or hides its vertical line on every chart. (owner UI/UX feedback, 2026-11-12)
