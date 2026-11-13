@@ -23,6 +23,15 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
     }
   };
 
+  const headNotFound = async (key: string): Promise<boolean> => {
+    try {
+      await head(key, { storeId });
+      return false;
+    } catch (error) {
+      return error instanceof BlobNotFoundError;
+    }
+  };
+
   // @vercel/blob 2.9 `get` resolves null when the blob answers 404. BlobNotFoundError is also treated
   // as absent.
   // A fresh read's etag feeds put's ifMatch, which compares against the strong etag. The CDN weakens the
@@ -107,8 +116,9 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
     },
     // No retry: one that re-read the blob for its new etag would overwrite the concurrent writer. The
     // landed check compares content only and never feeds its etag into a write.
-    // Which error the SDK raises for ifMatch on a deleted blob is unverified (blob-build-store.live.test.ts
-    // records it), so not-found also conflicts.
+    // ifMatch on a deleted blob raises a plain BlobError ("The specified key does not exist.") on @vercel/blob
+    // 2.9.0, not BlobNotFoundError, so an unrecognized put error conflicts when head finds the key absent.
+    // exists() is not used: it reads any head failure as absent, which would turn an outage into a conflict.
     async replaceNamed(id, json, etag) {
       const key = namedBuildKey(env, id);
       try {
@@ -117,6 +127,7 @@ export function createBlobBuildStore(storeId: string, env: string): BuildStore {
       } catch (error) {
         if (await landed(key, json)) return 'replaced';
         if (error instanceof BlobPreconditionFailedError || error instanceof BlobNotFoundError) return 'conflict';
+        if (await headNotFound(key)) return 'conflict';
         throw error;
       }
     },
