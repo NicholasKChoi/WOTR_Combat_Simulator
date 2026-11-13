@@ -47,3 +47,25 @@ pull from here; triage moves an item into a milestone or deletes it.
   starts only when wood reaches 50 and the TC is already housed (ENG 1TC Council Hall MAA/crossbow build: housed
   100/100 at 12:35, 110/110 at 13:44, 120/120 at 14:45). Include the time to gather the house's wood in the look-ahead
   and reserve wood for a projected house so steps do not spend it first. (owner request, 2026-11-13)
+- (docs) **Combat simulator doc: remove stale "Current code" notes.** `docs/combat-simulator.md` still describes the
+  one-battle code in three notes: "Number of battles N" (but `validateBattles` in `pages/api/fight.ts` accepts
+  `battles`, 1..100000, default 1000), "Independence of battles" (but `simulateBattles` in
+  `lib/combat-simulator/simulate.ts` builds a fresh `BaseArmy` per battle), and "Outcome reporting" (the response is
+  now `FightResponse` with `battles`, `outcomes`, `rounds` stats, `survivors`, `hitsPerRound`). Reword the intro that
+  introduces those notes. Review judges the simulator against this doc, so it currently flags shipped behavior as a
+  defect. (discovery docs 2026-11-13, discovery/docs-20261113-1.md)
+- **AoE4 sim: measure accuracy against real games.** No M1-M9 criterion checks the simulator's timings against real
+  play (e.g. age-up and unit-out times from pro-game replays or published builds). Wider than the existing
+  provisional-gather-rates item above, which it would absorb. Recommended: milestone, priority high. (discovery
+  milestone 2026-11-13, discovery/milestone-20261113-1.md)
+- **AoE4: import/export builds in the community overlay / aoe4guides format.** Users cannot bring shared guides in
+  or take a tuned build to the in-game overlay. The overlay's JSON schema could not be retrieved, so the first ticket
+  must fetch a real export. Recommended: milestone, priority medium. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
+- **AoE4: show and track the game patch on every result and saved build.** The game patches about monthly (17.0 on
+  2026-10-22) while the snapshot (17.0.12182) is refreshed by hand, so old saved builds silently change meaning.
+  Recommended: milestone (small), priority medium. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
+- **WOTR combat: add max rounds and retreat.** The seams exist and WOTR is the least developed app; check the rules
+  against the rulebook before specifying (leadership by characters and Nazgul stays out per PROJECT.md).
+  Recommended: milestone, priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
+- **AoE4: optional spread of outcomes (several runs with a seed).** Defer until the accuracy item above shows where
+  the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
