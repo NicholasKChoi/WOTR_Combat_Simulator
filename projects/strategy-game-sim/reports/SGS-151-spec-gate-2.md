@@ -1,0 +1,15 @@
+# SGS-151 spec-gate report 2
+
+Base read: origin/main (fetched). Verdict: **NEEDS_SPEC** (two small, mechanical gaps). Risk `low` confirmed.
+
+Pass-1 gaps are closed: the search-style criterion became a delegation criterion, Invariants names A1-A3, and the importOriginal, same-`vi.fn` and event-log rules are in Scope. The three fakes at base match the ticket's description (counterBlob in `blob-build-store.test.ts`, the Fault/weakReads/beforeRead mock in `blob-lost-writes.acceptance.test.ts`, the CDN-cache mock in `named-build-store.acceptance.test.ts`).
+
+## Gaps
+1. **Scope / criteria - the etag form is unspecified, but an existing test pins it.** `blob-lost-writes.acceptance.test.ts` (the "answers 412 with one put on the etag it read..." test) asserts `expect(readEtag).toMatch(/^"e\d+"$/)`. The three copies use different forms today (`"eN"`, `etag-N`), and Scope says only "a fresh etag per write". An implementer who picks `etag-N` (as `named-build-store.acceptance.test.ts` does) fails a test whose assertions the ticket says to keep. Fix: state that each write yields a quoted strong etag of the form `"e<n>"` (real Blob returns quoted strong etags, and the weak-read mode prefixes `W/`). That test then passes unchanged. Also say that seeding a key (`blobs.set(COUNTER_KEY, {..., etag: '"seeded"'})` today) takes an explicit etag.
+2. **Depends on - says `none`, but the ticket lands after SGS-142.** SGS-142 (in progress) edits `describe('replaceNamed')` in `blob-build-store.test.ts`, the same file this ticket edits, and adds `head`-based cases there. Without the dependency the graph may run them in parallel and conflict. Fix: `Depends on: SGS-142`, and read `blob-build-store.test.ts` at the SGS-142 tip. (Scope's rows there use per-test `mockResolvedValue`, not `counterBlob`, so only the file overlaps.)
+
+## Notes (non-blocking)
+- Interleaving hazard: the parallel-bump test asserts an exact event order (`get 4, get 4, put 5, put 5 failed, get 5, put 6`). That order depends on the number of awaits in `get`/`put`. If the shared fake or the layered event log adds an extra `await`, the interleaving can change and the test fails for the wrong reason. Keep the fake's `get`/`put` single-await, like `counterBlob` today.
+- State access: the lost-writes test reads and writes fake state directly (`blobs.get/has/set/clear`, `blobState.*`, `lastPutError`, `beforeRead`, `weakReadsAfterFault`) and resets it in `beforeEach`. The shared fake needs a reset, and this is the "accessors" Scope mentions; no change needed beyond gap 1's seeding note.
+- `.jscpd.tests.json` `pattern` lists support files by name (`*test-helpers.ts`, `route-test-support.ts`). A new module named otherwise is checked only by the main config (minLines 8). Naming it `*test-helpers.ts` or `*-test-support.ts` needs no pattern edit only for the former; a config edit is test-support and allowed by the "no production file" criterion.
+- Criterion 4 ("remain exercised through the shared fake") is satisfied by criterion 1 plus unchanged tests; fine as is.
