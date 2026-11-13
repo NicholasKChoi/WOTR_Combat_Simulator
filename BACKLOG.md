@@ -30,3 +30,5 @@ pull from here; triage moves an item into a milestone or deletes it.
 - docs/aoe4-build-order.md pinned-series color: the doc omits that the palette index wraps by modulo (`pinnedColor`). Non-blocking note from SGS-152 review 2.
 - `scripts/smoke-preview.mjs` route handler swallows `route.fetch`/`route.abort` errors in an empty catch, hiding a failed bypass reroute (SGS-153 implementer).
 - `scripts/smoke-preview.mjs`: the `browser.close()` rejection path has no test (SGS-153 implementer).
+- `acceptance/aoe4-results-split.spec.ts:41` (chart ids) fails at origin/main 5371c25 and at f55e0aa, reproducibly; a red acceptance spec on main (SGS-154 implementer).
+- `acceptance/aoe4-build-order-step-band.spec.ts:143` failed at f55e0aa and passed once at 5371c25; possibly flaky, check whether SGS-150's settled-state waits (#160) covered it (SGS-154 implementer).
