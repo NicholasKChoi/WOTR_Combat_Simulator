@@ -146,18 +146,23 @@ describe('legendItems', () => {
 })
 
 describe('isLineHidden', () => {
-    it('hides a series line and its pinned line together', () => {
+    it('hides a series by its plain key, which covers both its current and pinned lines', () => {
         const hidden = new Set(['a'])
-        expect([isLineHidden(hidden, 'a'), isLineHidden(hidden, pinnedKey('a'))]).toEqual([true, true])
-        expect([isLineHidden(hidden, 'b'), isLineHidden(hidden, pinnedKey('b'))]).toEqual([false, false])
+        expect(isLineHidden(hidden, 'a')).toBe(true)
+        expect(isLineHidden(hidden, 'b')).toBe(false)
     })
 
     it('hides the pinned line of a pinned-only series by its series key', () => {
-        expect(isLineHidden(new Set(['z']), pinnedKey('z'))).toBe(true)
+        expect(isLineHidden(new Set(['z']), 'z')).toBe(true)
+    })
+
+    it('hides a series whose own key starts with the pinned prefix only when that exact key is hidden', () => {
+        expect(isLineHidden(new Set(['pinned:x']), 'pinned:x')).toBe(true)
+        expect(isLineHidden(new Set(['x']), 'pinned:x')).toBe(false)
     })
 
     it('does not treat a pinned key in the hidden set as hiding anything', () => {
-        expect(isLineHidden(new Set([pinnedKey('a')]), pinnedKey('a'))).toBe(false)
+        expect(isLineHidden(new Set([pinnedKey('a')]), 'a')).toBe(false)
     })
 })
 

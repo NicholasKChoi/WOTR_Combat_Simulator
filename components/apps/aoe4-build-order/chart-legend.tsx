@@ -1,7 +1,7 @@
 import cn from 'classnames'
 
 import { CHART_MARKER_KINDS, type ChartMarker, type ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
-import { type ChartSeries, MARKER_COLORS, MARKER_KIND_LABELS, type PinnedSeries, isLineHidden, legendItems, pinnedKey } from './chart-rows'
+import { type ChartSeries, MARKER_COLORS, MARKER_KIND_LABELS, type PinnedSeries, isLineHidden, legendItems } from './chart-rows'
 import styles from './results.module.css'
 
 interface SeriesLegendProps {
@@ -40,7 +40,7 @@ export function SeriesLegend({ series, pinned, hidden, onToggle }: SeriesLegendP
 }
 
 export function pinnedLegendShown(pinned: PinnedSeries | undefined, hidden: ReadonlySet<string>, pinnedAgeUpCount: number): boolean {
-    return pinnedAgeUpCount > 0 || (pinned?.series.some((s) => !isLineHidden(hidden, pinnedKey(s.key))) ?? false)
+    return pinnedAgeUpCount > 0 || (pinned?.series.some((s) => !isLineHidden(hidden, s.key)) ?? false)
 }
 
 export function PinnedLegend() {
