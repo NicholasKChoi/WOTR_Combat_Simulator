@@ -22,7 +22,7 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q65
+next: Q66
 
 ## Q61: File engine issue: planner outlines name the owner of each shared test/spec/helper?
 kind: confirmation
@@ -63,16 +63,15 @@ Retro 2026-11-12 proposal 8 (repo, low confidence).
 
 ### Answer
 
-## Q64: Approve backlog triage: 14 lane tickets (7 bugs, 7 chores), 2 to milestone, 4 dropped?
-kind: confirmation
-blocks: backlog
-options: A) approve all: write the 14 lane tickets | B) approve with changes: name them | C) bugs only for now
-recommendation: A: every lane item is small and grounded; L1 is a real production defect
-research: reports/backlog-triage-1.md
+## Q65: Text-editor compact mode: keep 48rem (864px) or move to 768px?
+kind: decision
+blocks: SGS-144 (Fix rem sizing that assumed a 16px root)
+options: A) Move to 768px: matches design C14's intent; tablets keep the wide editor | B) Keep 48rem (864px): no change to shipped behavior; 768px tablets stay compact
+recommendation: A: the design meant 768px; the 864px value is an accident of the 18px root
+research: reports/SGS-144-ticket-1.md
 
-The new work-type rules move bugs and chores out of milestones and into the lane.
-- 23 backlog bullets M9 already delivered were removed.
-- Proposal: 7 lane bugs (L1 high: named-build update answers 503 instead of 409) and 7 lane chores, built from 21 bullets; 2 go to a milestone; 2 become design-doc fixes at M9 close; 4 are dropped.
-Full table: reports/backlog-triage-1.md
+SGS-144 (rem sizing that assumed a 16px root) is a lane bug. The app root is 18px, so the editor's 48rem compact threshold is 864px, not the 768px design M9 C14 intended.
+- At 48rem a 768px tablet gets the compact editor; at 768px (~42.7rem) it keeps the wide editor.
+- 1280x800 and 390px layouts are fine either way.
 
 ### Answer
