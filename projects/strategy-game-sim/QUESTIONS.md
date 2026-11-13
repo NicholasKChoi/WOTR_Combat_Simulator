@@ -333,6 +333,7 @@ blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: A: plain cause, visible wrong odds; priority high
 research: ../../discovery/milestone-20261113-2.md
+thread: 1570879771313701075
 
 Only you can say whether the 6-only rule was on purpose; if not, every WOTR odds number the app shows is wrong.
 - The code hits only on a 6 (battle.ts: threshold 5, test is die > 5); the doc says the same.
@@ -347,10 +348,11 @@ blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: new behavior needing a small design; bundle with max rounds and retreat
 research: ../../discovery/milestone-20261113-2.md
+thread: 1570879774484733952
 
 Adds a new battle type, so only you decide whether WOTR gets more scope now.
 - Sieges (city, fortification, stronghold) are not out of scope in PROJECT.md.
 - Rules: attacker hits only on 6 in round 1 (1E FAQ, check 2E); besieged armies cannot retreat.
-- Shares the retreat seam with Q85 (max rounds and retreat); best after the dice fix.
+- Shares the retreat seam with Q86 (max rounds and retreat); best after the dice fix.
 
 ### Answer
