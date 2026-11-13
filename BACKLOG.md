@@ -32,3 +32,4 @@ pull from here; triage moves an item into a milestone or deletes it.
 - `scripts/smoke-preview.mjs`: the `browser.close()` rejection path has no test (SGS-153 implementer).
 - `acceptance/aoe4-results-split.spec.ts:41` (chart ids) fails at origin/main 5371c25 and at f55e0aa, reproducibly; a red acceptance spec on main (SGS-154 implementer).
 - `acceptance/aoe4-build-order-step-band.spec.ts:143` failed at f55e0aa and passed once at 5371c25; possibly flaky, check whether SGS-150's settled-state waits (#160) covered it (SGS-154 implementer).
+- SGS-154 acceptance-test: the idle-arrival test in the depletion-engine acceptance spec only asserts `at > 0`; a mutation keeping the latest arrival instead of the first still passes, so the first-arrival `at` rule is unpinned (reports/SGS-154-acceptance-test-1.md).
