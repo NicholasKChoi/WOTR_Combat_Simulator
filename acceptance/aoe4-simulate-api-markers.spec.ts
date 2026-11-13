@@ -13,7 +13,7 @@ type Body = {
   durationSeconds: number
   ages: { age: number; reachedAt: number }[]
   markers: Marker[]
-  steps: { status: string; completedAt: number | null }[]
+  steps: { status: string; startedAt: number | null; completedAt: number | null }[]
 }
 
 async function simulate(request: Parameters<typeof postSimulate>[0], body: unknown): Promise<Body> {
@@ -120,6 +120,25 @@ test.describe('markers at a truncated horizon', () => {
     const body = await simulate(request, withHorizon(300))
     expect(body.markers.map((m) => m.label)).toEqual(['Feudal'])
     expect(body.markers[0].at).toBe(body.ages[1].reachedAt)
+  })
+
+  test('gives no marker to research still in progress, then marks it once the horizon passes the completion', async ({ request }) => {
+    const full = await simulate(request, { buildOrder: english1tc })
+    const index = english1tc.steps.findIndex((s) => s.action === 'research')
+    const { tech } = english1tc.steps[index] as { tech: string }
+    const { startedAt, completedAt } = full.steps[index]
+    expect(completedAt, `${tech} completes within the default horizon`).not.toBeNull()
+
+    const beforeHorizon = Math.ceil(completedAt!) - 1
+    expect(beforeHorizon, 'the before-horizon is after the step starts').toBeGreaterThanOrEqual(startedAt!)
+    const before = await simulate(request, withHorizon(beforeHorizon))
+    expect(before.steps[index].status).toBe('in-progress')
+    expect(before.markers.map((m) => m.label)).not.toContain(tech)
+
+    const after = await simulate(request, withHorizon(Math.ceil(completedAt!)))
+    expect(after.steps[index].status).toBe('completed')
+    expect(after.markers.map((m) => m.label)).toContain(tech)
+    for (const run of [before, after]) for (const m of run.markers) expect(m.at).toBeLessThanOrEqual(run.durationSeconds)
   })
 })
 
