@@ -9,7 +9,21 @@ none.
 | `rules/base.json` | civ-agnostic hand-entered values: gather nodes, builder scaling, max population, task-switch walk |
 | `rules/english.json` | English hand-entered values: starting state, supply, overlay effects, upgrade targets |
 | `refresh-snapshot.mjs` | rewrites `aoe4world/english.json`; not imported by the app |
+| `snapshot-source.mjs` | upstream repo, the four kinds, the civ id, the English filter and the fetch helper that `refresh-snapshot.mjs` and `check-freshness.mjs` share; not imported by the app |
+| `check-freshness.mjs` | read-only comparison of `aoe4world/english.json` with the latest `aoe4world/data` commit; not imported by the app |
 | `builds/<slug>.json` | user-authored prebuilt `BuildOrder`s (paste-representable, each with a `source`); not game data and not patch-labeled |
+
+## Checking for staleness
+
+`node data/aoe4-build-order/check-freshness.mjs` resolves the latest commit of the snapshot's `source.repo`,
+fetches the four kinds at that commit, keeps the English entries, and compares them with `aoe4world/english.json`
+kind by kind. Entry content and order count; `source` is ignored. Commits that change no English entry do not make
+the snapshot stale. It writes nothing. The workflow `.github/workflows/aoe4-data-freshness.yml` runs it weekly and
+on manual dispatch. Exit codes:
+
+- 0: fresh.
+- 1: stale; the output names the pinned and latest commits and the kinds that differ. Refresh the snapshot below.
+- 2: upstream could not be reached or answered with an error; the snapshot's state is unknown. Rerun later.
 
 ## Refreshing the snapshot
 
