@@ -3,23 +3,12 @@
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-
-const REPO = 'aoe4world/data'
-const KINDS = ['units', 'buildings', 'technologies', 'upgrades']
-const CIV = 'en'
+import { KINDS, REPO, filterEnglish, getJson, rawKindUrl } from './snapshot-source.mjs'
 
 const [commit, patch, patchSource] = process.argv.slice(2)
 if (!/^[0-9a-f]{40}$/.test(commit ?? '') || !patch || !patchSource?.startsWith('http')) {
     console.error('usage: refresh-snapshot.mjs <40-char commit sha> <patch> <patch-source-url>')
     process.exit(1)
-}
-
-async function getJson(url) {
-    const response = await fetch(url, { headers: { 'User-Agent': 'refresh-snapshot' } })
-    if (!response.ok) {
-        throw new Error(`${url}: HTTP ${response.status}`)
-    }
-    return response.json()
 }
 
 const { commit: meta } = await getJson(`https://api.github.com/repos/${REPO}/commits/${commit}`)
@@ -34,8 +23,8 @@ const snapshot = {
     },
 }
 for (const kind of KINDS) {
-    const { data } = await getJson(`https://raw.githubusercontent.com/${REPO}/${commit}/${kind}/all.json`)
-    snapshot[kind] = data.filter((entry) => entry.civs.includes(CIV))
+    const { data } = await getJson(rawKindUrl(commit, kind))
+    snapshot[kind] = filterEnglish(data)
 }
 
 const out = join(dirname(fileURLToPath(import.meta.url)), 'aoe4world', 'english.json')
