@@ -25,6 +25,15 @@ pull from here; triage moves an item into a milestone or deletes it.
   identifiable. (owner UI/UX feedback, 2026-11-12)
 - **AoE4 chart markers: one shared control.** Define the markers in one place for all charts; clicking a marker
   shows or hides its vertical line on every chart. (owner UI/UX feedback, 2026-11-12)
+- **AoE4 build order: one step, many of the same action.** Let a step repeat its action a set number of times
+  (e.g. "build Farm from wood x9") instead of entering nine identical steps; the simulator runs each repetition
+  as that many copies of the step. (owner feature request, 2026-11-13)
+- **AoE4 My builds: rename a saved build.** Let the owner rename a named build in the library without saving a
+  copy; the new name shows everywhere the build is listed and links to it keep working. (owner feature request, 2026-11-13)
+- **AoE4 build order: research occupies its building.** Each research runs at a specific building (attack
+  upgrades at the Blacksmith; spearman veterancy at the Barracks, archer upgrades at the Archery Range). The
+  simulator should require that building to exist and should block its production queue for the research's
+  duration, so units queued there pause until the research finishes. (owner feature request, 2026-11-13)
 - `reread` (the My builds storage listener in the AoE4 build-order page) does not check `myBuildsAvailable(storage)` before rereading; unchanged from base. Found by SGS-147 implementer (reports/SGS-147-implementer-1.md).
 - LESSONS candidate (acceptance/**): Playwright `hover()`/`focus()` smooth-scroll the page and the resulting `pointerenter` events change state after an assertion passed; scroll targets into view instantly before hover/focus sequences. From SGS-150 (reports/SGS-150-implementer-1.md).
 - docs/aoe4-build-order.md pinned-series color: the doc omits that the palette index wraps by modulo (`pinnedColor`). Non-blocking note from SGS-152 review 2.
@@ -33,3 +42,8 @@ pull from here; triage moves an item into a milestone or deletes it.
 - `acceptance/aoe4-results-split.spec.ts:41` (chart ids) fails at origin/main 5371c25 and at f55e0aa, reproducibly; a red acceptance spec on main (SGS-154 implementer).
 - `acceptance/aoe4-build-order-step-band.spec.ts:143` failed at f55e0aa and passed once at 5371c25; possibly flaky, check whether SGS-150's settled-state waits (#160) covered it (SGS-154 implementer).
 - SGS-154 acceptance-test: the idle-arrival test in the depletion-engine acceptance spec only asserts `at > 0`; a mutation keeping the latest arrival instead of the first still passes, so the first-arrival `at` rule is unpinned (reports/SGS-154-acceptance-test-1.md).
+- **AoE4 auto-houses: plan ahead for wood.** `planAutoHouse` (`lib/aoe4-build-order/houses.ts`) looks ahead only
+  walk + build time and nothing holds wood back for an upcoming house, so with thin wood income (4-8 on wood) a house
+  starts only when wood reaches 50 and the TC is already housed (ENG 1TC Council Hall MAA/crossbow build: housed
+  100/100 at 12:35, 110/110 at 13:44, 120/120 at 14:45). Include the time to gather the house's wood in the look-ahead
+  and reserve wood for a projected house so steps do not spend it first. (owner request, 2026-11-13)

@@ -6,6 +6,7 @@ host: github.com                  # gh repo view
 repo: NicholasKChoi/WOTR_Combat_Simulator   # gh repo view
 baseBranch: main                  # gh repo view defaultBranchRef
 stateBranch: code-factory-state
+stateVersion: 2                   # last migration applied; set by init and /code-factory:upgrade
 pushState: true
 worktreeRoot: worktrees
 
@@ -71,6 +72,9 @@ autoMerge:
   method: squash
   admin: true                     # solo repo; main requires a review the owner can't give themselves
 prAuthor: "@me"
+triage:
+  auto: false                     # true: tag untagged BACKLOG.md items with the triage recommendation
+                                  #   instead of asking (a drop is still asked); manage.md Backlog intake
 ---
 
 # Repo notes
