@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BUILDS_LOCAL_DIR_DEFAULT, buildStoreFromEnv, createFileBuildStore, createMemoryBuildStore, nextCounter, type BuildStore, type CounterResult } from './build-store'
+import { BUILDS_LOCAL_DIR_DEFAULT, buildStoreFromEnv, createFileBuildStore, createMemoryBuildStore, nextCounter, type BuildStore, type CounterResult, type MemoryBacking } from './build-store'
 
 const blobFactory = vi.hoisted(() => ({ create: vi.fn(), imported: vi.fn() }))
 
@@ -19,8 +19,11 @@ const W = 1_000 * HOUR
 const processEnv = (values: Record<string, string | undefined>) => values as NodeJS.ProcessEnv
 
 let dir: string
+const emptyBacking = (): MemoryBacking => ({ builds: new Map(), counters: new Map() })
+let backing = emptyBacking()
 
 beforeEach(() => {
+    backing = emptyBacking()
     dir = mkdtempSync(path.join(tmpdir(), 'build-store-'))
 })
 
@@ -29,7 +32,7 @@ afterEach(() => {
 })
 
 const factories: [string, (env: string) => BuildStore][] = [
-    ['memory', (env) => createMemoryBuildStore(env)],
+    ['memory', (env) => createMemoryBuildStore(env, backing)],
     ['file', (env) => createFileBuildStore(dir, env)],
 ]
 
@@ -200,6 +203,17 @@ describe.each(factories)('%s named builds', (_label, makeStore) => {
         expect(await production.getNamed(NAMED_ID)).toBeNull()
         expect(await production.createNamed(NAMED_ID, '{"env":"production"}')).toBe('created')
         expect((await preview.getNamed(NAMED_ID))?.value).toStrictEqual({ env: 'preview' })
+    })
+})
+
+describe('memory build store backing', () => {
+    it('gives each store without a shared backing its own storage', async () => {
+        const first = createMemoryBuildStore()
+        const second = createMemoryBuildStore()
+        await first.putBuild(ID, '{}')
+        await first.bumpCounter('c', W, LIMIT)
+        expect(await second.getBuild(ID)).toBeNull()
+        expect(await counts(second, 'c', [W])).toStrictEqual([1])
     })
 })
 
