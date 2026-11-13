@@ -22,7 +22,7 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q93
+next: Q94
 
 ## Q68: AoE4 results charts: show the chart rows as a real table?
 kind: decision
@@ -264,17 +264,15 @@ The drive sandbox cannot write .git/worktrees, so implementers for SGS-157 (buil
 
 ### Answer
 
-## Q92: SGS-156: release the house hold when there are too few villagers to ever reach the builder count?
-kind: decision
+## Q93: Create a task worktree outside the sandbox so SGS-156 can be built
+kind: handoff
 blocks: SGS-156 (AoE4 auto-houses plan ahead for wood)
-options: A) Release the hold when total villagers < houseBuilders: no permanent stall; keeps your hold in every other case | B) Keep holding always: matches Q88 literally; builds with too few villagers can freeze
-recommendation: A: B can deadlock a whole build
-research: reports/SGS-156-spec-gate-2.md
+options: A) Done | B) Not now
+recommendation: A: SGS-156 waits on it
 
-SGS-156 (auto-houses plan ahead for wood) now holds a due house's wood while builders are short (your Q88 answer). Spec-gate found a case where that never ends.
-- houseBuilders is 1 to 200 and only gatherers count as builders.
-- If villagers can never reach houseBuilders (e.g. 5 builders, 4-villager start), the house never starts.
-- Then every step and non-villager order waits forever; today that only caps supply.
-- Fix: release the hold when fewer villagers exist (gathering, walking or building) than houseBuilders; keep holding otherwise.
+SGS-156 (auto-houses plan ahead for wood) passed spec-gate and is ready, but the drive sandbox cannot write .git/worktrees, so its implementer cannot start. Same blocker as Q91.
+- Run in a normal terminal in the repo (WOTR_Combat_Simulator):
+- git worktree add -b sgs-156-aoe4-auto-houses-plan-ahead-for-wood .claude/code-factory/worktrees/sgs-156-aoe4-auto-houses-plan-ahead-for-wood main
+- Then drive again; the row is already ready (set branch=sgs-156-aoe4-auto-houses-plan-ahead-for-wood).
 
 ### Answer
