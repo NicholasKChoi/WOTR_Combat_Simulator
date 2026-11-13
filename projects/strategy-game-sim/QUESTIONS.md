@@ -22,7 +22,7 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q64
+next: Q65
 
 ## Q61: File engine issue: planner outlines name the owner of each shared test/spec/helper?
 kind: confirmation
@@ -60,5 +60,19 @@ research: reports/retro-20261112.md
 Retro 2026-11-12 proposal 8 (repo, low confidence).
 - Opus ticket re-specs were 9% of window spend; 19 re-specs at ~$0.67 each.
 - Change: add models: { ticket: sonnet } to REPO.md for one milestone; revert if the second spec-gate round bounces more.
+
+### Answer
+
+## Q64: Approve backlog triage: 14 lane tickets (7 bugs, 7 chores), 2 to milestone, 4 dropped?
+kind: confirmation
+blocks: backlog
+options: A) approve all: write the 14 lane tickets | B) approve with changes: name them | C) bugs only for now
+recommendation: A: every lane item is small and grounded; L1 is a real production defect
+research: reports/backlog-triage-1.md
+
+The new work-type rules move bugs and chores out of milestones and into the lane.
+- 23 backlog bullets M9 already delivered were removed.
+- Proposal: 7 lane bugs (L1 high: named-build update answers 503 instead of 409) and 7 lane chores, built from 21 bullets; 2 go to a milestone; 2 become design-doc fixes at M9 close; 4 are dropped.
+Full table: reports/backlog-triage-1.md
 
 ### Answer
