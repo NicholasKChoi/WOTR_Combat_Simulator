@@ -290,6 +290,30 @@ test.describe('AoE4 chart drag reorder', () => {
     expect(JSON.parse((await stored(page))!).order).toEqual([RATES, GATHERED, UNITS, FLOATING])
   })
 
+  test('arrow keys pressed while the pointer is held, before and after the 4px threshold, change nothing and the drop lands by pointer height', async ({ page }) => {
+    await openResults(page)
+    const boxes = await sectionBoxes(page)
+    const handle = await control(page, UNITS, 'chart-drag-handle').boundingBox()
+    const x = handle!.x + handle!.width / 2
+    const y = handle!.y + handle!.height / 2
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.keyboard.press('ArrowDown')
+    await expectLayout(page, DEFAULT_ORDER)
+    await expect(status(page)).toHaveText('')
+    await page.mouse.move(x, y + 10, { steps: 3 })
+    await expect(chart(page, UNITS)).toHaveAttribute('data-dragging', 'true')
+    await page.keyboard.press('ArrowDown')
+    await expectLayout(page, DEFAULT_ORDER)
+    await expect(status(page)).toHaveText('')
+    await page.mouse.move(x, boxes[GATHERED].bottom + 2, { steps: 10 })
+    await page.mouse.up()
+    await expectLayout(page, [RATES, GATHERED, UNITS, FLOATING])
+    await expect(status(page)).toHaveText(/Units produced.*\b3\b/)
+    await page.keyboard.press('ArrowUp')
+    await expectLayout(page, [RATES, UNITS, GATHERED, FLOATING])
+  })
+
   test('a press and release with under 4px of movement changes nothing', async ({ page }) => {
     await openResults(page)
     const handle = await control(page, UNITS, 'chart-drag-handle').boundingBox()

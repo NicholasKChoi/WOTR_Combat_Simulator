@@ -58,6 +58,12 @@ export function moveChart(layout: ChartLayout, id: ChartId, direction: 'up' | 'd
     return { ...layout, order, collapsed: [...layout.collapsed] }
 }
 
+export function moveChartByKey(layout: ChartLayout, id: ChartId, direction: 'up' | 'down'): { layout: ChartLayout; toIndex: number } | null {
+    const toIndex = layout.order.indexOf(id) + (direction === 'up' ? -1 : 1)
+    if (!layout.order.includes(id) || toIndex < 0 || toIndex >= layout.order.length) return null
+    return { layout: moveChart(layout, id, direction), toIndex }
+}
+
 export function moveChartTo(layout: ChartLayout, id: ChartId, toIndex: number): ChartLayout {
     const copy = { ...layout, order: [...layout.order], collapsed: [...layout.collapsed] }
     if (!copy.order.includes(id)) return copy

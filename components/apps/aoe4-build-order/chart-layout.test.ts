@@ -6,6 +6,7 @@ import {
     KEY_RESULTS_PANEL_ID,
     RESULT_CHART_IDS,
     moveChart,
+    moveChartByKey,
     moveChartTo,
     normalizeChartLayout,
     readChartLayout,
@@ -86,6 +87,28 @@ describe('moveChart', () => {
         const moved = moveChart(input, units, 'up')
         expect(moved.collapsed).toEqual(custom.collapsed)
         expect(input).toEqual(custom)
+    })
+})
+
+describe('moveChartByKey', () => {
+    it('applies a second move to the layout the first one produced and reports its position', () => {
+        const first = moveChartByKey(DEFAULT_CHART_LAYOUT, units, 'down')
+        const second = moveChartByKey(first!.layout, units, 'down')
+        expect(first!.toIndex).toBe(1)
+        expect(second).toEqual({ layout: expect.objectContaining({ order: [rates, gathered, units, floating] }), toIndex: 2 })
+    })
+
+    it('returns null when the second of two moves would pass the end', () => {
+        const first = moveChartByKey(DEFAULT_CHART_LAYOUT, rates, 'up')
+        expect(first!.toIndex).toBe(0)
+        expect(moveChartByKey(first!.layout, rates, 'up')).toBeNull()
+    })
+
+    it.each([
+        ['up', units],
+        ['down', floating],
+    ] as const)('returns null for %s at the end', (direction, id) => {
+        expect(moveChartByKey(DEFAULT_CHART_LAYOUT, id, direction)).toBeNull()
     })
 })
 
