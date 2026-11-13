@@ -1,5 +1,5 @@
 import { execFile } from 'child_process'
-import { mkdtempSync, readFileSync, rmSync } from 'fs'
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { createServer, type IncomingHttpHeaders, type Server } from 'http'
 import type { AddressInfo } from 'net'
 import { tmpdir } from 'os'
@@ -33,6 +33,8 @@ interface StubOptions {
   deleteStatus?: number
   keepAfterDelete?: boolean
   pageOption?: string
+  sameOriginAsset?: boolean
+  redirectOn?: 'save' | 'read' | 'delete' | 'page' | 'asset'
 }
 
 interface AssetStub {
@@ -50,6 +52,8 @@ interface Outcome {
   code: number
   stdout: string
   stderr: string
+  signal: string | null
+  elapsedMs: number
 }
 
 const stubs: Server[] = []
@@ -62,11 +66,11 @@ async function listen(handler: Parameters<typeof createServer>[1]): Promise<{ or
   return { origin: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, server }
 }
 
-function pageHtml(option: string, assetOrigin: string) {
+function pageHtml(option: string, assetOrigin: string, sameOriginAsset: boolean) {
   return `<!doctype html><select data-testid="build-order-select"><option>ENG Knight</option><option selected>${option}</option></select>
 <div data-testid="auto-run-status" data-status="current"></div>
 <div data-testid="chart-units-produced" style="width:200px;height:100px"></div>
-<script src="${assetOrigin}/asset.js"></script>`
+${sameOriginAsset ? '<script src="/local.js"></script>\n' : ''}<script src="${assetOrigin}/asset.js"></script>`
 }
 
 async function startAssetStub(): Promise<AssetStub> {
@@ -78,7 +82,7 @@ async function startAssetStub(): Promise<AssetStub> {
   return { origin, requests }
 }
 
-async function startStub(options: StubOptions, assetOrigin: string): Promise<Stub> {
+async function startStub(options: StubOptions, assetOrigin: string, redirectOrigin = ''): Promise<Stub> {
   const requests: Recorded[] = []
   const posted: unknown[] = []
   let saves = 0
@@ -89,6 +93,17 @@ async function startStub(options: StubOptions, assetOrigin: string): Promise<Stu
     requests.push({ method, url, headers: req.headers })
     const send = ({ status, json }: Reply) =>
       res.writeHead(status, { 'Content-Type': 'application/json' }).end(json === undefined ? undefined : JSON.stringify(json))
+    const redirectKinds: Record<string, StubOptions['redirectOn']> = {
+      [`POST ${BUILDS}`]: 'save',
+      [`GET ${BUILDS}/${ID}`]: 'read',
+      [`DELETE ${BUILDS}/${ID}`]: 'delete',
+      [`GET ${PAGE}?b=${ID}`]: 'page',
+      'GET /local.js': 'asset',
+    }
+    const kind = redirectKinds[`${method} ${url}`]
+    if (kind !== undefined && kind === options.redirectOn) {
+      return void res.writeHead(302, { Location: `${redirectOrigin}/landing` }).end()
+    }
     if (method === 'POST' && url === BUILDS) {
       const chunks: Buffer[] = []
       req.on('data', (chunk: Buffer) => chunks.push(chunk))
@@ -106,7 +121,10 @@ async function startStub(options: StubOptions, assetOrigin: string): Promise<Stu
       deleted = true
       send({ status: options.deleteStatus ?? 204 })
     } else if (method === 'GET' && url === `${PAGE}?b=${ID}`) {
-      res.writeHead(200, { 'Content-Type': 'text/html' }).end(pageHtml(options.pageOption ?? `ENG 1TC (${ID})`, assetOrigin))
+      const html = pageHtml(options.pageOption ?? `ENG 1TC (${ID})`, assetOrigin, options.sameOriginAsset ?? false)
+      res.writeHead(200, { 'Content-Type': 'text/html' }).end(html)
+    } else if (method === 'GET' && url === '/local.js') {
+      res.writeHead(200, { 'Content-Type': 'text/javascript' }).end('')
     } else {
       res.writeHead(404).end()
     }
@@ -114,13 +132,23 @@ async function startStub(options: StubOptions, assetOrigin: string): Promise<Stu
   return { origin, requests, posted }
 }
 
-function run(args: string[], env: Record<string, string | undefined>, cwd?: string): Promise<Outcome> {
-  const childEnv = { ...process.env, ...env }
-  for (const key of Object.keys(childEnv)) if (childEnv[key] === undefined) delete childEnv[key]
+const SIGNALED = -1
+
+function run(
+  args: string[],
+  env: Record<string, string | undefined>,
+  cwd?: string,
+  script = SCRIPT,
+): Promise<Outcome> {
+  const childEnv = { ...process.env, VERCEL_AUTOMATION_BYPASS_SECRET: SENTINEL, ...env }
+  for (const key of Object.keys(env)) if (env[key] === undefined) delete childEnv[key as keyof typeof childEnv]
+  const started = Date.now()
   return new Promise((resolve) => {
-    execFile(process.execPath, [SCRIPT, ...args], { env: childEnv, cwd }, (error, stdout, stderr) => {
+    execFile(process.execPath, [script, ...args], { env: childEnv, cwd }, (error, stdout, stderr) => {
       outputs.push(stdout, stderr)
-      resolve({ code: error ? Number((error as { code?: number }).code) : 0, stdout, stderr })
+      const signal = (error as { signal?: string | null } | null)?.signal ?? null
+      const code = signal ? SIGNALED : error ? Number((error as { code?: number }).code) : 0
+      resolve({ code, stdout, stderr, signal, elapsedMs: Date.now() - started })
     })
   })
 }
@@ -138,9 +166,9 @@ const OPEN = `GET ${PAGE}?b=${ID}`
 interface Row {
   name: string
   stub?: StubOptions
-  secret?: string | null
+  secret?: null
   timeout?: number
-  check: (out: Outcome, stub: Stub, assets: AssetStub) => void
+  check: (out: Outcome, stub: Stub, assets: AssetStub, redirected: AssetStub) => void
 }
 
 const ROWS: Row[] = [
@@ -212,6 +240,49 @@ const ROWS: Row[] = [
     },
   },
   {
+    name: 'redirect on save',
+    stub: { redirectOn: 'save' },
+    check: expectSaveRedirectFails,
+  },
+  {
+    name: 'redirect on save, secret unset',
+    secret: null,
+    stub: { redirectOn: 'save' },
+    check: expectSaveRedirectFails,
+  },
+  {
+    name: 'redirect on read back',
+    stub: { redirectOn: 'read' },
+    check: (out, stub, _assets, redirected) => {
+      expect(out.code).toBe(1)
+      expect(lines(out)).toEqual([`PASS save: 201 ${ID}`, 'FAIL read back: status 302: redirect not followed'])
+      expect(summary(stub)).toEqual([POST, GET, DELETE])
+      expect(redirected.requests).toEqual([])
+    },
+  },
+  {
+    name: 'redirect on delete',
+    stub: { redirectOn: 'delete' },
+    check: (out, stub, _assets, redirected) => {
+      expect(out.code).toBe(1)
+      expect(lines(out)).toEqual([...PASS_LINES.slice(0, 3), 'FAIL delete: status 302: redirect not followed'])
+      expect(summary(stub)).toEqual([POST, GET, OPEN, DELETE])
+      expect(redirected.requests).toEqual([])
+    },
+  },
+  {
+    name: 'redirect of the page document',
+    timeout: 90_000,
+    stub: { redirectOn: 'page' },
+    check: expectOpenRedirectFails,
+  },
+  {
+    name: 'redirect of a same-origin subresource',
+    timeout: 90_000,
+    stub: { redirectOn: 'asset', sameOriginAsset: true },
+    check: expectOpenRedirectFails,
+  },
+  {
     name: 'delete refused in production',
     stub: { deleteStatus: 405 },
     check: (out) => {
@@ -230,6 +301,22 @@ const ROWS: Row[] = [
   },
 ]
 
+function expectSaveRedirectFails(out: Outcome, stub: Stub, _assets: AssetStub, redirected: AssetStub) {
+  expect(out.code).toBe(1)
+  expect(lines(out)).toEqual(['FAIL save: status 302: redirect not followed'])
+  expect(summary(stub)).toEqual([POST])
+  expect(redirected.requests).toEqual([])
+}
+
+function expectOpenRedirectFails(out: Outcome, stub: Stub, _assets: AssetStub, redirected: AssetStub) {
+  expect(out.code).toBe(1)
+  expect(lines(out)).toEqual([`PASS save: 201 ${ID}`, 'PASS read back', 'FAIL open: status 302: redirect not followed'])
+  expect(out.elapsedMs).toBeLessThan(20_000)
+  expect(redirected.requests).toEqual([])
+  expect(summary(stub).at(-1)).toBe(DELETE)
+  expect(stub.requests.at(-1)?.headers[BYPASS_HEADER]).toBe(SENTINEL)
+}
+
 function expectProtected(out: Outcome, stub: Stub) {
   expect(out.code).toBe(2)
   expect(out.stderr).toContain('set VERCEL_AUTOMATION_BYPASS_SECRET')
@@ -246,10 +333,11 @@ for (const row of ROWS) {
   test(row.name, async () => {
     if (row.timeout) test.setTimeout(row.timeout)
     const assets = await startAssetStub()
-    const stub = await startStub(row.stub ?? {}, assets.origin)
-    const env = { VERCEL_AUTOMATION_BYPASS_SECRET: row.secret === null ? undefined : (row.secret ?? SENTINEL) }
+    const redirected = await startAssetStub()
+    const stub = await startStub(row.stub ?? {}, assets.origin, redirected.origin)
+    const env = row.secret === null ? { VERCEL_AUTOMATION_BYPASS_SECRET: undefined } : {}
     const out = await run([stub.origin], env)
-    row.check(out, stub, assets)
+    row.check(out, stub, assets, redirected)
   })
 }
 
@@ -293,5 +381,52 @@ test.describe('usage', () => {
       expect(out.stdout).toBe('')
       expect(stub.requests).toEqual([])
     })
+  }
+})
+
+test('a child ended by a signal matches no expected exit code', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'smoke-signal-'))
+  try {
+    const script = path.join(dir, 'self-kill.mjs')
+    writeFileSync(script, "process.kill(process.pid, 'SIGKILL')\n")
+    const out = await run([], {}, undefined, script)
+    expect(out.signal).toBe('SIGKILL')
+    expect([0, 1, 2]).not.toContain(out.code)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a missing fixture exits non-zero with the error on stderr only', async () => {
+  const dir = mkdtempSync(path.resolve('smoke-no-fixture-'))
+  try {
+    mkdirSync(path.join(dir, 'scripts'))
+    const script = path.join(dir, 'scripts', 'smoke-preview.mjs')
+    copyFileSync(SCRIPT, script)
+    const assets = await startAssetStub()
+    const stub = await startStub({}, assets.origin)
+    const out = await run([stub.origin], {}, undefined, script)
+    expect(out.code).toBe(1)
+    expect(out.stdout).toBe('')
+    expect(out.stderr).toContain('ENOENT')
+    expect(stub.requests).toEqual([])
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('a secret in the shell does not reach the stub unless a row sets it', async () => {
+  const previous = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+  process.env.VERCEL_AUTOMATION_BYPASS_SECRET = 'shell-secret-not-the-sentinel'
+  try {
+    const assets = await startAssetStub()
+    const stub = await startStub({}, assets.origin)
+    const out = await run([stub.origin], {})
+    expect(out.code).toBe(0)
+    expect(stub.requests.length).toBeGreaterThan(0)
+    for (const request of stub.requests) expect(request.headers[BYPASS_HEADER]).toBe(SENTINEL)
+  } finally {
+    if (previous === undefined) delete process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    else process.env.VERCEL_AUTOMATION_BYPASS_SECRET = previous
   }
 })

@@ -1216,7 +1216,9 @@ The run has four steps, in this order, and stops at the first failure:
 
 Each step prints one line, `PASS <step>` or `FAIL <step>: <reason>`. The exit code is 0 when all four pass, 1 when a
 step failed, and 2 for a usage error or a missing secret (the first save answered 401 or 403 while the variable was
-unset). A run that fails after the save still deletes the build it saved. A second run saves the same content, so
+unset). A redirect (a 3xx answer) from the deployment fails the step it occurs in, for the API requests and for
+the requests the page makes in `open` alike: the script does not follow it, so the secret never goes to another host.
+A run that fails after the save still deletes the build it saved. A second run saves the same content, so
 it reuses the same link. Each run costs one save of the rate limit.
 
 The script is for previews and local runs. Against production the delete is refused, the line is `FAIL production
