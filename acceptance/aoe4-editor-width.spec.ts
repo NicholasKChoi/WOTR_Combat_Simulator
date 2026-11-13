@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { SPLIT_VIEWPORT, TABS_VIEWPORT, openPage, showView } from './helpers'
 
 const PHONE = { width: 390, height: 844 }
-const COMPACT_BELOW_REM = 48
+const COMPACT_BELOW_PX = 768
 const TYPICAL_LINE_CHARS = 48
 
 interface EditorMetrics {
@@ -79,7 +79,7 @@ test.describe('AoE4 text editor width, compact mode', () => {
     await page.setViewportSize(PHONE)
     await openPage(page)
     const m = await readEditor(page)
-    expect(m.editorWidth).toBeLessThan(COMPACT_BELOW_REM * m.rem)
+    expect(m.editorWidth).toBeLessThan(COMPACT_BELOW_PX)
     expect(m.textareaClientWidth).toBeGreaterThanOrEqual(0.5 * m.editorWidth)
   })
 
@@ -87,7 +87,7 @@ test.describe('AoE4 text editor width, compact mode', () => {
     await page.setViewportSize(SPLIT_VIEWPORT)
     await openPage(page)
     const m = await readEditor(page)
-    expect(m.editorWidth).toBeLessThan(COMPACT_BELOW_REM * m.rem)
+    expect(m.editorWidth).toBeLessThan(COMPACT_BELOW_PX)
     expect(m.textareaContentWidth).toBeGreaterThanOrEqual(m.probeWidth)
   })
 
@@ -96,7 +96,7 @@ test.describe('AoE4 text editor width, compact mode', () => {
       await page.setViewportSize(viewport)
       await openPage(page)
       const m = await readEditor(page)
-      expect(m.editorWidth).toBeLessThan(COMPACT_BELOW_REM * m.rem)
+      expect(m.editorWidth).toBeLessThan(COMPACT_BELOW_PX)
       expect(m.rows).toBeGreaterThan(2)
       expect(m.finishedDisplays.every((display) => display === 'none')).toBe(true)
       expect(m.startedVisible).toBe(true)
@@ -132,15 +132,38 @@ test.describe('AoE4 text editor width, compact mode', () => {
   })
 })
 
-test.describe('AoE4 text editor at 48rem and wider', () => {
+test.describe('AoE4 text editor at 768 px and wider', () => {
   test('keeps the M8 layout', async ({ page }) => {
     await page.setViewportSize(TABS_VIEWPORT)
     await openPage(page)
     const m = await readEditor(page)
-    expect(m.editorWidth).toBeGreaterThanOrEqual(COMPACT_BELOW_REM * m.rem)
+    expect(m.editorWidth).toBeGreaterThanOrEqual(COMPACT_BELOW_PX)
     expect(m.rows).toBeGreaterThan(2)
     expect(m.finishedDisplays.every((display) => display !== 'none')).toBe(true)
     expectFonts(m, 1)
     expect(m.annotationsWidth).toBeCloseTo(17 * m.oneChWidth, 0)
   })
+})
+
+test.describe('AoE4 text editor compact boundary', () => {
+  const widths = [
+    { width: 767, compact: true },
+    { width: 768, compact: false },
+    { width: 850, compact: false },
+  ]
+  for (const { width, compact } of widths) {
+    test(`an editor ${width} px wide is ${compact ? 'compact' : 'not compact'}`, async ({ page }) => {
+      await page.setViewportSize(SPLIT_VIEWPORT)
+      await openPage(page)
+      await page.getByTestId('build-order-editor').evaluate((el, px) => {
+        el.style.flex = 'none'
+        el.style.width = `${px}px`
+      }, width)
+      await expect.poll(async () => (await readEditor(page)).editorWidth).toBe(width)
+      const m = await readEditor(page)
+      expect(m.rows).toBeGreaterThan(2)
+      expect(m.finishedDisplays.every((display) => (display === 'none') === compact)).toBe(true)
+      expectFonts(m, compact ? 0.875 : 1)
+    })
+  }
 })

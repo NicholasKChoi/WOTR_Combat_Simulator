@@ -110,7 +110,7 @@
     white-space: pre;
 }
 
-@container build-editor (width < 48rem) {
+@container build-editor (width < 768px) {
     .gutter,
     .annotations,
     .textarea {
