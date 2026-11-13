@@ -22,39 +22,7 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q91
-
-## Q66: Design doc: fix the wrong keyboard-Tab description after "Save as copy"?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: E: only the design document is wrong; no app behavior changes
-thread: 1570872009876054153
-answered: 2026-11-13T19:11Z discord
-
-Only you decide if a wording fix to a design note is worth a ticket; nothing else waits on it.
-- The design row says one Tab walk after Save as copy reaches the save button, then the link controls.
-- No page state allows that: the save button is disabled whenever the link shows.
-- Fix is to describe the two states separately. Found while re-specifying the Save-panel ticket.
-
-### Answer
-E) docs: edit a doc only
-
-## Q67: Design doc: make "clear the copy name" a required step in the Save-panel check?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: E: only the design row changes; the ticket already calls the step optional
-thread: 1570872014099587082
-answered: 2026-11-13T18:56Z discord
-
-Only you decide whether to spend a ticket on a doc wording fix; nothing else waits on it.
-- The check that the notice sits below the bar bottom at top scroll only works with the name cleared (error showing).
-- Content is 339px against a 306px version and a 287px bar, so the check fails without it.
-- The ticket calls the step optional; the design row should say required. Found in review.
-
-### Answer
-E) docs: edit a doc only
+next: Q93
 
 ## Q68: AoE4 results charts: show the chart rows as a real table?
 kind: decision
@@ -69,22 +37,6 @@ Taste call from your UI feedback of 2026-11-12; only you know how much polish yo
 - Related chart items follow (overlapping lines, shared markers); they could be one chart-polish milestone.
 
 ### Answer
-
-## Q69: AoE4 Buildings chart: make overlapping lines identifiable?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: A: plain cause (equal counts stack); medium priority since you cannot read which buildings exist
-thread: 1570872020529446922
-answered: 2026-11-13T19:11Z discord
-
-You saw this on the chart; you decide how much it matters and whether a bug fix or a redesign is wanted.
-- Many buildings have the same count (1 or 2), so their lines sit on top of each other.
-- You cannot tell which buildings are there.
-- Fix could be small (offset, labels) or bigger (different chart); pick D if you want it designed.
-
-### Answer
-A) standalone bug: one small fix PR
 
 ## Q70: AoE4 charts: one shared marker control that shows or hides a vertical line on every chart?
 kind: decision
@@ -281,21 +233,6 @@ Only you decide if sharing with the community is a goal now.
 
 ### Answer
 
-## Q85: AoE4: show the game patch on every result and saved build?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: D: small milestone, medium priority; saved builds silently go stale otherwise
-research: ../../discovery/milestone-20261113-1.md
-thread: 1570872088447815753
-
-Only you decide if shared links should carry their patch; you share links with others.
-- The game patches about monthly (17.0 on 2026-10-22); the data snapshot (17.0.12182) is refreshed by hand.
-- Shape: patch label in the results header and saved builds, plus a periodic check that the snapshot is current.
-- Scanner notes it could also be two standalone chores.
-
-### Answer
-
 ## Q86: WOTR combat: add max rounds and retreat?
 kind: decision
 blocks: backlog
@@ -311,48 +248,33 @@ Only you decide whether WOTR, the least developed app, gets work now.
 
 ### Answer
 
-## Q88: SGS-156: when a due auto-house has no builders available, keep holding its wood?
+## Q91: Create two task worktrees outside the sandbox so SGS-157 and SGS-158 can be built
+kind: handoff
+blocks: SGS-157 (AoE4 buildings chart overlapping lines), SGS-158 (WOTR dice hit on 5 or 6)
+options: A) Done | B) Not now
+recommendation: A: both bug fixes wait on it
+thread: 1570889533950525533
+
+The drive sandbox cannot write .git/worktrees, so implementers for SGS-157 (buildings chart overlap) and SGS-158 (WOTR dice hit on 5 or 6) could not start. Branches exist at main; no code written.
+- Run in a normal terminal in the repo (WOTR_Combat_Simulator):
+- 1. rm -f .git/config.lock (only if no git process is running)
+- 2. git worktree add .claude/code-factory/worktrees/sgs-157-buildings-chart-overlap sgs-157-buildings-chart-overlap
+- 3. git worktree add .claude/code-factory/worktrees/sgs-158-dice-hit-5-or-6 sgs-158-dice-hit-5-or-6
+- Then set both rows to ready and drive again. SGS-156 (spec) proceeds without it.
+
+### Answer
+
+## Q92: SGS-156: release the house hold when there are too few villagers to ever reach the builder count?
 kind: decision
 blocks: SGS-156 (AoE4 auto-houses plan ahead for wood)
-options: A) Release the hold until builders exist: no stall risk; house may start late | B) Keep holding: house starts the moment builders free up; can stall steps
-recommendation: A: no deadlock, and with no builders today's behavior is the right fallback
-research: reports/SGS-156-ticket-1.md
-thread: 1570873015481409539
-answered: 2026-11-13T19:13Z discord
+options: A) Release the hold when total villagers < houseBuilders: no permanent stall; keeps your hold in every other case | B) Keep holding always: matches Q88 literally; builds with too few villagers can freeze
+recommendation: A: B can deadlock a whole build
+research: reports/SGS-156-spec-gate-2.md
 
-SGS-156 (auto-houses plan ahead for wood) holds a due house's cost back from steps and unit orders until the house starts. Open case: the house is due and affordable, but there are too few gatherers to pull builders (houseBuilderSource).
-- Hold: wood stays reserved even though no house can start; a step that would free builders never runs, so the build can stall.
-- Release: steps can spend the wood, and the house waits for builders, as it does today.
-
-### Answer
-B) Keep holding: house starts the moment builders free up; can stall steps
-
-## Q89: WOTR combat: dice hit on 6 only, but the 2E rules say 5 or 6. Fix it?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: A: plain cause, visible wrong odds; priority high
-research: ../../discovery/milestone-20261113-2.md
-thread: 1570879771313701075
-
-Only you can say whether the 6-only rule was on purpose; if not, every WOTR odds number the app shows is wrong.
-- The code hits only on a 6 (battle.ts: threshold 5, test is die > 5); the doc says the same.
-- War of the Ring 2E rules: a die hits on 5 or 6. That doubles hit chance per die (1/6 to 1/3).
-- Fix is small: doc and code in one PR. Pick F if 6-only is intended.
-
-### Answer
-
-## Q90: WOTR combat: add siege battles (city, fortification, stronghold)?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: D: new behavior needing a small design; bundle with max rounds and retreat
-research: ../../discovery/milestone-20261113-2.md
-thread: 1570879774484733952
-
-Adds a new battle type, so only you decide whether WOTR gets more scope now.
-- Sieges (city, fortification, stronghold) are not out of scope in PROJECT.md.
-- Rules: attacker hits only on 6 in round 1 (1E FAQ, check 2E); besieged armies cannot retreat.
-- Shares the retreat seam with Q86 (max rounds and retreat); best after the dice fix.
+SGS-156 (auto-houses plan ahead for wood) now holds a due house's wood while builders are short (your Q88 answer). Spec-gate found a case where that never ends.
+- houseBuilders is 1 to 200 and only gatherers count as builders.
+- If villagers can never reach houseBuilders (e.g. 5 builders, 4-villager start), the house never starts.
+- Then every step and non-villager order waits forever; today that only caps supply.
+- Fix: release the hold when fewer villagers exist (gathering, walking or building) than houseBuilders; keep holding otherwise.
 
 ### Answer

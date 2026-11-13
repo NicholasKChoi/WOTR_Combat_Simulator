@@ -16,11 +16,9 @@ pull from here; triage moves an item into a milestone or deletes it.
   techs are combat-only, so by the v1 coverage decision they cost resources and queue time but their effects are
   ignored. Decide whether a follow-up adds overlay rows for (2)-(3).
 
-- design/M9.md M9.9 criteria-map row describes one Tab walk after Save as copy reaching save-build then the link controls; no page state allows it (save-build is disabled whenever the link shows). Change to the two-state version. Source: SGS-141 re-spec, reports/SGS-141-ticket-2.md
-- design/M9.md row M9.12 (b): clearing the copy name (save-copy-name-error shown) is required for the (c) "notice below bar bottom at scrollTop 0" check (339px vs 306px content in a 287px bar); the ticket calls it optional. Make it required in the design row. Reported by SGS-133 review-1.
 - **AoE4 results charts: real table UI.** Render the chart rows as a real table so collapsed rows look cleaner.
   (owner UI/UX feedback, 2026-11-12)
-- **AoE4 Buildings line chart: overlapping lines.** Many buildings share the same count (1 or 2), so their lines
+- (standalone bug) **AoE4 Buildings line chart: overlapping lines.** Many buildings share the same count (1 or 2), so their lines Priority: medium
   stack on that value and the owner cannot tell which buildings are there. Adjust the chart so each building stays
   identifiable. (owner UI/UX feedback, 2026-11-12)
 - **AoE4 chart markers: one shared control.** Define the markers in one place for all charts; clicking a marker
@@ -56,7 +54,7 @@ pull from here; triage moves an item into a milestone or deletes it.
 - **AoE4: import/export builds in the community overlay / aoe4guides format.** Users cannot bring shared guides in
   or take a tuned build to the in-game overlay. The overlay's JSON schema could not be retrieved, so the first ticket
   must fetch a real export. Recommended: milestone, priority medium. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
-- **AoE4: show and track the game patch on every result and saved build.** The game patches about monthly (17.0 on
+- (milestone) **AoE4: show and track the game patch on every result and saved build.** The game patches about monthly (17.0 on
   2026-10-22) while the snapshot (17.0.12182) is refreshed by hand, so old saved builds silently change meaning.
   Recommended: milestone (small), priority medium. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 - **WOTR combat: add max rounds and retreat.** The seams exist and WOTR is the least developed app; check the rules
@@ -64,12 +62,12 @@ pull from here; triage moves an item into a milestone or deletes it.
   Recommended: milestone, priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 - **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
-- **WOTR combat: dice hit on 6 only; the rules say 5 or 6.** `calculateCombatRollResults` in
+- (standalone bug) Priority: high **WOTR combat: dice hit on 6 only; the rules say 5 or 6.** `calculateCombatRollResults` in
   `lib/combat-simulator/battle.ts:110-115` uses `threshold = opts.threshold || 5` with `thisDice > threshold`, so only a 6
   hits; `docs/combat-simulator.md` says "A die hits on a 6 only" (also for re-rolls and the mermaid "Each 6 is a hit").
   War of the Ring 2E (Dized rules): "Each die rolled scores a hit on a result of '5' or '6.'" If so, every WOTR odds
   number is off (1/6 vs 1/3 per die). Owner to confirm the rule. Recommended: standalone bug, priority high (doc and
   code in one PR). (discovery milestone 2026-11-13, standard, discovery/milestone-20261113-2.md)
-- **WOTR combat: siege battles (city, fortification, stronghold).** Attacker hits only on 6 in round 1 (from a 1E FAQ;
+- (milestone) **WOTR combat: siege battles (city, fortification, stronghold).** Attacker hits only on 6 in round 1 (from a 1E FAQ;
   verify against the 2E rulebook); a besieged army cannot retreat. Shares the retreat seam with the max-rounds-and-retreat
   idea; do after the dice fix. Recommended: milestone, priority low-medium. (discovery milestone 2026-11-13, standard, discovery/milestone-20261113-2.md)
