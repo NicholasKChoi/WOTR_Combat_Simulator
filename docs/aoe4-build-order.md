@@ -1047,8 +1047,9 @@ describes the live input: when its text or its duration differs from the live te
 dim. `results-last-good` carries `aria-describedby="auto-run-status"` only while it is dimmed and the status text is not
 empty, so it is absent while an edit to a current result waits the 500 ms to settle.
 
-With a pinned run, each chart also draws the pinned run's series dashed, in the same color as the
-current series with that key, with the name `<name> (pinned)` and the key `pinned:<key>`. The x axis covers
+With a pinned run, each chart also draws the pinned run's series dashed. A series whose key the current run also
+has takes that current series' color; a series only the pinned run has takes the palette color at the index
+(number of current series) + (its index among the pinned series). Each has the name `<name> (pinned)` and the key `pinned:<key>`. The x axis covers
 the union of both runs' sample times; a series has a gap at times outside its own run. A pinned line is hidden and
 restored together with its series' legend item.
 
