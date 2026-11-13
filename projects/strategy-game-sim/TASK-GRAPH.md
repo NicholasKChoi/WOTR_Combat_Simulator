@@ -41,13 +41,13 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-143 | Run bar focus ring clipping and height rounding | none | none | aoe4-build-order | low | | | sgs-143-run-bar-focus-ring-height | | in_progress | | | tickets/SGS-143-run-bar-focus-ring-and-height-rounding.md |
 | SGS-148 | isLineHidden strips pinned: from current series keys | none | none | aoe4-build-order | low | | | sgs-148-islinehidden-pinned-prefix | | tested | | | tickets/SGS-148-islinehidden-pinned-prefix-strip.md |
 | SGS-149 | Harden three tests that cannot fail for their reason | none | none | aoe4-build-order | low | | | | | needs_spec | | | tickets/SGS-149-test-hardening-masked-assertions.md |
-| SGS-151 | Share one in-memory Blob fake across store tests | none | none | aoe4-build-order | low | SGS-142 | | | | needs_spec | | | tickets/SGS-151-shared-blob-test-fake.md |
+| SGS-151 | Share one in-memory Blob fake across store tests | none | none | aoe4-build-order | low | SGS-142 | | | | spec_ready | | | tickets/SGS-151-shared-blob-test-fake.md |
 | SGS-152 | Fix two inexact doc statements | none | none | aoe4-build-order | low | | | sgs-152-docs-pinned-color-blob-importers | | tested | | | tickets/SGS-152-docs-pinned-color-and-blob-importers.md |
 | SGS-153 | Harden the preview smoke script and its spec | none | none | aoe4-build-order | low | | | | | ready | | | tickets/SGS-153-smoke-script-hardening.md |
 | SGS-142 | replaceNamed answers 503 when key deleted mid-update | none | none | aoe4-build-order | standard | | | sgs-142-replace-named-missing-key-conflict | | needs_review | | | tickets/SGS-142-replace-named-missing-key-conflict.md |
-| SGS-146 | Chart reorder lost moves and arrow keys mid-drag | none | none | aoe4-build-order | low | | | sgs-146-chart-reorder-same-render | | in_progress | | | tickets/SGS-146-chart-reorder-same-render-and-mid-drag-keys.md |
+| SGS-146 | Chart reorder lost moves and arrow keys mid-drag | none | none | aoe4-build-order | low | | | sgs-146-chart-reorder-same-render | | reviewed | | | tickets/SGS-146-chart-reorder-same-render-and-mid-drag-keys.md |
 | SGS-150 | Deflake small-screen and step-band acceptance specs | none | none | aoe4-build-order | low | | | sgs-150-deflake-small-screen-step-band | | in_progress | | | tickets/SGS-150-deflake-small-screen-and-step-band-specs.md |
 | SGS-155 | Scheduled AoE4 snapshot freshness workflow | none | none | aoe4-build-order | low | | | | | ready | | | tickets/SGS-155-aoe4-data-freshness-workflow.md |
 | SGS-144 | Fix rem sizing that assumed a 16px root | none | none | | low | none | | | | draft | | | tickets/SGS-144-rem-basis-compact-threshold.md |
-| SGS-147 | Keep unreadable pin, cross-tab clear, cap My builds | none | none | | low | none | | | | needs_spec | | | tickets/SGS-147-browser-storage-edge-cases.md |
+| SGS-147 | Keep unreadable pin, cross-tab clear, cap My builds | none | none | | low | none | | sgs-147-browser-storage-edge-cases | | in_progress | | | tickets/SGS-147-browser-storage-edge-cases.md |
 | SGS-154 | Re-add AoE4 simulate-API acceptance coverage unpinned | none | none | | low | none | | | | needs_spec | | | tickets/SGS-154-re-add-unpinned-aoe4-acceptance-coverage.md |
