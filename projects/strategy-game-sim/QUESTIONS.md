@@ -22,13 +22,14 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q88
+next: Q89
 
 ## Q66: Design doc: fix the wrong keyboard-Tab description after "Save as copy"?
 kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: E: only the design document is wrong; no app behavior changes
+thread: 1570872009876054153
 
 Only you decide if a wording fix to a design note is worth a ticket; nothing else waits on it.
 - The design row says one Tab walk after Save as copy reaches the save button, then the link controls.
@@ -42,6 +43,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: E: only the design row changes; the ticket already calls the step optional
+thread: 1570872014099587082
 
 Only you decide whether to spend a ticket on a doc wording fix; nothing else waits on it.
 - The check that the notice sits below the bar bottom at top scroll only works with the name cleared (error showing).
@@ -55,6 +57,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: visible redesign of how rows look; small, best grouped with the other chart polish items
+thread: 1570872017211621426
 
 Taste call from your UI feedback of 2026-11-12; only you know how much polish you want now.
 - Render chart rows as a real table so collapsed rows look cleaner.
@@ -68,6 +71,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: A: plain cause (equal counts stack); medium priority since you cannot read which buildings exist
+thread: 1570872020529446922
 
 You saw this on the chart; you decide how much it matters and whether a bug fix or a redesign is wanted.
 - Many buildings have the same count (1 or 2), so their lines sit on top of each other.
@@ -81,6 +85,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: new behavior across all charts; needs a small design
+thread: 1570872033540051058
 
 This adds a feature from your UI feedback of 2026-11-12; only you can say if it is worth building now.
 - Define markers once for all charts.
@@ -94,6 +99,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: new step format, touches the editor, JSON and simulator
+thread: 1570872036354691227
 
 Your feature request of 2026-11-13; only you decide the priority against other work.
 - Today nine farms need nine identical steps.
@@ -107,6 +113,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: new feature across storage, API and library; links must keep working
+thread: 1570872039483375686
 
 Your feature request of 2026-11-13; only you decide if it is wanted now.
 - The new name shows everywhere the build is listed.
@@ -120,6 +127,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: changes simulation rules; needs a design and a building-to-research table
+thread: 1570872042885087383
 
 Your feature request of 2026-11-13; this changes build timings, so only you can accept that.
 - Attack upgrades need the Blacksmith; spearman veterancy the Barracks; archer upgrades the Archery Range.
@@ -133,6 +141,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: B: low priority; a guard in existing code, found by a ticket implementer and unchanged from before
+thread: 1570872045343088801
 
 Only you decide if a small hardening is worth a ticket; nothing waits on it.
 - The storage listener (`reread`) in the AoE4 build-order page skips the availability check the rest of My builds uses.
@@ -146,6 +155,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: E: it is a rule for the project's lessons file, not app code
+thread: 1570872048069247017
 
 Only you decide whether this becomes a standing rule for all future test writers.
 - Playwright hover/focus smooth-scrolls the page.
@@ -159,6 +169,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: E: doc-only; review noted it as non-blocking
+thread: 1570872052515082381
 
 Only you decide whether a one-line doc fix is worth a ticket.
 - The doc omits that the palette index wraps by modulo, so a run after the last color reuses the first.
@@ -171,6 +182,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: B: low priority; failures in the smoke check are hidden today
+thread: 1570872054918680719
 
 Only you decide how much to harden the deploy smoke check; nothing waits on it.
 - `scripts/smoke-preview.mjs` ignores errors from the fetch and abort calls in an empty catch.
@@ -184,6 +196,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: B: low priority; test-only addition
+thread: 1570872057774870603
 
 Only you decide whether this test gap is worth a ticket.
 - The path where closing the browser rejects has no test in `scripts/smoke-preview.mjs`.
@@ -196,6 +209,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: C: a red test on main with unknown cause; investigate before deciding what to fix
+thread: 1570872060291580018
 
 A red browser test on main blocks trust in every later check; you decide whether to spend effort on it now.
 - `acceptance/aoe4-results-split.spec.ts:41` (chart ids) fails reproducibly at two commits (5371c25 and f55e0aa).
@@ -208,6 +222,7 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: C: intermittent failure, cause unknown; a recent fix may already cover it
+thread: 1570872063831318639
 
 Flaky tests waste review time; you decide whether to chase this one or drop it.
 - `acceptance/aoe4-build-order-step-band.spec.ts:143` failed at f55e0aa and passed once at 5371c25.
@@ -221,24 +236,12 @@ kind: decision
 blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: B: low priority; test-only, closes a gap a mutation slipped through
+thread: 1570872066314469398
 
 Only you decide how strict the tests must be; nothing waits on it.
 - The idle-arrival test only checks the time is above 0.
 - A change that keeps the latest arrival instead of the first still passes.
 - So the first-arrival rule is not pinned by any test.
-
-### Answer
-
-## Q82: AoE4 auto-houses: plan ahead for wood so houses are not late?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: D: fix changes simulation rules (look-ahead plus wood reserve); needs a design
-
-Your request of 2026-11-13; it changes build timings, so only you can accept the new rule.
-- Today a house starts only when wood reaches 50, so the town center is already housed with 4-8 on wood.
-- Example (English 1 TC Council Hall build): housed 100/100 at 12:35, 110/110 at 13:44, 120/120 at 14:45.
-- Fix: include wood gathering time in the look-ahead and reserve wood so other steps do not spend it first.
 
 ### Answer
 
@@ -248,6 +251,7 @@ blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: scanner says high priority; every other feature is worth little if timings are off
 research: ../../discovery/milestone-20261113-1.md
+thread: 1570872078733803662
 
 Only you decide where milestone effort goes next; this would absorb the provisional gather rates item.
 - No milestone criterion compares simulated timings (age-up, unit-out) with real play.
@@ -262,6 +266,7 @@ blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: scanner says medium; lets you load shared guides and export to the in-game overlay
 research: ../../discovery/milestone-20261113-1.md
+thread: 1570872085910393077
 
 Only you decide if sharing with the community is a goal now.
 - aoe4guides supports import/export of the AoE4_Overlay file, the de facto exchange format.
@@ -276,6 +281,7 @@ blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: small milestone, medium priority; saved builds silently go stale otherwise
 research: ../../discovery/milestone-20261113-1.md
+thread: 1570872088447815753
 
 Only you decide if shared links should carry their patch; you share links with others.
 - The game patches about monthly (17.0 on 2026-10-22); the data snapshot (17.0.12182) is refreshed by hand.
@@ -290,6 +296,7 @@ blocks: backlog
 options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
 recommendation: D: scanner says low priority; the code seams exist, but check the rulebook first
 research: ../../discovery/milestone-20261113-1.md
+thread: 1570872095309570209
 
 Only you decide whether WOTR, the least developed app, gets work now.
 - Today it runs one battle configuration; the response already allows other outcome kinds.
@@ -298,16 +305,16 @@ Only you decide whether WOTR, the least developed app, gets work now.
 
 ### Answer
 
-## Q87: AoE4: optional spread of outcomes (several runs with a seed)?
+## Q88: SGS-156: when a due auto-house has no builders available, keep holding its wood?
 kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: D: scanner says low priority and defer until the accuracy work shows where the model is off
-research: ../../discovery/milestone-20261113-1.md
+blocks: SGS-156 (AoE4 auto-houses plan ahead for wood)
+options: A) Release the hold until builders exist: no stall risk; house may start late | B) Keep holding: house starts the moment builders free up; can stall steps
+recommendation: A: no deadlock, and with no builders today's behavior is the right fallback
+research: reports/SGS-156-ticket-1.md
+thread: 1570873015481409539
 
-Only you decide whether ranges instead of one number are wanted; reply "later" to park it.
-- The sim is deterministic; real games vary (travel, scouting, losses).
-- The doc lists a spread of outcomes as an extension point (runs and a seed in the request).
-- Low value until timings are verified against real games.
+SGS-156 (auto-houses plan ahead for wood) holds a due house's cost back from steps and unit orders until the house starts. Open case: the house is due and affordable, but there are too few gatherers to pull builders (houseBuilderSource).
+- Hold: wood stays reserved even though no house can start; a step that would free builders never runs, so the build can stall.
+- Release: steps can spend the wood, and the house waits for builders, as it does today.
 
 ### Answer

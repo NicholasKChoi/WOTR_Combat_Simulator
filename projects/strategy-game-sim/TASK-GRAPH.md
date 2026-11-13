@@ -51,3 +51,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-144 | Fix rem sizing that assumed a 16px root | none | none | | low | none | | sgs-144-rem-basis-compact-threshold | 75a5bf0 | integrated | | 165 | tickets/SGS-144-rem-basis-compact-threshold.md |
 | SGS-147 | Keep unreadable pin, cross-tab clear, cap My builds | none | none | | low | none | | sgs-147-browser-storage-edge-cases | b60e61f | integrated | | 158 | tickets/SGS-147-browser-storage-edge-cases.md |
 | SGS-154 | Re-add AoE4 simulate-API acceptance coverage unpinned | none | none | | low | none | | sgs-154-unpinned-aoe4-acceptance | 9fa4c16 | integrated | | 164 | tickets/SGS-154-re-add-unpinned-aoe4-acceptance-coverage.md |
+| SGS-156 | AoE4 auto-houses plan ahead for wood | none | none | | high | | | | | draft | | | tickets/SGS-156-aoe4-auto-houses-plan-ahead-for-wood.md |

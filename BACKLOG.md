@@ -42,11 +42,6 @@ pull from here; triage moves an item into a milestone or deletes it.
 - `acceptance/aoe4-results-split.spec.ts:41` (chart ids) fails at origin/main 5371c25 and at f55e0aa, reproducibly; a red acceptance spec on main (SGS-154 implementer).
 - `acceptance/aoe4-build-order-step-band.spec.ts:143` failed at f55e0aa and passed once at 5371c25; possibly flaky, check whether SGS-150's settled-state waits (#160) covered it (SGS-154 implementer).
 - SGS-154 acceptance-test: the idle-arrival test in the depletion-engine acceptance spec only asserts `at > 0`; a mutation keeping the latest arrival instead of the first still passes, so the first-arrival `at` rule is unpinned (reports/SGS-154-acceptance-test-1.md).
-- **AoE4 auto-houses: plan ahead for wood.** `planAutoHouse` (`lib/aoe4-build-order/houses.ts`) looks ahead only
-  walk + build time and nothing holds wood back for an upcoming house, so with thin wood income (4-8 on wood) a house
-  starts only when wood reaches 50 and the TC is already housed (ENG 1TC Council Hall MAA/crossbow build: housed
-  100/100 at 12:35, 110/110 at 13:44, 120/120 at 14:45). Include the time to gather the house's wood in the look-ahead
-  and reserve wood for a projected house so steps do not spend it first. (owner request, 2026-11-13)
 - (docs) **Combat simulator doc: remove stale "Current code" notes.** `docs/combat-simulator.md` still describes the
   one-battle code in three notes: "Number of battles N" (but `validateBattles` in `pages/api/fight.ts` accepts
   `battles`, 1..100000, default 1000), "Independence of battles" (but `simulateBattles` in
@@ -67,5 +62,5 @@ pull from here; triage moves an item into a milestone or deletes it.
 - **WOTR combat: add max rounds and retreat.** The seams exist and WOTR is the least developed app; check the rules
   against the rulebook before specifying (leadership by characters and Nazgul stays out per PROJECT.md).
   Recommended: milestone, priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
-- **AoE4: optional spread of outcomes (several runs with a seed).** Defer until the accuracy item above shows where
+- **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
