@@ -144,20 +144,34 @@ test.describe('AoE4 step span band on the charts', () => {
     const result = await runDefault(page)
     const timing = result.steps.find((s) => s.status === 'completed' && s.startedAt! < s.completedAt!)!
     const start = page.getByTestId('step-start-row')
-    const expectNoBand = async () => {
-      await expect(bands(page)).toHaveCount(0)
-      await expect(activeRows(page)).toHaveCount(0)
-    }
+    const target = row(page, timing.step)
+    const readState = () =>
+      page.evaluate(() => ({
+        bands: document.querySelectorAll('[data-testid="chart-step-band"]').length,
+        active: document.querySelectorAll('[data-active="true"]').length,
+      }))
+    const expectState = (expected: { bands: number; active: number }) => expect.poll(readState).toEqual(expected)
+    const drawn = { bands: CHART_IDS.length, active: 1 }
+    const cleared = { bands: 0, active: 0 }
+
+    // A hover or focus that scrolls the page animates it (smooth scrolling), and rows sliding under the still
+    // pointer fire late pointerenter events that change the state after an assertion passed. The page is
+    // scrolled up front, instantly, to where both rows' centres are in view, so no step scrolls.
+    await start.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
+    const visible = await Promise.all([start, target].map((l) => l.evaluate((el) => (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2 <= window.innerHeight)))
+    expect(visible).toEqual([true, true])
+
     await page.mouse.move(0, 0)
-    await row(page, timing.step).getByTestId('step-delete').focus()
-    await expect(bands(page)).toHaveCount(CHART_IDS.length)
+    await target.getByTestId('step-delete').focus()
+    await expectState(drawn)
     await start.hover()
-    await expectNoBand()
+    await expectState(cleared)
     await page.getByTestId('duration-seconds').focus()
-    await row(page, timing.step).hover()
-    await expect(bands(page)).toHaveCount(CHART_IDS.length)
+    await expectState(cleared)
+    await target.hover()
+    await expectState(drawn)
     await start.locator('button, select, input').first().focus()
-    await expectNoBand()
+    await expectState(cleared)
   })
 
   test('a zero-length step draws one visible vertical line per chart at its second', async ({ page }) => {

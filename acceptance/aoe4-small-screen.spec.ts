@@ -37,8 +37,8 @@ test.describe('run bar at 360x760', () => {
   test('scrolls away with the page, and a run does not scroll the page by itself', async ({ page }) => {
     await openPage(page)
     expect(await barPosition(page)).toBe('static')
-    const before = await scrollInstantly(page, 400)
-    expect(before).toBeGreaterThan(0)
+    let before = 0
+    await expect.poll(async () => (before = await scrollInstantly(page, 400))).toBeGreaterThan(0)
     const response = await waitForRun(page, () => setDurationInPlace(page, '900'))
     expect(response.status()).toBe(200)
     expect(await settledScrollY(page)).toBe(before)
@@ -49,19 +49,14 @@ test.describe('run bar at 360x760', () => {
     await expect
       .poll(() =>
         page.evaluate(() => {
-          window.scrollTo(0, 400)
+          window.scrollTo({ top: 400, behavior: 'instant' })
           const bar = document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect()
-          return { barTop: bar.top, scrolled: window.scrollY > 0 }
+          const titles = [...document.querySelectorAll('[data-testid="panel-results"] h2, [data-testid="panel-results"] h3, [data-testid="panel-results"] h4, [data-testid="panel-results"] h5')]
+          const overlaps = titles.filter((t) => t.getBoundingClientRect().bottom > bar.top && t.getBoundingClientRect().top < bar.bottom).length
+          return { scrolled: window.scrollY > 0, barAbove: bar.top < 0, overlaps }
         }),
       )
-      .toMatchObject({ barTop: expect.any(Number), scrolled: true })
-    const covered = await page.evaluate(() => {
-      const bar = document.querySelector('[data-testid="run-bar"]')!.getBoundingClientRect()
-      const titles = [...document.querySelectorAll('[data-testid="panel-results"] h2, [data-testid="panel-results"] h3, [data-testid="panel-results"] h4, [data-testid="panel-results"] h5')]
-      return { barTop: bar.top, overlaps: titles.filter((t) => t.getBoundingClientRect().bottom > bar.top && t.getBoundingClientRect().top < bar.bottom).length }
-    })
-    expect(covered.barTop).toBeLessThan(0)
-    expect(covered.overlaps).toBe(0)
+      .toEqual({ scrolled: true, barAbove: true, overlaps: 0 })
   })
 })
 
