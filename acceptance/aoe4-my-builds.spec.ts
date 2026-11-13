@@ -923,10 +923,20 @@ test.describe('reopening and new versions', () => {
     await openPage(page)
     await expect(groupOptions(page, 'My builds')).toHaveText([NEWER.name, OLDER.name])
 
+    await page.evaluate((key) => {
+      const seen: Array<string | null> = []
+      ;(window as unknown as { seenStorageKeys: Array<string | null> }).seenStorageKeys = seen
+      window.addEventListener('storage', (event) => seen.push(event.key))
+      window.localStorage.removeItem(key)
+    }, MY_BUILDS_STORAGE_KEY)
+    await expect(groupOptions(page, 'My builds')).toHaveText([NEWER.name, OLDER.name])
+
     const other = await context.newPage()
     await openPage(other)
     await other.evaluate(() => window.localStorage.setItem('unrelated-key', 'x'))
-    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)))
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { seenStorageKeys: Array<string | null> }).seenStorageKeys))
+      .toContain('unrelated-key')
     await expect(groupOptions(page, 'My builds')).toHaveText([NEWER.name, OLDER.name])
 
     await other.evaluate(() => window.localStorage.clear())
