@@ -1,4 +1,4 @@
-import { put } from '@vercel/blob'
+import { BlobNotFoundError, put } from '@vercel/blob'
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import { buildStoreFromEnv } from './build-store'
 import { listBuilds } from './builds'
@@ -10,9 +10,11 @@ import { ENGLISH } from './test-helpers'
 
 // How the next put to a key kind (builds, named-builds, rate-limit) goes wrong. "retried": the response
 // is lost and the SDK's retry runs into the write that landed. "dropped": the write lands, then the
-// connection drops. "outage": nothing is written. "deleted": another client deletes the key first.
+// connection drops. "outage": nothing is written. "deleted": another client deletes the key first and
+// put raises BlobNotFoundError. "deletedPlain": the same, but put raises the plain BlobError the live
+// store answers for ifMatch on an absent key.
 // A racer object: another client writes racer(sent) to the key first.
-type Fault = 'retried' | 'dropped' | 'outage' | 'deleted' | { racer: (sent: string) => string }
+type Fault = 'retried' | 'dropped' | 'outage' | 'deleted' | 'deletedPlain' | { racer: (sent: string) => string }
 type PutOptions = { allowOverwrite?: boolean; ifMatch?: string }
 
 const blobs = new Map<string, { body: string; etag: string }>()
@@ -22,6 +24,7 @@ const blobState = {
     weakReadsAfterFault: false,
     weakReads: false,
     lastPutError: undefined as unknown,
+    headFailure: undefined as Error | undefined,
     beforeRead: undefined as ((key: string) => Promise<void> | undefined) | undefined,
 }
 const kindOf = (key: string) => key.split('/')[1]
@@ -47,7 +50,8 @@ vi.mock('@vercel/blob', async (importOriginal) => {
         const fault = faults.get(kindOf(key))?.shift()
         if (fault !== undefined && blobState.weakReadsAfterFault) blobState.weakReads = true
         if (fault === 'outage') throw new Error('fetch failed')
-        if (fault === 'deleted') blobs.delete(key)
+        if (fault === 'deleted' || fault === 'deletedPlain') blobs.delete(key)
+        if (fault === 'deletedPlain') throw new sdk.BlobError('The specified key does not exist.')
         if (typeof fault === 'object') store(key, fault.racer(body))
         write(key, body, options)
         if (fault === 'retried') write(key, body, options)
@@ -72,6 +76,7 @@ vi.mock('@vercel/blob', async (importOriginal) => {
             return { statusCode: 200, stream: new Response(found.body).body, headers: new Headers(), blob: { etag } }
         }),
         head: vi.fn(async (key: string) => {
+            if (blobState.headFailure) throw blobState.headFailure
             if (!blobs.has(key)) throw new sdk.BlobNotFoundError()
             return {}
         }),
@@ -138,7 +143,7 @@ let errorLog: MockInstance<typeof console.error>
 beforeEach(() => {
     blobs.clear()
     faults.clear()
-    Object.assign(blobState, { weakReadsAfterFault: false, weakReads: false, lastPutError: undefined, beforeRead: undefined })
+    Object.assign(blobState, { weakReadsAfterFault: false, weakReads: false, lastPutError: undefined, headFailure: undefined, beforeRead: undefined })
     vi.mocked(put).mockClear()
     errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -188,6 +193,28 @@ describe('PUT a named build when its Blob write fails', () => {
         expect(puts).toHaveLength(1)
         expect(puts[0][2]).toMatchObject({ allowOverwrite: true, ifMatch: readEtag })
         expect(blobs.has(namedKey(id))).toBe(false)
+    })
+})
+
+describe('PUT a named build deleted before the write when put raises a plain BlobError', () => {
+    it('answers 412 and recreates nothing when head finds the key absent', async () => {
+        const { id, editSecret } = await namedBuildOnFile()
+        failNext('named-builds', 'deletedPlain')
+        const reply = await updateNamed(id, editSecret)
+        expect(blobState.lastPutError).not.toBeInstanceOf(BlobNotFoundError)
+        expect(reply).toMatchObject({ status: 412, body: CHANGED })
+        expect(putsTo('named-builds')).toHaveLength(1)
+        expect(blobs.has(namedKey(id))).toBe(false)
+    })
+
+    it('answers 503 with the put error when head fails for a reason other than not-found', async () => {
+        const { id, editSecret } = await namedBuildOnFile()
+        failNext('named-builds', 'deletedPlain')
+        blobState.headFailure = new Error('head: connection reset')
+        const reply = await updateNamed(id, editSecret)
+        expect(reply).toMatchObject({ status: 503, body: STORAGE_DOWN })
+        expect(errorLog).toHaveBeenCalledWith('builds: storage failed', blobState.lastPutError)
+        expect(errorLog).not.toHaveBeenCalledWith('builds: storage failed', blobState.headFailure)
     })
 })
 
