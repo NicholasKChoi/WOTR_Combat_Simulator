@@ -47,7 +47,7 @@ pull from here; triage moves an item into a milestone or deletes it.
   now `FightResponse` with `battles`, `outcomes`, `rounds` stats, `survivors`, `hitsPerRound`). Reword the intro that
   introduces those notes. Review judges the simulator against this doc, so it currently flags shipped behavior as a
   defect. (discovery docs 2026-11-13, discovery/docs-20261113-1.md)
-- **AoE4 sim: measure accuracy against real games.** No M1-M9 criterion checks the simulator's timings against real
+- (milestone) **AoE4 sim: measure accuracy against real games.** No M1-M9 criterion checks the simulator's timings against real
   play (e.g. age-up and unit-out times from pro-game replays or published builds). Wider than the existing
   provisional-gather-rates item above, which it would absorb. Recommended: milestone, priority high. (discovery
   milestone 2026-11-13, discovery/milestone-20261113-1.md)

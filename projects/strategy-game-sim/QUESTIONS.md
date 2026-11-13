@@ -203,21 +203,6 @@ Only you decide how strict the tests must be; nothing waits on it.
 
 ### Answer
 
-## Q83: AoE4 sim: measure timing accuracy against real games (and replace provisional gather rates)?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: D: scanner says high priority; every other feature is worth little if timings are off
-research: ../../discovery/milestone-20261113-1.md
-thread: 1570872078733803662
-
-Only you decide where milestone effort goes next; this would absorb the provisional gather rates item.
-- No milestone criterion compares simulated timings (age-up, unit-out) with real play.
-- Shape: pick 3-5 reference builds with known real timings, assert within a stated tolerance, cite the patch.
-- Skipping it means you keep tuning builds against unverified numbers.
-
-### Answer
-
 ## Q84: AoE4: import and export builds in the community overlay format?
 kind: decision
 blocks: backlog
@@ -269,6 +254,7 @@ kind: handoff
 blocks: SGS-156 (AoE4 auto-houses plan ahead for wood)
 options: A) Done | B) Not now
 recommendation: A: SGS-156 waits on it
+thread: 1570898977279447070
 
 SGS-156 (auto-houses plan ahead for wood) passed spec-gate and is ready, but the drive sandbox cannot write .git/worktrees, so its implementer cannot start. Same blocker as Q91.
 - Run in a normal terminal in the repo (WOTR_Combat_Simulator):
