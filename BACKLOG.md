@@ -35,9 +35,8 @@ pull from here; triage moves an item into a milestone or deletes it.
 - `reread` (the My builds storage listener in the AoE4 build-order page) does not check `myBuildsAvailable(storage)` before rereading; unchanged from base. Found by SGS-147 implementer (reports/SGS-147-implementer-1.md).
 - (docs) LESSONS candidate (acceptance/**): Playwright `hover()`/`focus()` smooth-scroll the page and the resulting `pointerenter` events change state after an assertion passed; scroll targets into view instantly before hover/focus sequences. From SGS-150 (reports/SGS-150-implementer-1.md).
 - (docs) docs/aoe4-build-order.md pinned-series color: the doc omits that the palette index wraps by modulo (`pinnedColor`). Non-blocking note from SGS-152 review 2.
-- (debug) `acceptance/aoe4-results-split.spec.ts:41` (chart ids) fails at origin/main 5371c25 and at f55e0aa, reproducibly; a red acceptance spec on main (SGS-154 implementer).
-- `acceptance/aoe4-build-order-step-band.spec.ts:143` failed at f55e0aa and passed once at 5371c25; possibly flaky, check whether SGS-150's settled-state waits (#160) covered it (SGS-154 implementer).
-- SGS-154 acceptance-test: the idle-arrival test in the depletion-engine acceptance spec only asserts `at > 0`; a mutation keeping the latest arrival instead of the first still passes, so the first-arrival `at` rule is unpinned (reports/SGS-154-acceptance-test-1.md).
+- (debug) `acceptance/aoe4-build-order-step-band.spec.ts:143` failed at f55e0aa and passed once at 5371c25; possibly flaky, check whether SGS-150's settled-state waits (#160) covered it (SGS-154 implementer).
+- (standalone chore) Priority: low SGS-154 acceptance-test: the idle-arrival test in the depletion-engine acceptance spec only asserts `at > 0`; a mutation keeping the latest arrival instead of the first still passes, so the first-arrival `at` rule is unpinned (reports/SGS-154-acceptance-test-1.md).
 - (docs) **Combat simulator doc: remove stale "Current code" notes.** `docs/combat-simulator.md` still describes the
   one-battle code in three notes: "Number of battles N" (but `validateBattles` in `pages/api/fight.ts` accepts
   `battles`, 1..100000, default 1000), "Independence of battles" (but `simulateBattles` in

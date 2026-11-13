@@ -54,3 +54,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-156 | AoE4 auto-houses plan ahead for wood | none | none | | high | | | | | ready | | | tickets/SGS-156-aoe4-auto-houses-plan-ahead-for-wood.md |
 | SGS-158 | WOTR dice hit on 5 or 6 | none | none | | high | | | sgs-158-dice-hit-5-or-6 | | blocked | | | tickets/SGS-158-wotr-dice-hit-on-5-or-6.md |
 | SGS-157 | AoE4 buildings chart overlapping lines | none | none | | standard | | | sgs-157-buildings-chart-overlap | | blocked | | | tickets/SGS-157-aoe4-buildings-chart-overlapping-lines.md |
+| SGS-160 | Fix results-split spec chart id filter | none | none | | low | | | | | draft | | | tickets/SGS-160-fix-results-split-spec-chart-id-filter.md |

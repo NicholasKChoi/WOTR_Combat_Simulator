@@ -38,38 +38,6 @@ Only you decide if a small hardening is worth a ticket; nothing waits on it.
 
 ### Answer
 
-## Q80: Acceptance test for the step band failed once on main: check whether it is flaky?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: C: intermittent failure, cause unknown; a recent fix may already cover it
-thread: 1570872063831318639
-answered: 2026-11-13T23:09Z discord
-
-Flaky tests waste review time; you decide whether to chase this one or drop it.
-- `acceptance/aoe4-build-order-step-band.spec.ts:143` failed at f55e0aa and passed once at 5371c25.
-- A later change (#160, settled-state waits) may already fix it; unverified.
-- Pick F if you would rather wait and see whether it fails again.
-
-### Answer
-C) debug: cause unknown: investigate first, then fix
-
-## Q81: Depletion-engine acceptance test: assert the exact first-arrival time, not just "> 0"?
-kind: decision
-blocks: backlog
-options: A) standalone bug: one small fix PR | B) standalone chore: no visible change, one small PR | C) debug: cause unknown: investigate first, then fix | D) milestone: new behavior or needs a design, bigger | E) docs: edit a doc only | F) drop: remove from backlog
-recommendation: B: low priority; test-only, closes a gap a mutation slipped through
-thread: 1570872066314469398
-answered: 2026-11-13T23:09Z discord
-
-Only you decide how strict the tests must be; nothing waits on it.
-- The idle-arrival test only checks the time is above 0.
-- A change that keeps the latest arrival instead of the first still passes.
-- So the first-arrival rule is not pinned by any test.
-
-### Answer
-B) standalone chore: no visible change, one small PR
-
 ## Q91: Create two task worktrees outside the sandbox so SGS-157 and SGS-158 can be built
 kind: handoff
 blocks: SGS-157 (AoE4 buildings chart overlapping lines), SGS-158 (WOTR dice hit on 5 or 6)
