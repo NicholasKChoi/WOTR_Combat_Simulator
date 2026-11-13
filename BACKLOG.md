@@ -25,3 +25,5 @@ pull from here; triage moves an item into a milestone or deletes it.
   identifiable. (owner UI/UX feedback, 2026-11-12)
 - **AoE4 chart markers: one shared control.** Define the markers in one place for all charts; clicking a marker
   shows or hides its vertical line on every chart. (owner UI/UX feedback, 2026-11-12)
+- `reread` (the My builds storage listener in the AoE4 build-order page) does not check `myBuildsAvailable(storage)` before rereading; unchanged from base. Found by SGS-147 implementer (reports/SGS-147-implementer-1.md).
+- LESSONS candidate (acceptance/**): Playwright `hover()`/`focus()` smooth-scroll the page and the resulting `pointerenter` events change state after an assertion passed; scroll targets into view instantly before hover/focus sequences. From SGS-150 (reports/SGS-150-implementer-1.md).
