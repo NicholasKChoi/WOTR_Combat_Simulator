@@ -29,6 +29,7 @@ kind: handoff
 blocks: SGS-156 (AoE4 auto-houses plan ahead for wood), SGS-160 (Fix results-split spec chart id filter)
 options: A) Done | B) Not now
 recommendation: A: unblocks both ready tickets
+thread: 1571297742318342184
 
 Implementers for SGS-156 (auto-houses) and SGS-160 (results-split spec fix) cannot create worktrees: .git/worktrees is read-only in the sandbox (code-factory #28), and a stale 0-byte .git/config.lock (Nov 11) also breaks git config writes.
 - Run in a normal shell (not Claude Code), after confirming no git process is running:
