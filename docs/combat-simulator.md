@@ -3,9 +3,7 @@
 The rules the combat simulator follows, its input limits, and what it reports. Reviews judge the
 simulator's behavior against this doc.
 
-Each section states the rule. Where today's code does something different, a short note labeled
-**Current code** says what the code does now; a planned change brings the code in line with the rule.
-A Current code note describes behavior being replaced. It is never a rule.
+Each section states a rule, and the code follows it.
 
 ## Purpose and model
 
@@ -101,16 +99,10 @@ most 100,000.
 
 A request for N = 100,000 completes within 10 seconds.
 
-**Current code:** each request runs exactly one battle, and N is not accepted.
-
 ## Independence of battles
 
 Every battle starts from the submitted armies. Nothing from one battle carries into another: not
 casualties, not round counts, not dice. The N results are N independent samples of the same matchup.
-
-**Current code:** the battle changes the parsed army objects in place as casualties are taken. With
-one battle per request this goes unnoticed; running a second battle on the same objects would start it
-from the first battle's survivors.
 
 ## Outcome reporting
 
@@ -132,10 +124,6 @@ coordinates, not summed, so (3, 1) and (2, 2) are different results. Ties contri
 
 **Hits per round.** For each side: the share of all rounds, across all N battles, in which that side
 scored 0, 1, 2, 3, 4, and 5 hits.
-
-**Current code:** the response describes one battle: its number of rounds, a `survivor` value of
-`attack`, `defend`, or `n/a` (the tie case, both sides eliminated), each side's average hits per round,
-and both armies as they stand at the end of the battle.
 
 ## Departures from the published game
 
