@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MARKER_COLORS, MARKER_KIND_LABELS, PALETTE, formatChartValue, isLineHidden, legendItems, markerLabel, pinnedKey, seriesColor, toChartRows, toggleHidden } from './chart-rows'
+import { type ChartRow, MARKER_COLORS, MARKER_KIND_LABELS, PALETTE, formatChartValue, isLineHidden, legendItems, lineOffsets, markerLabel, pinnedKey, seriesColor, toChartRows, toOffsetChartRows, toggleHidden, trueCount, wholeNumberAxis } from './chart-rows'
 
 describe('toChartRows', () => {
     it('makes one row per time with a value per series', () => {
@@ -178,5 +178,106 @@ describe('formatChartValue', () => {
         ['n/a', 'n/a'],
     ])('formats %s as %s', (value, expected) => {
         expect(formatChartValue(value)).toBe(expected)
+    })
+})
+
+describe('lineOffsets', () => {
+    it.each([2, 3, 17])('gives %i slots distinct offsets in slot order, never negative and below half a building', (n) => {
+        const keys = Array.from({ length: n }, (_, i) => `k${i}`)
+        const offsets = keys.map((k) => lineOffsets(keys)[k])
+        expect(new Set(offsets).size).toBe(n)
+        for (const [i, offset] of offsets.entries()) {
+            expect(offset).toBeGreaterThanOrEqual(0)
+            expect(offset).toBeLessThan(0.5)
+            if (i > 0) expect(offset).toBeGreaterThan(offsets[i - 1])
+        }
+    })
+})
+
+describe('toOffsetChartRows', () => {
+    const series = [
+        { key: 'a', name: 'A', values: [1, 0, 2] },
+        { key: 'b', name: 'B', values: [1, 0, 1] },
+        { key: 'c', name: 'C', values: [1, 0, 1] },
+    ]
+    const times = [0, 5, 10]
+    const none = new Set<string>()
+
+    it('draws equal counts at distinct values, each within half a building above its true count', () => {
+        const rows = toOffsetChartRows(times, series, undefined, none)
+        const raw = toChartRows(times, series)
+        expect(raw[0].a).toBe(raw[0].b)
+        expect(new Set([rows[0].a, rows[0].b, rows[0].c]).size).toBe(3)
+        rows.forEach((row, i) => {
+            for (const s of series) {
+                expect(row[s.key]).toBeGreaterThanOrEqual(s.values[i])
+                expect(row[s.key]).toBeLessThan(s.values[i] + 0.5)
+            }
+        })
+    })
+
+    it('keeps a building at the same offset at every time and a count of 0 at or above 0', () => {
+        const rows = toOffsetChartRows(times, series, undefined, none)
+        expect(rows[1].c).toBeGreaterThan(0)
+        for (const s of series) {
+            const offsets = rows.map((row, i) => row[s.key] - s.values[i])
+            for (const offset of offsets) expect(offset).toBeCloseTo(offsets[0])
+        }
+    })
+
+    it('gives a hidden building no slot, so the others sit where a chart without it draws them', () => {
+        const without = toOffsetChartRows(times, series.slice(1), undefined, none)
+        const hiddenRows = toOffsetChartRows(times, series, undefined, new Set(['a']))
+        expect(hiddenRows.map((r) => [r.b, r.c])).toEqual(without.map((r) => [r.b, r.c]))
+    })
+
+    it('draws a pinned line at the offset of the current line with its key and gives a pinned-only key its own slot', () => {
+        const pinned = { times, series: [{ key: 'b', name: 'B', values: [1, 0, 1] }, { key: 'z', name: 'Z', values: [1, 0, 1] }] }
+        const rows = toOffsetChartRows(times, series, pinned, none)
+        expect(rows[0]['pinned:b']).toBe(rows[0].b)
+        const all = [rows[0].a, rows[0].b, rows[0].c, rows[0]['pinned:z']]
+        expect(new Set(all).size).toBe(4)
+        expect(rows[0]['pinned:z']).toBeGreaterThan(rows[0].c)
+    })
+
+    it.each([
+        ['the current run ends before a longer pinned run', times],
+        ['the current series have fewer values than times', [...times, 15]],
+    ])('keeps a missing current value undefined, not NaN, when %s', (_case, currentTimes) => {
+        const pinned = { times: [...times, 15], series: [{ key: 'a', name: 'A', values: [1, 0, 2, 3] }] }
+        const rows = toOffsetChartRows(currentTimes, series, pinned, none)
+        expect(rows[3].t).toBe(15)
+        expect(rows[3]['pinned:a']).toBe(3)
+        expect(rows[3].b).toBeUndefined()
+    })
+})
+
+describe('wholeNumberAxis', () => {
+    const none = new Set<string>()
+    const rowsWith = (a: number, b: number): ChartRow[] => [{ t: 0, a: 0, b: 0 }, { t: 10, a, b }]
+
+    it.each([
+        [1.225, 0.5, [0, 2], [0, 1, 2]],
+        [0.3, 0, [0, 1], [0, 1]],
+        [0, 0, [0, 1], [0, 1]],
+        [3, 2.4, [0, 3], [0, 1, 2, 3]],
+        [13.2, 1, [0, 14], [0, 3, 6, 9, 12]],
+    ])('tops the axis at the smallest whole number at or above %s with whole ticks from 0', (a, b, domain, ticks) => {
+        expect(wholeNumberAxis(rowsWith(a, b), none)).toEqual({ domain, ticks })
+    })
+
+    it('ignores hidden buildings and their pinned lines', () => {
+        const rows: ChartRow[] = [{ t: 0, a: 7.2, b: 1.1, 'pinned:a': 9.2 }]
+        expect(wholeNumberAxis(rows, none).domain).toEqual([0, 10])
+        expect(wholeNumberAxis(rows, new Set(['a'])).domain).toEqual([0, 2])
+    })
+})
+
+describe('trueCount', () => {
+    it('returns the integer count for a row drawn with an offset, not the drawn value', () => {
+        const row = toOffsetChartRows([0], [{ key: 'a', name: 'A', values: [0] }, { key: 'b', name: 'B', values: [2] }], undefined, new Set())[0]
+        expect(row.b).not.toBe(2)
+        expect(trueCount(row, 'b')).toBe(2)
+        expect(trueCount(row, 'a')).toBe(0)
     })
 })

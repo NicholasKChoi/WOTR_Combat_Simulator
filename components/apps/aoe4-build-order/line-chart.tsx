@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react'
+import type { TooltipProps } from 'recharts'
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import type { ChartMarker, ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
@@ -12,8 +13,12 @@ import {
     pinnedColor,
     pinnedKey,
     seriesColor,
+    toOffsetChartRows,
     toChartRows,
     toggleHidden,
+    trueCount,
+    type ChartRow,
+    wholeNumberAxis,
 } from './chart-rows'
 import { type ChartControls, ChartHeader } from './chart-header'
 import { MarkerLegend, PinnedLegend, SeriesLegend, pinnedLegendShown } from './chart-legend'
@@ -91,9 +96,13 @@ interface SeriesChartProps {
     headerControls?: ReactNode
     layout?: ChartControls
     sectionRef?: (element: HTMLElement | null) => void
+    offsetLines?: boolean
 }
 
-export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout, sectionRef }: SeriesChartProps) {
+const trueCountFormatter: TooltipProps<number | string | readonly (number | string)[], number | string>['formatter'] = (value, _name, item) =>
+    item.payload && typeof item.dataKey === 'string' ? trueCount(item.payload as ChartRow, item.dataKey) : formatChartValue(value)
+
+export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout, sectionRef, offsetLines = false }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
     const [chartWidth, setChartWidth] = useState<number | null>(null)
     const end = Math.max(1, ...times, ...(pinned?.times ?? []))
@@ -127,6 +136,8 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const rows = placed.reduce((max, p) => Math.max(max, p.row + 1), 0)
     const placedByMarker = new Map(placed.map((p) => [p.marker, p]))
     const bodyId = `${testId}-body`
+    const chartRows = offsetLines ? toOffsetChartRows(times, series, pinned, hidden) : toChartRows(times, series, pinned)
+    const yAxis = offsetLines ? wholeNumberAxis(chartRows, hidden) : undefined
 
     return (
         <div
@@ -143,13 +154,13 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                     <>
                         <ResponsiveContainer width="100%" height={360} onResize={(width) => setChartWidth(width)}>
                             <LineChart
-                                data={toChartRows(times, series, pinned)}
+                                data={chartRows}
                                 margin={{ top: CHART_MARGIN_PX + rows * LABEL_LINE_HEIGHT, right: CHART_MARGIN_PX, bottom: CHART_MARGIN_PX, left: CHART_MARGIN_PX }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} />
-                                <YAxis width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft', textAnchor: 'middle' }} />
-                                <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} formatter={formatChartValue} />
+                                <YAxis domain={yAxis?.domain} ticks={yAxis?.ticks} width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft', textAnchor: 'middle' }} />
+                                <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} formatter={offsetLines ? trueCountFormatter : formatChartValue} />
                                 {series.map((s, i) => (
                                     <Line
                                         key={s.key}

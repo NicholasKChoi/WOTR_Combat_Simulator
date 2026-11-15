@@ -16,7 +16,9 @@ const PINNED_PREFIX = 'pinned:'
 
 export const pinnedKey = (key: string): string => PINNED_PREFIX + key
 
-type ChartRow = { t: number } & Record<string, number>
+const seriesKeyOf = (rowKey: string): string => (rowKey.startsWith(PINNED_PREFIX) ? rowKey.slice(PINNED_PREFIX.length) : rowKey)
+
+export type ChartRow = { t: number } & Record<string, number>
 
 export function toChartRows(times: number[], series: ChartSeries[], pinned?: PinnedSeries): ChartRow[] {
     if (!pinned) {
@@ -39,6 +41,57 @@ export function toChartRows(times: number[], series: ChartSeries[], pinned?: Pin
     fill(times, series, (key) => key)
     fill(pinned.times, pinned.series, pinnedKey)
     return [...rows.values()]
+}
+
+const MAX_LINE_OFFSET = 0.45
+
+// Slot i of n gets i * MAX_LINE_OFFSET / n, so offsets are distinct, never negative and always below half a count.
+export function lineOffsets(keys: readonly string[]): Record<string, number> {
+    return Object.fromEntries(keys.map((key, i) => [key, (i * MAX_LINE_OFFSET) / keys.length]))
+}
+
+// Slot order: visible current series, then visible keys only the pinned run has. Hidden keys take no slot.
+function offsetSlotKeys(series: readonly ChartSeries[], pinned: PinnedSeries | undefined, hidden: ReadonlySet<string>): string[] {
+    const keys = [...series, ...(pinned?.series ?? [])].map((s) => s.key).filter((key) => !hidden.has(key))
+    return [...new Set(keys)]
+}
+
+// Rows for integer-valued series whose lines would coincide: each line is lifted by its key's offset, and a pinned
+// line takes the offset of the current line with the same key.
+export function toOffsetChartRows(times: number[], series: ChartSeries[], pinned: PinnedSeries | undefined, hidden: ReadonlySet<string>): ChartRow[] {
+    const offsets = lineOffsets(offsetSlotKeys(series, pinned, hidden))
+    const lift = (row: ChartRow): ChartRow => {
+        const lifted: ChartRow = { t: row.t }
+        for (const [key, value] of Object.entries(row)) {
+            if (key === 't') continue
+            const offset = offsets[seriesKeyOf(key)]
+            lifted[key] = offset === undefined || typeof value !== 'number' ? value : value + offset
+        }
+        return lifted
+    }
+    return toChartRows(times, series, pinned).map(lift)
+}
+
+// The offset is below half a count, so rounding a lifted value gives back the integer count.
+export const trueCount = (row: ChartRow, key: string): number => Math.round(row[key])
+
+const MAX_Y_TICK_STEPS = 5
+
+export interface WholeNumberAxis {
+    domain: [number, number]
+    ticks: number[]
+}
+
+// The top is the smallest whole number at or above the highest visible drawn value (at least 1). Ticks are whole
+// multiples of a step chosen so there are at most MAX_Y_TICK_STEPS steps; the top itself may fall between ticks.
+export function wholeNumberAxis(rows: readonly ChartRow[], hidden: ReadonlySet<string>): WholeNumberAxis {
+    const visible = rows.flatMap((row) =>
+        Object.entries(row).filter(([key, value]) => key !== 't' && Number.isFinite(value) && !hidden.has(seriesKeyOf(key))),
+    )
+    const top = Math.max(1, Math.ceil(Math.max(0, ...visible.map(([, value]) => value))))
+    const step = Math.ceil(top / MAX_Y_TICK_STEPS)
+    const ticks = Array.from({ length: Math.floor(top / step) + 1 }, (_, i) => i * step)
+    return { domain: [0, top], ticks }
 }
 
 export const PALETTE: readonly string[] = [

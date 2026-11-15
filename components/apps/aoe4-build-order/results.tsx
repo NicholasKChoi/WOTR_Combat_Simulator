@@ -106,6 +106,7 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
                         pinnedMarkers={pinned?.markers}
                         pinned={pinned ? { times: pinned.times, series: chart.series(pinned) } : undefined}
                         headerControls={chart.headerControls}
+                        offsetLines={id === 'chart-units-produced' && unitsProducedView === 'buildings'}
                         sectionRef={drag.sectionRef(id)}
                         layout={{
                             collapsed: layout.collapsed.includes(id),

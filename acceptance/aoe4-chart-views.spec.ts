@@ -12,6 +12,7 @@ const PLAIN_PASTE = 'start 4 sheep 2 wood -> sheep'
 const MIXED_NODES_PASTE = 'start 3 sheep 3 berry -> sheep'
 const SHEEP_ONLY_PASTE = 'start 6 sheep -> sheep'
 const BARRACKS_PASTE = ['start 6 sheep -> sheep', '@1:00 build barracks with 1 from sheep'].join('\n')
+const THREE_BUILDINGS_PASTE = ['start 6 sheep -> sheep', 'move 4 sheep to wood', '@2:00 build dock with 1 from sheep', '@2:00 build barracks with 1 from sheep'].join('\n')
 const DEFAULT_Y_LABELS: Record<string, string> = {
   [UNITS]: 'Count',
   [RATES]: 'Per minute',
@@ -32,6 +33,16 @@ const option = (page: Page, id: string, view: string) => chart(page, id).locator
 const legendNames = (page: Page, id: string) => chart(page, id).getByTestId('chart-series-legend-item').allTextContents()
 const line = (page: Page, id: string, key: string) => chart(page, id).locator(`path[data-series="${key}"]`)
 
+const lineEndYs = (page: Page, id: string, keys: string[]) =>
+  chart(page, id).evaluate(
+    (el, ks) =>
+      ks.map((key) => {
+        const coords = el.querySelector(`path[data-series="${key}"]`)?.getAttribute('d')?.match(/-?[\d.]+/g) ?? []
+        return Number(coords.at(-1))
+      }),
+    keys,
+  )
+
 async function expectPressed(page: Page, id: string, view: string, other: string) {
   await expect(option(page, id, view)).toHaveAttribute('aria-pressed', 'true')
   await expect(option(page, id, other)).toHaveAttribute('aria-pressed', 'false')
@@ -41,8 +52,8 @@ async function expectOtherLabelsUnchanged(page: Page, changed: string) {
   for (const id of CHART_IDS.filter((c) => c !== changed)) await expect(yLabel(page, id)).toHaveText(DEFAULT_Y_LABELS[id])
 }
 
-async function hoverPlot(page: Page) {
-  const point = await plotPoint(page, RATES, HOVER_FRACTION)
+async function hoverPlot(page: Page, id = RATES) {
+  const point = await plotPoint(page, id, HOVER_FRACTION)
   await page.mouse.move(point.x - 3, point.y)
   await page.mouse.move(point.x, point.y)
 }
@@ -52,8 +63,8 @@ interface Reading {
   values: Record<string, number>
 }
 
-async function readTooltip(page: Page): Promise<Reading> {
-  const tooltip = chart(page, RATES).locator('.recharts-tooltip-wrapper')
+async function readTooltip(page: Page, id = RATES): Promise<Reading> {
+  const tooltip = chart(page, id).locator('.recharts-tooltip-wrapper')
   await expect(tooltip).toBeVisible()
   return await tooltip.evaluate((el) => {
     const values: Record<string, number> = {}
@@ -145,6 +156,94 @@ test.describe('AoE4 chart view toggles', () => {
     await expectPressed(page, UNITS, 'units', 'buildings')
     await expect(yLabel(page, UNITS)).toHaveText('Count')
     expect(await legendNames(page, UNITS)).toEqual(unitNames)
+  })
+
+  test('Buildings draws whole-number y ticks from 0 up to the highest count and its tooltip shows whole-number counts', async ({ page }) => {
+    await openPage(page)
+    const result = await runOk(page, BARRACKS_PASTE)
+    expect(Math.max(...result.productionBuildings.flatMap((b) => b.counts))).toBe(1)
+    await showTab(page, 'results')
+    await option(page, UNITS, 'buildings').click()
+    await expect(yLabel(page, UNITS)).toHaveText('Buildings')
+
+    const ticks = chart(page, UNITS).locator('.recharts-cartesian-axis-tick-value[text-anchor="end"]')
+    await expect(ticks.first()).toBeVisible()
+    const tickValues = (await ticks.allTextContents()).map(Number)
+    for (const value of tickValues) {
+      expect(Number.isInteger(value)).toBe(true)
+      expect(value).toBeGreaterThanOrEqual(0)
+    }
+    expect(Math.max(...tickValues)).toBe(2)
+
+    await expect(async () => {
+      await hoverPlot(page, UNITS)
+      const values = Object.values((await readTooltip(page, UNITS)).values)
+      expect(values.length).toBeGreaterThan(0)
+      for (const value of values) expect(Number.isInteger(value)).toBe(true)
+    }).toPass()
+  })
+
+  test('Buildings draws two buildings with equal counts as separate lines', async ({ page }) => {
+    await openPage(page)
+    const result = await runOk(page, BARRACKS_PASTE)
+    const lastCount = (key: string) => result.productionBuildings.find((b) => b.baseId === key)?.counts.at(-1)
+    expect(lastCount('capital-town-center')).toBe(1)
+    expect(lastCount('barracks')).toBe(1)
+    await showTab(page, 'results')
+    await option(page, UNITS, 'buildings').click()
+    await expect(line(page, UNITS, 'capital-town-center')).toHaveCount(1)
+    await expect(line(page, UNITS, 'barracks')).toHaveCount(1)
+
+    const [townCenterEnd, barracksEnd] = await lineEndYs(page, UNITS, ['capital-town-center', 'barracks'])
+    expect(Number.isFinite(townCenterEnd)).toBe(true)
+    expect(Number.isFinite(barracksEnd)).toBe(true)
+    expect(townCenterEnd).not.toBe(barracksEnd)
+  })
+
+  test('hiding a Buildings line in the legend widens the gap between the remaining lines', async ({ page }) => {
+    await openPage(page)
+    const result = await runOk(page, THREE_BUILDINGS_PASTE)
+    const [first, second, last] = result.productionBuildings.map((b) => b.baseId)
+    expect(result.productionBuildings).toHaveLength(3)
+    expect(result.productionBuildings.every((b) => b.counts.at(-1) === 1)).toBe(true)
+    await showTab(page, 'results')
+    await option(page, UNITS, 'buildings').click()
+
+    const gap = async () => {
+      const [firstEnd, secondEnd] = await lineEndYs(page, UNITS, [first, second])
+      return Math.abs(firstEnd - secondEnd)
+    }
+    const before = await gap()
+    expect(before).toBeGreaterThan(0)
+
+    await chart(page, UNITS).locator(`[data-testid="chart-series-legend-item"][data-series="${last}"]`).click()
+    await expect(line(page, UNITS, last)).toHaveCount(0)
+    await expect.poll(gap).toBeGreaterThan(before)
+  })
+
+  test('Buildings draws a pinned line at the same height as the current line with its key', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, BARRACKS_PASTE)
+    await showTab(page, 'results')
+    await page.getByTestId('pin-run').click()
+    const second = await runOk(page, ['start 6 sheep -> sheep', '@1:10 build barracks with 1 from sheep'].join('\n'))
+    await showTab(page, 'results')
+    expect(second.productionBuildings.find((b) => b.baseId === 'barracks')?.counts.at(-1)).toBe(1)
+    await option(page, UNITS, 'buildings').click()
+
+    await expect(line(page, UNITS, 'pinned:barracks')).toHaveCount(1)
+    await expect(line(page, UNITS, 'pinned:capital-town-center')).toHaveCount(1)
+    await expect(async () => {
+      const [pinnedBarracks, barracks, pinnedTownCenter, townCenter] = await lineEndYs(page, UNITS, [
+        'pinned:barracks',
+        'barracks',
+        'pinned:capital-town-center',
+        'capital-town-center',
+      ])
+      expect(pinnedBarracks).toBe(barracks)
+      expect(pinnedTownCenter).toBe(townCenter)
+      expect(pinnedBarracks).not.toBe(pinnedTownCenter)
+    }).toPass()
   })
 
   test('a toggle works while its chart is collapsed and the new view is shown on expand', async ({ page }) => {
