@@ -82,6 +82,7 @@ export type DiceRoller = (numDice: number) => number[];
 // Separate from the army-size threshold in BaseArmy.takeHit, which is also 5 but means something else.
 export const MAX_COMBAT_DICE = 5;
 export const MAX_LEADER_REROLLS = 5;
+const MIN_HIT_FACE = 5;
 
 export function rollDice(numdice: number): number[] {
   let min = 1;
@@ -97,8 +98,6 @@ export function rollDice(numdice: number): number[] {
   return results;
 }
 
-
-const MIN_HIT_FACE = 5;
 
 interface CombatRollOps {
   diceRoll: number[];

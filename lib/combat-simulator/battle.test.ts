@@ -70,7 +70,7 @@ describe('combat dice', () => {
         { face: 4, hits: 0 },
         { face: 5, hits: 1 },
         { face: 6, hits: 1 },
-    ])('scores $hits hits for a combat die showing $face', ({ face, hits }) => {
+    ])('a combat die showing $face scores $hits (hits)', ({ face, hits }) => {
         const { battle } = playRound(army(1, 0), army(1, 0), [[face], [face], [], []])
         expect(battle.attackHitsPerRound).toEqual([hits])
         expect(battle.defendHitsPerRound).toEqual([hits])
@@ -98,7 +98,7 @@ describe('leader rerolls', () => {
         { face: 4, hits: 0 },
         { face: 5, hits: 1 },
         { face: 6, hits: 1 },
-    ])('scores $hits hits for a rerolled die showing $face', ({ face, hits }) => {
+    ])('a rerolled die showing $face scores $hits (hits)', ({ face, hits }) => {
         const { battle, calls } = playRound(army(1, 0, 1), army(1, 0, 1), [[1], [1], [face], [face]])
         expect(calls).toEqual([1, 1, 1, 1])
         expect(battle.attackHitsPerRound).toEqual([hits])
