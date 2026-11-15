@@ -160,7 +160,7 @@ describe('house builders and the hold', () => {
         ['fewer villagers than houseBuilders release it', 7, 0],
         ['enough villagers, all busy, keep it', 4, null],
     ])('%s', (_, houseBuilders, startedAt) => {
-        const result = holdRun([spearmen], { wood: 60 }, { houseBuilders }, noWood)
+        const result = holdRun([spearmen], { wood: 60, houseSeconds: 1200 }, { houseBuilders }, noWood)
         expect(result.steps[0].startedAt).toBe(startedAt)
     })
 
