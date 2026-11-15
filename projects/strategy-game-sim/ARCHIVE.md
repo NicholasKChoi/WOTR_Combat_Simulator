@@ -108,3 +108,7 @@ Retired task-graph rows. The ready-set scan ignores this file.
 | SGS-111 | Explicit build house steps no longer freeze production | M7 | M7.8 | aoe4-build-order | high | | | sgs-111-drop-house-gate | 8ac8ee9 | integrated | | 117 | tickets/SGS-111-drop-house-gate.md |
 | SGS-108 | Run cell on each step-table row; charts dim on stale | M7 | M7.1,M7.2,M7.4,M7.7 | aoe4-build-order | standard | SGS-107 | | sgs-108-step-run-cell | 61e5584 | integrated | 1 | 119 | tickets/SGS-108-step-run-cell.md |
 | SGS-109 | Row hover shades the charts; step timeline removed | M7 | M7.3,M7.5,M7.7 | aoe4-build-order | standard | SGS-108 | | sgs-109-row-hover-drop-timeline | 97a30e2 | integrated | 1 | 120 | tickets/SGS-109-row-hover-drop-timeline.md |
+| SGS-156 | AoE4 auto-houses plan ahead for wood | none | none | | high | | | sgs-156-auto-houses-plan-ahead | c8685a7 | integrated | 1 | 168 | tickets/SGS-156-aoe4-auto-houses-plan-ahead-for-wood.md |
+| SGS-157 | AoE4 buildings chart overlapping lines | none | none | | standard | | | sgs-157-buildings-chart-overlap | 2ab6c10 | integrated | 3 | 169 | tickets/SGS-157-aoe4-buildings-chart-overlapping-lines.md |
+| SGS-158 | WOTR dice hit on 5 or 6 | none | none | | high | | | sgs-158-dice-hit-5-or-6 | dea14a6 | integrated | | 167 | tickets/SGS-158-wotr-dice-hit-on-5-or-6.md |
+| SGS-160 | Fix results-split spec chart id filter | none | none | | low | | | sgs-160-results-split-chart-id-filter | ff83f4f | integrated | | 166 | tickets/SGS-160-fix-results-split-spec-chart-id-filter.md |

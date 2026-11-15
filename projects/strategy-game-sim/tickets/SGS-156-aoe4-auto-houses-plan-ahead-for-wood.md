@@ -58,6 +58,7 @@ Changes the documented house contract and every saved build's simulated result.
 7. **Docs.** `docs/aoe4-build-order.md` "Houses and supply": the statements that the lead is walk plus build time only, that auto-houses are planned only "after production starts", and that auto-houses "ignore a waiting step's resource reservation" for payment become untrue or incomplete; the section also needs the due-house rule, the hold (one house, the resources it applies to) and the passes in the instant. (respec 3) Also fix `docs/aoe4-build-order.md` lines near the builder paragraph ("A house waits only when no node has enough gatherers or a resource of its cost is short; supply may block production meanwhile" now also blocks steps and orders, and the villager-shortage release applies) and the statement that a house under construction "that finishes within the lead counts toward the planner's headroom" (the window is lead plus gather time; one finishing exactly at the window counts). Check the "Extension points" paragraph on `productionModifier` ("when auto houses estimate supply demand") still reads true.
 8. **Tests.** Update every test that pins the old contract. A test of the changed behavior gets the new expected value; any other test keeps its expected value and pins the old setting in its setup (for example `autoHouses: false` or banked wood). Likely dependents found by search, as examples: `simulate-construction.test.ts` ("wake when the house becomes affordable"; "project the demand at the modified production speed"; "ignore a waiting step reserve" keeps its assertion since auto-houses still ignore step reserves), `simulate-house-gate.test.ts` ("auto-houses at 120, 220 and 320 s" pins exact house times), `houses.test.ts`, the `paces auto-houses` test in `research.test.ts`, and `build-move.acceptance.test.ts` ("pays the research while an auto-house is building"). List every edited test in the report. Search the Playwright specs under `acceptance/` for dependence on the old timing (examples: `house-gate`, `house-rule`, `waits` with `autoHouses: true`, `spend-population` "counts an auto-house under buildings", `triggers`), and state in the report which depend on it.
 9. **Changelog.** Every saved build's result shifts. No changelog file exists on `main`; the PR description states the shift, and the report notes this.
+10. **Prebuilt-build bars.** (respec 5) Owner answer (Q98, option A): raise `MAX_FLOATING_AT_1200` in `lib/aoe4-build-order/production-floors.ts`, the one constant shared by `lib/aoe4-build-order/builds.test.ts` ("meets its production floors and keeps its floating resources under the cap at 1200 s") and `acceptance/aoe4-simulate-api-prebuilt-farms.spec.ts`, from 2000 to 2600 for every build. With this change the TC is no longer housed, more villagers reach wood, and `ENG 1TC` and `ENG 1TC Council Hall` reach the population cap before 1200 s with no wood spending left in their steps, so their floating wood at 1200 s (about 2512 and 2220 on the branch run) exceeds 2000. No floor is lowered, no build data changes for this, and the cap is not narrowed by build or sample. If the implementer measures any prebuilt build's floating resource above 2600 at 1200 s, it does not pick a higher number: it stops and reports needs_spec with the measured values. The other prebuilt-build bars in the `docs/aoe4-build-order.md` "Prebuilt builds" paragraph (no `waiting` step at 1200 s and 3600 s, the gold `move all` reactions, no `farm-idle` warning) keep holding for every build. Docs: `docs/aoe4-build-order.md` "Prebuilt builds" and `data/aoe4-build-order/README.md` `## Prebuilt builds` refer to the cap as "that file's cap" and do not quote its value today; the implementer greps the docs, comments and tests (including `production-floors.test.ts`) for any statement of the 2000 value or of the cap's reasoning and fixes each, and adds none that quotes the number.
 
 **Out of scope:** explicit `build house` semantics, `autoHouses: false` behavior, how many houses cover a shortfall (whole-house rounding and the `maxPopCap` room), other civs' supply rules, holding resources for anything but houses, UI changes.
 
@@ -98,6 +99,7 @@ flowchart TD
 - [ ] An explicit `build house` step starts as ordered and is not held by the house reserve.
 - [ ] Resources never go negative in any of the above runs, and the same build and data give identical results twice.
 - [ ] Every test that pins the old house timing is updated per Scope 8, and the report lists them. `docs/aoe4-build-order.md` "Houses and supply" describes the due-house rule, the hold and the passes in the instant, with no sentence left saying auto-houses ignore all reservations or plan only after production, and every statement of the lead window in that doc (including the builder paragraph and the headroom sentence) matches lead plus gather time.
+- [ ] (respec 5) `MAX_FLOATING_AT_1200` is 2600. Every prebuilt build meets its production floors and the floating cap at 1200 s in both `builds.test.ts` and `acceptance/aoe4-simulate-api-prebuilt-farms.spec.ts`, and every other prebuilt-build bar in the "Prebuilt builds" doc paragraph still holds, with no floor lowered and no build data changed for this. No doc states the old cap value.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
@@ -121,3 +123,27 @@ none
 - Underspecified: the builder hold never ended when fewer villagers exist than `houseBuilders`; the docs fix missed the builder-paragraph and headroom sentences.
 - Changed: Scope 2 and 6 release the hold below that villager count (owner answer Q92, A); a new criterion covers it; Scope 7 and the final criterion cover every statement of the lead window.
 - Stands: no branch work exists yet; all other Scope and criteria unchanged.
+
+## Re-spec 4 - 2026-11-15
+
+- Underspecified: Scope 8's existing-test rule covered house-timing and pinned-output tests but not the owner-confirmed prebuilt-build thresholds (production floors and the 1200 s floating cap), which two builds now exceed on wood.
+- Changed: new Scope 10 and a criterion keep every prebuilt-build bar holding and forbid changing the floors or the cap on the branch; how ENG 1TC and ENG 1TC Council Hall get back under the cap is an owner question (raise the cap, add a wood sink to the two builds, or narrow the cap).
+- Stands: all branch work at ff47225 (engine, docs, tests and pinned-value updates); only the resolution of the two floating-cap failures remains, after the owner answers.
+
+## Re-spec 5 - 2026-11-15
+
+- Underspecified: how the two builds over the floating cap are resolved (open owner question).
+- Changed: owner chose option A (Q98): Scope 10 and its criterion raise `MAX_FLOATING_AT_1200` to 2600 for every build; the open question is removed.
+- Stands: all branch work at ff47225; only the cap constant (and any doc or test text stating it) remains.
+
+## Rework 1 - 2026-11-15 (review)
+
+Review of tip 411dfb3 (report `reports/SGS-156-review-1.md`): REQUEST CHANGES. Earlier gates passed: implementer at ff47225 (engine fix) and 411dfb3 (cap 2600, Re-spec 5); spec-gate READY (spec-gate-4).
+
+Findings:
+- `lib/aoe4-build-order/simulate-house-hold.test.ts:75-79`: "holds one house cost when several houses are due and none can start" checks its "several houses are due" precondition on a different setup (`houseBuilders: 1`, 6 due) from the run it asserts (4 builders, only 2 due, right at the threshold), so a data or tuning change dropping it to 1 leaves the test checking nothing.
+- `docs/aoe4-build-order.md:332-333` (text): "Villager payments and explicit `build house` steps ignore the hold." overstates: a `produce villager` step is held (`simulate.ts:394`); only villager order payments skip the hold.
+
+Required fixes:
+- [x] Run that test's precondition on the asserted setup, e.g. `holdRun([], { ...slow, wood: 1000 }, {}, { villagers: { sheep: 8 }, rally: 'stone' })`, keeping the `>= 2 * HOUSE_WOOD` assertion (review measured 100, two houses at t=0). The test must fail when `simulate.ts:684` sets the hold to the due count times the house cost (barracks `startedAt` goes from 0 to null); record that mutation in the report.
+- [x] (text) Replace the doc sentence with exactly: "Villager order payments and explicit `build house` steps ignore the hold."

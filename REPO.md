@@ -85,7 +85,7 @@ discovery:                        # scheduled scanners that file backlog items (
                                   #   scanner; the rest get the triage question; low is never filed
     docs: [high, standard]
     standalone: [high]
-    milestone: []                 # [high] lets a clear idea feed the next milestone's criteria
+    milestone: [high]             # owner 2026-11-15: a clear (high) idea feeds the next milestone's criteria
 ---
 
 # Repo notes

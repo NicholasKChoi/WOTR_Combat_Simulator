@@ -53,9 +53,4 @@ pull from here; triage moves an item into a milestone or deletes it.
   Recommended: milestone (small), priority medium. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 - **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
-- (standalone bug) Priority: high **WOTR combat: dice hit on 6 only; the rules say 5 or 6.** `calculateCombatRollResults` in
-  `lib/combat-simulator/battle.ts:110-115` uses `threshold = opts.threshold || 5` with `thisDice > threshold`, so only a 6
-  hits; `docs/combat-simulator.md` says "A die hits on a 6 only" (also for re-rolls and the mermaid "Each 6 is a hit").
-  War of the Ring 2E (Dized rules): "Each die rolled scores a hit on a result of '5' or '6.'" If so, every WOTR odds
-  number is off (1/6 vs 1/3 per die). Owner to confirm the rule. Recommended: standalone bug, priority high (doc and
-  code in one PR). (discovery milestone 2026-11-13, standard, discovery/milestone-20261113-2.md)
+- (from SGS-157 review 2) AoE4 series charts at 360 px: a tooltip shown near the chart's right edge cuts off its text (e.g. "Capital Town Center : 1"); recharts tooltip placement, on main too (`components/apps/aoe4-build-order/line-chart.tsx`). Evidence: reports/SGS-157-review-2.md.

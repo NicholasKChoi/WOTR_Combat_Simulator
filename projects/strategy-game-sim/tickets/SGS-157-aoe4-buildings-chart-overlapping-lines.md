@@ -46,16 +46,17 @@ nothing caught it. The Units view has the same shape (equal counts) but is not w
     this function with its `hidden` set. Without the opt-in, rows are exactly what `toChartRows` returns today.
   - the true-count lookup: given a row and a series key, returns the building's true count (not the drawn
     value). The `Tooltip` `formatter` in `SeriesChart` uses it in the Buildings view.
-- The y axis in the Buildings view shows only whole-number ticks and no tick below 0 (for example
-  `allowDecimals={false}` on `YAxis`; the implementer picks the mechanism).
+- The y axis in the Buildings view shows only whole-number ticks and no tick below 0, and its top is the
+  smallest whole number at or above the highest drawn value (for example 2 when the highest drawn value is
+  1.225), so the plot is not stretched past the data (rework 1). The implementer picks the mechanism.
 - The tooltip in this view shows each building's true count, never the drawn value (`formatChartValue`
   rounds to one decimal, so it would show the offset). Series names, the `SeriesLegend` items, `data-series`
   keys and line colors are unchanged.
 - `SeriesChart` gets an opt-in prop for this behavior; `results.tsx` passes it for the Buildings view of
   `chart-units-produced` only. The other charts and the Units view are drawn exactly as today.
 - Docs: `docs/aoe4-build-order.md`, the paragraph after the chart table (Units produced offers Units and
-  Buildings): add the rule that Buildings lines are drawn at a small per-building upward offset and the
-  tooltip shows true counts. No statement there becomes untrue; the implementer writes the sentence.
+  Buildings): states that each line is drawn at or a small amount above its true count, none for the first
+  visible building, and that the tooltip shows true counts (rework 1: exact sentence in Rework 1).
 - Existing tests: a test of the Buildings view's drawn values may need the offset; any test of another
   chart or view keeps its expected values (examples: `acceptance/aoe4-chart-views.spec.ts` Buildings tests,
   which check legend names and `path[data-series]` counts; `acceptance/aoe4-build-order-pin-compare.spec.ts`
@@ -78,9 +79,13 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] A pinned line and the current line with the same key are drawn at the same offset; a pinned-only building gets an offset distinct from every other visible line.
 - [ ] (respec 1) A unit test of the true-count lookup shows that, for a row built with the opt-in, it returns the building's true integer count for a series whose drawn value is offset; a test fails if the drawn value is returned. The Buildings view `Tooltip` formatter uses this lookup.
 - [ ] (respec 1) An acceptance test in `acceptance/aoe4-chart-views.spec.ts` on the Buildings view checks every rendered y-axis tick label is a whole number and none is below 0, and hovering the chart shows tooltip values that are whole numbers.
+- [ ] (rework 1) The same acceptance test asserts the largest y-axis tick for BARRACKS_PASTE is 2 (the smallest whole number at or above the highest drawn value); it fails on tip c8cb3b3, which renders 4.
+- [ ] (rework 1) An acceptance test asserts `path[data-series="capital-town-center"]` and `path[data-series="barracks"]` each have count 1 and end at different y values. It is run once at the base (e50e074) and the implementer report records it failing there on the end-y assertion (both end at the same y).
+- [ ] (rework 1) The Buildings tests reuse the spec file's `hoverPlot` and `readTooltip`, given a chart-id parameter that defaults to the gather-rates chart; no copy of either helper remains.
 - [ ] The Units view and the gather rates, gathered resources and floating resources charts draw every line at its exact value, as before.
 - [ ] Series legend items, `data-series` keys and line colors in the Buildings view are unchanged.
-- [ ] `docs/aoe4-build-order.md` states the offset rule and that tooltips show true counts; no other doc statement contradicts it.
+- [ ] (rework 2) A row where the current run has no value (pinned run longer) keeps the current key `undefined` after the offset is applied, never `NaN`; a unit test in `chart-rows.test.ts` covers it.
+- [ ] (rework 1) `docs/aoe4-build-order.md` states the offset rule as "at or a small amount above" its true count, none for the first visible building, and that tooltips show true counts; no doc statement contradicts it.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
@@ -92,3 +97,40 @@ none
 - Underspecified: behavior at count 0 against the y-axis floor, the testable seams for the tooltip and whole-number ticks, a unit test of the row building with and without the opt-in, slot order, and the Invariants field.
 - Changed: offsets are now upward-only below half a building (count 0 stays at or above the floor, default domain kept, whole ticks); named three pure seams in `chart-rows.ts` (offsets, row building, true-count lookup) with unit criteria plus one acceptance criterion for ticks and tooltip; stated slot order and accepted the shrinking-spacing limit; Invariants names A1-A3 as touched but not affected.
 - No branch work exists yet.
+
+## Rework 1 - 2026-11-15 (review)
+
+Review of tip c8cb3b3 (report `reports/SGS-157-review-1.md`): REQUEST CHANGES. Earlier gates passed: implementer at c8cb3b3.
+
+Findings:
+- `components/apps/aoe4-build-order/line-chart.tsx:159`: `allowDecimals={false}` with recharts' default 5 ticks stretches the Buildings y axis far past the data (BARRACKS_PASTE highest drawn 1.225, axis 0-4; a four-building build gets 0-8 and its lines end about 4 px apart).
+- Bug-ticket regression evidence missing: the unit tests fail at base only on a missing import, and the acceptance test fails at base on fractional ticks, not on overlap.
+- `acceptance/aoe4-chart-views.spec.ts:166-168`: the new test copies `hoverPlot` instead of reusing it (the helpers only target the gather-rates chart).
+- `docs/aoe4-build-order.md:991` (text): "each line is drawn a small amount above its true count" is false for the first visible building, whose offset is 0.
+
+Required fixes:
+- [x] Buildings y-axis top is the smallest whole number at or above the highest drawn value; add the acceptance assertion that BARRACKS_PASTE's largest tick is 2.
+- [x] Add the acceptance assertion that `capital-town-center` and `barracks` paths (count 1 each) end at different y values; run it once at base e50e074 and record its failure in the report.
+- [x] Give `hoverPlot` and `readTooltip` a chart-id parameter (default the gather-rates chart) and use them in the Buildings test; remove the copy.
+- [x] (text) Replace the doc sentence with: "In the Buildings view each line is drawn at or a small amount above its true count (a different amount per visible building, none for the first, the same at every time, always below half a building), so buildings with equal counts do not draw on top of each other; the y axis shows whole numbers only and the tooltip shows each building's true count. A pinned building's line is drawn at the same offset as the current line with its key, and a building hidden in the legend takes no offset."
+
+## Rework 2 - 2026-11-15 (tech-lead)
+
+Tech-lead on tip 57d342a (report `reports/batch-SGS-157-SGS-157-tech-lead-1.md`): NEEDS HUMAN REVIEW; owner answered board Q99 "A) Rework now". Earlier gates passed: review 2 at 5d97056, acceptance-test at a38608c, simplify at 57d342a, suite at 57d342a.
+
+Findings:
+- `components/apps/aoe4-build-order/chart-rows.ts:63-68` (also `:76`, `line-chart.tsx:102-103,163`): in the Buildings view, when the pinned run has times the current run lacks, `toChartRows` leaves current keys `undefined` in those rows and `toOffsetChartRows`'s `lift` turns them into `NaN` (`value + offset`). Recharts' tooltip filter drops only `== null`, so the tooltip shows "<building>: NaN" for every current building when hovering past the end of a shorter run.
+
+Required fixes:
+- [x] In `lift`, pass `undefined` (and `null`) values through unchanged, so a missing value stays missing after the offset.
+- [x] Add a `chart-rows.test.ts` case where the pinned run's times extend past the current run's and the current key in the pinned-only row stays `undefined` after `toOffsetChartRows`. Correction (review 3): this case passes on 57d342a, because `toChartRows` omits current keys from pinned-only rows; `NaN` arises only when a series has fewer values than `times`, which Buildings data never produces, so the reported tooltip was not reachable and the guard is defensive. The fewer-values case is the one that fails without it.
+
+## Rework 3 - 2026-11-15 (review)
+
+Delta review of 5d97056..134c9a9 (report `reports/SGS-157-review-3.md`): REQUEST CHANGES. Earlier gates passed: review 2 at 5d97056, acceptance-test at a38608c, simplify and suite at 57d342a; rework 2 code at 134c9a9 approved.
+
+Findings:
+- `acceptance/aoe4-chart-views.spec.ts:207-209` and `:227-231`: the two Buildings tests added in a38608c each define the same `endY` lambda, read one path per `evaluate`, and compare values from separate reads with no poll (the `before` gap at :209; the three `expect(await endY(a)).toBe(await endY(b))` at :229-231). The chart can redraw between reads (top margin depends on marker-label rows, `line-chart.tsx:151`), which is the flake LESSONS.md records for `acceptance/**`; the branch also has three copies of the end-y parse.
+
+Required fixes:
+- [ ] Add one file-level `lineEndYs(page, id, keys)` helper that reads every requested path's end y in one `chart.evaluate` (the body of :186-191), use it in all three Buildings tests, and wrap the pinned test's three equality assertions in `toPass()`. No assertion changes; no other copy of the end-y parse remains.
