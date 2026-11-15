@@ -22,4 +22,16 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q102
+next: Q103
+
+## Q102: M9.2: does Save a new version work in production (reload shows revision 2)?
+kind: handoff
+blocks: M9.2 (Owner verifies on the PR preview and then production: save…)
+options: A) Done, it works | B) Not now | C) It fails, details in reply
+recommendation: A: confirms M9 can close and the retro can run
+thread: 1571662927964934174
+
+M9.2 is the only open M9 criterion; every code criterion is now done. It needs you on the deployed site.
+- On production: save a build, Save as copy, edit, Save a new version; reload should show revision 2.
+
+### Answer
