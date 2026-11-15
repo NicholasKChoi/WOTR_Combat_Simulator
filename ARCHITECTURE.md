@@ -50,6 +50,13 @@ This file says where things go. It does not list every file; use `git ls-files` 
   and test helpers, for blocks of at least 5 lines and 70 tokens. Shared test helpers live in
   `lib/aoe4-build-order/test-helpers.ts`, `components/apps/aoe4-build-order/storage-test-helpers.ts`,
   `components/apps/aoe4-build-order/fetch-test-helpers.ts` and `acceptance/helpers.ts`.
+- **Acceptance tests scroll hover and focus targets into view instantly.** Playwright `hover()` and `focus()`
+  scroll the page when the target is out of view, and the Bootstrap stylesheet makes that scroll smooth. Rows
+  then slide under the still pointer and fire late `pointerenter` events that change state after an assertion
+  passed. A test scrolls its targets into view with `scrollIntoView({ behavior: 'instant' })` on the element
+  before the hover and focus sequence, as `acceptance/aoe4-build-order-step-band.spec.ts` does, so no step
+  scrolls. `scrollInstantly` in `acceptance/helpers.ts` is different: it scrolls the window to a y offset,
+  not to a target.
 
 ## Adding an app
 
