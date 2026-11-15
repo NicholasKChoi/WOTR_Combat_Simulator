@@ -62,6 +62,19 @@ describe('combat dice', () => {
         expect(playRound(army(3, 2), army(1, 0), [1, 1, 1, 1]).calls[0]).toBe(5)
         expect(playRound(army(3, 0), army(1, 0), [1, 1, 1, 1]).calls[0]).toBe(3)
     })
+
+    it.each([
+        { face: 1, hits: 0 },
+        { face: 2, hits: 0 },
+        { face: 3, hits: 0 },
+        { face: 4, hits: 0 },
+        { face: 5, hits: 1 },
+        { face: 6, hits: 1 },
+    ])('scores $hits hits for a combat die showing $face', ({ face, hits }) => {
+        const { battle } = playRound(army(1, 0), army(1, 0), [[face], [face], [], []])
+        expect(battle.attackHitsPerRound).toEqual([hits])
+        expect(battle.defendHitsPerRound).toEqual([hits])
+    })
 })
 
 describe('leader rerolls', () => {
@@ -74,6 +87,22 @@ describe('leader rerolls', () => {
         const combatFaces = [...Array(misses).fill(1), ...Array(5 - misses).fill(6)]
         const { calls } = playRound(army(5, 0, leaders), army(1, 0), [combatFaces, 1, 1, 1])
         expect(calls[2]).toBe(expected)
+    })
+
+    it('counts a rolled 5 as a hit, not a miss to reroll', () => {
+        const { calls } = playRound(army(5, 0, 5), army(5, 0, 5), [[5, 5, 1, 1, 1], [5, 1, 1, 1, 1], 1, 1])
+        expect(calls.slice(2)).toEqual([3, 4])
+    })
+
+    it.each([
+        { face: 4, hits: 0 },
+        { face: 5, hits: 1 },
+        { face: 6, hits: 1 },
+    ])('scores $hits hits for a rerolled die showing $face', ({ face, hits }) => {
+        const { battle, calls } = playRound(army(1, 0, 1), army(1, 0, 1), [[1], [1], [face], [face]])
+        expect(calls).toEqual([1, 1, 1, 1])
+        expect(battle.attackHitsPerRound).toEqual([hits])
+        expect(battle.defendHitsPerRound).toEqual([hits])
     })
 })
 

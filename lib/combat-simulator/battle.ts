@@ -98,21 +98,21 @@ export function rollDice(numdice: number): number[] {
 }
 
 
+const MIN_HIT_FACE = 5;
+
 interface CombatRollOps {
   diceRoll: number[];
-  threshold?: number;
 }
 interface CombatRollResults {
   hits: number[];
   misses: number[];
 }
 function calculateCombatRollResults(opts: CombatRollOps): CombatRollResults {
-  let threshold = opts.threshold || 5;
   let hits: number[] = [];
   let misses: number[] = [];
   for (let i = 0; i < opts.diceRoll.length; i++) {
     let thisDice = opts.diceRoll[i];
-    if (thisDice > threshold) {
+    if (thisDice >= MIN_HIT_FACE) {
       hits.push(thisDice);
     } else {
       misses.push(thisDice);
