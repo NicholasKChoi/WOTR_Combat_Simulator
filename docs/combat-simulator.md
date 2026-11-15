@@ -31,9 +31,9 @@ eliminated, however many leaders it still has.
 A battle is a sequence of rounds. Each round runs these steps in order:
 
 1. **Combat roll.** Each side rolls combat dice equal to min(regulars + elites, 5).
-2. **Hits.** A die hits on a 6 only.
+2. **Hits.** A die hits on a 5 or a 6; a 1 to 4 misses.
 3. **Leader re-roll.** Each side re-rolls some of its missed combat dice: re-rolls =
-   min(misses, leaders, 5). A re-rolled die hits on a 6 only.
+   min(misses, leaders, 5). A re-rolled die hits on a 5 or a 6.
 4. **Total hits.** A side's hits for the round are its combat-roll hits plus its re-roll hits. Because
    a side rolls at most 5 combat dice and re-rolls only dice that missed, a side scores at most 5 hits
    per round.
@@ -53,8 +53,8 @@ The battle ends with one of three outcomes:
 flowchart TD
     start(["Start battle from the submitted armies"]) --> roll
     roll["Each side rolls min(regulars + elites, 5) combat dice"] --> hit
-    hit["Each 6 is a hit; every other result is a miss"] --> reroll
-    reroll["Each side re-rolls min(misses, leaders, 5) missed dice; each 6 is a hit"] --> total
+    hit["Each 5 or 6 is a hit; every other result is a miss"] --> reroll
+    reroll["Each side re-rolls min(misses, leaders, 5) missed dice; each 5 or 6 is a hit"] --> total
     total["Hits = combat hits + re-roll hits, at most 5 per side"] --> casualties
     casualties["Both sides take the other side's hits at the same time, by the casualty rule"] --> record
     record["Record the round"] --> check
