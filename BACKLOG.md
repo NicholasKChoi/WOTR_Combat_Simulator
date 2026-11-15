@@ -18,9 +18,6 @@ pull from here; triage moves an item into a milestone or deletes it.
 
 - (milestone) **AoE4 results charts: real table UI.** Render the chart rows as a real table so collapsed rows look cleaner.
   (owner UI/UX feedback, 2026-11-12)
-- (standalone bug) **AoE4 Buildings line chart: overlapping lines.** Many buildings share the same count (1 or 2), so their lines Priority: medium
-  stack on that value and the owner cannot tell which buildings are there. Adjust the chart so each building stays
-  identifiable. (owner UI/UX feedback, 2026-11-12)
 - (milestone) **AoE4 chart markers: one shared control.** Define the markers in one place for all charts; clicking a marker
   shows or hides its vertical line on every chart. (owner UI/UX feedback, 2026-11-12)
 - (milestone) **AoE4 build order: one step, many of the same action.** Let a step repeat its action a set number of times
@@ -53,4 +50,4 @@ pull from here; triage moves an item into a milestone or deletes it.
   Recommended: milestone (small), priority medium. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 - **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
-- (from SGS-157 review 2) AoE4 series charts at 360 px: a tooltip shown near the chart's right edge cuts off its text (e.g. "Capital Town Center : 1"); recharts tooltip placement, on main too (`components/apps/aoe4-build-order/line-chart.tsx`). Evidence: reports/SGS-157-review-2.md.
+- (milestone) **Remove mobile support for the AoE4 build-order page (owner, Q101, 2026-11-15: "Remove mobile support, it should be its own milestone").** Replaces the 360 px tooltip item: (from SGS-157 review 2) AoE4 series charts at 360 px: a tooltip shown near the chart's right edge cuts off its text (e.g. "Capital Town Center : 1"); recharts tooltip placement, on main too (`components/apps/aoe4-build-order/line-chart.tsx`). Evidence: reports/SGS-157-review-2.md.

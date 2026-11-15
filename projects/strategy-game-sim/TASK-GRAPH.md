@@ -51,3 +51,4 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-144 | Fix rem sizing that assumed a 16px root | none | none | | low | none | | sgs-144-rem-basis-compact-threshold | 75a5bf0 | integrated | | 165 | tickets/SGS-144-rem-basis-compact-threshold.md |
 | SGS-147 | Keep unreadable pin, cross-tab clear, cap My builds | none | none | | low | none | | sgs-147-browser-storage-edge-cases | b60e61f | integrated | | 158 | tickets/SGS-147-browser-storage-edge-cases.md |
 | SGS-154 | Re-add AoE4 simulate-API acceptance coverage unpinned | none | none | | low | none | | sgs-154-unpinned-aoe4-acceptance | 9fa4c16 | integrated | | 164 | tickets/SGS-154-re-add-unpinned-aoe4-acceptance-coverage.md |
+| SGS-161 | AoE4 chart axis corner labels overlap | none | none | aoe4-build-order | low | | | sgs-161-chart-axis-corner-labels | 774514b5a801b82ce546da318fff96de4079deae | integrated | | 170 | tickets/SGS-161-aoe4-chart-axis-corner-label-overlap.md |
