@@ -12,6 +12,7 @@ const PLAIN_PASTE = 'start 4 sheep 2 wood -> sheep'
 const MIXED_NODES_PASTE = 'start 3 sheep 3 berry -> sheep'
 const SHEEP_ONLY_PASTE = 'start 6 sheep -> sheep'
 const BARRACKS_PASTE = ['start 6 sheep -> sheep', '@1:00 build barracks with 1 from sheep'].join('\n')
+const THREE_BUILDINGS_PASTE = ['start 6 sheep -> sheep', 'move 4 sheep to wood', '@2:00 build dock with 1 from sheep', '@2:00 build barracks with 1 from sheep'].join('\n')
 const DEFAULT_Y_LABELS: Record<string, string> = {
   [UNITS]: 'Count',
   [RATES]: 'Per minute',
@@ -192,6 +193,43 @@ test.describe('AoE4 chart view toggles', () => {
     expect(Number.isFinite(townCenterEnd)).toBe(true)
     expect(Number.isFinite(barracksEnd)).toBe(true)
     expect(townCenterEnd).not.toBe(barracksEnd)
+  })
+
+  test('hiding a Buildings line in the legend widens the gap between the remaining lines', async ({ page }) => {
+    await openPage(page)
+    const result = await runOk(page, THREE_BUILDINGS_PASTE)
+    const [first, second, last] = result.productionBuildings.map((b) => b.baseId)
+    expect(result.productionBuildings).toHaveLength(3)
+    expect(result.productionBuildings.every((b) => b.counts.at(-1) === 1)).toBe(true)
+    await showTab(page, 'results')
+    await option(page, UNITS, 'buildings').click()
+
+    const endY = (key: string) => line(page, UNITS, key).evaluate((el) => Number(el.getAttribute('d')?.match(/-?[\d.]+/g)?.at(-1)))
+    const gap = async () => Math.abs((await endY(first)) - (await endY(second)))
+    const before = await gap()
+    expect(before).toBeGreaterThan(0)
+
+    await chart(page, UNITS).locator(`[data-testid="chart-series-legend-item"][data-series="${last}"]`).click()
+    await expect(line(page, UNITS, last)).toHaveCount(0)
+    await expect.poll(gap).toBeGreaterThan(before)
+  })
+
+  test('Buildings draws a pinned line at the same height as the current line with its key', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, BARRACKS_PASTE)
+    await showTab(page, 'results')
+    await page.getByTestId('pin-run').click()
+    const second = await runOk(page, ['start 6 sheep -> sheep', '@1:10 build barracks with 1 from sheep'].join('\n'))
+    await showTab(page, 'results')
+    expect(second.productionBuildings.find((b) => b.baseId === 'barracks')?.counts.at(-1)).toBe(1)
+    await option(page, UNITS, 'buildings').click()
+
+    const endY = (key: string) => line(page, UNITS, key).evaluate((el) => Number(el.getAttribute('d')?.match(/-?[\d.]+/g)?.at(-1)))
+    await expect(line(page, UNITS, 'pinned:barracks')).toHaveCount(1)
+    await expect(line(page, UNITS, 'pinned:capital-town-center')).toHaveCount(1)
+    expect(await endY('pinned:barracks')).toBe(await endY('barracks'))
+    expect(await endY('pinned:capital-town-center')).toBe(await endY('capital-town-center'))
+    expect(await endY('pinned:barracks')).not.toBe(await endY('pinned:capital-town-center'))
   })
 
   test('a toggle works while its chart is collapsed and the new view is shown on expand', async ({ page }) => {
