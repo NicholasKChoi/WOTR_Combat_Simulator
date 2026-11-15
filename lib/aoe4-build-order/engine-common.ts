@@ -26,6 +26,24 @@ export function canAfford(bank: Readonly<Resources>, cost: Readonly<Resources>):
   return RESOURCE_KINDS.every((kind) => bank[kind] + RESOURCE_TOLERANCE >= cost[kind]);
 }
 
+// A hold binds only the resources the payment spends, so a food-only payment never waits on a wood hold.
+export function heldNeed(cost: Readonly<Resources>, holds: readonly (Readonly<Resources> | undefined)[]): Resources {
+  const need = { ...cost };
+  for (const hold of holds) {
+    for (const kind of RESOURCE_KINDS) {
+      if (hold && cost[kind] > 0) {
+        need[kind] += hold[kind];
+      }
+    }
+  }
+  return need;
+}
+
+// Every paying step handler checks through here, so a step leaves a due auto-house's cost in the bank.
+export function canAffordHeld(state: EngineState, cost: Readonly<Resources>): boolean {
+  return canAfford(state.resources, heldNeed(cost, [state.houseHold]));
+}
+
 export function payCost(state: EngineState, cost: Readonly<Resources>, category: SpendCategory): void {
   for (const kind of RESOURCE_KINDS) {
     state.resources[kind] = Math.max(0, state.resources[kind] - cost[kind]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canAfford, costOf, markCompleted, payCost, villagerWalkSeconds } from './engine-common'
+import { canAfford, canAffordHeld, costOf, heldNeed, markCompleted, payCost, villagerWalkSeconds } from './engine-common'
 import type { EngineState } from './simulate'
 import { ENGLISH, effectStateOf, researchedOf } from './test-helpers'
 
@@ -19,6 +19,23 @@ describe('canAfford', () => {
         expect(canAfford({ ...cost, food: cost.food - 5e-10 }, cost)).toBe(true)
         expect(canAfford({ ...cost, food: cost.food - 2e-9 }, cost)).toBe(false)
         expect(canAfford({ ...cost, wood: cost.wood - 2e-9 }, cost)).toBe(false)
+    })
+})
+
+describe('heldNeed and canAffordHeld', () => {
+    const hold = { food: 0, wood: 50, gold: 7, stone: 0 }
+
+    it('adds every hold only on the resources the cost spends', () => {
+        const reserve = { food: 100, wood: 150, gold: 0, stone: 9 }
+        expect(heldNeed(cost, [reserve, undefined, hold])).toEqual({ food: 150, wood: 225, gold: 0, stone: 0 })
+        expect(heldNeed(cost, [])).toEqual(cost)
+    })
+
+    it('leaves the house hold in the bank on the resources the payment spends', () => {
+        const held = (resources: typeof cost, houseHold: typeof cost | undefined) => canAffordHeld({ ...engineState(resources), houseHold }, cost)
+        expect(held({ ...cost, wood: 75 }, hold)).toBe(true)
+        expect(held({ ...cost, wood: 74 }, hold)).toBe(false)
+        expect(held({ ...cost, wood: 74 }, undefined)).toBe(true)
     })
 })
 

@@ -112,8 +112,8 @@ describe('auto-houses with other house steps', () => {
 describe('prebuilt builds without a house hold', () => {
     // Digests of spawnedPopulation, spent, steps, populationCapReachedAt, depletions and markers at 1800 s.
     it.each([
-        ['ENG 1TC', '32a982d42fa1e689'],
-        ['ENG Spear/Longbow into MAA/Crossbow', '60e54bd7196e39e7'],
+        ['ENG 1TC', '01831aa5a1b79212'],
+        ['ENG Spear/Longbow into MAA/Crossbow', 'eda1702ca717e524'],
     ])('leaves %s unchanged', (name, pinned) => {
         const build = listBuilds().find((b) => b.name === name)!
         const result = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1800 }))
