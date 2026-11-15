@@ -7,7 +7,7 @@ import type { IdleArrival, NodeStock } from './depletion';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import type { Resources } from './engine-common';
-import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, costOf, markCompleted, payCost, recordUnits, villagerWalkSeconds } from './engine-common';
+import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, canAffordHeld, costOf, heldNeed, markCompleted, payCost, recordUnits, villagerWalkSeconds } from './engine-common';
 import { formatMinSec } from './format-time';
 import { effectiveGatherRate } from './gather';
 import { planAutoHouse } from './houses';
@@ -106,6 +106,8 @@ export interface EngineState extends EffectState {
   // Unit entry id -> spawned units at that entry's tier; starting units are not in it. changes is in time
   // order, so the units at time t are the sum of the deltas at or before t.
   readonly spawned: Map<string, SpawnedUnits>;
+  // One auto-house's cost while a due house is not started; set only by the house passes of an instant.
+  houseHold: Readonly<Resources> | undefined;
   // Events run in (time, insertion) order.
   schedule(time: number, apply: (state: EngineState) => void): void;
 }
@@ -137,7 +139,7 @@ interface Engine extends EngineState {
   // What the armed cursor step waits to afford, when it waits on resources alone.
   reserve: Readonly<Resources> | undefined;
   // What armed reactions wait to afford; a wake time only, never reserved.
-  reactionNeeds: Readonly<Resources>[];
+  reactionNeeds: { step: number; cost: Readonly<Resources> }[];
   // Order payments and auto-houses short of resources at the latest instant.
   needs: Resources[];
   // Buildings under construction, explicit or auto.
@@ -389,7 +391,7 @@ const produce: StepHandler<'produce'> = (step, index, state) => {
     return { started: false, waitingOn: 'population' };
   }
   const total = costOf(entry, targets.length);
-  if (!canAfford(state.resources, total)) {
+  if (!canAffordHeld(state, total)) {
     return { started: false, waitingOn: 'resources', reserve: total };
   }
   const replaced = targets.map((target) => target.order?.step ?? null);
@@ -467,6 +469,11 @@ function completeConstruction(state: EngineState, job: Construction, completesAt
   }
 }
 
+// An explicit house starts as ordered: the auto-house hold does not apply to it.
+function isHouseBuild(step: BuildStep): boolean {
+  return step.action === 'build' && step.building === HOUSE_ID;
+}
+
 const build: StepHandler<'build'> = (step, index, state) => {
   const entry = state.data.byBaseId.get(step.building)?.[0];
   const builders = step.builders ?? 1;
@@ -477,7 +484,7 @@ const build: StepHandler<'build'> = (step, index, state) => {
     return { started: false, waitingOn: 'villagers' };
   }
   const cost = costOf(entry, 1);
-  if (!canAfford(state.resources, cost)) {
+  if (!(isHouseBuild(step) ? canAfford(state.resources, cost) : canAffordHeld(state, cost))) {
     return { started: false, waitingOn: 'resources', reserve: cost };
   }
   startConstruction(state, { entry, builders, from: step.from, then: step.then ?? step.from, walkSeconds: step.walkSeconds, step: index });
@@ -535,7 +542,7 @@ function offerReactions(engine: Engine): void {
     }
     const outcome = offerStep(engine, index);
     if (outcome?.started === false && outcome.reserve) {
-      engine.reactionNeeds.push(outcome.reserve);
+      engine.reactionNeeds.push({ step: index, cost: outcome.reserve });
     }
   });
 }
@@ -565,25 +572,16 @@ function applyDueEvents(engine: Engine): void {
   }
 }
 
-// Under a reserve, an order payment must leave each resource the unit costs at or above the reserved amount.
-// Villager payments ignore the reserve: a player keeps the Town Center busy while saving for a step.
-function orderNeed(cost: Resources, reserve: Readonly<Resources> | undefined): Resources {
-  const need = { ...cost };
-  for (const kind of RESOURCE_KINDS) {
-    if (reserve && cost[kind] > 0) {
-      need[kind] += reserve[kind];
-    }
-  }
-  return need;
-}
-
 function payOrder(engine: Engine, instance: BuildingInstance): void {
   const order = instance.order!;
   const entry = resolveUnitEntry(order.unit, engine);
   if (!entry || entry.age > engine.age || defaultVillagersDone(engine, order) || engine.population + entry.costs.popcap > engine.supply) {
     return;
   }
-  const need = orderNeed(costOf(entry, 1), entry.baseId === VILLAGER_ID ? undefined : engine.reserve);
+  // A non-villager payment leaves the step reserve and the house hold of each resource the unit costs. Villager
+  // payments ignore both: a player keeps the Town Center busy while saving for a step.
+  const cost = costOf(entry, 1);
+  const need = entry.baseId === VILLAGER_ID ? cost : heldNeed(cost, [engine.reserve, engine.houseHold]);
   if (!canAfford(engine.resources, need)) {
     engine.needs.push(need);
     return;
@@ -644,7 +642,7 @@ function houseDemand(engine: Engine): HouseDemand {
       }
     }
   }
-  return { pending, populationPerSecond };
+  return { pending, populationPerSecond, bank: { ...engine.resources }, income: incomePerSecond(engine, gatherRatesOf(engine)) };
 }
 
 // The source is picked by gatherers only; at a building-created node, startConstruction takes waiting idle villagers first.
@@ -657,24 +655,33 @@ function houseBuilderSource(engine: Engine): NodeRef | undefined {
   return gatherers[fullest] >= inputs.houseBuilders ? fullest : undefined;
 }
 
-// Not an order payment: a waiting step's reserve does not hold houses back.
-function startAutoHouses(engine: Engine): void {
+// Starts the due houses it can, then holds one house's cost while the planner still reports one due. Not an order
+// payment: a waiting step's reserve does not hold houses back.
+function runHousePass(engine: Engine): void {
+  engine.houseHold = undefined;
   const house = engine.data.byBaseId.get(HOUSE_ID)?.[0];
   if (!engine.inputs.autoHouses || !house) {
     return;
   }
   const cost = costOf(house, 1);
   const count = planAutoHouse(engine, engine.inputs, engine.data, houseDemand(engine));
-  for (let i = 0; i < count; i += 1) {
+  let started = 0;
+  for (; started < count; started += 1) {
     const from = houseBuilderSource(engine);
     if (from === undefined) {
-      return;
+      break;
     }
     if (!canAfford(engine.resources, cost)) {
       engine.needs.push(cost);
-      return;
+      break;
     }
     startConstruction(engine, { entry: house, builders: engine.inputs.houseBuilders, from, then: from, walkSeconds: undefined, step: null });
+  }
+  const stillDue = started === 0 ? count > 0 : planAutoHouse(engine, engine.inputs, engine.data, houseDemand(engine)) > 0;
+  // Idle villagers never build, so with fewer working villagers than houseBuilders no wait can end the hold.
+  const working = NODE_REFS.reduce((sum, ref) => sum + engine.gatherers[ref], engine.walking);
+  if (stillDue && working >= engine.inputs.houseBuilders) {
+    engine.houseHold = cost;
   }
 }
 
@@ -698,12 +705,15 @@ function recordRunOuts(engine: Engine): void {
 
 function runInstant(engine: Engine): void {
   collectRunOuts(engine);
+  runHousePass(engine);
   offerSteps(engine);
   applyDueEvents(engine);
-  // A step refused for supply in the first pass is offered again after this instant's houses complete.
+  // Events change population, supply and builders, so the hold is recomputed before steps are offered again; a
+  // step refused for supply in the first pass is offered again after this instant's houses complete.
+  runHousePass(engine);
   offerSteps(engine);
   startProduction(engine);
-  startAutoHouses(engine);
+  runHousePass(engine);
 }
 
 // Only gather.ts picks the walk, so a drop-off override hands it the other walk under the name it reads.
@@ -800,8 +810,10 @@ function nextWake(engine: Engine, income: Resources, rateOf: RefRate, nextSample
   if (triggerWake !== null) {
     candidates.push(triggerWake);
   }
-  const needs = [...(engine.reserve ? [engine.reserve] : []), ...engine.needs, ...engine.reactionNeeds];
-  candidates.push(...needs.map((need) => affordableAt(engine, need, income)));
+  const stepNeeds = [...(engine.reserve ? [{ step: engine.cursor, cost: engine.reserve }] : []), ...engine.reactionNeeds].map(({ step, cost }) =>
+    isHouseBuild(engine.order.steps[step]) ? cost : heldNeed(cost, [engine.houseHold]),
+  );
+  candidates.push(...[...stepNeeds, ...engine.needs].map((need) => affordableAt(engine, need, income)));
   return Math.min(...candidates.filter((time) => time > engine.time));
 }
 
@@ -879,6 +891,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     spawned: new Map(),
     cursor: 0,
     reserve: undefined,
+    houseHold: undefined,
     reactionNeeds: [],
     needs: [],
     constructing: [],

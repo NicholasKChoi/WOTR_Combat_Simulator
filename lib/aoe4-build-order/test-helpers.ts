@@ -1,3 +1,4 @@
+import { expect } from 'vitest'
 import type { CivRules } from './civ-rules'
 import { buildGameData, loadGameData } from './data'
 import type { BaseRules, CivData, GameData, Snapshot } from './data'
@@ -62,6 +63,10 @@ export function buildOrder(steps: BuildStep[], start: BuildStart = { rally: 'she
 export function run(steps: BuildStep[], options: { game?: GameData; inputs?: unknown; rules?: CivRules; start?: BuildStart } = {}): SimulationResult {
     const game = options.game ?? ENGLISH
     return simulateBuildOrder(buildOrder(steps, options.start), game, inputsFor(game, options.inputs), options.rules)
+}
+
+export function noneNegative(result: SimulationResult): void {
+    Object.values(result.floating).forEach((values) => values.forEach((v) => expect(v).toBeGreaterThanOrEqual(0)))
 }
 
 export function housesDone(): { done: number[]; rules: CivRules } {

@@ -176,7 +176,8 @@ that would drop any resource the unit costs below the reserving step's cost of t
 payments ignore the reserve, so villager production never stops for a waiting step; the step's start is
 pushed back by the food the villagers spend instead. A step waiting on supply, on an age or on a building
 instance that does not exist reserves nothing. At one instant, steps start before orders pay, so a step
-wins a tie with an order payment.
+wins a tie with an order payment. A due auto-house also holds its cost back from steps and non-villager
+orders (Houses and supply).
 
 **Queues.** Each building instance has one queue, shared by production and research. A `produce` step on
 a busy producer replaces its order (a switch); `pause` clears the order. A step names a building by
@@ -307,15 +308,33 @@ same instant is a no-op.
 
 **Houses and supply.** `supply` in `rules/english.json` gives the supply each building provides; total
 supply is capped at `maxPopCap`, 200. With `autoHouses` on (the default), the simulator builds houses on
-its own so supply does not block production. At every instant, after production starts, it projects the
-population one lead ahead, where the lead is the builders' walk to the site plus the house build time with
-`houseBuilders` builders. The projection adds to the current population the combined rate of every
-producer with an order, in population per second. When it passes the headroom, enough houses start at once
-to cover the difference, each with its own `houseBuilders` builders; houses run concurrently. The headroom is
-the supply plus the supply of the buildings under construction that finish within the lead (one finishing
-exactly at the lead counts), so a long build such as a landmark does not hold houses back. Every building
-under construction still counts toward `maxPopCap`, so planning stops once supply plus the supply of all of
-them reaches 200.
+its own so supply does not block production. The planner projects the population one window ahead. The
+window is the lead, the builders' walk to the site plus the house build time with `houseBuilders` builders,
+plus the gather time of one house's cost: for each resource of the cost, what the bank lacks divided by that
+resource's current income from the current gatherers, the largest of them. The bank is the real bank, with no
+step reserve taken off it, so the gather time is 0 while the cost is banked. While a resource of the cost is
+short and nobody gathers it, no house is due. The projection adds to the current population the combined
+rate of every producer with an order, in population per second, over the window. When it passes the
+headroom, enough houses are due at once to cover the difference, each with its own `houseBuilders` builders;
+houses run concurrently. The headroom is the supply plus the supply of the buildings under construction that
+finish within the window (one finishing exactly at the window counts), so a long build such as a landmark
+does not hold houses back. Every building under construction still counts toward `maxPopCap`, so planning
+stops once supply plus the supply of all of them reaches 200. A house can be due before its cost is banked,
+and as the bank grows and steps spend it a house can stop being due and become due again.
+
+The planner runs three times in an instant: after run-outs and before the first step offer, after the
+instant's events and before the second step offer, and after production starts. Each run starts every due
+house it can pay for and find builders for, then sets the hold: one house's cost while the planner still
+reports a house due, however many, and nothing otherwise. The hold stays as set until the next run, so a
+payment between two runs does not change it. A step payment (`build`, `produce`, `research`, reactions
+included) must leave the hold in the bank on each resource it spends; a resource the step does not spend is
+not held, so a food-only step never waits on a wood hold. A non-villager order payment must leave both the
+waiting step's reserve and the hold of each resource the unit costs. Villager order payments and explicit
+`build house` steps ignore the hold. A held step waits on `resources` and starts at the instant the bank
+covers its cost plus the hold. The simulation adds no stop of its own for the instant a house stops being
+due; the hold is released at the next instant it already stops at. Nothing is held with `autoHouses: false`,
+or while fewer villagers are gathering, walking or building than `houseBuilders` (idle villagers do not
+count), since no wait can supply the builders then.
 
 `houseBuilderSource` is the preferred node (`gold` is deposit 1). When it has fewer than `houseBuilders`
 villagers gathering, builders come from the node ref with the most gatherers (ties: the first in node order,
@@ -324,13 +343,15 @@ names). The source is chosen by its gatherers only, so idle villagers alone neve
 farm, the builders are taken from the villagers waiting idle there first, then from its gatherers. They walk
 `inputs.walkSeconds / moveSpeedMultiplier` each way and return to the node they came from; returning to a
 node that ran out meanwhile, or to a farm with every farm taken, leaves them idle there. A house pays its whole cost (all four resources) when it starts. A house waits only when no node
-has enough gatherers or a resource of its cost is short; supply may block production meanwhile. Auto-houses
+has enough gatherers or a resource of its cost is short; supply may block production meanwhile, and its hold
+may block steps and orders. While no node has enough gatherers but at least `houseBuilders` villagers are
+gathering, walking or building, the hold stays and the house starts at the instant a node has enough. Auto-houses
 are not order payments: they ignore a waiting step's resource reservation, and never take a resource below
 zero.
 
 With `autoHouses` on, auto-houses plan from the start whether or not the order has `build house` steps.
 Explicit `build house` steps start as ordered and add houses on top. Whichever kind it is, a house under
-construction that finishes within the lead counts toward the planner's headroom, so an explicit step that
+construction that finishes within the window counts toward the planner's headroom, so an explicit step that
 starts after auto-houses already cover the demand adds a surplus house. With `autoHouses: false` no auto-house is built, and production blocks
 at supply until a `build house` step adds more. No warning reports production held at the supply limit.
 
@@ -867,7 +888,7 @@ and reports the first check that fails:
 | `prerequisite` | `produce`: no targeted instance exists, or the unit's entry is above the current age. `build`: the building's entry is above the current age. `research`: no producing instance exists, or every tier of the tech is above the current age. An action with no handler always reports it |
 | `villagers` | `build`: fewer than `builders` villagers gather at `from` or idle there. `move` with a number `count`: fewer than `count` do. `move` with `count: all` never waits and never reports it |
 | `population` | `produce`: the population after paying would pass supply |
-| `resources` | the step is otherwise ready but the bank is short of its cost; this is the only reason that reserves |
+| `resources` | the step is otherwise ready but the bank is short of its cost, plus a due auto-house's hold on the resources it spends, except for an explicit `build house` step (Houses and supply); this is the only reason that reserves |
 
 The order is `prerequisite`, then `villagers` or `population`, then `resources`. `rally` and `pause`
 never wait. A `trigger` or `earlier-step` reason is only reported for a step that never armed. A `produce` step completes when no
