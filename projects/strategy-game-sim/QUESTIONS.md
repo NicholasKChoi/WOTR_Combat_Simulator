@@ -22,7 +22,7 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q96
+next: Q97
 
 ## Q95: Create SGS-156/160 worktrees and clear the stale git config lock
 kind: handoff
@@ -37,5 +37,18 @@ Implementers for SGS-156 (auto-houses) and SGS-160 (results-split spec fix) cann
 - git worktree add -b sgs-156-auto-houses-plan-ahead .claude/code-factory/worktrees/sgs-156-auto-houses-plan-ahead origin/main
 - git worktree add -b sgs-160-results-split-chart-id-filter .claude/code-factory/worktrees/sgs-160-results-split-chart-id-filter origin/main
 - SGS-157/158 stay blocked too; nothing else proceeds without it.
+
+### Answer
+
+## Q96: Run /code-factory:upgrade (required state migration)
+kind: handoff
+blocks: all
+options: A) Done | B) Not now
+recommendation: A: nothing proceeds until it is applied
+thread: 1571422582337441925
+
+The code-factory state is older than the installed plugin: migration 005-task-clones is required (004 is optional). No drive pass can run until it is applied.
+- Run /code-factory:upgrade in an interactive Claude Code session in the WOTR_Combat_Simulator repo.
+- All work on this project waits on it.
 
 ### Answer
