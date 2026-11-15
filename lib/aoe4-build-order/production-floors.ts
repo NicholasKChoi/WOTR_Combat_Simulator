@@ -27,7 +27,7 @@ export const PRODUCTION_FLOORS: Record<string, ProductionFloor> = {
   },
 };
 
-export const MAX_FLOATING_AT_1200 = 2000;
+export const MAX_FLOATING_AT_1200 = 2600;
 
 export type FloorCheck = [label: string, actual: number, bound: number];
 

@@ -80,8 +80,8 @@ engine or the build is tuned, and the page shows them for any run.
   Added after the guide (every one carries a `time` trigger of 420 s, the trigger of the guide's
   `steeled-arrow` research): two more barracks and three more archery ranges, ten `build farm` steps from
   wood, and a second `produce spearman` and `produce longbowman`. Each farm step turns a wood gatherer into
-  a farmer (a farm is paid from wood, and a farm holds one villager), and the extra buildings let the farmed
-  food and the wood go into spearmen and longbowmen instead of floating. A `produce` step orders only the
+  a farmer (a farm is paid from wood, and a farm holds one villager), and the extra buildings spend the farmed
+  food and part of the wood on spearmen and longbowmen. A `produce` step orders only the
   buildings that exist when it starts, so the second pair of `produce` steps sits after the buildings and
   covers them. The gold reaction stays the first reaction step.
 
@@ -164,8 +164,8 @@ engine or the build is tuned, and the page shows them for any run.
   there; at 780 s `the-white-tower` (four builders from wood) for Castle, then `fertilization`,
   `veteran-longbowmen`, `veteran-spearmen`, `bloomery` and `fitted-leatherwork`; at 900 s five farms built
   from wood (returning to wood) for the sheep gatherers, then the Castle blacksmith techs, `lumber-preservation`,
-  `textiles`, `specialized-pick` and two more wood-to-farm farms. Past the population cap the economy's income
-  goes into these techs instead of floating. The gold reaction `gold` to `gold#2` is the first reaction step;
+  `textiles`, `specialized-pick` and two more wood-to-farm farms. Past the population cap these techs spend part
+  of the economy's income, and the rest floats. The gold reaction `gold` to `gold#2` is the first reaction step;
   `gold#3`, `gold#4` and `gold#5` each move to the next deposit, `gold#5` to wood, and the last reaction moves
   the sheep gatherers to the farms built at 900 s.
 
