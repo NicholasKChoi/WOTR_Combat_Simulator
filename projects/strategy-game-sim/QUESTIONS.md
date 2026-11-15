@@ -39,16 +39,3 @@ Implementers for SGS-156 (auto-houses) and SGS-160 (results-split spec fix) cann
 - SGS-157/158 stay blocked too; nothing else proceeds without it.
 
 ### Answer
-
-## Q96: Run /code-factory:upgrade (required state migration)
-kind: handoff
-blocks: all
-options: A) Done | B) Not now
-recommendation: A: nothing proceeds until it is applied
-thread: 1571422582337441925
-
-The code-factory state is older than the installed plugin: migration 005-task-clones is required (004 is optional). No drive pass can run until it is applied.
-- Run /code-factory:upgrade in an interactive Claude Code session in the WOTR_Combat_Simulator repo.
-- All work on this project waits on it.
-
-### Answer
