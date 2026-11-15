@@ -102,6 +102,15 @@ const fulfillJson = (route: Route, status: number, body: unknown) => route.fulfi
 const seedMyBuilds = (page: Page, value: string) =>
   page.addInitScript(([key, raw]) => window.localStorage.setItem(key, raw), [MY_BUILDS_STORAGE_KEY, value])
 
+const watchStorageKeys = (page: Page) =>
+  page.evaluate(() => {
+    const seen: Array<string | null> = []
+    ;(window as unknown as { seenStorageKeys: Array<string | null> }).seenStorageKeys = seen
+    window.addEventListener('storage', (event) => seen.push(event.key))
+  })
+
+const seenStorageKeys = (page: Page) => page.evaluate(() => (window as unknown as { seenStorageKeys: Array<string | null> }).seenStorageKeys)
+
 // The seed is written oldest first, so only a newest-first sort puts NEWER on top.
 const seedTwo = (page: Page) => seedMyBuilds(page, JSON.stringify({ version: 1, builds: [OLDER, NEWER] }))
 
@@ -943,6 +952,34 @@ test.describe('reopening and new versions', () => {
     await expect(groupOptions(page, 'My builds')).toHaveCount(0)
     await expect(groupOptions(page, 'Templates')).toHaveText(BUILDS.map((b) => b.name))
   })
+
+  test('an unrelated key changing in another tab causes no storage write in this tab', async ({ page, context }) => {
+    await page.addInitScript(() => {
+      const writes: string[] = []
+      ;(window as unknown as { storageWrites: string[] }).storageWrites = writes
+      const setItem = Storage.prototype.setItem
+      const removeItem = Storage.prototype.removeItem
+      Storage.prototype.setItem = function (key, value) {
+        writes.push('setItem')
+        setItem.call(this, key, value)
+      }
+      Storage.prototype.removeItem = function (key) {
+        writes.push('removeItem')
+        removeItem.call(this, key)
+      }
+    })
+    await seedTwo(page)
+    await openPage(page)
+    await expect(groupOptions(page, 'My builds')).toHaveText([NEWER.name, OLDER.name])
+    await watchStorageKeys(page)
+    await page.evaluate(() => ((window as unknown as { storageWrites: string[] }).storageWrites.length = 0))
+
+    const other = await context.newPage()
+    await openPage(other)
+    await other.evaluate(() => window.localStorage.setItem('unrelated-key', 'x'))
+    await expect.poll(() => seenStorageKeys(page)).toContain('unrelated-key')
+    expect(await page.evaluate(() => (window as unknown as { storageWrites: string[] }).storageWrites)).toEqual([])
+  })
 })
 
 test.describe('save failures', () => {
@@ -1026,6 +1063,18 @@ test.describe('storage unavailable', () => {
     await expect(checkedOption(page)).toHaveText(`${DEFAULT.name} (edited)`)
     await waitForRun(page, () => textarea(page).fill(VALID_B))
     await expect(unstored(page)).toHaveCount(0)
+  })
+
+  test('another tab storing builds does not make this tab list them', async ({ page, context }) => {
+    await blockStorageWrites(page)
+    await openPage(page)
+    await watchStorageKeys(page)
+
+    const other = await context.newPage()
+    await openPage(other)
+    await other.evaluate(([key, raw]) => window.localStorage.setItem(key, raw), [MY_BUILDS_STORAGE_KEY, JSON.stringify({ version: 1, builds: [OLDER, NEWER] })])
+    await expect.poll(() => seenStorageKeys(page)).toContain(MY_BUILDS_STORAGE_KEY)
+    await expect(groupOptions(page, 'My builds')).toHaveCount(0)
   })
 })
 

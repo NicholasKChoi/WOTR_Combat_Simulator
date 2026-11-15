@@ -217,8 +217,9 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
 
     useEffect(() => {
         function reread(event: StorageEvent) {
+            if (event.key !== null && event.key !== MY_BUILDS_STORAGE_KEY) return
             const storage = browserStorage()
-            if ((event.key !== null && event.key !== MY_BUILDS_STORAGE_KEY) || storage === null) return
+            if (storage === null || !myBuildsAvailable(storage)) return
             const stored = readMyBuilds(storage)
             setEntries((list) => withRereadMyBuilds(list, mineEntries(stored), selected))
             setSecrets((known) => ({ ...known, ...secretsOf(stored) }))
