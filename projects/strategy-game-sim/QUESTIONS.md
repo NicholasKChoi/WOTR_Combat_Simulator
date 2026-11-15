@@ -29,6 +29,7 @@ kind: handoff
 blocks: retro
 options: A) Done | B) Not now
 recommendation: A: retro lastRun predates M9's last merge; run it, then start M10 (the nextMilestoneScope in checkpoint.json)
+thread: 1571667387734827149
 
 M9 is closed: every exit criterion is done. The retro is interactive, so a headless drive does not run it.
 - Run `/code-factory:manage strategy-game-sim retro` in a terminal in the code repo.

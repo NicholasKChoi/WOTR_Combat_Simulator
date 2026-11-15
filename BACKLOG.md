@@ -29,17 +29,6 @@ pull from here; triage moves an item into a milestone or deletes it.
   upgrades at the Blacksmith; spearman veterancy at the Barracks, archer upgrades at the Archery Range). The
   simulator should require that building to exist and should block its production queue for the research's
   duration, so units queued there pause until the research finishes. (owner feature request, 2026-11-13)
-- (standalone chore) Priority: low `reread` (the My builds storage listener in the AoE4 build-order page) does not check `myBuildsAvailable(storage)` before rereading; unchanged from base. Found by SGS-147 implementer (reports/SGS-147-implementer-1.md).
-- (docs) LESSONS candidate (acceptance/**): Playwright `hover()`/`focus()` smooth-scroll the page and the resulting `pointerenter` events change state after an assertion passed; scroll targets into view instantly before hover/focus sequences. From SGS-150 (reports/SGS-150-implementer-1.md).
-- (docs) docs/aoe4-build-order.md pinned-series color: the doc omits that the palette index wraps by modulo (`pinnedColor`). Non-blocking note from SGS-152 review 2.
-- (standalone chore) Priority: low SGS-154 acceptance-test: the idle-arrival test in the depletion-engine acceptance spec only asserts `at > 0`; a mutation keeping the latest arrival instead of the first still passes, so the first-arrival `at` rule is unpinned (reports/SGS-154-acceptance-test-1.md).
-- (docs) **Combat simulator doc: remove stale "Current code" notes.** `docs/combat-simulator.md` still describes the
-  one-battle code in three notes: "Number of battles N" (but `validateBattles` in `pages/api/fight.ts` accepts
-  `battles`, 1..100000, default 1000), "Independence of battles" (but `simulateBattles` in
-  `lib/combat-simulator/simulate.ts` builds a fresh `BaseArmy` per battle), and "Outcome reporting" (the response is
-  now `FightResponse` with `battles`, `outcomes`, `rounds` stats, `survivors`, `hitsPerRound`). Reword the intro that
-  introduces those notes. Review judges the simulator against this doc, so it currently flags shipped behavior as a
-  defect. (discovery docs 2026-11-13, discovery/docs-20261113-1.md)
 - (milestone) **AoE4 sim: measure accuracy against real games.** No M1-M9 criterion checks the simulator's timings against real
   play (e.g. age-up and unit-out times from pro-game replays or published builds). Wider than the existing
   provisional-gather-rates item above, which it would absorb. Recommended: milestone, priority high. (discovery
@@ -50,3 +39,4 @@ pull from here; triage moves an item into a milestone or deletes it.
 - **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 - (milestone) **Remove mobile support for the AoE4 build-order page (owner, Q101, 2026-11-15: "Remove mobile support, it should be its own milestone").** Replaces the 360 px tooltip item: (from SGS-157 review 2) AoE4 series charts at 360 px: a tooltip shown near the chart's right edge cuts off its text (e.g. "Capital Town Center : 1"); recharts tooltip placement, on main too (`components/apps/aoe4-build-order/line-chart.tsx`). Evidence: reports/SGS-157-review-2.md.
+- (docs) `docs/combat-simulator.md` "Not modeled" says Character and Nazgul leadership support "is planned for a later release" (a roadmap claim, not a rule), and states a "within 10 seconds for N = 100,000" performance requirement nobody measured. Decide whether to cut or confirm each. Found by SGS-164 docs agent (reports/SGS-164-docs-1.md).
