@@ -147,6 +147,33 @@ test.describe('AoE4 chart view toggles', () => {
     expect(await legendNames(page, UNITS)).toEqual(unitNames)
   })
 
+  test('Buildings draws whole-number y ticks from 0 and its tooltip shows whole-number counts', async ({ page }) => {
+    await openPage(page)
+    await runOk(page, BARRACKS_PASTE)
+    await showTab(page, 'results')
+    await option(page, UNITS, 'buildings').click()
+    await expect(yLabel(page, UNITS)).toHaveText('Buildings')
+
+    const ticks = chart(page, UNITS).locator('.recharts-cartesian-axis-tick-value[text-anchor="end"]')
+    await expect(ticks.first()).toBeVisible()
+    const tickValues = (await ticks.allTextContents()).map(Number)
+    for (const value of tickValues) {
+      expect(Number.isInteger(value)).toBe(true)
+      expect(value).toBeGreaterThanOrEqual(0)
+    }
+
+    await expect(async () => {
+      const point = await plotPoint(page, UNITS, HOVER_FRACTION)
+      await page.mouse.move(point.x - 3, point.y)
+      await page.mouse.move(point.x, point.y)
+      const items = chart(page, UNITS).locator('.recharts-tooltip-item-value')
+      await expect(items.first()).toBeVisible()
+      const values = (await items.allTextContents()).map(Number)
+      expect(values.length).toBeGreaterThan(0)
+      for (const value of values) expect(Number.isInteger(value)).toBe(true)
+    }).toPass()
+  })
+
   test('a toggle works while its chart is collapsed and the new view is shown on expand', async ({ page }) => {
     await openPage(page)
     await showTab(page, 'results')

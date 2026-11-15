@@ -988,6 +988,7 @@ label `Villagers`). Units produced offers Units (the default, y axis label `Coun
 entry, key `baseId`, name `name`, in result order, y axis label `Buildings`). The choice is not stored and resets on reload. The
 pinned run follows the view, drawn from its own `gatherers` or `productionBuildings` (matched to the current lines by key); a building
 only the pinned run has gets only a dashed line.
+In the Buildings view each line is drawn a small amount above its true count (a different amount per visible building, the same at every time, always below half a building), so buildings with equal counts do not draw on top of each other; the y axis shows whole numbers only and the tooltip shows each building's true count. A pinned building's line is drawn at the same offset as the current line with its key, and a building hidden in the legend takes no offset.
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
 it again restores it; the legend has one item per series, named without a suffix: with a pinned run, an item for a series in both runs hides and restores both its lines, and a series only the pinned run has is listed once, with a dashed swatch. The tooltip lists only the current run's series; pinned lines and markers are not in it. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. By default only `age-up` markers carry a

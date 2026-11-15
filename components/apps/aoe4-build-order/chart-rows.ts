@@ -16,7 +16,7 @@ const PINNED_PREFIX = 'pinned:'
 
 export const pinnedKey = (key: string): string => PINNED_PREFIX + key
 
-type ChartRow = { t: number } & Record<string, number>
+export type ChartRow = { t: number } & Record<string, number>
 
 export function toChartRows(times: number[], series: ChartSeries[], pinned?: PinnedSeries): ChartRow[] {
     if (!pinned) {
@@ -40,6 +40,38 @@ export function toChartRows(times: number[], series: ChartSeries[], pinned?: Pin
     fill(pinned.times, pinned.series, pinnedKey)
     return [...rows.values()]
 }
+
+const MAX_LINE_OFFSET = 0.45
+
+// Slot i of n gets i * 0.45 / n, so offsets are distinct, never negative and always below half a count.
+export function lineOffsets(keys: readonly string[]): Record<string, number> {
+    return Object.fromEntries(keys.map((key, i) => [key, (i * MAX_LINE_OFFSET) / keys.length]))
+}
+
+// Slot order: visible current series, then visible keys only the pinned run has. Hidden keys take no slot.
+export function offsetSlotKeys(series: readonly ChartSeries[], pinned: PinnedSeries | undefined, hidden: ReadonlySet<string>): string[] {
+    const keys = [...series, ...(pinned?.series ?? [])].map((s) => s.key).filter((key) => !hidden.has(key))
+    return [...new Set(keys)]
+}
+
+// Rows for integer-valued series whose lines would coincide: each line is lifted by its key's offset, and a pinned
+// line takes the offset of the current line with the same key.
+export function toOffsetChartRows(times: number[], series: ChartSeries[], pinned: PinnedSeries | undefined, hidden: ReadonlySet<string>): ChartRow[] {
+    const offsets = lineOffsets(offsetSlotKeys(series, pinned, hidden))
+    const lift = (row: ChartRow): ChartRow => {
+        const lifted: ChartRow = { t: row.t }
+        for (const [key, value] of Object.entries(row)) {
+            if (key === 't') continue
+            const offset = offsets[key.startsWith(PINNED_PREFIX) ? key.slice(PINNED_PREFIX.length) : key]
+            lifted[key] = offset === undefined ? value : value + offset
+        }
+        return lifted
+    }
+    return toChartRows(times, series, pinned).map(lift)
+}
+
+// The offset is below half a count, so rounding a lifted value gives back the integer count.
+export const trueCount = (row: ChartRow, key: string): number => Math.round(row[key])
 
 export const PALETTE: readonly string[] = [
     '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
