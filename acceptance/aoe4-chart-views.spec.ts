@@ -347,4 +347,39 @@ test.describe('AoE4 chart view toggles', () => {
     await expect(line(page, UNITS, shared)).toHaveCount(1)
     await expect(line(page, UNITS, `pinned:${shared}`)).toHaveCount(1)
   })
+
+  for (const width of [360, 768, 1280]) {
+    test(`no two axis tick labels overlap, none is clipped, and the page does not scroll sideways at ${width} px wide`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await openPage(page)
+      await runOk(page, BARRACKS_PASTE)
+      await showTab(page, 'results')
+      await option(page, UNITS, 'buildings').click()
+      await expectPressed(page, UNITS, 'buildings', 'units')
+
+      for (const id of CHART_IDS) {
+        await expect(chart(page, id).locator('.recharts-cartesian-axis-tick-value', { hasText: /^0:00$/ }).first()).toBeVisible()
+        const read = await chart(page, id).evaluate((el) => {
+          const bounds = el.querySelector('svg')!.getBoundingClientRect()
+          const ticks = [...el.querySelectorAll('.recharts-cartesian-axis-tick-value')].map((t) => {
+            const r = t.getBoundingClientRect()
+            return { text: t.textContent ?? '', left: r.left, right: r.right, top: r.top, bottom: r.bottom }
+          })
+          return { bounds: { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom }, ticks, scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }
+        })
+        expect(read.ticks.length).toBeGreaterThan(2)
+        expect(read.ticks.some((t) => t.text === '0:00')).toBe(true)
+        read.ticks.forEach((a, i) => {
+          expect(a.left, `${id} "${a.text}" clipped`).toBeGreaterThanOrEqual(read.bounds.left)
+          expect(a.right, `${id} "${a.text}" clipped`).toBeLessThanOrEqual(read.bounds.right)
+          expect(a.bottom, `${id} "${a.text}" clipped`).toBeLessThanOrEqual(read.bounds.bottom)
+          for (const b of read.ticks.slice(i + 1)) {
+            const disjoint = a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top
+            expect(disjoint, `${id} "${a.text}" overlaps "${b.text}"`).toBe(true)
+          }
+        })
+        expect(read.scrollWidth).toBeLessThanOrEqual(read.clientWidth)
+      }
+    })
+  }
 })

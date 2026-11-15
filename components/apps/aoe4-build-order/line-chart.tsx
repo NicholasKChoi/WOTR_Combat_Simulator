@@ -28,6 +28,9 @@ import styles from './results.module.css'
 const LABEL_LINE_HEIGHT = 14
 const LABEL_CHAR_PX = 8
 const Y_AXIS_WIDTH = 110
+// Lowers the x tick labels so the 0:00 label clears the y axis's bottom tick, which is centred on the axis line; the taller axis keeps them inside the chart.
+const X_TICK_MARGIN_PX = 12
+const X_AXIS_HEIGHT = 40
 // Mirrors recharts' default chart margin.
 const CHART_MARGIN_PX = 5
 const LABEL_FONT_SIZE = 12
@@ -158,7 +161,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                 margin={{ top: CHART_MARGIN_PX + rows * LABEL_LINE_HEIGHT, right: CHART_MARGIN_PX, bottom: CHART_MARGIN_PX, left: CHART_MARGIN_PX }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} />
+                                <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} tickMargin={X_TICK_MARGIN_PX} height={X_AXIS_HEIGHT} />
                                 <YAxis domain={yAxis?.domain} ticks={yAxis?.ticks} width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft', textAnchor: 'middle' }} />
                                 <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} formatter={offsetLines ? trueCountFormatter : formatChartValue} />
                                 {series.map((s, i) => (
