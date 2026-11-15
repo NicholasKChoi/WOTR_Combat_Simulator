@@ -2,9 +2,6 @@ import { test, expect, type APIRequestContext } from '@playwright/test'
 import { loadGameData } from '../lib/aoe4-build-order/data'
 import { buildOrderFrom, postSimulate } from './helpers'
 
-// next dev compiles the route on its first request, which can take longer than a simulation.
-const WARM_UP_TIMEOUT_MS = 60_000
-
 test.describe.configure({ timeout: 60_000 })
 
 type Result = {
@@ -68,10 +65,10 @@ test.describe('auto-houses keep the Town Center supplied when wood is thin', () 
   test('the Town Center never stalls longer than one villager plus a sample between 9:30 and 15:00', async ({ request }) => {
     const on = await simulate(request, true)
     const counts = villagerSeries(on)
-    const inWindow = on.times.map((time, index) => ({ time, index })).filter(({ time }) => time >= WINDOW_START && time <= WINDOW_END)
+    const inWindow = on.times.flatMap((time, index) => (time >= WINDOW_START && time <= WINDOW_END ? [index] : []))
     // Preconditions: the Town Center could always produce, so a flat count means supply, not food or the villager target.
     expect(inWindow.length).toBeGreaterThan(10)
-    for (const { index } of inWindow) {
+    for (const index of inWindow) {
       expect(on.floating.food[index]).toBeGreaterThan(50)
       expect(counts[index]).toBeLessThan(90)
     }

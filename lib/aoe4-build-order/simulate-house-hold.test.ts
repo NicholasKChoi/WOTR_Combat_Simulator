@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BuildStart, BuildStep, SimulationResult } from './model'
 import { buildOrderCatalog } from './schema'
 import { SAMPLE_SECONDS, simulateBuildOrder } from './simulate'
-import { ENGLISH, at, editGameData, housesDone, inputsFor, run, sampleIndex, series } from './test-helpers'
+import { ENGLISH, at, editGameData, housesDone, inputsFor, noneNegative, run, sampleIndex, series } from './test-helpers'
 import type { Parts } from './test-helpers'
 import { textToBuildOrder } from './text-to-build'
 
@@ -50,25 +50,21 @@ const barracks = (extra: Partial<BuildStep> = {}): BuildStep => ({ action: 'buil
 const spearmen: BuildStep = { action: 'produce', producer: 'barracks', unit: 'spearman' }
 const onBerry = { trigger: { kind: 'depleted', node: 'berry' }, reaction: true } as const
 
-function noneNegative(result: SimulationResult): void {
-    Object.values(result.floating).forEach((values) => values.forEach((v) => expect(v).toBeGreaterThanOrEqual(0)))
-}
-
 describe('a due house holds its cost back from steps', () => {
     // Each step leaves the bank 10 wood short of its cost plus one house; one wood villager closes the gap.
     it.each([
-        ['build', [barracks()], 0, 150],
-        ['produce', [spearmen], 0, 20],
-        ['research', [{ action: 'research', tech: 'wheelbarrow', at: 'mill' } as BuildStep], 0, 50],
-        ['reaction', [barracks(onBerry)], 0, 150],
-    ])('starts the %s step the instant the bank covers its cost plus one house', (_, steps, index, cost) => {
+        ['build', [barracks()], 150],
+        ['produce', [spearmen], 20],
+        ['research', [{ action: 'research', tech: 'wheelbarrow', at: 'mill' } as BuildStep], 50],
+        ['reaction', [barracks(onBerry)], 150],
+    ])('starts the %s step the instant the bank covers its cost plus one house', (_, steps, cost) => {
         const result = holdRun(steps, { wood: cost + HOUSE_WOOD - 10 })
         const rate = woodRate(result)
         expect(rate).toBeGreaterThan(0)
         expect((10 / rate) % SAMPLE_SECONDS).toBeGreaterThan(0)
         expect(10 / rate).toBeLessThan(20)
-        expect(result.steps[index].startedAt).toBeCloseTo(10 / rate, 6)
-        expect(result.steps[index].waitBreakdown.resources).toBeGreaterThan(0)
+        expect(result.steps[0].startedAt).toBeCloseTo(10 / rate, 6)
+        expect(result.steps[0].waitBreakdown.resources).toBeGreaterThan(0)
         noneNegative(result)
     })
 

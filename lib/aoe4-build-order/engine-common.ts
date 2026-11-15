@@ -30,8 +30,11 @@ export function canAfford(bank: Readonly<Resources>, cost: Readonly<Resources>):
 export function heldNeed(cost: Readonly<Resources>, holds: readonly (Readonly<Resources> | undefined)[]): Resources {
   const need = { ...cost };
   for (const hold of holds) {
+    if (!hold) {
+      continue;
+    }
     for (const kind of RESOURCE_KINDS) {
-      if (hold && cost[kind] > 0) {
+      if (cost[kind] > 0) {
         need[kind] += hold[kind];
       }
     }
@@ -39,7 +42,7 @@ export function heldNeed(cost: Readonly<Resources>, holds: readonly (Readonly<Re
   return need;
 }
 
-// Every paying step handler checks through here, so a step leaves a due auto-house's cost in the bank.
+// Paying handlers check through here, so a step leaves a due auto-house's cost in the bank.
 export function canAffordHeld(state: EngineState, cost: Readonly<Resources>): boolean {
   return canAfford(state.resources, heldNeed(cost, [state.houseHold]));
 }

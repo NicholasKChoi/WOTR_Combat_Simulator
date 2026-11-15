@@ -5,7 +5,7 @@ import { listBuilds } from './builds'
 import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, SimulationResult } from './model'
 import { simulateBuildOrder } from './simulate'
-import { ENGLISH, at, countAt, editGameData, housesDone, inputsFor, run, sampleIndex, withHandler } from './test-helpers'
+import { ENGLISH, at, countAt, editGameData, housesDone, inputsFor, noneNegative, run, sampleIndex, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
@@ -127,9 +127,8 @@ describe('build step', () => {
         expect(aged.steps[1].status).toBe('waiting')
         expect(aged.floating.wood[0]).toBe(50)
         expect(countAt(aged, 'scout', 50)).toBe(2)
-        for (const result of [blocked, aged]) {
-            Object.values(result.floating).forEach((values) => values.forEach((v) => expect(v).toBeGreaterThanOrEqual(0)))
-        }
+        noneNegative(blocked)
+        noneNegative(aged)
     })
 
     it('adds a villager producer that runs the default order with the held rally', () => {
