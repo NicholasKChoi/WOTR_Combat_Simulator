@@ -33,6 +33,16 @@ const option = (page: Page, id: string, view: string) => chart(page, id).locator
 const legendNames = (page: Page, id: string) => chart(page, id).getByTestId('chart-series-legend-item').allTextContents()
 const line = (page: Page, id: string, key: string) => chart(page, id).locator(`path[data-series="${key}"]`)
 
+const lineEndYs = (page: Page, id: string, keys: string[]) =>
+  chart(page, id).evaluate(
+    (el, ks) =>
+      ks.map((key) => {
+        const coords = el.querySelector(`path[data-series="${key}"]`)?.getAttribute('d')?.match(/-?[\d.]+/g) ?? []
+        return Number(coords.at(-1))
+      }),
+    keys,
+  )
+
 async function expectPressed(page: Page, id: string, view: string, other: string) {
   await expect(option(page, id, view)).toHaveAttribute('aria-pressed', 'true')
   await expect(option(page, id, other)).toHaveAttribute('aria-pressed', 'false')
@@ -184,12 +194,7 @@ test.describe('AoE4 chart view toggles', () => {
     await expect(line(page, UNITS, 'capital-town-center')).toHaveCount(1)
     await expect(line(page, UNITS, 'barracks')).toHaveCount(1)
 
-    const [townCenterEnd, barracksEnd] = await chart(page, UNITS).evaluate((el) =>
-      ['capital-town-center', 'barracks'].map((key) => {
-        const coords = el.querySelector(`path[data-series="${key}"]`)?.getAttribute('d')?.match(/-?[\d.]+/g) ?? []
-        return Number(coords.at(-1))
-      }),
-    )
+    const [townCenterEnd, barracksEnd] = await lineEndYs(page, UNITS, ['capital-town-center', 'barracks'])
     expect(Number.isFinite(townCenterEnd)).toBe(true)
     expect(Number.isFinite(barracksEnd)).toBe(true)
     expect(townCenterEnd).not.toBe(barracksEnd)
@@ -204,8 +209,10 @@ test.describe('AoE4 chart view toggles', () => {
     await showTab(page, 'results')
     await option(page, UNITS, 'buildings').click()
 
-    const endY = (key: string) => line(page, UNITS, key).evaluate((el) => Number(el.getAttribute('d')?.match(/-?[\d.]+/g)?.at(-1)))
-    const gap = async () => Math.abs((await endY(first)) - (await endY(second)))
+    const gap = async () => {
+      const [firstEnd, secondEnd] = await lineEndYs(page, UNITS, [first, second])
+      return Math.abs(firstEnd - secondEnd)
+    }
     const before = await gap()
     expect(before).toBeGreaterThan(0)
 
@@ -224,12 +231,19 @@ test.describe('AoE4 chart view toggles', () => {
     expect(second.productionBuildings.find((b) => b.baseId === 'barracks')?.counts.at(-1)).toBe(1)
     await option(page, UNITS, 'buildings').click()
 
-    const endY = (key: string) => line(page, UNITS, key).evaluate((el) => Number(el.getAttribute('d')?.match(/-?[\d.]+/g)?.at(-1)))
     await expect(line(page, UNITS, 'pinned:barracks')).toHaveCount(1)
     await expect(line(page, UNITS, 'pinned:capital-town-center')).toHaveCount(1)
-    expect(await endY('pinned:barracks')).toBe(await endY('barracks'))
-    expect(await endY('pinned:capital-town-center')).toBe(await endY('capital-town-center'))
-    expect(await endY('pinned:barracks')).not.toBe(await endY('pinned:capital-town-center'))
+    await expect(async () => {
+      const [pinnedBarracks, barracks, pinnedTownCenter, townCenter] = await lineEndYs(page, UNITS, [
+        'pinned:barracks',
+        'barracks',
+        'pinned:capital-town-center',
+        'capital-town-center',
+      ])
+      expect(pinnedBarracks).toBe(barracks)
+      expect(pinnedTownCenter).toBe(townCenter)
+      expect(pinnedBarracks).not.toBe(pinnedTownCenter)
+    }).toPass()
   })
 
   test('a toggle works while its chart is collapsed and the new view is shown on expand', async ({ page }) => {
