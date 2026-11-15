@@ -22,16 +22,16 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q103
+next: Q104
 
-## Q102: M9.2: does Save a new version work in production (reload shows revision 2)?
+## Q103: Run the M9 retro (milestone close)?
 kind: handoff
-blocks: M9.2 (Owner verifies on the PR preview and then production: save…)
-options: A) Done, it works | B) Not now | C) It fails, details in reply
-recommendation: A: confirms M9 can close and the retro can run
-thread: 1571662927964934174
+blocks: retro
+options: A) Done | B) Not now
+recommendation: A: retro lastRun predates M9's last merge; run it, then start M10 (the nextMilestoneScope in checkpoint.json)
 
-M9.2 is the only open M9 criterion; every code criterion is now done. It needs you on the deployed site.
-- On production: save a build, Save as copy, edit, Save a new version; reload should show revision 2.
+M9 is closed: every exit criterion is done. The retro is interactive, so a headless drive does not run it.
+- Run `/code-factory:manage strategy-game-sim retro` in a terminal in the code repo.
+- Until it runs, the factory has no more work: all 44 rows are integrated.
 
 ### Answer
