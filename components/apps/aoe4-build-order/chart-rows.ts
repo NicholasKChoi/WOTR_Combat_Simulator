@@ -65,7 +65,7 @@ export function toOffsetChartRows(times: number[], series: ChartSeries[], pinned
         for (const [key, value] of Object.entries(row)) {
             if (key === 't') continue
             const offset = offsets[seriesKeyOf(key)]
-            lifted[key] = offset === undefined ? value : value + offset
+            lifted[key] = offset === undefined || typeof value !== 'number' ? value : value + offset
         }
         return lifted
     }

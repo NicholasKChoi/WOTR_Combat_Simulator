@@ -239,6 +239,17 @@ describe('toOffsetChartRows', () => {
         expect(new Set(all).size).toBe(4)
         expect(rows[0]['pinned:z']).toBeGreaterThan(rows[0].c)
     })
+
+    it.each([
+        ['the current run ends before a longer pinned run', times],
+        ['the current series have fewer values than times', [...times, 15]],
+    ])('keeps a missing current value undefined, not NaN, when %s', (_case, currentTimes) => {
+        const pinned = { times: [...times, 15], series: [{ key: 'a', name: 'A', values: [1, 0, 2, 3] }] }
+        const rows = toOffsetChartRows(currentTimes, series, pinned, none)
+        expect(rows[3].t).toBe(15)
+        expect(rows[3]['pinned:a']).toBe(3)
+        expect(rows[3].b).toBeUndefined()
+    })
 })
 
 describe('wholeNumberAxis', () => {
