@@ -1135,8 +1135,8 @@ The create response carries the build's edit secret once. The page keeps it only
 which holds the newest 50 builds: the 51st save evicts the oldest, which then opens read-only here, and its link
 still works. The secret is sent only as the update's `Authorization` header, never in the address. When the
 browser cannot store the list, the save still succeeds and the page says `This browser could not store the edit
-key, so you can edit this build only until you close the page.` (`my-builds-unavailable`). A save in another tab,
-or another tab clearing the storage, updates this tab's My builds. After a save here, this tab's list also holds
+key, so you can edit this build only until you close the page.` (`my-builds-unavailable`). While the browser can store
+the list, a save in another tab, or another tab clearing the storage, updates this tab's My builds. After a save here, this tab's list also holds
 at most 50 My builds: the new build goes first among them and the oldest in list order is dropped, never the
 selected one. A stored list the page cannot read, or one with an unreadable entry, is never deleted
 by reading it. Before the next save replaces it, the page copies the stored text to
