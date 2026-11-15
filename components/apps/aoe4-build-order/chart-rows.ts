@@ -45,13 +45,13 @@ export function toChartRows(times: number[], series: ChartSeries[], pinned?: Pin
 
 const MAX_LINE_OFFSET = 0.45
 
-// Slot i of n gets i * 0.45 / n, so offsets are distinct, never negative and always below half a count.
+// Slot i of n gets i * MAX_LINE_OFFSET / n, so offsets are distinct, never negative and always below half a count.
 export function lineOffsets(keys: readonly string[]): Record<string, number> {
     return Object.fromEntries(keys.map((key, i) => [key, (i * MAX_LINE_OFFSET) / keys.length]))
 }
 
 // Slot order: visible current series, then visible keys only the pinned run has. Hidden keys take no slot.
-export function offsetSlotKeys(series: readonly ChartSeries[], pinned: PinnedSeries | undefined, hidden: ReadonlySet<string>): string[] {
+function offsetSlotKeys(series: readonly ChartSeries[], pinned: PinnedSeries | undefined, hidden: ReadonlySet<string>): string[] {
     const keys = [...series, ...(pinned?.series ?? [])].map((s) => s.key).filter((key) => !hidden.has(key))
     return [...new Set(keys)]
 }
