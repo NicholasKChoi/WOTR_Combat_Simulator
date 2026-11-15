@@ -123,11 +123,22 @@ test.describe('villagers arriving at a dry node', () => {
 
     const arrivals = warningsOf(result, 'idle-arrival', 'berry')
     expect(arrivals, 'an idle-arrival warning for berry').not.toHaveLength(0)
-    const villagers = last(result.unitsProduced.find((s) => s.baseId === 'villager')!.counts)
+    const counts = result.unitsProduced.find((s) => s.baseId === 'villager')!.counts
+    const villagers = last(counts)
     expect(villagers, 'the produce step spawns its villagers by the horizon').toBeGreaterThanOrEqual(COUNT)
     expect(arrivals).toHaveLength(1)
     expect(arrivals[0]).toMatchObject({ severity: 'warning' })
-    expect(arrivals[0].at).toBeGreaterThan(0)
+
+    // The response has no per-villager spawn time: the first spawn lies in the sample interval ending at the
+    // first sample that counts a villager, and its walk to the berry adds walkSeconds.
+    const first = counts.findIndex((n) => n >= 1)
+    const second = counts.findIndex((n) => n >= 2)
+    const firstSampleSeconds = result.times[first]
+    expect(counts[first], 'exactly one villager has spawned by the first sample that counts one').toBe(1)
+    expect(second, 'the second villager spawns in a later sample interval than the first').toBeGreaterThan(first)
+    expect(result.steps[0].startedAt, 'the produce step is running before the first villager spawns').toBeLessThanOrEqual(firstSampleSeconds - result.sampleSeconds)
+    expect(arrivals[0].at).toBeGreaterThan(firstSampleSeconds - result.sampleSeconds + produce.walkSeconds)
+    expect(arrivals[0].at).toBeLessThanOrEqual(firstSampleSeconds + produce.walkSeconds)
     // The producer's rally persists, so villagers the default order makes later also walk to the dry node.
     expect(arrivals[0].idleVillagers).toBeGreaterThanOrEqual(COUNT)
     expect(arrivals[0].idleVillagers).toBeLessThanOrEqual(villagers)
