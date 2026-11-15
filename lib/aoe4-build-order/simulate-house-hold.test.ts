@@ -74,7 +74,7 @@ describe('a due house holds its cost back from steps', () => {
 
     it('holds one house cost when several houses are due and none can start', () => {
         const slow = { houseSeconds: 1200 }
-        const withBuilders = holdRun([], { ...slow, wood: 1000 }, { houseBuilders: 1 })
+        const withBuilders = holdRun([], { ...slow, wood: 1000 }, {}, { villagers: { sheep: 8 }, rally: 'stone' })
         expect(withBuilders.spent.buildings[0]).toBeGreaterThanOrEqual(2 * HOUSE_WOOD)
         expect(holdRun([barracks()], { ...slow, wood: 150 + HOUSE_WOOD }).steps[0].startedAt).toBe(0)
     })

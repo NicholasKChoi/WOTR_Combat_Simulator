@@ -329,7 +329,7 @@ reports a house due, however many, and nothing otherwise. The hold stays as set 
 payment between two runs does not change it. A step payment (`build`, `produce`, `research`, reactions
 included) must leave the hold in the bank on each resource it spends; a resource the step does not spend is
 not held, so a food-only step never waits on a wood hold. A non-villager order payment must leave both the
-waiting step's reserve and the hold of each resource the unit costs. Villager payments and explicit
+waiting step's reserve and the hold of each resource the unit costs. Villager order payments and explicit
 `build house` steps ignore the hold. A held step waits on `resources` and starts at the instant the bank
 covers its cost plus the hold. The simulation adds no stop of its own for the instant a house stops being
 due; the hold is released at the next instant it already stops at. Nothing is held with `autoHouses: false`,
