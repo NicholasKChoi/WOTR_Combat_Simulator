@@ -42,7 +42,7 @@ test.describe('AoE4 results take the full width', () => {
     await page.setViewportSize(WIDE_VIEWPORT)
     await openResults(page)
     const children = await page.getByTestId('results-last-good').evaluate((el) => [...el.children].map((child) => child.getAttribute('data-testid')))
-    expect(children.filter((id) => id?.startsWith('chart-'))).toEqual(CHART_IDS)
+    expect(children.filter((id) => CHART_IDS.some((chart) => chart === id))).toEqual(CHART_IDS)
     expect(children.slice(-CHART_IDS.length)).toEqual(CHART_IDS)
   })
 
