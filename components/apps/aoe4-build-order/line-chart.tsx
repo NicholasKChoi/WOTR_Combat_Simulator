@@ -18,6 +18,7 @@ import {
     toggleHidden,
     trueCount,
     type ChartRow,
+    wholeNumberAxis,
 } from './chart-rows'
 import { type ChartControls, ChartHeader } from './chart-header'
 import { MarkerLegend, PinnedLegend, SeriesLegend, pinnedLegendShown } from './chart-legend'
@@ -135,6 +136,8 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const rows = placed.reduce((max, p) => Math.max(max, p.row + 1), 0)
     const placedByMarker = new Map(placed.map((p) => [p.marker, p]))
     const bodyId = `${testId}-body`
+    const chartRows = offsetLines ? toOffsetChartRows(times, series, pinned, hidden) : toChartRows(times, series, pinned)
+    const yAxis = offsetLines ? wholeNumberAxis(chartRows, hidden) : undefined
 
     return (
         <div
@@ -151,12 +154,12 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                     <>
                         <ResponsiveContainer width="100%" height={360} onResize={(width) => setChartWidth(width)}>
                             <LineChart
-                                data={offsetLines ? toOffsetChartRows(times, series, pinned, hidden) : toChartRows(times, series, pinned)}
+                                data={chartRows}
                                 margin={{ top: CHART_MARGIN_PX + rows * LABEL_LINE_HEIGHT, right: CHART_MARGIN_PX, bottom: CHART_MARGIN_PX, left: CHART_MARGIN_PX }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="t" type="number" domain={['dataMin', 'dataMax']} tickFormatter={formatMinSec} />
-                                <YAxis allowDecimals={!offsetLines} width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft', textAnchor: 'middle' }} />
+                                <YAxis domain={yAxis?.domain} ticks={yAxis?.ticks} width={Y_AXIS_WIDTH} label={{ value: yLabel, angle: -90, position: 'insideLeft', textAnchor: 'middle' }} />
                                 <Tooltip labelFormatter={(t) => formatMinSec(Number(t))} formatter={offsetLines ? trueCountFormatter : formatChartValue} />
                                 {series.map((s, i) => (
                                     <Line

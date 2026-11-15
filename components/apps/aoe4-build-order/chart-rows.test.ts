@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MARKER_COLORS, MARKER_KIND_LABELS, PALETTE, formatChartValue, isLineHidden, legendItems, lineOffsets, markerLabel, pinnedKey, seriesColor, toChartRows, toOffsetChartRows, toggleHidden, trueCount } from './chart-rows'
+import { type ChartRow, MARKER_COLORS, MARKER_KIND_LABELS, PALETTE, formatChartValue, isLineHidden, legendItems, lineOffsets, markerLabel, pinnedKey, seriesColor, toChartRows, toOffsetChartRows, toggleHidden, trueCount, wholeNumberAxis } from './chart-rows'
 
 describe('toChartRows', () => {
     it('makes one row per time with a value per series', () => {
@@ -238,6 +238,27 @@ describe('toOffsetChartRows', () => {
         const all = [rows[0].a, rows[0].b, rows[0].c, rows[0]['pinned:z']]
         expect(new Set(all).size).toBe(4)
         expect(rows[0]['pinned:z']).toBeGreaterThan(rows[0].c)
+    })
+})
+
+describe('wholeNumberAxis', () => {
+    const none = new Set<string>()
+    const rowsWith = (a: number, b: number): ChartRow[] => [{ t: 0, a: 0, b: 0 }, { t: 10, a, b }]
+
+    it.each([
+        [1.225, 0.5, [0, 2], [0, 1, 2]],
+        [0.3, 0, [0, 1], [0, 1]],
+        [0, 0, [0, 1], [0, 1]],
+        [3, 2.4, [0, 3], [0, 1, 2, 3]],
+        [13.2, 1, [0, 14], [0, 3, 6, 9, 12]],
+    ])('tops the axis at the smallest whole number at or above %s with whole ticks from 0', (a, b, domain, ticks) => {
+        expect(wholeNumberAxis(rowsWith(a, b), none)).toEqual({ domain, ticks })
+    })
+
+    it('ignores hidden buildings and their pinned lines', () => {
+        const rows: ChartRow[] = [{ t: 0, a: 7.2, b: 1.1, 'pinned:a': 9.2 }]
+        expect(wholeNumberAxis(rows, none).domain).toEqual([0, 10])
+        expect(wholeNumberAxis(rows, new Set(['a'])).domain).toEqual([0, 2])
     })
 })
 

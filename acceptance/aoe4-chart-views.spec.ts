@@ -41,8 +41,8 @@ async function expectOtherLabelsUnchanged(page: Page, changed: string) {
   for (const id of CHART_IDS.filter((c) => c !== changed)) await expect(yLabel(page, id)).toHaveText(DEFAULT_Y_LABELS[id])
 }
 
-async function hoverPlot(page: Page) {
-  const point = await plotPoint(page, RATES, HOVER_FRACTION)
+async function hoverPlot(page: Page, id = RATES) {
+  const point = await plotPoint(page, id, HOVER_FRACTION)
   await page.mouse.move(point.x - 3, point.y)
   await page.mouse.move(point.x, point.y)
 }
@@ -52,8 +52,8 @@ interface Reading {
   values: Record<string, number>
 }
 
-async function readTooltip(page: Page): Promise<Reading> {
-  const tooltip = chart(page, RATES).locator('.recharts-tooltip-wrapper')
+async function readTooltip(page: Page, id = RATES): Promise<Reading> {
+  const tooltip = chart(page, id).locator('.recharts-tooltip-wrapper')
   await expect(tooltip).toBeVisible()
   return await tooltip.evaluate((el) => {
     const values: Record<string, number> = {}
@@ -147,9 +147,10 @@ test.describe('AoE4 chart view toggles', () => {
     expect(await legendNames(page, UNITS)).toEqual(unitNames)
   })
 
-  test('Buildings draws whole-number y ticks from 0 and its tooltip shows whole-number counts', async ({ page }) => {
+  test('Buildings draws whole-number y ticks from 0 up to the highest count and its tooltip shows whole-number counts', async ({ page }) => {
     await openPage(page)
-    await runOk(page, BARRACKS_PASTE)
+    const result = await runOk(page, BARRACKS_PASTE)
+    expect(Math.max(...result.productionBuildings.flatMap((b) => b.counts))).toBe(1)
     await showTab(page, 'results')
     await option(page, UNITS, 'buildings').click()
     await expect(yLabel(page, UNITS)).toHaveText('Buildings')
@@ -161,17 +162,36 @@ test.describe('AoE4 chart view toggles', () => {
       expect(Number.isInteger(value)).toBe(true)
       expect(value).toBeGreaterThanOrEqual(0)
     }
+    expect(Math.max(...tickValues)).toBe(2)
 
     await expect(async () => {
-      const point = await plotPoint(page, UNITS, HOVER_FRACTION)
-      await page.mouse.move(point.x - 3, point.y)
-      await page.mouse.move(point.x, point.y)
-      const items = chart(page, UNITS).locator('.recharts-tooltip-item-value')
-      await expect(items.first()).toBeVisible()
-      const values = (await items.allTextContents()).map(Number)
+      await hoverPlot(page, UNITS)
+      const values = Object.values((await readTooltip(page, UNITS)).values)
       expect(values.length).toBeGreaterThan(0)
       for (const value of values) expect(Number.isInteger(value)).toBe(true)
     }).toPass()
+  })
+
+  test('Buildings draws two buildings with equal counts as separate lines', async ({ page }) => {
+    await openPage(page)
+    const result = await runOk(page, BARRACKS_PASTE)
+    const lastCount = (key: string) => result.productionBuildings.find((b) => b.baseId === key)?.counts.at(-1)
+    expect(lastCount('capital-town-center')).toBe(1)
+    expect(lastCount('barracks')).toBe(1)
+    await showTab(page, 'results')
+    await option(page, UNITS, 'buildings').click()
+    await expect(line(page, UNITS, 'capital-town-center')).toHaveCount(1)
+    await expect(line(page, UNITS, 'barracks')).toHaveCount(1)
+
+    const [townCenterEnd, barracksEnd] = await chart(page, UNITS).evaluate((el) =>
+      ['capital-town-center', 'barracks'].map((key) => {
+        const coords = el.querySelector(`path[data-series="${key}"]`)?.getAttribute('d')?.match(/-?[\d.]+/g) ?? []
+        return Number(coords.at(-1))
+      }),
+    )
+    expect(Number.isFinite(townCenterEnd)).toBe(true)
+    expect(Number.isFinite(barracksEnd)).toBe(true)
+    expect(townCenterEnd).not.toBe(barracksEnd)
   })
 
   test('a toggle works while its chart is collapsed and the new view is shown on expand', async ({ page }) => {

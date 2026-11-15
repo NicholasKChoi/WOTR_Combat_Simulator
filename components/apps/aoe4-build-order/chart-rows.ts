@@ -16,6 +16,8 @@ const PINNED_PREFIX = 'pinned:'
 
 export const pinnedKey = (key: string): string => PINNED_PREFIX + key
 
+const seriesKeyOf = (rowKey: string): string => (rowKey.startsWith(PINNED_PREFIX) ? rowKey.slice(PINNED_PREFIX.length) : rowKey)
+
 export type ChartRow = { t: number } & Record<string, number>
 
 export function toChartRows(times: number[], series: ChartSeries[], pinned?: PinnedSeries): ChartRow[] {
@@ -62,7 +64,7 @@ export function toOffsetChartRows(times: number[], series: ChartSeries[], pinned
         const lifted: ChartRow = { t: row.t }
         for (const [key, value] of Object.entries(row)) {
             if (key === 't') continue
-            const offset = offsets[key.startsWith(PINNED_PREFIX) ? key.slice(PINNED_PREFIX.length) : key]
+            const offset = offsets[seriesKeyOf(key)]
             lifted[key] = offset === undefined ? value : value + offset
         }
         return lifted
@@ -72,6 +74,25 @@ export function toOffsetChartRows(times: number[], series: ChartSeries[], pinned
 
 // The offset is below half a count, so rounding a lifted value gives back the integer count.
 export const trueCount = (row: ChartRow, key: string): number => Math.round(row[key])
+
+const MAX_Y_TICK_STEPS = 5
+
+export interface WholeNumberAxis {
+    domain: [number, number]
+    ticks: number[]
+}
+
+// The top is the smallest whole number at or above the highest visible drawn value (at least 1). Ticks are whole
+// multiples of a step chosen so there are at most MAX_Y_TICK_STEPS steps; the top itself may fall between ticks.
+export function wholeNumberAxis(rows: readonly ChartRow[], hidden: ReadonlySet<string>): WholeNumberAxis {
+    const visible = rows.flatMap((row) =>
+        Object.entries(row).filter(([key, value]) => key !== 't' && Number.isFinite(value) && !hidden.has(seriesKeyOf(key))),
+    )
+    const top = Math.max(1, Math.ceil(Math.max(0, ...visible.map(([, value]) => value))))
+    const step = Math.ceil(top / MAX_Y_TICK_STEPS)
+    const ticks = Array.from({ length: Math.floor(top / step) + 1 }, (_, i) => i * step)
+    return { domain: [0, top], ticks }
+}
 
 export const PALETTE: readonly string[] = [
     '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
