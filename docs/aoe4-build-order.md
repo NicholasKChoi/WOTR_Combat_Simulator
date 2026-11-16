@@ -5,6 +5,8 @@ extending it. This is the reference reviews judge the simulator's behavior again
 rule; the code and its tests implement it. The build order format, the routes and the result it returns are in
 the [format doc](aoe4-build-order-format.md); what the page does with a result is in the
 [page doc](aoe4-build-order-ui.md).
+A map of the modules and the data flow in the code is in
+[`lib/aoe4-build-order/README.md`](../lib/aoe4-build-order/README.md).
 
 ## Purpose and model
 
