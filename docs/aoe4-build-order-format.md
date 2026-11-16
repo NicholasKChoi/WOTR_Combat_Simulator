@@ -319,9 +319,10 @@ stored value or `null`, and `deleteBuild` removes it.
 
 **Blob store.**
 
-- Its fresh reads (`getNamed`, the counter read and the read-back) request the blob uncompressed
+- Its fresh reads (`getNamed` and the counter read) request the blob uncompressed
   (`accept-encoding: identity`), so the etag is the strong form that `ifMatch` compares against. A fresh read
-  that still gets a weak `W/` etag throws, which the routes answer as 503.
+  that still gets a weak `W/` etag throws, which the routes answer as 503. The read-back (below) makes the
+  same kind of read, but any error in it counts as not landed.
 - When the `put` of a build write throws, the store makes a fresh read of the key. The build writes are
   `create`, behind `putBuild` and `createNamed`, and `replaceNamed`. The write counts as done when the stored
   value, serialized with `JSON.stringify`, is the exact text the store sent, because a write whose response
