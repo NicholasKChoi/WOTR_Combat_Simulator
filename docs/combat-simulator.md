@@ -148,5 +148,4 @@ still ends only on elimination.
 ## Not modeled
 
 - **Character and Nazgul leadership.** Companions, Minions, and Nazgul that add leadership are not
-  modeled; leadership comes only from the leaders count. Support for them is planned for a later
-  release.
+  modeled; leadership comes only from the leaders count.
