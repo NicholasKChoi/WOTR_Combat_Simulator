@@ -25,12 +25,12 @@ import {
   isNamedPost,
   isNamedPut,
   isSimulatePost,
+  MIN_SUPPORTED_VIEWPORT,
   namedBuildUrl,
   openPage,
   REFUSED_CLIPBOARDS,
   reply,
   saveCopy,
-  showTab,
   submitCopy,
   stubNamed,
   uniqueClient,
@@ -488,13 +488,11 @@ test.describe('the pinned label for an opened link', () => {
     await page.goto(`${AOE4_PAGE}?b=${LINK_ID}`)
     await expect(status(page)).toHaveAttribute('data-status', 'current')
     await expect(checkedOption(page)).toHaveText(`Opened link (${LINK_ID})`)
-    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
     await expect(page.getByTestId('pinned-label')).toHaveText('Pinned: Opened link, 20:00')
   })
 })
 
-const PHONE = { width: 390, height: 844 }
 const VALID_A = REMOTE_TEXT
 const VALID_B = ['start -> sheep', 'produce spearman from barracks'].join('\n')
 const UNKNOWN_UNIT = ['start -> sheep', 'produce knigt from stable'].join('\n')
@@ -1276,21 +1274,19 @@ test.describe('layout of the save panel', () => {
     })
 
   async function expectFits(page: Page) {
-    await expect.poll(async () => (await measure(page)).scrollWidth).toBeLessThanOrEqual(PHONE.width)
-    const phone = await measure(page)
-    expect(phone.editorTop).toBeGreaterThanOrEqual(phone.runBarBottom)
-    for (const viewport of [
-      { width: 768, height: 1024 },
-      { width: 1280, height: 720 },
-    ]) {
-      await page.setViewportSize(viewport)
-      await expect.poll(async () => (await measure(page)).runBarHeight / viewport.height).toBeLessThanOrEqual(0.4)
-    }
-    await page.setViewportSize(PHONE)
+    await page.setViewportSize(MIN_SUPPORTED_VIEWPORT)
+    await expect
+      .poll(async () => {
+        const m = await measure(page)
+        return { sideways: m.scrollWidth > MIN_SUPPORTED_VIEWPORT.width, editorUnderBar: m.editorTop < m.runBarBottom, barShare: m.runBarHeight / MIN_SUPPORTED_VIEWPORT.height <= 0.4 }
+      })
+      .toEqual({ sideways: false, editorUnderBar: false, barShare: true })
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await expect.poll(async () => (await measure(page)).runBarHeight / 720).toBeLessThanOrEqual(0.4)
   }
 
-  test('at 390 px neither the open copy form nor the link panel widens the page or lets the run bar cover the editor', async ({ page }) => {
-    await page.setViewportSize(PHONE)
+  test('at the minimum supported viewport neither the open copy form nor the link panel widens the page or lets the run bar cover the editor', async ({ page }) => {
+    await page.setViewportSize(MIN_SUPPORTED_VIEWPORT)
     await openPage(page)
     await copyButton(page).click()
     await expect(copyForm(page)).toBeVisible()

@@ -5,7 +5,6 @@ import {
   AOE4_PAGE,
   CHART_IDS,
   SIMULATE_PATH,
-  TABS_VIEWPORT,
   buildOrderFrom,
   expectNoRun,
   holdNextSimulate,
@@ -13,8 +12,6 @@ import {
   openPage,
   scrollInstantly,
   setDurationInPlace,
-  settledScrollY,
-  showTab,
   showView,
   waitForRun,
 } from './helpers'
@@ -64,26 +61,20 @@ test.describe('AoE4 build order auto-run', () => {
     await expect(page.getByTestId('run-bar').getByTestId('auto-run-status')).toHaveCount(1)
   })
 
-  test.describe('first load runs once in the tabs layout', () => {
-    test.use({ viewport: TABS_VIEWPORT })
-
-    test('first load runs once', async ({ page }) => {
-      const hydration: string[] = []
-      page.on('console', (m) => {
-        if (/hydrat/i.test(m.text())) hydration.push(m.text())
-      })
-      const posts = trackPosts(page)
-      await openPage(page)
-      await expectNoRun(page)
-      expect(posts).toHaveLength(1)
-      expect(Object.keys(posted(posts[0])).sort()).toEqual(['buildOrder', 'inputs'])
-      expect(posted(posts[0]).inputs).toEqual({ durationSeconds: 1200 })
-      expect(posted(posts[0]).buildOrder).toEqual(json(buildOrderFrom(await textarea(page).inputValue())))
-      await expect(status(page)).toHaveAttribute('data-status', 'current')
-      await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
-      await expect(page.getByTestId('tab-results')).toBeEnabled()
-      expect(hydration).toEqual([])
+  test('first load runs once', async ({ page }) => {
+    const hydration: string[] = []
+    page.on('console', (m) => {
+      if (/hydrat/i.test(m.text())) hydration.push(m.text())
     })
+    const posts = trackPosts(page)
+    await openPage(page)
+    await expectNoRun(page)
+    expect(posts).toHaveLength(1)
+    expect(Object.keys(posted(posts[0])).sort()).toEqual(['buildOrder', 'inputs'])
+    expect(posted(posts[0]).inputs).toEqual({ durationSeconds: 1200 })
+    expect(posted(posts[0]).buildOrder).toEqual(json(buildOrderFrom(await textarea(page).inputValue())))
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
+    expect(hydration).toEqual([])
   })
 
   test('one POST per settled text edit', async ({ page }) => {
@@ -156,32 +147,24 @@ test.describe('AoE4 build order auto-run', () => {
     const other = BUILDS[1]
     const bySelect = await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ label: other.name }))
     expect(posted(bySelect.request()).buildOrder).toEqual(json(buildOrderFrom(other.text)))
-    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
     await expect(page.getByTestId('pinned-label')).toHaveText(`Pinned: ${other.name}, 15:00`)
   })
 
-  test.describe('an invalid text edit dims the charts in the tabs layout', () => {
-    test.use({ viewport: TABS_VIEWPORT })
+  test('an invalid text edit dims the charts', async ({ page }) => {
+    await openPage(page)
+    const original = await textarea(page).inputValue()
+    await expectNoRun(page, () => textarea(page).fill(UNKNOWN_ID))
+    await expect(status(page)).toHaveAttribute('data-status', 'invalid')
+    await expect(status(page)).toHaveText('The charts show the last valid build.')
+    await expect(page.getByTestId('build-order-issues')).toBeVisible()
+    await expect(page.getByTestId('build-order-issues-summary')).toHaveText('Fix 1 issue to run the simulation.')
+    await expect(page.getByTestId('results-last-good')).toBeVisible()
+    await expectDimmed(page)
 
-    test('an invalid text edit dims the charts', async ({ page }) => {
-      await openPage(page)
-      const original = await textarea(page).inputValue()
-      await expectNoRun(page, () => textarea(page).fill(UNKNOWN_ID))
-      await expect(status(page)).toHaveAttribute('data-status', 'invalid')
-      await expect(status(page)).toHaveText('The charts show the last valid build.')
-      await expect(page.getByTestId('build-order-issues')).toBeVisible()
-      await expect(page.getByTestId('build-order-issues-summary')).toHaveText('Fix 1 issue to run the simulation.')
-      await expect(page.getByTestId('tab-results')).toBeEnabled()
-      await showTab(page, 'results')
-      await expect(page.getByTestId('results-last-good')).toBeVisible()
-      await expectDimmed(page)
-
-      await showTab(page, 'build')
-      await expectNoRun(page, () => textarea(page).fill(original))
-      await expect(status(page)).toHaveAttribute('data-status', 'current')
-      await expect.poll(() => lastGoodOpacity(page)).toBe(1)
-    })
+    await expectNoRun(page, () => textarea(page).fill(original))
+    await expect(status(page)).toHaveAttribute('data-status', 'current')
+    await expect.poll(() => lastGoodOpacity(page)).toBe(1)
   })
 
   test('a first invalid load state has no target', async ({ page }) => {
@@ -198,7 +181,6 @@ test.describe('AoE4 build order auto-run', () => {
 
   test('an invalid duration', async ({ page }) => {
     await openPage(page)
-    await showTab(page, 'results')
     for (const [value, message] of [
       ['59', RANGE_MESSAGE],
       ['3601', RANGE_MESSAGE],
@@ -284,28 +266,37 @@ test.describe('AoE4 build order auto-run', () => {
     release()
     await expectNoRun(page)
     await expect(status(page)).toHaveAttribute('data-status', 'current')
-    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
     await expect(page.getByTestId('pinned-label')).toHaveText(`Pinned: ${BUILDS[0].name}, 16:40`)
   })
 
-  test.describe('at 390 px wide', () => {
-    test.use({ viewport: { width: 390, height: 844 } })
-
-    test('the page never scrolls by itself', async ({ page }) => {
-      await openPage(page)
-      const before = await scrollInstantly(page, 400)
-      expect(before).toBeGreaterThan(0)
-
-      await waitForRun(page, () => setDurationInPlace(page, '900'))
-      expect(await settledScrollY(page)).toBe(before)
-      await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
-
-      await expectNoRun(page, () => setDurationInPlace(page, '59'))
-      await expect(status(page)).toHaveAttribute('data-status', 'invalid')
-      expect(await settledScrollY(page)).toBe(before)
-      await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
+  test('the page never scrolls by itself', async ({ page }) => {
+    const column = page.getByTestId('build-column')
+    const settledScroll = () =>
+      page.evaluate(
+        () =>
+          new Promise<{ window: number; column: number }>((resolve) =>
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => resolve({ window: window.scrollY, column: document.querySelector('[data-testid="build-column"]')!.scrollTop })),
+            ),
+          ),
+      )
+    await openPage(page)
+    const windowBefore = await scrollInstantly(page, 400)
+    expect(windowBefore).toBeGreaterThan(0)
+    const columnBefore = await column.evaluate((el) => {
+      el.scrollBy({ top: 400, behavior: 'instant' })
+      return el.scrollTop
     })
+    expect(columnBefore).toBeGreaterThan(0)
+    const before = { window: windowBefore, column: columnBefore }
+
+    await waitForRun(page, () => setDurationInPlace(page, '900'))
+    expect(await settledScroll()).toEqual(before)
+
+    await expectNoRun(page, () => setDurationInPlace(page, '59'))
+    await expect(status(page)).toHaveAttribute('data-status', 'invalid')
+    expect(await settledScroll()).toEqual(before)
   })
 
   test('select keeps open step rows and opens the new rows that have options', async ({ page }) => {
