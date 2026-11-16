@@ -175,7 +175,7 @@ describe('StepTable run cells', () => {
         const html = render({ annotations })
         const start = html.slice(html.indexOf('step-start-row'), html.indexOf('step-row'))
         expect(start).not.toContain('step-run')
-        expect(/^step-start-row"><td class="[^"]*"><\/td>/.test(start)).toBe(true)
+        expect(/^step-start-row"><td><\/td>/.test(start)).toBe(true)
         expect(html).toContain('data-testid="step-kind-legend"')
     })
 

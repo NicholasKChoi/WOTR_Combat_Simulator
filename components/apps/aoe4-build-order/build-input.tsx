@@ -31,7 +31,6 @@ interface BuildInputProps {
     onSubmit: () => void
     view: EditorView
     onViewChange: (view: EditorView) => void
-    viewDisabled?: boolean
     runBarRef: RefObject<HTMLFormElement | null>
 }
 
@@ -40,7 +39,7 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ entries, selected, edited, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, entry, editSecret, onCreated, onUpdated, onSubmit, view, onViewChange, viewDisabled = false, runBarRef }: BuildInputProps) {
+export function BuildInput({ entries, selected, edited, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, entry, editSecret, onCreated, onUpdated, onSubmit, view, onViewChange, runBarRef }: BuildInputProps) {
     return (
         <form
             ref={runBarRef}
@@ -107,8 +106,7 @@ export function BuildInput({ entries, selected, edited, onBuildSelect, duration,
                         type="button"
                         data-testid={`editor-view-${option}`}
                         aria-pressed={view === option}
-                        disabled={viewDisabled}
-                        className={cn('btn btn-outline-secondary', view === option && ['active', styles.activeView])}
+                        className={cn('btn btn-outline-secondary', view === option && 'active')}
                         onClick={() => onViewChange(option)}
                     >
                         {label}

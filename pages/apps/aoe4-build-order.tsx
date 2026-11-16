@@ -46,8 +46,7 @@ import { useRunBarHeight } from '../../components/apps/aoe4-build-order/use-run-
 import workbenchStyles from '../../components/apps/aoe4-build-order/workbench.module.css'
 import { useDiscardGuard } from '../../components/apps/aoe4-build-order/use-discard-guard'
 import { useChartLayout } from '../../components/apps/aoe4-build-order/use-chart-layout'
-import { useSplitLayout } from '../../components/apps/aoe4-build-order/use-split-layout'
-import { WorkbenchTabs, type WorkbenchTab } from '../../components/apps/aoe4-build-order/workbench-tabs'
+import { WorkbenchColumns } from '../../components/apps/aoe4-build-order/workbench-columns'
 import { listBuilds } from '../../lib/aoe4-build-order/builds'
 import { loadGameData } from '../../lib/aoe4-build-order/data'
 import { formatBuildOrderText, parseBuildOrderText } from '../../lib/aoe4-build-order/parse-text'
@@ -133,14 +132,12 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const [pin, setPin] = useState<Pin | null>(null)
     const [selected, setSelected] = useState(entries[0]?.key ?? '')
     const [infoExpanded, setInfoExpanded] = useState(false)
-    const [tab, setTab] = useState<WorkbenchTab>('build')
     const [view, setView] = useState<EditorView>('text')
     const [openRows, setOpenRows] = useState<boolean[]>([])
     const [initialQuery, setInitialQuery] = useState<InitialBuildQuery | null>(null)
     const [loadEnded, setLoadEnded] = useState(false)
     const [choosing, setChoosing] = useState(false)
     const [loadError, setLoadError] = useState<string | null>(null)
-    const [awaitingLoadTab, setAwaitingLoadTab] = useState(false)
     const [active, setActive] = useState<{ result: SimulateResponse; step: number } | null>(null)
     const [secrets, setSecrets] = useState<Record<string, string>>({})
     const pinTouched = useRef(false)
@@ -158,9 +155,6 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
     const edited = isEdited(selectedEntry, { text, duration })
     const editSecret = selectedEntry?.kind === 'mine' && selectedEntry.id !== null ? (secrets[selectedEntry.id] ?? null) : null
     useDiscardGuard(edited)
-    const resultsEnabled = result !== null || pin !== null
-    const shownTab = resultsEnabled ? tab : 'build'
-    const split = useSplitLayout()
     const chartLayout = useChartLayout()
     const parsed = useMemo(() => parseBuildOrderText(text), [text])
     const liveSteps = parsed.ok ? parsed.order.steps : parsed.partial.order.steps
@@ -240,7 +234,6 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
             if (controller.signal.aborted) return
             if (loaded.status === 'ok') {
                 showEntry(loaded.entry)
-                setAwaitingLoadTab(true)
             } else {
                 setLoadError(LOAD_ERRORS[loaded.status])
             }
@@ -248,12 +241,6 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         })
         return () => controller.abort()
     }, [router.isReady])
-
-    useEffect(() => {
-        if (!awaitingLoadTab || status === 'loading' || status === 'running' || status === 'updating') return
-        setAwaitingLoadTab(false)
-        if (status === 'current') setTab('results')
-    }, [awaitingLoadTab, status])
 
     function editText(next: string) {
         const reparsed = parseBuildOrderText(next)
@@ -366,18 +353,13 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                     onSubmit={() => autoRun.flush()}
                     view={view}
                     onViewChange={setView}
-                    viewDisabled={!split && shownTab === 'results'}
                 />
                 {loadError !== null ? (
                     <div data-testid="saved-build-error" role="alert" className="alert alert-warning">
                         {loadError}
                     </div>
                 ) : null}
-                <WorkbenchTabs
-                    active={shownTab}
-                    onSelect={setTab}
-                    resultsEnabled={resultsEnabled}
-                    split={split}
+                <WorkbenchColumns
                     build={
                         <>
                             <h2 className="h4" id="build-order-heading" data-testid="build-order-heading">
