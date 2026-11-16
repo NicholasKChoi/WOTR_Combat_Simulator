@@ -223,3 +223,26 @@ Drafted 2026-11-11 from SGS-127 and the owner's 2026-11-11 backlog requests; app
 | M9.11 | Test-helper dedupe and a guard: the duplicated fake `Storage` and `stubFetch`/`json` helpers move to the shared test helpers and `ARCHITECTURE.md` lists them; the duplication linter (`.jscpd.json`, `npm run lint:dup`) is configured so repeated code in test helpers and test files fails lint (owner, Q56) | code | SGS-128 | done |
 | M9.12 | Split-scroll layout: clearing `duration-error` at 1280x800 scrolled to the end no longer jumps scrollY (scroll anchoring); the sticky run bar no longer covers about half of a 1280x720 viewport when the copy form, link and storage warning are open | code | SGS-133 | done |
 | M9.13 | `tsconfig.json` has `strict: true` and the codebase type-checks under it | code | SGS-129 | done |
+
+## M10: AoE4 workbench: readable results charts and clear step waits
+
+**Outcome:** The results charts are easier to read and explore: each time chart can be zoomed into a
+window of game time, the Units produced chart shows one line per unit line with its veterancy upgrades
+marked, markers are controlled in one place for every chart, and the chart rows sit in a real table. A
+waiting step names exactly what it waited for, and one "How this page works" modal replaces the
+explanations scattered around the page.
+
+### Exit criteria
+
+Drafted 2026-11-16 from the owner's (milestone) backlog requests of 2026-11-12 to 2026-11-15; awaiting owner confirmation. Left for later milestones: mobile removal (owner: its own milestone), sim accuracy, gather rates and patch tracking, step repeat, research occupying its building, rename a saved build, English tech gaps, spread of outcomes.
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M10.1 | Time window: on every results chart with a game-time x axis, drag-selecting a range zooms that chart to it, the zoomed chart pans along game time, and a reset control returns it to the full game; each chart zooms on its own, and a page reload shows every chart at the full game (not persisted); the reset control is keyboard reachable with an accessible name | code | | open |
+| M10.2 | Unit lines: the Units produced chart draws one series per unit line, every tier of the line (e.g. all spearman tiers) in one color, and marks each veterancy/tier upgrade of that line (the `upgradeTargets` upgrades) with a dot or vertical marker at the upgrade's finish time, for every unit line with tier upgrades | code | | open |
+| M10.3 | One marker control: chart markers are defined in one place for all charts; clicking a marker kind in the shared control shows or hides its vertical lines on every chart at once | code | | open |
+| M10.4 | Chart rows as a real table: the results chart rows render as a table (semantic rows and cells) so collapsed rows line up cleanly; drag reorder, caret collapse and their persistence keep working | code | | open |
+| M10.5 | Specific wait reasons: the simulator reports what a waiting step waited on (the missing prerequisite by name, the resource and amount short, or the busy or missing building), and the step annotation shows it, e.g. "waiting for Castle Age (The White Tower)", "waiting for 50 gold", "waiting for a free Archery Range"; the generic categories stay in the API result | code | | open |
+| M10.6 | Help modal: a help button on the AoE4 page opens one "How this page works" modal that explains the page, including the step-kind legend and what the yellow step tint means; the inline legends and hints it absorbs are removed from the page | code | | open |
+| M10.7 | `docs/aoe4-build-order*.md`, `ARCHITECTURE.md` and `docs/api/openapi.json` describe the changes; Playwright covers zoom and reset, unit-line series and upgrade markers, the shared marker control, the table layout with reorder/collapse, a specific wait reason, and the help modal | code | | open |
+| M10.8 | Owner checks the changes on the PR previews and then production | evidence | | open |
