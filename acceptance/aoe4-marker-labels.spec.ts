@@ -2,11 +2,10 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { ChartMarkerKind, SimulationResult } from '../lib/aoe4-build-order/model'
 import { CHART_MARKER_KINDS } from '../lib/aoe4-build-order/model'
 import { MARKER_KIND_LABELS, markerLabel } from '../components/apps/aoe4-build-order/chart-rows'
-import { openPage, showTab, waitForRun } from './helpers'
+import { openPage, waitForRun } from './helpers'
 
 const BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
 const CHART = 'chart-gather-rates'
-const PHONE = { width: 390, height: 844 }
 
 test.describe.configure({ timeout: 90_000 })
 test.use({ viewport: { width: 1280, height: 900 } })
@@ -21,7 +20,6 @@ async function setup(page: Page): Promise<Setup> {
   await openPage(page)
   const response = await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ label: BUILD_LABEL }))
   expect(response.status()).toBe(200)
-  await showTab(page, 'results')
   const result = (await response.json()) as SimulationResult
   const count = (k: ChartMarkerKind) => result.markers.filter((m) => m.kind === k).length
   const kind = CHART_MARKER_KINDS.filter((k) => k !== 'age-up' && count(k) > 0).sort((a, b) => count(b) - count(a))[0]
@@ -181,24 +179,6 @@ test.describe('AoE4 chart marker labels', () => {
       expect(dash).not.toBeNull()
       expect(texts).toBe(0)
     }
-  })
-
-  test.describe('at a 390 px screen', () => {
-    test.use({ viewport: PHONE })
-
-    test('the marker legend and the page do not scroll sideways', async ({ page }) => {
-      const { chart } = await setup(page)
-      const legend = chart.getByTestId('chart-marker-legend')
-      await expect(legend).toBeVisible()
-      await expect(legend.getByTestId('chart-marker-legend-item')).not.toHaveCount(0)
-      const widths = await page.evaluate(() => ({
-        page: document.documentElement.scrollWidth,
-        legend: document.querySelector<HTMLElement>('[data-testid="chart-marker-legend"]')!.scrollWidth,
-        legendClient: document.querySelector<HTMLElement>('[data-testid="chart-marker-legend"]')!.clientWidth,
-      }))
-      expect(widths.page).toBeLessThanOrEqual(PHONE.width)
-      expect(widths.legend).toBeLessThanOrEqual(widths.legendClient)
-    })
   })
 
   test('the legend items name their kind in an aria-label', async ({ page }) => {

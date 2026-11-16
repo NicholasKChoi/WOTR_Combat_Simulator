@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { CHART_LAYOUT_STORAGE_KEY, type ChartId } from '../components/apps/aoe4-build-order/chart-layout'
-import { CHART_IDS, SPLIT_VIEWPORT, TABS_VIEWPORT, openPage, showTab, showView } from './helpers'
+import { CHART_IDS, SPLIT_VIEWPORT, openPage, showView } from './helpers'
 
 const [UNITS, RATES, GATHERED, FLOATING] = CHART_IDS
 const DEFAULT_ORDER: readonly string[] = CHART_IDS
@@ -32,7 +32,6 @@ const activeChart = (page: Page) => page.evaluate(() => document.activeElement?.
 
 async function openResults(page: Page) {
   await openPage(page)
-  await showTab(page, 'results')
   await expect(chart(page, UNITS)).toBeVisible()
 }
 
@@ -48,8 +47,6 @@ const collectErrors = (page: Page) => {
 }
 
 test.describe('AoE4 chart collapse and reorder', () => {
-  test.use({ viewport: TABS_VIEWPORT })
-
   test('with no stored layout the charts are in default order, expanded, and loading writes nothing', async ({ page }) => {
     await openResults(page)
     await expectLayout(page, DEFAULT_ORDER)
@@ -253,7 +250,7 @@ test.describe('AoE4 chart collapse and reorder', () => {
 })
 
 test.describe('AoE4 chart drag reorder', () => {
-  test.use({ viewport: { width: 1024, height: 2800 } })
+  test.use({ viewport: { width: 1280, height: 2800 } })
 
   // The point just under a chart's bottom edge lies between that chart's vertical midpoint and the next one's.
   const sectionBoxes = (page: Page) =>

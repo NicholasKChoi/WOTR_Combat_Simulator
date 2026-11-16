@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { AOE4_PAGE, SIMULATE_PATH, TABS_VIEWPORT, openPage, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, SIMULATE_PATH, openPage, waitForRun } from './helpers'
 
 const errorBox = (page: Page) => page.getByTestId('simulation-error')
 const status = (page: Page) => page.getByTestId('auto-run-status')
@@ -49,10 +49,8 @@ test.describe('AoE4 build order page run outcomes', () => {
     await expect(errorBox(page)).toHaveText('The simulation could not be run. Please try again.')
   })
 
-  test.describe('on the tabs layout', () => {
-    test.use({ viewport: TABS_VIEWPORT })
-
-    test('a successful run posts the request body to the simulate path and enables the results tab', async ({ page }) => {
+  test.describe('on the default viewport', () => {
+    test('a successful run posts the request body to the simulate path and renders the charts', async ({ page }) => {
       await openPage(page)
       const response = await waitForRun(page, () => page.getByTestId('duration-seconds').fill('300'))
       expect(response.status()).toBe(200)
@@ -60,8 +58,6 @@ test.describe('AoE4 build order page run outcomes', () => {
       expect(request.headers()['content-type']).toContain('application/json')
       expect(Object.keys(request.postDataJSON()).sort()).toEqual(['buildOrder', 'inputs'])
       expect(request.postDataJSON().inputs).toEqual({ durationSeconds: 300 })
-      await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
-      await showTab(page, 'results')
       await expect(page.getByTestId('chart-units-produced')).toBeVisible()
       await expect(errorBox(page)).toHaveCount(0)
     })
@@ -80,11 +76,10 @@ test.describe('AoE4 build order page run outcomes', () => {
     ]
 
     for (const row of unreadable) {
-      test(`${row.name} shows the HTTP status message on the build tab`, async ({ page }) => {
+      test(`${row.name} shows the HTTP status message`, async ({ page }) => {
         await page.route(`**${SIMULATE_PATH}`, (route) => route.fulfill({ status: row.status, contentType: row.contentType, body: row.body }))
         await loadWithStatus(page, 'failed')
         await expect(errorBox(page)).toHaveText(row.message)
-        await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
       })
     }
 
@@ -98,7 +93,6 @@ test.describe('AoE4 build order page run outcomes', () => {
       await page.unroute(`**${SIMULATE_PATH}`)
       expect((await waitForRun(page, () => page.getByTestId('duration-seconds').fill('1000'))).status()).toBe(200)
       await expect(errorBox(page)).toHaveCount(0)
-      await showTab(page, 'results')
       await expect(page.getByTestId('chart-units-produced')).toBeVisible()
     })
   })
