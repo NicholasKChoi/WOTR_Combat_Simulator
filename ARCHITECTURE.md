@@ -57,6 +57,10 @@ This file says where things go. It does not list every file; use `git ls-files` 
   before the hover and focus sequence, as `acceptance/aoe4-build-order-step-band.spec.ts` does, so no step
   scrolls. `scrollInstantly` in `acceptance/helpers.ts` is different: it scrolls the window to a y offset,
   not to a target.
+- **The AoE4 build-order page is desktop-only.** It is supported from 1200 px wide. Below that the page keeps
+  its 1200 px layout and the document scrolls sideways, with no notice. Its CSS has no viewport media queries or
+  container queries, and its acceptance specs use viewports 1200 px wide or wider, except the one spec that checks
+  the below-minimum behavior, `acceptance/aoe4-min-width.spec.ts`.
 
 ## Adding an app
 
