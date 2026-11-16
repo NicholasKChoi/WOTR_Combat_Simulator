@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
-import { AOE4_PAGE, INVALID_PASTE, SIMULATE_PATH, TWO_UNKNOWN_IDS, expectFlySyntaxIssue, expectInvalidNoRun, fillTwoUnknownIds, openPage, showTab, showView, waitForRun } from './helpers'
+import { AOE4_PAGE, INVALID_PASTE, SIMULATE_PATH, TWO_UNKNOWN_IDS, expectFlySyntaxIssue, expectInvalidNoRun, fillTwoUnknownIds, openPage, showView, waitForRun } from './helpers'
 
 const textarea = (page: Page) => page.getByTestId('build-order-text')
 const gutterItem = (page: Page, line: number) => page.locator(`[data-testid="build-order-line-number"][data-line="${line}"]`)
@@ -162,8 +162,25 @@ test.describe('AoE4 build order live issues', () => {
     await openPage(page)
     await textarea(page).fill(INVALID_PASTE)
     await expect(page.getByTestId('build-order-issues')).toBeVisible()
-    await showTab(page, 'results')
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
+  })
+
+  test('a 3000 character unknown unit id is truncated in its issue and does not scroll sideways', async ({ page }) => {
+    await openPage(page)
+    await textarea(page).fill(`start -> sheep\nproduce ${'a'.repeat(3000)} from town-center`)
+    await expectInvalidNoRun(page)
+    await expect(issues(page)).toHaveCount(1)
+    await expect(issues(page)).toHaveAttribute('data-code', 'unknown-id')
+    await expect(issues(page)).toContainText(`unknown unit "${'a'.repeat(40)}..."`)
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const doc = document.documentElement
+          const panel = document.querySelector('[data-testid="panel-build"]')!
+          return { page: doc.scrollWidth <= doc.clientWidth, panel: panel.scrollWidth <= panel.clientWidth }
+        })
+      )
+      .toEqual({ page: true, panel: true })
   })
 
   test('a server 400 lists its issues under the editor and marks no gutter line', async ({ page }) => {
@@ -197,7 +214,6 @@ test.describe('AoE4 build order gold run-out info list', () => {
     const gold = infos.filter((m) => m.code === 'node-depleted' && /^gold(#2)? ran out/.test(m.message)).map((m) => m.message)
     expect(gold.length).toBeGreaterThanOrEqual(2)
 
-    await showTab(page, 'results')
     await expect(page.getByTestId('simulation-notes-list')).toHaveCount(0)
     await expect(page.getByTestId('simulation-notes-toggle')).toHaveText(`Show ${infos.length} info messages`)
     await page.getByTestId('simulation-notes-toggle').click()
