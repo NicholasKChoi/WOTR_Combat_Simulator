@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, expectNoRun, openPage, waitForRun } from './helpers'
+import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, expectNoRun, openPage, showView, waitForRun } from './helpers'
 
 const PHONE = { width: 390, height: 844 }
 const BELOW_MINIMUM = [
@@ -88,5 +88,20 @@ test.describe('AoE4 page below the minimum supported width', () => {
         await expect.poll(state).toEqual({ focused: 'build-order-text', value: EDITED, columns: [true, true], scrollsSideways })
       }
     })
+  })
+
+  test('at 390x844 step-table rows are table rows', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await openPage(page)
+    await showView(page, 'table')
+    await expect(page.getByTestId('step-table')).toBeVisible()
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const rows = [...document.querySelectorAll('[data-testid="step-row"]')]
+          return { many: rows.length > 1, displays: [...new Set(rows.map((r) => getComputedStyle(r).display))] }
+        }),
+      )
+      .toEqual({ many: true, displays: ['table-row'] })
   })
 })

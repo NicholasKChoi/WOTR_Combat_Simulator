@@ -1,5 +1,21 @@
-import { test, expect, type Page } from '@playwright/test'
-import { AOE4_PAGE, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, holdNextSimulate, openPage, waitForRun } from './helpers'
+import { expect, type Page } from '@playwright/test'
+import { listBuilds } from '../lib/aoe4-build-order/builds'
+import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
+import {
+  AOE4_PAGE,
+  MIN_SUPPORTED_VIEWPORT,
+  SPLIT_VIEWPORT,
+  WIDE_VIEWPORT,
+  buildOrderFrom,
+  gatedTest,
+  holdNextSimulate,
+  openPage,
+  openSavedBuild,
+  postBuild,
+  waitForRun,
+} from './helpers'
+
+const test = gatedTest('aoe4-split-layout')
 
 const scrollWidth = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth)
 
@@ -89,5 +105,34 @@ test.describe('AoE4 workbench split layout', () => {
     await waitForRun(page, async () => release())
     expect(await columns()).toEqual(before)
     expect(hydration).toEqual([])
+  })
+
+  test('a saved-build load shows both panels and scrolls neither the window nor the columns', async ({ page, request, client }) => {
+    const body = { buildOrder: buildOrderFrom(formatBuildOrderText(listBuilds()[0])), durationSeconds: 1200 }
+    const saved = await postBuild(request, body, client, 60_000)
+    expect(saved.status(), await saved.text()).toBeLessThan(300)
+    await page.setViewportSize(SPLIT_VIEWPORT)
+    await openSavedBuild(page, (await saved.json()).id)
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            new Promise((resolve) =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                  const el = (id: string) => document.querySelector(`[data-testid="${id}"]`)!
+                  const shown = (id: string) => el(id).getBoundingClientRect().width > 0
+                  const build = el('build-column')
+                  resolve({
+                    columnCanScroll: build.scrollHeight > build.clientHeight,
+                    bothShown: shown('panel-build') && shown('panel-results'),
+                    scrolled: [window.scrollY, build.scrollTop, el('results-column').scrollTop],
+                  })
+                }),
+              ),
+            ),
+        ),
+      )
+      .toEqual({ columnCanScroll: true, bothShown: true, scrolled: [0, 0, 0] })
   })
 })
