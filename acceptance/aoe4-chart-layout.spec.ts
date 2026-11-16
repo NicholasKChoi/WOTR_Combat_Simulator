@@ -161,14 +161,21 @@ test.describe('AoE4 chart collapse and reorder', () => {
     test(`${key} on the ${id === UNITS ? 'first' : 'last'} chart changes nothing, keeps focus and does not scroll the page`, async ({ page }) => {
       await openResults(page)
       const handle = control(page, id, 'chart-drag-handle')
-      await handle.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
+      await handle.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
       await handle.focus()
-      const before = await page.evaluate(() => ({ y: window.scrollY, max: document.documentElement.scrollHeight - window.innerHeight }))
-      expect(before.y).toBeGreaterThan(0)
-      expect(before.y).toBeLessThan(before.max)
+      const readScroll = () => page.getByTestId('results-column').evaluate((el) => ({
+        top: el.scrollTop,
+        max: el.scrollHeight - el.clientHeight,
+        windowY: window.scrollY,
+      }))
+      const before = await readScroll()
+      expect(before.top).toBeGreaterThan(0)
+      expect(before.top).toBeLessThan(before.max)
       await page.keyboard.press(key)
       await page.waitForTimeout(500)
-      expect(await page.evaluate(() => window.scrollY)).toBe(before.y)
+      const after = await readScroll()
+      expect(after.top).toBe(before.top)
+      expect(after.windowY).toBe(before.windowY)
       await expectLayout(page, DEFAULT_ORDER)
       await expect(status(page)).toHaveText('')
       expect([await activeTestId(page), await activeChart(page)]).toEqual(['chart-drag-handle', id])
