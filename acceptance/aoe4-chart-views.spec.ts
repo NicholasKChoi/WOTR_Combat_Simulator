@@ -1,7 +1,7 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
-import { CHART_IDS, acceptBeforeUnload, openPage, plotPoint, showTab, waitForRun } from './helpers'
+import { CHART_IDS, acceptBeforeUnload, lineEndYs, openPage, plotPoint, readLayout, showTab, waitForRun } from './helpers'
 
 const RATES = 'chart-gather-rates'
 const UNITS = 'chart-units-produced'
@@ -32,16 +32,6 @@ const yLabel = (page: Page, id: string) => chart(page, id).locator('text.rechart
 const option = (page: Page, id: string, view: string) => chart(page, id).locator(`[data-testid="chart-view-option"][data-view="${view}"]`)
 const legendNames = (page: Page, id: string) => chart(page, id).getByTestId('chart-series-legend-item').allTextContents()
 const line = (page: Page, id: string, key: string) => chart(page, id).locator(`path[data-series="${key}"]`)
-
-const lineEndYs = (page: Page, id: string, keys: string[]) =>
-  chart(page, id).evaluate(
-    (el, ks) =>
-      ks.map((key) => {
-        const coords = el.querySelector(`path[data-series="${key}"]`)?.getAttribute('d')?.match(/-?[\d.]+/g) ?? []
-        return Number(coords.at(-1))
-      }),
-    keys,
-  )
 
 async function expectPressed(page: Page, id: string, view: string, other: string) {
   await expect(option(page, id, view)).toHaveAttribute('aria-pressed', 'true')
@@ -93,7 +83,11 @@ function expectOneOf(value: number, expected: number[]) {
   expect(expected.some((e) => Math.abs(e - value) <= TOLERANCE)).toBe(true)
 }
 
-const drawn = (path: Locator) => path.getAttribute('d')
+const RATE_FOOD_PATHS = { current: 'path[data-series="food"]', pinned: 'path[data-series="pinned:food"]' }
+const foodPathData = async (page: Page) => {
+  const { current, pinned } = await readLayout(chart(page, RATES), RATE_FOOD_PATHS)
+  return { current: current[0]?.d, pinned: pinned[0]?.d }
+}
 
 test.describe('AoE4 chart view toggles', () => {
   test('Gather rates starts as Rate; Villagers shows the gatherers at the hovered sample and Rate restores the rates', async ({ page }) => {
@@ -302,17 +296,16 @@ test.describe('AoE4 chart view toggles', () => {
 
     await expect(line(page, RATES, 'food')).toHaveCount(1)
     await expect(line(page, RATES, 'pinned:food')).toHaveCount(1)
-    const ratePaths = [await drawn(line(page, RATES, 'food')), await drawn(line(page, RATES, 'pinned:food'))]
+    const ratePaths = await foodPathData(page)
 
     await option(page, RATES, 'villagers').click()
     await expect(yLabel(page, RATES)).toHaveText('Villagers')
     await expect(line(page, RATES, 'food')).toHaveCount(1)
     await expect(line(page, RATES, 'pinned:food')).toHaveCount(1)
-    const current = await drawn(line(page, RATES, 'food'))
-    const pinned = await drawn(line(page, RATES, 'pinned:food'))
+    const { current, pinned } = await foodPathData(page)
     expect(current).not.toEqual(pinned)
-    expect(current).not.toEqual(ratePaths[0])
-    expect(pinned).not.toEqual(ratePaths[1])
+    expect(current).not.toEqual(ratePaths.current)
+    expect(pinned).not.toEqual(ratePaths.pinned)
 
     const woodItem = chart(page, RATES).locator('[data-testid="chart-series-legend-item"][data-series="wood"]')
     await woodItem.click()

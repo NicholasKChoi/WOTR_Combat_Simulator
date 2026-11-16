@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult, StepTiming } from '../lib/aoe4-build-order/model'
 import { parseBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { CHART_IDS, SPLIT_VIEWPORT, holdNextSimulate, openPage, showView, waitForRun } from './helpers'
+import { CHART_IDS, SPLIT_VIEWPORT, holdNextSimulate, openPage, readLayout, showView, waitForRun } from './helpers'
 
 const EN_DASH = '–'
 const VILLAGER = 'produce villager from capital-town-center'
@@ -166,8 +166,8 @@ test.describe('AoE4 compact view in the Text tab', () => {
     await expect(annotations(page)).toBeVisible()
     await expect(legend(page)).toBeVisible()
     await expect(legend(page)).toHaveCount(1)
-    const legendBottom = await legend(page).evaluate((el) => el.getBoundingClientRect().bottom)
-    expect(legendBottom).toBeLessThanOrEqual(await textarea(page).evaluate((el) => el.getBoundingClientRect().top))
+    const { legend: legendRects, textarea: textareaRects } = await readLayout(page.locator('body'), { legend: '[data-testid="step-kind-legend"]', textarea: '[data-testid="build-order-text"]' })
+    expect(legendRects[0].y + legendRects[0].height).toBeLessThanOrEqual(textareaRects[0].y)
     await showView(page, 'table')
     await expect(legend(page)).toHaveCount(1)
     await showView(page, 'text')
