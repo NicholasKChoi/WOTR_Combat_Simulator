@@ -184,6 +184,7 @@ export function acceptBeforeUnload(page: Page): void {
 }
 
 export const SPLIT_MIN_WIDTH = 1200
+export const MIN_SUPPORTED_VIEWPORT = { width: 1200, height: 800 }
 export const TABS_VIEWPORT = { width: 1024, height: 768 }
 export const SPLIT_VIEWPORT = { width: 1280, height: 800 }
 export const WIDE_VIEWPORT = { width: 1800, height: 900 }
