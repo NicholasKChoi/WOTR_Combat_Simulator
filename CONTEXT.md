@@ -31,7 +31,7 @@ this list only names the surfaces.
 | Topic | Doc | Authoritative for |
 |-------|-----|-------------------|
 | WOTR combat rules | `docs/combat-simulator.md` (on `main`, SGS-001) | Dice, leaders, casualties, round loop, input bounds, outcome reporting |
-| StarCraft helper | `docs/starcraft-helper.md` (deferred; app frozen) | Player list, map pool source, strike limits, edge states |
+| StarCraft helper | `docs/starcraft-helper.md` | Player list, map pool source, strike limits, edge states |
 | AoE4 build order | `docs/aoe4-build-order.md` (model: rules, data source, timing outputs), `docs/aoe4-build-order-format.md` (input, routes, result), `docs/aoe4-build-order-ui.md` (page behavior) (on `main`, SGS-171) | Simulation model; build format and routes; page behavior |
 
 ## Out of scope
@@ -39,5 +39,5 @@ this list only names the surfaces.
 Repo-wide: no project's tickets touch these.
 
 - `golang/` (Go prototype and its create-react-app frontend). Not deployed, and no Go toolchain.
-- StarCraft Helper: frozen. No tickets touch `pages/apps/starcraft-helper.js`. Its invariants (H1–H3) still
+- StarCraft Helper: frozen. No code tickets touch `pages/apps/starcraft-helper.js` (its design doc is `docs/starcraft-helper.md`). Its invariants (H1–H3) still
   apply if a shared-code change affects it.

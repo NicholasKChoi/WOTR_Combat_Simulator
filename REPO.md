@@ -167,7 +167,7 @@ active milestone's design.
   utilities are `!important` and override it). Build conditional classNames with `cn`, not template literals.
 
 ### Starcraft helper
-Paths: `pages/apps/starcraft-helper.js`. Design doc: `docs/starcraft-helper.md` (pending ticket).
+Paths: `pages/apps/starcraft-helper.js`. Design doc: `docs/starcraft-helper.md`.
 - Click through every control, including the edge states the doc defines (repeated clicks, maximum
   strikes, all maps struck), and confirm the result matches the doc.
 - Map-pool or player-list updates are data-only changes: check the list against the source the ticket
