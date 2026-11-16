@@ -15,7 +15,10 @@ Maps (`mapArray`): Alcyone, Amphion, Crimson Court, Dynasty, Ghost River, Golden
 Site Delta.
 
 The repo records no source, ladder season or date for either list, and this doc supplies none. To update a
-list, edit the array; no other code changes.
+list, edit the array; no other code changes, as long as the player list keeps at least 3 names and the map
+pool at least 5 maps. With fewer than 3 players there is a single pairing, so every Fighter Select click
+after the first would never end; with 4 or fewer maps, 3 strikes plus the shown map can ban every map, and
+Map Select shows `FAILURE`.
 
 ## Fighter Select
 
@@ -28,7 +31,7 @@ differs. The first click has no previous pairing, because the shown text starts 
 
 The draw repeats until it differs, with no cap on the number of draws. It ends because the list yields more
 than one pairing and each draw is random, so it ends with probability 1 rather than after a fixed number of
-draws. A list with a single possible pairing would never end.
+draws. With a list that yields a single possible pairing, every click after the first would never end.
 
 ## Map Strike
 
