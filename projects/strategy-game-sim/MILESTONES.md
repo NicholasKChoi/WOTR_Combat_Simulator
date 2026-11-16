@@ -241,7 +241,7 @@ Drafted 2026-11-16 from the owner's backlog item (Q101: "Remove mobile support, 
 | M10.2 | Below the minimum width: the page shows the desktop layout with one defined behavior the design picks with the owner (the page scrolls sideways, or a notice says the page needs a wider screen), and nothing on the page breaks or overlaps at 390 px | code | SGS-184 | done |
 | M10.3 | Tests follow: the narrow and small-screen acceptance specs (`aoe4-narrow-layout`, `aoe4-small-screen`, and the 390 px / under-768 cases in `aoe4-editor-width`, `aoe4-split-layout`, `aoe4-step-annotations`, `aoe4-marker-labels`, `aoe4-my-builds`, `aoe4-save-open`, `aoe4-save-status`, `aoe4-auto-run`) are deleted or rewritten for the desktop layout, plus one spec for the M10.2 behavior; unit tests of removed code go with it; `npm run lint:dup` stays clean | code | SGS-184 | done |
 | M10.4 | `docs/aoe4-build-order*.md` and `ARCHITECTURE.md` drop the narrow-layout rules and state the supported widths and the M10.2 behavior | code | SGS-185 | done |
-| M10.5 | Owner checks the page on the PR preview and then production at a desktop width and on a phone | evidence | | open |
+| M10.5 | Owner checks the page on the PR preview and then production at a desktop width and on a phone | evidence | | done |
 
 ## M11: AoE4 workbench: readable results charts and clear step waits
 

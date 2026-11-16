@@ -22,16 +22,28 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q113
+next: Q114
 
-## Q112: M10.5: check the AoE4 build-order page on desktop and on a phone, then report what you saw
-kind: handoff
-blocks: M10.5 (Owner checks the page on the PR preview and then production…)
-options: A) Done, looks right | B) Done, found a problem (say what) | C) Not now
-thread: 1571985177868242974
+## Q113: Confirm the goals for the next milestone, "AoE4 workbench: readable results charts and clear step waits"? Yes: the design starts with these 8 goals.
+kind: confirmation
+blocks: M11 (AoE4 workbench: readable results charts and clear step waits)
+options: A) Confirm as written: the 8 goals below become the milestone, design starts | B) Change the goals: reply with what to add, drop or reword
+recommendation: A: you chose this order (mobile removal first, then this), and the goals are drafted from your earlier answers.
+research: reports/M11-research-1.md
+thread: 1571991566271258726
 
-M10.5 is the owner's check of the desktop-only AoE4 page; all code for M10 (SGS-184, SGS-185) is merged to main.
-- On the production page (or a preview of main), open the AoE4 build order at a desktop width (1200+ px): two columns, no tabs.
-- On a phone: the page should keep its 1200 px layout and scroll sideways, with nothing overlapping.
+Only you can settle what this milestone should deliver; the design and all work wait on it.
+
+What you would get on the AoE4 page:
+- 1. Zoom: drag on any results chart to zoom into a span of game time, pan along it, and press a reset button (keyboard reachable). Each chart zooms alone; reload shows the full game.
+- 2. Unit lines: the Units produced chart shows one line per unit line (all spearman tiers in one color), with a dot or vertical marker at each veterancy upgrade finish time.
+- 3. One marker control: one shared control shows or hides each marker kind's vertical lines on every chart at once.
+- 4. Chart rows as a real table: rows line up cleanly when collapsed; drag reorder, collapse and saved state keep working.
+- 5. Specific waits: a waiting step says what it waited for, e.g. "waiting for Castle Age (The White Tower)", "waiting for 50 gold", "waiting for a free Archery Range".
+- 6. Help modal: a help button opens one "How this page works" modal (step-kind legend, what the yellow step tint means); the scattered inline legends and hints are removed.
+- 7. Docs and tests: build-order docs, architecture notes and the API spec updated; browser tests cover zoom/reset, unit lines and upgrade markers, the marker control, the table, a wait reason, and the help modal.
+- 8. Your check: you try the changes on the PR previews, then production.
+
+Left for later milestones: sim accuracy, gather rates and patch tracking, step repeat, research occupying its building, renaming a saved build, English tech gaps, spread of outcomes.
 
 ### Answer

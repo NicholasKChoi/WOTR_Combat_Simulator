@@ -4,5 +4,12 @@
   "retro": {
     "lastRun": "2026-11-15",
     "stateSha": "94f732e"
+  },
+  "milestone": {
+    "id": "M11",
+    "step": "0 criteria",
+    "waiting": [
+      "Q113"
+    ]
   }
 }
