@@ -4,7 +4,7 @@ import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { formatBuildOrderText, parseBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { STEP_KINDS, formatStepTime } from '../components/apps/aoe4-build-order/step-annotations'
-import { SPLIT_VIEWPORT, buildOrderFrom, expectNoRun, holdNextSimulate, openPage, showTab, showView, simulateOk, waitForRun } from './helpers'
+import { MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, buildOrderFrom, expectNoRun, holdNextSimulate, openPage, showView, simulateOk, waitForRun } from './helpers'
 
 const LONG_WAIT_SECONDS = 60
 const EN_DASH = '–'
@@ -19,7 +19,6 @@ const lastGood = (page: Page) => page.getByTestId('results-last-good')
 const lastGoodOpacity = (page: Page) => lastGood(page).evaluate((el) => Number(getComputedStyle(el).opacity))
 
 async function setText(page: Page, text: string) {
-  await showTab(page, 'build')
   await showView(page, 'text')
   return waitForRun(page, () => page.getByTestId('build-order-text').fill(text))
 }
@@ -143,7 +142,6 @@ test.describe('AoE4 step run cells', () => {
 test.describe('AoE4 step annotations in the text view', () => {
   test('the gutter has no labels and no title attribute', async ({ page }) => {
     await openPage(page)
-    await showTab(page, 'build')
     await showView(page, 'text')
     const gutter = page.getByTestId('build-order-line-annotation')
     await expect(gutter.first()).toBeVisible()
@@ -158,7 +156,6 @@ test.describe('AoE4 step annotations in the text view', () => {
 
   test('the annotation gutter stays aria-hidden and its lines are not focusable', async ({ page }) => {
     await openPage(page)
-    await showTab(page, 'build')
     await showView(page, 'text')
     await expect(page.getByTestId('build-order-line-annotation').first()).toBeVisible()
     const state = await page.evaluate(() => {
@@ -176,7 +173,6 @@ test.describe('AoE4 step annotations in the text view', () => {
     async function openText(page: Page, text?: string) {
       await openPage(page)
       if (text === undefined) {
-        await showTab(page, 'build')
         await showView(page, 'text')
       } else {
         await setText(page, text)
@@ -289,9 +285,9 @@ test.describe('AoE4 step annotations in the text view', () => {
       await expect(popover(page)).toHaveCount(1)
     })
 
-    for (const width of [360, 768, 1280]) {
-      test(`the popover lies inside the ${width}px viewport and is not clipped, for the first and the last line`, async ({ page }) => {
-        await page.setViewportSize({ width, height: 760 })
+    for (const viewport of [MIN_SUPPORTED_VIEWPORT, WIDE_VIEWPORT]) {
+      test(`the popover lies inside the ${viewport.width}px viewport and is not clipped, for the first and the last line`, async ({ page }) => {
+        await page.setViewportSize(viewport)
         await openText(page)
         const count = await runLines(page).count()
         for (const index of [0, count - 1]) {
@@ -416,7 +412,6 @@ test.describe('AoE4 step run cells while the result is stale', () => {
     expect(lines[line]).toMatch(/produce \S+/)
     lines[line] = lines[line].replace(/produce \S+/, 'produce knigt')
 
-    await showTab(page, 'build')
     await showView(page, 'text')
     await page.getByTestId('build-order-text').fill(lines.join('\n'))
     await showView(page, 'table')
@@ -517,9 +512,7 @@ test.describe('AoE4 step table layout beside Results', () => {
   })
 })
 
-test.describe('AoE4 step run cells in the narrow card layout', () => {
-  test.use({ viewport: { width: 390, height: 760 } })
-
+test.describe('AoE4 step run cells', () => {
   test('every run cell keeps a 4px kind border in its legend colour', async ({ page }) => {
     await openTable(page)
     const colorOf = await legendColors(page)

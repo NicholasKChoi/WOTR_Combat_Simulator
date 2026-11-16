@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
-import { CHART_IDS, acceptBeforeUnload, lineEndYs, openPage, plotPoint, readLayout, showTab, waitForRun } from './helpers'
+import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, WIDE_VIEWPORT, acceptBeforeUnload, lineEndYs, openPage, plotPoint, readLayout, waitForRun } from './helpers'
 
 const RATES = 'chart-gather-rates'
 const UNITS = 'chart-units-produced'
@@ -21,7 +21,6 @@ const DEFAULT_Y_LABELS: Record<string, string> = {
 }
 
 async function runOk(page: Page, text: string): Promise<SimulationResult> {
-  await showTab(page, 'build')
   const response = await waitForRun(page, () => page.getByTestId('build-order-text').fill(text))
   expect(response.status()).toBe(200)
   return (await response.json()) as SimulationResult
@@ -93,7 +92,6 @@ test.describe('AoE4 chart view toggles', () => {
   test('Gather rates starts as Rate; Villagers shows the gatherers at the hovered sample and Rate restores the rates', async ({ page }) => {
     await openPage(page)
     const result = await runOk(page, PLAIN_PASTE)
-    await showTab(page, 'results')
 
     await expectPressed(page, RATES, 'rate', 'villagers')
     await expect(yLabel(page, RATES)).toHaveText('Per minute')
@@ -130,7 +128,6 @@ test.describe('AoE4 chart view toggles', () => {
   test('Units produced starts as Units; Buildings shows the production buildings and Units restores the original', async ({ page }) => {
     await openPage(page)
     const result = await runOk(page, BARRACKS_PASTE)
-    await showTab(page, 'results')
     expect(result.productionBuildings.length).toBeGreaterThan(0)
     const buildingNames = result.productionBuildings.map((b) => b.name)
 
@@ -156,7 +153,6 @@ test.describe('AoE4 chart view toggles', () => {
     await openPage(page)
     const result = await runOk(page, BARRACKS_PASTE)
     expect(Math.max(...result.productionBuildings.flatMap((b) => b.counts))).toBe(1)
-    await showTab(page, 'results')
     await option(page, UNITS, 'buildings').click()
     await expect(yLabel(page, UNITS)).toHaveText('Buildings')
 
@@ -183,7 +179,6 @@ test.describe('AoE4 chart view toggles', () => {
     const lastCount = (key: string) => result.productionBuildings.find((b) => b.baseId === key)?.counts.at(-1)
     expect(lastCount('capital-town-center')).toBe(1)
     expect(lastCount('barracks')).toBe(1)
-    await showTab(page, 'results')
     await option(page, UNITS, 'buildings').click()
     await expect(line(page, UNITS, 'capital-town-center')).toHaveCount(1)
     await expect(line(page, UNITS, 'barracks')).toHaveCount(1)
@@ -200,7 +195,6 @@ test.describe('AoE4 chart view toggles', () => {
     const [first, second, last] = result.productionBuildings.map((b) => b.baseId)
     expect(result.productionBuildings).toHaveLength(3)
     expect(result.productionBuildings.every((b) => b.counts.at(-1) === 1)).toBe(true)
-    await showTab(page, 'results')
     await option(page, UNITS, 'buildings').click()
 
     const gap = async () => {
@@ -218,10 +212,8 @@ test.describe('AoE4 chart view toggles', () => {
   test('Buildings draws a pinned line at the same height as the current line with its key', async ({ page }) => {
     await openPage(page)
     await runOk(page, BARRACKS_PASTE)
-    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
     const second = await runOk(page, ['start 6 sheep -> sheep', '@1:10 build barracks with 1 from sheep'].join('\n'))
-    await showTab(page, 'results')
     expect(second.productionBuildings.find((b) => b.baseId === 'barracks')?.counts.at(-1)).toBe(1)
     await option(page, UNITS, 'buildings').click()
 
@@ -242,7 +234,6 @@ test.describe('AoE4 chart view toggles', () => {
 
   test('a toggle works while its chart is collapsed and the new view is shown on expand', async ({ page }) => {
     await openPage(page)
-    await showTab(page, 'results')
     const body = chart(page, RATES).getByTestId('chart-body')
     await chart(page, RATES).getByTestId('chart-collapse').click()
     await expect(body).toBeHidden()
@@ -259,7 +250,6 @@ test.describe('AoE4 chart view toggles', () => {
 
   test('a reload resets both charts to Rate and Units', async ({ page }) => {
     await openPage(page)
-    await showTab(page, 'results')
     await option(page, RATES, 'villagers').click()
     await option(page, UNITS, 'buildings').click()
     await expectPressed(page, RATES, 'villagers', 'rate')
@@ -267,7 +257,6 @@ test.describe('AoE4 chart view toggles', () => {
 
     acceptBeforeUnload(page)
     await openPage(page)
-    await showTab(page, 'results')
     await expectPressed(page, RATES, 'rate', 'villagers')
     await expectPressed(page, UNITS, 'units', 'buildings')
     await expect(yLabel(page, RATES)).toHaveText('Per minute')
@@ -276,7 +265,6 @@ test.describe('AoE4 chart view toggles', () => {
 
   test('Enter and Space on a focused option select it', async ({ page }) => {
     await openPage(page)
-    await showTab(page, 'results')
     await option(page, RATES, 'villagers').focus()
     await page.keyboard.press('Enter')
     await expectPressed(page, RATES, 'villagers', 'rate')
@@ -288,10 +276,8 @@ test.describe('AoE4 chart view toggles', () => {
   test('with a pin, Villagers draws the pinned line from the pinned run and a hidden series stays hidden across the switch', async ({ page }) => {
     await openPage(page)
     const first = await runOk(page, PLAIN_PASTE)
-    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
     const second = await runOk(page, SHEEP_ONLY_PASTE)
-    await showTab(page, 'results')
     expect(first.gatherers.food.some((n, i) => n !== second.gatherers.food[i])).toBe(true)
 
     await expect(line(page, RATES, 'food')).toHaveCount(1)
@@ -323,10 +309,8 @@ test.describe('AoE4 chart view toggles', () => {
   test('with a pin, Buildings draws a dashed line only for a building the current run lacks and both lines for a shared one', async ({ page }) => {
     await openPage(page)
     const first = await runOk(page, BARRACKS_PASTE)
-    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
     const second = await runOk(page, SHEEP_ONLY_PASTE)
-    await showTab(page, 'results')
     const ids = (r: SimulationResult) => r.productionBuildings.map((b) => b.baseId)
     expect(ids(first)).toContain('barracks')
     expect(ids(second)).not.toContain('barracks')
@@ -341,12 +325,11 @@ test.describe('AoE4 chart view toggles', () => {
     await expect(line(page, UNITS, `pinned:${shared}`)).toHaveCount(1)
   })
 
-  for (const width of [360, 768, 1280]) {
-    test(`no two axis tick labels overlap, none is clipped, and the page does not scroll sideways at ${width} px wide`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 })
+  for (const viewport of [MIN_SUPPORTED_VIEWPORT, WIDE_VIEWPORT]) {
+    test(`no two axis tick labels overlap, none is clipped, and the page does not scroll sideways at ${viewport.width} px wide`, async ({ page }) => {
+      await page.setViewportSize(viewport)
       await openPage(page)
       await runOk(page, BARRACKS_PASTE)
-      await showTab(page, 'results')
       await option(page, UNITS, 'buildings').click()
       await expectPressed(page, UNITS, 'buildings', 'units')
 
