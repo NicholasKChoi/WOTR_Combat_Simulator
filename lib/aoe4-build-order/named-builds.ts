@@ -3,8 +3,6 @@
 import { z } from 'zod';
 import { base64UrlEncode, base64UrlSha256, savedBuildSchema } from './saved-builds';
 
-/** The format version of a named build. */
-export const NAMED_BUILD_VERSION = 1;
 /** Random bytes in a named-build id. */
 export const NAMED_BUILD_ID_BYTES = 16;
 /** The form of a named-build id: 22 base64url characters. */
