@@ -27,7 +27,7 @@ start the dev server with `npm run dev`.
 | `npm run test:blob-live` | Runs the AoE4 Blob store test against a real Vercel Blob store. | `BUILDS_STORE_ID` set to a real store id. The test loads `.env.local` when it exists (`vercel env pull .env.local` writes it) and throws when `BUILDS_STORE_ID` is still empty. The script sets `BLOB_LIVE=1` itself. |
 | `npm run acceptance` | Runs the Playwright acceptance tests in `acceptance/`. | Chromium, from `npm run acceptance:setup`. It starts its own `next dev` on a port derived from the checkout path (3100-3999); `ACCEPTANCE_PORT` overrides the port. |
 | `npm run acceptance:setup` | Installs the Chromium that Playwright uses. | Network access. |
-| `npm run smoke:preview -- <url>` | Saves a build to a deployed preview, reads it back, opens the AoE4 page, and deletes the build. Prints `PASS` or `FAIL` per step. | The preview URL as the argument. When the preview is protected, set `VERCEL_AUTOMATION_BYPASS_SECRET`; without it a 401 or 403 exits with a request to set it. |
+| `npm run smoke:preview -- <url>` | Saves a build to a deployed preview, reads it back, opens the AoE4 page, and deletes the build. Prints `PASS` or `FAIL` per step. | The preview URL as the argument, and Chromium from `npm run acceptance:setup` (the open step launches it). When the preview is protected, set `VERCEL_AUTOMATION_BYPASS_SECRET`; without it a 401 or 403 exits with a request to set it. It fails on a production deployment, where deleting builds is disabled. |
 | `npm run lint:dup` | Runs the `jscpd` duplication check twice: once with `.jscpd.json` and once with `.jscpd.tests.json`. | Nothing. |
 
 ## Environment variables
@@ -51,5 +51,5 @@ never reach Vercel Blob.
 ## More documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): where files go and the rules the code follows.
-- [docs/](docs/): the design docs, one per app.
+- [docs/](docs/): the design docs for the WOTR combat simulator and the AoE4 build order.
 - [docs/api/openapi.json](docs/api/openapi.json): the API spec.
