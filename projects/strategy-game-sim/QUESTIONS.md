@@ -67,6 +67,7 @@ blocks: M11 (AoE4 workbench: readable results charts and clear step waits)
 options: A) Approve: planning starts | B) Change something: reply with what and the design is revised
 recommendation: A: pinned dots need no schema change and cost about 60 lines
 research: design/M11.md
+thread: 1572019656451948685
 
 You asked why pinned runs get no upgrade dots. It was only a clutter choice; no schema change is needed, since the page already holds the pinned run's full result. The design now draws them.
 - Upgrades show as a dot on the unit's line, not a vertical line each.
