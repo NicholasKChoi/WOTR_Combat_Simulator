@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
-import { AOE4_PAGE, SIMULATE_PATH, expectNoRun, holdNextSimulate, isSimulatePost, openPage, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, SIMULATE_PATH, expectNoRun, holdNextSimulate, isSimulatePost, openPage, waitForRun } from './helpers'
 
 const UNKNOWN_ID = ['start -> sheep', 'produce knigt from stable'].join('\n')
 const FIRST_BUILD = listBuilds()[0].name
@@ -75,7 +75,6 @@ test.describe('AoE4 build order auto-run page contract', () => {
     await waitForRun(page, () => duration(page).fill('900'))
     await expectNoRun(page, () => textarea(page).fill(UNKNOWN_ID))
     await expect(status(page)).toHaveAttribute('data-status', 'invalid')
-    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
     await expect(page.getByTestId('pinned-label')).toHaveText(`Pinned: ${FIRST_BUILD}, 15:00`)
   })

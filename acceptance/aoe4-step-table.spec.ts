@@ -4,7 +4,7 @@ import { loadGameData } from "../lib/aoe4-build-order/data";
 import { formatBuildOrderText } from "../lib/aoe4-build-order/parse-text";
 import { buildOrderCatalog } from "../lib/aoe4-build-order/schema";
 import { AUTO_RUN_DEBOUNCE_MS } from "../components/apps/aoe4-build-order/auto-run";
-import { TABS_VIEWPORT, WIDE_VIEWPORT, buildOrderFrom, isSimulatePost, openPage, showTab, showView, waitForRun } from "./helpers";
+import { WIDE_VIEWPORT, buildOrderFrom, isSimulatePost, openPage, showView, waitForRun } from "./helpers";
 
 const row = (page: Page, i: number) => page.getByTestId("step-row").nth(i);
 const field = (page: Page, i: number, name: string) =>
@@ -238,9 +238,7 @@ test.describe("AoE4 step table", () => {
       build.steps.length + 1,
     );
     const posted = response.request().postDataJSON().buildOrder;
-    await showTab(page, "results");
     await expect(page.getByTestId("chart-units-produced")).toBeVisible();
-    await showTab(page, "build");
     expect(posted).toEqual(
       buildOrderFrom(await textValue(page)),
     );
@@ -467,7 +465,7 @@ test.describe("AoE4 step table", () => {
     );
   });
 
-  test("the start row sits above the step rows at both widths and stacks under 768 px", async ({
+  test("the start row sits above the step rows, with the trigger and action and the rally and count fields side by side", async ({
     page,
   }) => {
     await openWith(
@@ -497,48 +495,10 @@ test.describe("AoE4 step table", () => {
     }).toPass();
     await expect(row(page, 0)).toHaveAttribute("data-step", "0");
 
-    await page.setViewportSize({ width: 390, height: 800 });
-    await expect(async () => {
-      const [trigger, action] = await tops(stepRow, ["step-trigger-kind", "step-action"]);
-      expect(action.x).toBeCloseTo(trigger.x, 0);
-      expect(action.y).toBeGreaterThan(trigger.y);
-      const [rally, count] = await tops(startRow, ["start-field-rally", "start-villagers-count"]);
-      expect(count.y).toBeGreaterThan(rally.y);
-    }).toPass();
-    await expect(row(page, 0)).toHaveAttribute("data-step", "0");
-
     await field(page, 0, "building").selectOption("barracks");
     await expectText(page,
       "start 3 sheep 1 wood -> sheep\n@1:00 build barracks from wood",
     );
-  });
-
-  test("labelled fields share a line from 768 px and stack one per line below it", async ({
-    page,
-  }) => {
-    await openWith(
-      page,
-      "produce villager from capital-town-center x3 -> sheep",
-    );
-    const labelTops = () =>
-      page.evaluate(() =>
-        Array.from(
-          document.querySelectorAll('[data-testid="step-row"] label'),
-        ).map((l) => Math.round(l.getBoundingClientRect().y)),
-      );
-
-    await page.setViewportSize({ width: 700, height: 900 });
-    await expect(async () => {
-      const tops = await labelTops();
-      expect(tops.length).toBeGreaterThan(2);
-      expect(new Set(tops).size).toBe(tops.length);
-    }).toPass();
-
-    await page.setViewportSize(TABS_VIEWPORT);
-    await expect(async () => {
-      const tops = await labelTops();
-      expect(new Set(tops).size).toBeLessThan(tops.length);
-    }).toPass();
   });
 
   test("every action hides exactly its optional fields until step-more opens them", async ({
@@ -657,9 +617,7 @@ test.describe("AoE4 step table", () => {
     await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
 
     await waitForRun(page, () => page.getByTestId("duration-seconds").fill("900"));
-    await showTab(page, "results");
     await expect(page.getByTestId("panel-results")).toBeVisible();
-    await showTab(page, "build");
     await showView(page, "text");
     await showView(page, "table");
     await expect(more(page, 1)).toHaveAttribute("aria-expanded", "true");
@@ -692,40 +650,5 @@ test.describe("AoE4 step table", () => {
     await textarea(page).fill(OPEN_STATE_BUILD);
     await showView(page, "table");
     await expect(more(page, 2)).toHaveAttribute("aria-expanded", "false");
-  });
-
-  test.describe("the view toggle in the tabs layout", () => {
-    test.use({ viewport: TABS_VIEWPORT });
-
-    test("the Text and Table buttons are disabled while Results is shown", async ({
-      page,
-    }) => {
-      await openWith(page, OPEN_STATE_BUILD);
-      await showTab(page, "results");
-      await expect(page.getByTestId("panel-results")).toBeVisible();
-      for (const view of ["text", "table"]) {
-        await expect(page.getByTestId(`editor-view-${view}`)).toBeDisabled();
-      }
-      await page.getByTestId("editor-view-text").click({ force: true });
-      await expect(page.getByTestId("tab-results")).toHaveAttribute("aria-selected", "true");
-      await expect(page.getByTestId("panel-results")).toBeVisible();
-      await expect(page.getByTestId("editor-view-table")).toHaveAttribute("aria-pressed", "true");
-      await expect
-        .poll(() =>
-          page.evaluate(() => {
-            const bg = (view: string) =>
-              getComputedStyle(document.querySelector(`[data-testid="editor-view-${view}"]`)!)
-                .backgroundColor;
-            return bg("table") !== bg("text");
-          }),
-        )
-        .toBe(true);
-
-      await showTab(page, "build");
-      await showView(page, "text");
-      await expect(textarea(page)).toBeVisible();
-      await showView(page, "table");
-      await expect(page.getByTestId("step-table")).toBeVisible();
-    });
   });
 });

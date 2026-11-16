@@ -1,6 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult, StepTiming } from '../lib/aoe4-build-order/model'
-import { AOE4_PAGE, CHART_IDS, holdNextSimulate, isSimulatePost, openPage, showTab, showView, waitForRun } from './helpers'
+import { AOE4_PAGE, CHART_IDS, holdNextSimulate, isSimulatePost, openPage, showView, waitForRun } from './helpers'
 
 const WIDE = { width: 1280, height: 800 }
 const EDGE_TOLERANCE_PX = 1
@@ -47,14 +47,12 @@ async function expectBandEverywhere(page: Page, from: number, to: number) {
 
 async function runPasted(page: Page, text: string, duration: number) {
   await openPage(page)
-  await showTab(page, 'build')
   const response = await waitForRun(page, async () => {
     await page.getByTestId('build-order-text').fill(text)
     await page.getByTestId('duration-seconds').fill(String(duration))
   })
   const result = (await response.json()) as SimulationResult
   await showView(page, 'table')
-  await showTab(page, 'results')
   await expect(page.getByTestId('chart-units-produced')).toBeVisible()
   return result
 }
@@ -62,7 +60,6 @@ async function runPasted(page: Page, text: string, duration: number) {
 async function runDefault(page: Page) {
   const result = (await (await waitForRun(page, () => page.goto(AOE4_PAGE))).json()) as SimulationResult
   await showView(page, 'table')
-  await showTab(page, 'results')
   await expect(page.getByTestId('chart-units-produced')).toBeVisible()
   return result
 }

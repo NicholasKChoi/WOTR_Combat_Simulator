@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult, SimWarning } from '../lib/aoe4-build-order/model'
-import { INVALID_PASTE, RESOURCE_CHARTS, expectedCompareKeys, openPage, showView, showTab, waitForRun } from './helpers'
+import { INVALID_PASTE, RESOURCE_CHARTS, expectedCompareKeys, openPage, showView, waitForRun } from './helpers'
 
 const FLOW_PASTE = [
   'start 6 sheep -> sheep',
@@ -20,10 +20,8 @@ test.describe('AoE4 build order M3 flow', () => {
     const count = page.getByTestId('step-row').nth(0).getByTestId('step-field-count')
     await expect(count).toHaveValue('3')
 
-    await showTab(page, 'results')
     await page.getByTestId('pin-run').click()
 
-    await showTab(page, 'build')
     const response = await waitForRun(page, () => count.fill('5'))
     await showView(page, 'text')
     await expect(text).toHaveValue(/produce villager from capital-town-center x5 -> sheep/)
@@ -38,13 +36,11 @@ test.describe('AoE4 build order M3 flow', () => {
     expect(depleted).toMatchObject({ severity: 'warning' })
     expect(depleted?.idleVillagers).toBeGreaterThan(0)
 
-    await showTab(page, 'results')
     const warnings = page.getByTestId('simulation-warnings')
     await expect(warnings).toBeVisible()
     const message = warnings.locator('[data-testid="simulation-message"][data-code="node-depleted"][data-severity="warning"]')
     await expect(message).toHaveText(depleted?.message ?? '')
 
-    await showTab(page, 'build')
     const rows = page.getByTestId('step-row')
     await expect(rows).toHaveCount(2)
     const first = rows.and(page.locator('[data-step="0"]'))
@@ -55,7 +51,6 @@ test.describe('AoE4 build order M3 flow', () => {
     await expect(late).toHaveAttribute('data-status', 'not-reached')
     await expect(late).toHaveAttribute('data-flagged', 'true')
 
-    await showTab(page, 'results')
     await expect(page.getByTestId('compare-key-numbers')).toBeVisible()
     const keys = await page.getByTestId('compare-row').evaluateAll((els) => els.map((el) => el.getAttribute('data-key')))
     expect(keys).toEqual(expectedCompareKeys(result, pinnedResult))
@@ -81,12 +76,10 @@ test.describe('AoE4 build order M3 flow', () => {
     const result = (await response.json()) as SimulationResult
     expect(result.depletions.find((d) => d.node === 'gold')).toMatchObject({ depletedAt: expect.any(Number) })
 
-    await showTab(page, 'build')
     await showView(page, 'table')
     const last = page.getByTestId('step-row').last()
     await expect(last).toHaveAttribute('data-status', 'completed')
     await expect(last.getByTestId('step-field-reaction')).toBeChecked()
-    await showTab(page, 'results')
     await expect(page.getByTestId('simulation-warnings').getByTestId('simulation-message').filter({ hasText: /^gold ran out/ })).toHaveCount(0)
   })
 

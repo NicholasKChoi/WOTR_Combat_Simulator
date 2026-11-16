@@ -3,7 +3,7 @@ import { join } from 'path'
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import Ajv2020 from 'ajv/dist/2020'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
-import { CHART_IDS, INFINITE_NODES, buildOrderFrom, openPage, postSimulate, readLayout, showTab, waitForRun } from './helpers'
+import { CHART_IDS, INFINITE_NODES, buildOrderFrom, openPage, postSimulate, readLayout, waitForRun } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -93,7 +93,7 @@ test.describe('gathered in the OpenAPI document', () => {
 test.describe('Gathered resources chart', () => {
   test('is the third chart after a run, and its pinned overlay plots the pinned run, not the current one', async ({ page }) => {
     await openPage(page)
-    await showTab(page, 'results')
+    await expect(page.getByTestId(CHART_IDS[0])).toBeVisible()
 
     const ids = await page.locator(CHART_IDS.map((id) => `[data-testid="${id}"]`).join(', ')).evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')))
     expect(ids).toEqual(CHART_IDS)
