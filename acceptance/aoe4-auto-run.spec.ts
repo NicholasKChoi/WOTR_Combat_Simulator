@@ -66,6 +66,8 @@ test.describe('AoE4 build order auto-run', () => {
     page.on('console', (m) => {
       if (/hydrat/i.test(m.text())) hydration.push(m.text())
     })
+    const pageErrors: string[] = []
+    page.on('pageerror', (e) => pageErrors.push(e.message))
     const posts = trackPosts(page)
     await openPage(page)
     await expectNoRun(page)
@@ -75,6 +77,7 @@ test.describe('AoE4 build order auto-run', () => {
     expect(posted(posts[0]).buildOrder).toEqual(json(buildOrderFrom(await textarea(page).inputValue())))
     await expect(status(page)).toHaveAttribute('data-status', 'current')
     expect(hydration).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 
   test('one POST per settled text edit', async ({ page }) => {
