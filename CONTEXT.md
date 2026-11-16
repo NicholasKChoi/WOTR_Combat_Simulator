@@ -32,7 +32,7 @@ this list only names the surfaces.
 |-------|-----|-------------------|
 | WOTR combat rules | `docs/combat-simulator.md` (on `main`, SGS-001) | Dice, leaders, casualties, round loop, input bounds, outcome reporting |
 | StarCraft helper | `docs/starcraft-helper.md` (deferred; app frozen) | Player list, map pool source, strike limits, edge states |
-| AoE4 build order | `docs/aoe4-build-order.md` (on `main`, SGS-013) | Simulation model, data source, timing outputs |
+| AoE4 build order | `docs/aoe4-build-order.md` (model: rules, data source, timing outputs), `docs/aoe4-build-order-format.md` (input, routes, result), `docs/aoe4-build-order-ui.md` (page behavior) (on `main`, SGS-171) | Simulation model; build format and routes; page behavior |
 
 ## Out of scope
 
