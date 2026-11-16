@@ -1,19 +1,17 @@
 import { expect, type Page } from '@playwright/test'
-import { CHART_IDS, SPLIT_MIN_WIDTH, SPLIT_VIEWPORT, TABS_VIEWPORT, WIDE_VIEWPORT, blockStorageWrites, copyButton, REFUSED_CLIPBOARDS, expectNoRun, gatedTest, openPage, saveCopy, scrollInstantly, setDurationInPlace, showTab, showView, waitForRun } from './helpers'
+import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, blockStorageWrites, copyButton, REFUSED_CLIPBOARDS, expectNoRun, gatedTest, openPage, saveCopy, scrollInstantly, setDurationInPlace, showView, waitForRun } from './helpers'
 
 const test = gatedTest('aoe4-split-scroll')
 
 const LONG_BUILD = ['start 6 sheep -> sheep', ...Array.from({ length: 40 }, (_, i) => `# note ${i + 1}`), ...Array.from({ length: 6 }, () => 'produce villager from capital-town-center x1')].join('\n')
 const RUN_BAR_HEIGHT = '--aoe4-run-bar-height'
 const SHORT_VIEWPORT = { width: 1280, height: 720 }
-const NARROW_VIEWPORT = { width: 700, height: 900 }
 const CAP_FRACTION = 0.4
 
 const column = (page: Page, id: 'build-column' | 'results-column') => page.getByTestId(id)
 
 async function openLongBuild(page: Page) {
   await openPage(page)
-  await showTab(page, 'build')
   const response = await waitForRun(page, () => page.getByTestId('build-order-text').fill(LONG_BUILD))
   expect(response.status()).toBe(200)
 }
@@ -151,48 +149,32 @@ test.describe('AoE4 split layout scrolls the columns separately', () => {
       )
       .toEqual({ build: 'hidden', results: 'hidden', clipped: false })
   })
-
-  test('below 1200 px there are no columns and the page scrolls', async ({ page }) => {
-    await page.setViewportSize(TABS_VIEWPORT)
-    expect(TABS_VIEWPORT.width).toBeLessThan(SPLIT_MIN_WIDTH)
-    await openLongBuild(page)
-    await expect(column(page, 'build-column')).toHaveCount(0)
-    await expect(column(page, 'results-column')).toHaveCount(0)
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true)
-  })
 })
 
 test.describe('AoE4 workbench headings', () => {
-  for (const [name, viewport] of [
-    ['split', SPLIT_VIEWPORT],
-    ['tabs', TABS_VIEWPORT],
-  ] as const) {
-    test(`the headings share a size and lead their panels in the ${name} layout`, async ({ page }) => {
-      await page.setViewportSize(viewport)
-      await openPage(page)
-      for (const view of ['text', 'table'] as const) {
-        await showTab(page, 'build')
-        await showView(page, view)
-        await expect(page.getByTestId('build-order-heading')).toHaveText('Build order')
-        await expect(page.getByText('Build order', { exact: true })).toHaveCount(1)
-        await expect(page.getByRole('textbox', { name: 'Build order' })).toHaveCount(view === 'text' ? 1 : 0)
-        expect(await page.getByTestId('panel-build').evaluate((el) => el.firstElementChild?.getAttribute('data-testid'))).toBe('build-order-heading')
+  test('the headings share a size and lead their panels', async ({ page }) => {
+    await page.setViewportSize(SPLIT_VIEWPORT)
+    await openPage(page)
+    for (const view of ['text', 'table'] as const) {
+      await showView(page, view)
+      await expect(page.getByTestId('build-order-heading')).toHaveText('Build order')
+      await expect(page.getByText('Build order', { exact: true })).toHaveCount(1)
+      await expect(page.getByRole('textbox', { name: 'Build order' })).toHaveCount(view === 'text' ? 1 : 0)
+      expect(await page.getByTestId('panel-build').evaluate((el) => el.firstElementChild?.getAttribute('data-testid'))).toBe('build-order-heading')
+    }
+    expect(await page.getByTestId('panel-results').evaluate((el) => el.firstElementChild?.firstElementChild?.getAttribute('data-testid'))).toBe('results-heading')
+    await expect(page.getByTestId('chart-units-produced')).toBeVisible()
+    const sizes = await page.evaluate(() => {
+      const size = (el: Element) => getComputedStyle(el).fontSize
+      return {
+        build: size(document.querySelector('[data-testid="build-order-heading"]') ?? document.body),
+        results: size(document.querySelector('[data-testid="results-heading"]')!),
+        charts: [...new Set([...document.querySelectorAll('h3')].map(size))],
       }
-      await showTab(page, 'results')
-      expect(await page.getByTestId('panel-results').evaluate((el) => el.firstElementChild?.firstElementChild?.getAttribute('data-testid'))).toBe('results-heading')
-      await expect(page.getByTestId('chart-units-produced')).toBeVisible()
-      const sizes = await page.evaluate(() => {
-        const size = (el: Element) => getComputedStyle(el).fontSize
-        return {
-          build: size(document.querySelector('[data-testid="build-order-heading"]') ?? document.body),
-          results: size(document.querySelector('[data-testid="results-heading"]')!),
-          charts: [...new Set([...document.querySelectorAll('h3')].map(size))],
-        }
-      })
-      expect(sizes.build).toBe(sizes.results)
-      expect(sizes.charts).toHaveLength(1)
     })
-  }
+    expect(sizes.build).toBe(sizes.results)
+    expect(sizes.charts).toHaveLength(1)
+  })
 
   test('the Build heading leads the panel when the table view has no parsed build', async ({ page }) => {
     await page.setViewportSize(SPLIT_VIEWPORT)
@@ -347,8 +329,8 @@ test.describe('AoE4 run bar does not move the page and stays capped', () => {
     })
   }
 
-  test('the bar has no sideways scroll and keeps the focus ring of the build select at 768 px wide', async ({ page }) => {
-    await page.setViewportSize({ width: 768, height: 1024 })
+  test('the bar has no sideways scroll and keeps the focus ring of the build select at the minimum supported width', async ({ page }) => {
+    await page.setViewportSize(MIN_SUPPORTED_VIEWPORT)
     await openPage(page)
     await expect.poll(() => focusRingFits(page)).toEqual({ ringIsDrawn: true, noSidewaysScroll: true, ringInside: true })
   })
@@ -410,12 +392,5 @@ test.describe('AoE4 run bar does not move the page and stays capped', () => {
         }),
       )
       .toEqual({ barAtTop: true, splitAtBottom: true })
-  })
-
-  test('below 768 px the bar is static and has no cap', async ({ page }) => {
-    await page.setViewportSize(NARROW_VIEWPORT)
-    await openPage(page)
-    const style = await page.getByTestId('run-bar').evaluate((el) => ({ position: getComputedStyle(el).position, maxHeight: getComputedStyle(el).maxHeight }))
-    expect(style).toEqual({ position: 'static', maxHeight: 'none' })
   })
 })
