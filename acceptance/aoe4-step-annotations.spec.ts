@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
@@ -141,31 +141,162 @@ test.describe('AoE4 step run cells', () => {
 })
 
 test.describe('AoE4 step annotations in the text view', () => {
-  test('the gutter title reads Still waiting for a step that has not started, and the gutter has no labels', async ({ page, request }) => {
+  test('the gutter has no labels and no title attribute', async ({ page }) => {
     await openPage(page)
-    const result = await simulateOk<SimulationResult>(request, buildOrderFrom(DEFAULT_TEXT), DURATION)
-    const unreached = result.steps.find((s) => s.status === 'not-reached')!
-    const calm = result.steps.find((s) => s.status === 'completed' && s.waitSeconds === 0)!
-    expect(unreached).toBeDefined()
-    expect(calm).toBeDefined()
     await showTab(page, 'build')
     await showView(page, 'text')
     const gutter = page.getByTestId('build-order-line-annotation')
     await expect(gutter.first()).toBeVisible()
-    const read = () =>
-      gutter.evaluateAll((els) =>
-        els.map((el) => ({ step: el.getAttribute('data-line'), status: el.getAttribute('data-status'), title: el.getAttribute('title'), text: el.textContent })),
-      )
-    await expect.poll(async () => (await read()).some((a) => a.status === 'not-reached')).toBe(true)
-    const annotations = (await read()).filter((a) => a.status !== null)
-    const reached = annotations.filter((a) => a.status === 'not-reached')
-    expect(reached.length).toBeGreaterThan(0)
-    for (const a of reached) expect(a.title).toMatch(/^Still waiting\. Blocked by: not reached \(/)
-    for (const a of annotations.filter((a) => a.status === 'waiting' || a.status === 'not-reached')) expect(a.title!.startsWith('Waited')).toBe(false)
-    expect(annotations.some((a) => a.title === 'Waited 0:00. Blocked by: nothing')).toBe(true)
+    await expect.poll(async () => (await gutter.evaluateAll((els) => els.filter((el) => el.getAttribute('data-status') !== null).length)) > 0).toBe(true)
+    const annotations = await gutter.evaluateAll((els) => els.map((el) => ({ title: el.getAttribute('title'), text: el.textContent })))
     for (const a of annotations) {
+      expect(a.title).toBeNull()
       expect(a.text).not.toContain('Started')
       expect(a.text).not.toContain('Finished')
+    }
+  })
+
+  test('the annotation gutter stays aria-hidden and its lines are not focusable', async ({ page }) => {
+    await openPage(page)
+    await showTab(page, 'build')
+    await showView(page, 'text')
+    await expect(page.getByTestId('build-order-line-annotation').first()).toBeVisible()
+    const state = await page.evaluate(() => {
+      const annotations = document.querySelector('[data-testid="build-order-annotations"]')!
+      const focusable = [...annotations.querySelectorAll('li, li *')].filter((el) => (el as HTMLElement).tabIndex >= 0)
+      return { hidden: annotations.getAttribute('aria-hidden'), focusable: focusable.length }
+    })
+    expect(state).toEqual({ hidden: 'true', focusable: 0 })
+  })
+
+  test.describe('the step annotation popover', () => {
+    const popover = (page: Page) => page.getByTestId('build-order-annotation-popover')
+    const runLines = (page: Page) => page.locator('[data-testid="build-order-line-annotation"][data-status]')
+
+    async function openText(page: Page, text?: string) {
+      await openPage(page)
+      if (text === undefined) {
+        await showTab(page, 'build')
+        await showView(page, 'text')
+      } else {
+        await setText(page, text)
+      }
+      await expect(runLines(page).first()).toBeVisible()
+      await page.mouse.move(0, 0)
+    }
+
+    async function lineAt(page: Page, index: number) {
+      const line = runLines(page).nth(index)
+      await line.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
+      return line
+    }
+
+    async function caretTo(page: Page, line: Locator) {
+      const target = Number(await line.getAttribute('data-line'))
+      const textarea = page.getByTestId('build-order-text')
+      await textarea.focus()
+      await page.keyboard.press('Control+Home')
+      for (let i = 1; i < target; i++) await page.keyboard.press('ArrowDown')
+    }
+
+    test('hovering a completed no-wait step and a not-reached step shows the popover at once, and leaving hides it', async ({ page, request }) => {
+      const result = await simulateOk<SimulationResult>(request, buildOrderFrom(DEFAULT_TEXT), DURATION)
+      const calm = result.steps.find((s) => s.status === 'completed' && s.waitSeconds === 0)!
+      const unreached = result.steps.find((s) => s.status === 'not-reached')!
+      expect(calm).toBeDefined()
+      expect(unreached).toBeDefined()
+      await openText(page)
+      const cases = [
+        { timing: calm, text: 'Waited 0:00. Blocked by: nothing' },
+        { timing: unreached, text: /^Still waiting\. Blocked by: not reached \(/ },
+      ]
+      for (const { timing, text } of cases) {
+        const line = await lineAt(page, timing.step)
+        await expect(line).toHaveAttribute('data-status', timing.status)
+        await expect(popover(page)).toBeHidden()
+        await line.hover()
+        await expect(popover(page)).toBeVisible()
+        await expect(popover(page)).toHaveText(text)
+        await page.mouse.move(0, 0)
+        await expect(popover(page)).toBeHidden()
+      }
+    })
+
+    test('the start line has no run and shows no popover', async ({ page }) => {
+      await openText(page)
+      const startLine = page.locator('[data-testid="build-order-line-annotation"][data-line="1"]')
+      await expect(startLine).not.toHaveAttribute('data-status', /.+/)
+      await startLine.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
+      await startLine.hover()
+      await expect(popover(page)).toHaveCount(0)
+    })
+
+    test('the caret alone shows the popover for its step line, moves with the caret and hides off a run line or on blur', async ({ page }) => {
+      await openText(page)
+      const first = await lineAt(page, 0)
+      const second = await lineAt(page, 1)
+      await expect(popover(page)).toBeHidden()
+      await caretTo(page, first)
+      await expect(popover(page)).toHaveCount(1)
+      await expect(popover(page)).toBeVisible()
+      await caretTo(page, second)
+      await expect.poll(async () => (await second.getAttribute('data-gutter-active')) === 'true' && (await first.getAttribute('data-gutter-active')) === null).toBe(true)
+      await expect(popover(page)).toHaveCount(1)
+      await expect(popover(page)).toBeVisible()
+      await expect(popover(page)).toHaveText(/^(Waited|Still waiting)/)
+      await page.keyboard.press('Control+Home')
+      await expect(popover(page)).toHaveCount(0)
+      await caretTo(page, first)
+      await expect(popover(page)).toHaveCount(1)
+      await page.getByTestId('build-order-text').blur()
+      await expect(popover(page)).toHaveCount(0)
+    })
+
+    test('hover and caret share one active step: the last event wins and leaving a hovered line does not restore the caret line', async ({ page }) => {
+      await openText(page)
+      const a = await lineAt(page, 0)
+      const b = await lineAt(page, 2)
+      const lines = page.getByTestId('build-order-line-annotation')
+      await caretTo(page, a)
+      await expect(popover(page)).toHaveCount(1)
+      await b.hover()
+      await expect(b).toHaveAttribute('data-gutter-active', 'true')
+      await expect(a).not.toHaveAttribute('data-gutter-active', 'true')
+      await expect(popover(page)).toHaveCount(1)
+      await expect(popover(page)).toBeVisible()
+      await page.mouse.move(0, 0)
+      await expect(lines.and(page.locator('[data-gutter-active="true"]'))).toHaveCount(0)
+      await expect(popover(page)).toHaveCount(0)
+      await page.keyboard.press('ArrowDown')
+      await expect(popover(page)).toHaveCount(1)
+    })
+
+    for (const width of [360, 768, 1280]) {
+      test(`the popover lies inside the ${width}px viewport and is not clipped, for the first and the last line`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 760 })
+        await openText(page)
+        const count = await runLines(page).count()
+        for (const index of [0, count - 1]) {
+          const line = runLines(page).nth(index)
+          await line.evaluate((el, block) => el.scrollIntoView({ block, behavior: 'instant' }), index === 0 ? ('start' as const) : ('end' as const))
+          await line.hover()
+          await expect(popover(page)).toBeVisible()
+          await expect
+            .poll(() =>
+              page.evaluate(() => {
+                const el = document.querySelector('[data-testid="build-order-annotation-popover"]')
+                if (el === null) return 'missing'
+                const r = el.getBoundingClientRect()
+                const { clientWidth, clientHeight } = document.documentElement
+                const inside = r.left >= 0 && r.top >= 0 && r.right <= clientWidth && r.bottom <= clientHeight
+                const clipped = el.closest('[data-testid="build-order-annotations"]') !== null
+                return inside && !clipped && r.width > 0 ? 'ok' : `${r.left},${r.top},${r.right},${r.bottom} in ${clientWidth}x${clientHeight} clipped=${clipped}`
+              }),
+            )
+            .toBe('ok')
+          await page.mouse.move(0, 0)
+        }
+      })
     }
   })
 
