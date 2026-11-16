@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { SimulateResponse } from '../../../lib/aoe4-build-order/api'
 import type { StepTiming } from '../../../lib/aoe4-build-order/model'
 import { parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { annotationsByLine, buildAnnotations, alignSteps, finishedText, formatStepTime, formatWaitBreakdown, stepKind, stepSpan, waitedText, type AnnotationInput, type StepAnnotation, type StepKind } from './step-annotations'
+import { annotationsByLine, buildAnnotations, alignSteps, annotationDetailText, finishedText, formatStepTime, formatWaitBreakdown, stepKind, stepSpan, waitedText, type AnnotationInput, type StepAnnotation, type StepKind } from './step-annotations'
 
 const LANDMARKS = ['kings-palace']
 
@@ -235,5 +235,16 @@ describe('annotationsByLine', () => {
         ['a step line of zero', [0, 2], 2, [null, a1]],
     ])('%s', (_, stepLines, lineCount, expected) => {
         expect(annotationsByLine(annotations, stepLines, lineCount)).toEqual(expected)
+    })
+})
+
+describe('annotationDetailText', () => {
+    it.each<[StepTiming['status'], number, string, string]>([
+        ['completed', 75, 'resources 0:20', 'Waited 1:15. Blocked by: resources 0:20'],
+        ['completed', 0, '', 'Waited 0:00. Blocked by: nothing'],
+        ['waiting', 75, 'still waiting on villagers', 'Still waiting. Blocked by: still waiting on villagers'],
+        ['not-reached', 0, 'not reached (house)', 'Still waiting. Blocked by: not reached (house)'],
+    ])('%s with %i waited seconds reads %s', (status, waitSeconds, blockedBy, expected) => {
+        expect(annotationDetailText({ status, waitSeconds, blockedBy })).toBe(expected)
     })
 })

@@ -4,7 +4,8 @@ import { useEffect, useRef, type SyntheticEvent } from 'react'
 import type { BuildOrderLines } from '../../../lib/aoe4-build-order/model'
 import annotationStyles from './step-annotation.module.css'
 import { KIND_CLASS, StepKindLegend, StepTimes, annotationToneClass } from './step-annotation'
-import { STILL_WAITING, annotationsByLine, waitedText, type BuildAnnotations, type StepAnnotation } from './step-annotations'
+import { AnnotationPopover } from './annotation-popover'
+import { annotationDetailText, annotationsByLine, type BuildAnnotations, type StepAnnotation } from './step-annotations'
 import { lineCount } from './text-lines'
 import styles from './workbench.module.css'
 
@@ -30,9 +31,10 @@ interface AnnotationLineProps {
 
 function AnnotationLine({ line, annotation, stale, active, onActiveStepChange }: AnnotationLineProps) {
     const run = annotation?.run ?? null
-    const waited = run === null ? null : waitedText(run)
+    const lineRef = useRef<HTMLLIElement>(null)
     return (
         <li
+            ref={lineRef}
             data-testid="build-order-line-annotation"
             data-line={line}
             data-kind={annotation?.kind}
@@ -41,12 +43,12 @@ function AnnotationLine({ line, annotation, stale, active, onActiveStepChange }:
             data-long-wait={run?.longWait ? 'true' : undefined}
             data-stale={annotation !== null && stale ? 'true' : undefined}
             data-gutter-active={active ? 'true' : undefined}
-            title={run === null ? undefined : `${waited === STILL_WAITING ? 'Still waiting' : `Waited ${waited}`}. Blocked by: ${run.blockedBy === '' ? 'nothing' : run.blockedBy}`}
             className={cn(annotation !== null && [annotationStyles.kindBorder, KIND_CLASS[annotation.kind], annotationToneClass(run ?? undefined, stale)])}
             onPointerEnter={() => onActiveStepChange(run?.runStep ?? null)}
             onPointerLeave={() => onActiveStepChange(null)}
         >
             {run === null ? null : <StepTimes run={run} labelled={false} />}
+            {run !== null && active ? <AnnotationPopover anchor={lineRef} text={annotationDetailText(run)} /> : null}
         </li>
     )
 }
