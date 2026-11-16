@@ -1,10 +1,6 @@
 {
   "lastBaseSha": "6411526d1d8d29130e54e9c98ad3b1ab2d446d92",
-  "openPRs": {
-    "178": {
-      "headSha": "124dc82cec45123fcd2ad9ab58d98fdea5aad4d9"
-    }
-  },
+  "openPRs": {},
   "retro": {
     "lastRun": "2026-11-15",
     "stateSha": "94f732e"
