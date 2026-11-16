@@ -32,6 +32,6 @@ describe('node refs', () => {
 
 describe('SEVERITIES', () => {
     it('runs from most to least severe', () => {
-        expect(SEVERITIES).toEqual(['error', 'warning', 'info'])
+        expect(SEVERITIES).toEqual(['error', 'warning', 'info', 'debug'])
     })
 })

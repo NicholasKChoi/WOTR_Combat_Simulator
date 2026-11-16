@@ -65,9 +65,9 @@ export function nodeKindOf(ref: NodeRef): GatherNodeId {
 }
 
 /** How serious a message is (Severity). */
-export type Severity = 'error' | 'warning' | 'info';
+export type Severity = 'error' | 'warning' | 'info' | 'debug';
 /** Every Severity, most severe first (Severity). */
-export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
+export const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info', 'debug'];
 
 /** What can hold a step back from starting. */
 export type StepWait = 'resources' | 'villagers' | 'population' | 'prerequisite' | 'trigger' | 'earlier-step';

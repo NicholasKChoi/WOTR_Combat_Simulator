@@ -29,12 +29,12 @@ test.describe('research notes', () => {
     { action: 'research', tech: 'textiles' },
   ]
 
-  test('every note is info severity and its message names the tech by id', async ({ request }) => {
+  test('every note is debug severity and its message names the tech by id', async ({ request }) => {
     const body = await simulate(request, { buildOrder: { civ: 'english', name: 'Notes', start: START, steps } })
     const notes: Note[] = body.notes
     expect(notes.map((n) => n.tech)).toEqual(['bloomery', 'admiralty', 'textiles'])
     for (const note of notes) {
-      expect(note.severity).toBe('info')
+      expect(note.severity).toBe('debug')
       expect(note.message.startsWith(`${note.tech}: `)).toBe(true)
     }
     expect(notes[0].message).toBe('bloomery: its effect on meleeAttack is not simulated; it still costs resources and queue time.')

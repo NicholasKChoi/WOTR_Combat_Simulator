@@ -145,7 +145,7 @@ age-up marker is drawn, and showing a series restores it. Messages come from `wa
 Those of severity `warning` appear in a warnings list. Those of severity `info` sit behind a toggle reading
 "Show N info messages" ("Show 1 info message" for one); clicking it lists them and the toggle reads
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
-message shows its `message` text only. With no message of a severity there is no list for it.
+message shows its `message` text only. Messages of severity `debug` are not shown, and the page has no control to show them. With no message of a severity there is no list for it.
 
 Chart controls: each chart's title row holds, in order, a drag handle (`chart-drag-handle`, a grip button labelled
 "Reorder <title> chart"), the title, a collapse caret (`chart-collapse`) and, on Gather rates and Units produced, the view toggle.

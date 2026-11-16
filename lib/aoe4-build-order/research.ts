@@ -109,7 +109,7 @@ export function researchNotes(order: BuildOrder, data: GameData): BuildOrderNote
         step: index,
         tech: step.tech,
         properties: support.properties,
-        severity: 'info',
+        severity: 'debug',
         message: `${entry.baseId}: its effect on ${support.properties.join(', ')} is not simulated; it still costs resources and queue time.`,
       });
     } else if (support.kind === 'effects-unmodeled') {
@@ -118,7 +118,7 @@ export function researchNotes(order: BuildOrder, data: GameData): BuildOrderNote
         step: index,
         tech: step.tech,
         properties: [],
-        severity: 'info',
+        severity: 'debug',
         message: `${entry.baseId}: its effect is not simulated; it still costs resources and queue time.`,
       });
     }

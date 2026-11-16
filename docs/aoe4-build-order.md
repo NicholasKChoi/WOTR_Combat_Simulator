@@ -446,7 +446,7 @@ before `idle-arrival` for the same ref, then `farm-idle`, then `step-stuck` by s
 
 ## Severity
 
-Every message the simulator returns has a severity level: `error`, `warning` or `info`, most severe first.
+Every message the simulator returns has a severity level: `error`, `warning`, `info` or `debug`, most severe first.
 
 | item | severity |
 |---|---|
@@ -455,10 +455,10 @@ Every message the simulator returns has a severity level: `error`, `warning` or 
 | `idle-arrival` | `warning` |
 | `farm-idle` | `warning` |
 | `step-stuck` | `warning` |
-| `tech-effect-ignored`, `tech-effect-unmodeled` | `info` |
+| `tech-effect-ignored`, `tech-effect-unmodeled` | `debug` |
 
 No item in a result has `error`: an invalid request is rejected before any simulation. The page lists
-`warning` messages in a warnings list and `info` messages behind a toggle (see the [page doc](aoe4-build-order-ui.md#page)).
+`warning` messages in a warnings list and `info` messages behind a toggle, and hides `debug` messages, which appear only in the API response (see the [page doc](aoe4-build-order-ui.md#page)).
 
 ## Technologies
 

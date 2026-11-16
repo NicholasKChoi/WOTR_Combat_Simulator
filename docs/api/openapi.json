@@ -4756,7 +4756,7 @@
           },
           "severity": {
             "$ref": "#/components/schemas/Severity",
-            "description": "Severity of this note; every note is info."
+            "description": "Severity of this note; every note is debug."
           },
           "message": {
             "type": "string",
@@ -4786,9 +4786,10 @@
         "enum": [
           "error",
           "warning",
-          "info"
+          "info",
+          "debug"
         ],
-        "description": "How serious a message is, most severe first. No result item is error today; request errors are the 400 issues."
+        "description": "How serious a message is, most severe first. No result item is error today; request errors are the 400 issues. debug items are for API clients only; the page does not show them."
       },
       "StepWait": {
         "type": "string",

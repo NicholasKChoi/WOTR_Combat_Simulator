@@ -406,7 +406,7 @@ A `SimulationResult` holds:
   the horizon, and markers do not affect the simulation.
 - `notes`: `BuildOrderNote`s, non-fatal, one per research step of a technology whose effects are not all
   simulated, whether or not the step is reached, in step order: `tech-effect-ignored` (ignored combat
-  properties listed) and `tech-effect-unmodeled` (empty `properties`). Every note has `severity: 'info'`,
+  properties listed) and `tech-effect-unmodeled` (empty `properties`). Every note has `severity: 'debug'`,
   and its message starts with the tech's `baseId`.
 - `depletions`: `NodeDepletion`s (`node`, `amount`, `depletedAt`), one per finite node ref the run uses, in
   node-ref order: always the six finite nodes (`sheep`, `berry`, `deer`, `boar`, `gold`, `stone`), plus each
@@ -416,7 +416,7 @@ A `SimulationResult` holds:
   and `idle-arrival` warnings.
 - `warnings`: non-fatal `SimWarning`s, each with a `code` (`node-depleted`, `idle-arrival`, `farm-idle`,
   `step-stuck`), a `severity` (one of `error`, `warning`,
-  `info`), a `message` and an `at` time. They hold the node warnings when a finite node runs out, at most one
+  `info`, `debug`), a `message` and an `at` time. They hold the node warnings when a finite node runs out, at most one
   `farm-idle` warning (severity `warning`, with `idleVillagers`) when villagers wait idle at `farm` for lack of a
   built farm, message `1 villager arrived at farm from 0:50 on with no free farm and waits idle until one is
   built.`, and one `step-stuck`
