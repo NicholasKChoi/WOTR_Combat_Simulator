@@ -10,10 +10,8 @@ import {
   gatedTest,
   buildPath,
   isSimulatePost,
-  openPage,
   openSavedBuild,
   postBuild,
-  showTab,
   showView,
   uniqueClient,
   waitForRun,
@@ -22,7 +20,6 @@ import {
 // next dev compiles each route on its first request, which can take longer than a save.
 const WARM_UP_TIMEOUT_MS = 60_000
 
-const PHONE = { width: 390, height: 844 }
 const BUILDS = listBuilds().map((b) => ({ name: b.name, text: formatBuildOrderText(b) }))
 const DEFAULT = BUILDS[0]
 const VALID_A = ['start -> sheep', 'produce knight from stable'].join('\n')
@@ -122,7 +119,6 @@ test.describe('opening a link', () => {
     await expect(select(page).locator('option:checked')).toHaveText(`${first.name} (${first.id})`)
     expect(gets).toHaveLength(1)
 
-    await showTab(page, 'build')
     await waitForRun(page, () => textarea(page).fill(VALID_A))
     const edited = await textarea(page).inputValue()
 
@@ -161,7 +157,6 @@ test.describe('opening a link', () => {
     await page.waitForTimeout(AUTO_RUN_DEBOUNCE_MS + 300)
     expect(posts).toHaveLength(1)
     expect(withoutName(postedOrder(posts[0]))).toEqual(withoutName(buildOrderFrom(DEFAULT.text)))
-    await showTab(page, 'build')
     await expect(page.getByTestId('step-table')).not.toHaveAttribute('disabled')
     await expect(page.getByTestId('step-table')).not.toHaveAttribute('aria-busy')
     await showView(page, 'text')
@@ -250,7 +245,6 @@ test.describe('opening a link', () => {
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ version: 1, id: 'BBBBBBBBBBB', buildOrder: broken, durationSeconds: 1200 }) }),
     )
     const posts = trackSimulatePosts(page)
-    await page.setViewportSize(PHONE)
     await page.goto(`${AOE4_PAGE}?b=BBBBBBBBBBB`)
     await expect(status(page)).toHaveAttribute('data-status', 'invalid')
     await expect(textarea(page)).toHaveValue(/knigt/)
@@ -259,41 +253,5 @@ test.describe('opening a link', () => {
     await expect(copyButton(page)).toBeDisabled()
     await page.waitForTimeout(AUTO_RUN_DEBOUNCE_MS + 500)
     expect(posts).toHaveLength(0)
-    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
   })
 })
-
-test.describe('the tab after a load at 390 px', () => {
-  test.use({ viewport: PHONE })
-
-  test('a successful load selects Results', async ({ page, request, client }) => {
-    const { id } = await apiSave(request, client)
-    await openSavedBuild(page, id)
-    await expect(page.getByTestId('tab-results')).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByTestId('panel-results')).toBeVisible()
-  })
-
-  test('a load with no b stays on Build', async ({ page }) => {
-    await openPage(page)
-    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByTestId('tab-results')).toHaveAttribute('aria-selected', 'false')
-  })
-
-  test('a b that falls back to the default build stays on Build', async ({ page }) => {
-    await page.goto(`${AOE4_PAGE}?b=${ABSENT_ID}`)
-    await expect(status(page)).toHaveAttribute('data-status', 'current')
-    await expect(loadError(page)).toBeVisible()
-    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByTestId('tab-results')).toHaveAttribute('aria-selected', 'false')
-  })
-
-  test('a later run does not switch the tab back to Results', async ({ page, request, client }) => {
-    const { id } = await apiSave(request, client)
-    await openSavedBuild(page, id)
-    await page.getByTestId('tab-build').click()
-    await waitForRun(page, () => textarea(page).fill(VALID_A))
-    await afterFrames(page)
-    await expect(page.getByTestId('tab-build')).toHaveAttribute('aria-selected', 'true')
-  })
-})
-

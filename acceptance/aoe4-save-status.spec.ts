@@ -6,6 +6,7 @@ import {
   holdRequests,
   isNamedPost,
   isNamedPut,
+  MIN_SUPPORTED_VIEWPORT,
   NAMED_BUILDS_PATH,
   openPage,
   reply,
@@ -16,11 +17,6 @@ import {
 const test = gatedTest('aoe4-save-status')
 
 const WIDE = { width: 1280, height: 800 }
-const NARROW = { width: 390, height: 844 }
-const VIEWPORTS = [
-  { name: '1280x800', viewport: WIDE },
-  { name: '390x844', viewport: NARROW },
-]
 
 const LINK_ROW = ['save-build', 'save-build-copy', 'save-status', 'saved-build-link', 'copy-saved-link']
 
@@ -50,44 +46,42 @@ async function saveVersion(page: Page): Promise<number> {
   return ((await response.json()) as { revision: number }).revision
 }
 
-for (const { name, viewport } of VIEWPORTS) {
-  test.describe(`save status at ${name}`, () => {
-    test.use({ viewport })
+test.describe('save status at 1280x800', () => {
+  test.use({ viewport: WIDE })
 
-    test('reads Saved after a copy and the new revision after each version', async ({ page }) => {
-      await openPage(page)
-      expect(await rowIds(page)).toEqual(['save-build-copy', 'save-status'])
-      await expect(byId(page, 'save-status')).toHaveText('')
+  test('reads Saved after a copy and the new revision after each version', async ({ page }) => {
+    await openPage(page)
+    expect(await rowIds(page)).toEqual(['save-build-copy', 'save-status'])
+    await expect(byId(page, 'save-status')).toHaveText('')
 
-      await saveCopy(page)
-      await expect(byId(page, 'save-status')).toHaveText('Saved')
-      expect(await rowIds(page)).toEqual(LINK_ROW)
+    await saveCopy(page)
+    await expect(byId(page, 'save-status')).toHaveText('Saved')
+    expect(await rowIds(page)).toEqual(LINK_ROW)
 
-      await editText(page, 1)
-      await expect.poll(() => linkAndStatus(page)).toEqual({ link: false, status: '' })
-      const second = await saveVersion(page)
-      expect(second).toBe(2)
-      await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: `Saved version ${second}` })
+    await editText(page, 1)
+    await expect.poll(() => linkAndStatus(page)).toEqual({ link: false, status: '' })
+    const second = await saveVersion(page)
+    expect(second).toBe(2)
+    await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: `Saved version ${second}` })
 
-      await editText(page, 2)
-      await expect(byId(page, 'save-build')).toBeEnabled()
-      expect(await saveVersion(page)).toBe(3)
-      await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: 'Saved version 3' })
-    })
-
-    test('keeps the link and empties the status while a second copy is in flight', async ({ page }) => {
-      await openPage(page)
-      await saveCopy(page)
-      await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: 'Saved' })
-      const release = await holdRequests(page, NAMED_BUILDS_PATH, 'POST')
-      await byId(page, 'save-build-copy').click()
-      await byId(page, 'save-copy-submit').click()
-      await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: '' })
-      release()
-      await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: 'Saved' })
-    })
+    await editText(page, 2)
+    await expect(byId(page, 'save-build')).toBeEnabled()
+    expect(await saveVersion(page)).toBe(3)
+    await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: 'Saved version 3' })
   })
-}
+
+  test('keeps the link and empties the status while a second copy is in flight', async ({ page }) => {
+    await openPage(page)
+    await saveCopy(page)
+    await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: 'Saved' })
+    const release = await holdRequests(page, NAMED_BUILDS_PATH, 'POST')
+    await byId(page, 'save-build-copy').click()
+    await byId(page, 'save-copy-submit').click()
+    await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: '' })
+    release()
+    await expect.poll(() => linkAndStatus(page)).toEqual({ link: true, status: 'Saved' })
+  })
+})
 
 test.describe('failed saves', () => {
   const failures = [
@@ -207,40 +201,11 @@ test.describe('layout', () => {
     })
   })
 
-  test.describe('at the one-line threshold', () => {
+  test.describe('at the minimum supported width', () => {
     test('at 1200 px the row shares one line and does not overflow', async ({ page }) => {
-      await page.setViewportSize({ width: 1200, height: 800 })
+      await page.setViewportSize(MIN_SUPPORTED_VIEWPORT)
       await openPage(page)
       await expectOneLine(page)
-    })
-
-    test('at 1199 px the row keeps DOM order and does not overflow', async ({ page }) => {
-      await page.setViewportSize({ width: 1199, height: 800 })
-      await openPage(page)
-      await saveCopy(page)
-      await expect(byId(page, 'save-status')).toHaveText('Saved')
-      expect(await rowIds(page)).toEqual(LINK_ROW)
-      await expect.poll(async () => (await rects(page)).overflow).toBe(0)
-    })
-  })
-
-  test.describe('at 390x844', () => {
-    test.use({ viewport: NARROW })
-
-    test('wraps in DOM order and keeps the status on or directly below the buttons', async ({ page }) => {
-      await openPage(page)
-      await saveCopy(page)
-      await expect(byId(page, 'save-status')).toHaveText('Saved')
-      await expect
-        .poll(async () => {
-          const { row, items } = await rects(page)
-          const [version, copy, status] = items
-          const buttonsBottom = Math.max(version!.bottom, copy!.bottom)
-          const placed = items.every((item, i) => i === 0 || item!.top >= items[i - 1]!.bottom - 1 || item!.left >= items[i - 1]!.right - 1)
-          const statusNear = status!.top - buttonsBottom <= 20
-          return { wrapped: row!.height > copy!.height + 2, placed, statusNear }
-        })
-        .toEqual({ wrapped: true, placed: true, statusNear: true })
     })
   })
 })
