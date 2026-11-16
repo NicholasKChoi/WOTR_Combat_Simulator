@@ -27,7 +27,7 @@ This file says where things go. It does not list every file; use `git ls-files` 
 | Local saved builds | `.builds-local/` | Git-ignored. The file store writes here when `BUILDS_STORE_ID` is unset or empty; a non-empty `BUILDS_LOCAL_DIR` points it at another directory. |
 | App API route | `pages/api/<app>/<action>.ts` | A thin handler: validate input, call `lib/<app>/`, return JSON. Every file under `pages/api/` becomes a public route, so put only route handlers here. |
 | App static data (unit stats, map pools) | `data/<app>/` | Versioned data files. When the data comes from a game patch or season, label it with that. |
-| App design doc | `docs/<app>.md` | The app's purpose, the rules it implements, and its edge cases. Reviews judge behavior against it. |
+| App design doc | `docs/<app>.md`, or `docs/<app>-<topic>.md` files beside it when one file is too long | The app's purpose, the rules it implements, and its edge cases. Reviews judge behavior against it. |
 | API spec | `docs/api/openapi.json` | One OpenAPI (JSON) spec for every route under `pages/api/`. Update it in the same change as the route. |
 | Shared UI | `components/` (outside `components/apps/`) | For example `layout.js`. |
 | Shared helpers | `utils/` | Code used by more than one app. |
@@ -43,7 +43,7 @@ This file says where things go. It does not list every file; use `git ls-files` 
 - **Every app is reachable.** A new app adds a link in `pages/index.js` and wraps its page in `Layout`.
 - **Every simulation is bounded.** Every numeric input and every iteration count has a maximum that is
   checked before the work starts.
-- **Game rules live in the design doc.** A change to an app's rules updates `docs/<app>.md` in the same PR.
+- **Game rules live in the design doc.** A change to an app's rules updates the `docs/<app>*.md` file that states the rule in the same PR.
 - **The AoE4 build order is checked for copied code.** `npm run lint:dup` runs two jscpd configs and fails
   if either finds a clone. `.jscpd.json` checks the AoE4 lib, components, API route and `acceptance/` for
   blocks of at least 8 lines and 70 tokens. `.jscpd.tests.json` checks the same paths, limited to test files
@@ -60,7 +60,7 @@ This file says where things go. It does not list every file; use `git ls-files` 
 
 ## Adding an app
 
-1. Write `docs/<app>.md`: its purpose, the rules it models, its inputs and their limits, and what it reports.
+1. Write `docs/<app>.md` (split it into `docs/<app>-<topic>.md` files if it grows too long): its purpose, the rules it models, its inputs and their limits, and what it reports.
 2. Put the logic in `lib/<app>/`, the page in `pages/apps/<app>.tsx`, and the components in `components/apps/<app>/`.
 3. If it needs a server route, add `pages/api/<app>/<action>.ts` and describe it in `docs/api/openapi.json`.
 4. Link it from `pages/index.js`.
