@@ -35,7 +35,6 @@ const LINE_OF = { instant: 4, spanning: 5, waiting: 6, notReached: 10, blank: 8 
 const gutter = (page: Page, line: number) => page.locator(`[data-testid="build-order-line-annotation"][data-line="${line}"]`)
 const annotations = (page: Page) => page.getByTestId('build-order-annotations')
 const legend = (page: Page) => page.getByTestId('step-kind-legend')
-const bands = (page: Page, chart: string) => page.getByTestId(chart).getByTestId('chart-step-band')
 const textarea = (page: Page) => page.getByTestId('build-order-text')
 
 async function clickLine(page: Page, line: number) {

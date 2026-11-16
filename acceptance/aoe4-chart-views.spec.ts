@@ -9,7 +9,6 @@ const HOVER_FRACTION = 0.15
 // The tooltip rounds to one decimal.
 const TOLERANCE = 0.05
 const PLAIN_PASTE = 'start 4 sheep 2 wood -> sheep'
-const MIXED_NODES_PASTE = 'start 3 sheep 3 berry -> sheep'
 const SHEEP_ONLY_PASTE = 'start 6 sheep -> sheep'
 const BARRACKS_PASTE = ['start 6 sheep -> sheep', '@1:00 build barracks with 1 from sheep'].join('\n')
 const THREE_BUILDINGS_PASTE = ['start 6 sheep -> sheep', 'move 4 sheep to wood', '@2:00 build dock with 1 from sheep', '@2:00 build barracks with 1 from sheep'].join('\n')

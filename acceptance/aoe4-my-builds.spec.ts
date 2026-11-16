@@ -21,7 +21,6 @@ import {
   type Gate,
   holdNextSimulate,
   holdRequests,
-  isNamedPath,
   isNamedPost,
   isNamedPut,
   isSimulatePost,
