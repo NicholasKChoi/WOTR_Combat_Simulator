@@ -97,6 +97,8 @@ disabled. Leaders stay 0 to 5.
 A request may ask for N battles. N defaults to 1000 when the request does not give it, and N is at
 most 100,000.
 
+A request for N = 100,000 completes within 10 seconds.
+
 ## Independence of battles
 
 Every battle starts from the submitted armies. Nothing from one battle carries into another: not
