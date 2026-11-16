@@ -224,7 +224,26 @@ Drafted 2026-11-11 from SGS-127 and the owner's 2026-11-11 backlog requests; app
 | M9.12 | Split-scroll layout: clearing `duration-error` at 1280x800 scrolled to the end no longer jumps scrollY (scroll anchoring); the sticky run bar no longer covers about half of a 1280x720 viewport when the copy form, link and storage warning are open | code | SGS-133 | done |
 | M9.13 | `tsconfig.json` has `strict: true` and the codebase type-checks under it | code | SGS-129 | done |
 
-## M10: AoE4 workbench: readable results charts and clear step waits
+## M10: AoE4 build order is a desktop page (mobile support removed)
+
+**Outcome:** The AoE4 build-order page targets desktop screens only. The narrow and phone layouts, their
+CSS breakpoints and container queries, the split-layout switch, and the acceptance specs that hold them
+up are removed, so later work (M11's chart changes first) builds and tests one layout. Phone visitors get
+one defined behavior instead of a maintained mobile layout.
+
+### Exit criteria
+
+Drafted 2026-11-16 from the owner's backlog item (Q101: "Remove mobile support, it should be its own milestone") and the owner's Q108 answer (mobile removal before the chart work).
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M10.1 | One desktop layout: the AoE4 build-order page renders a single layout at and above a minimum supported width the design sets; the narrow-only code is gone (the `max-width: 767.98px` media queries and `build-editor` `width < 768px` container queries in `workbench.module.css`, `step-table.module.css` and `step-annotation.module.css`, the step-row card layout, and `use-split-layout.ts` with `WORKBENCH_SPLIT_QUERY` when the design makes the split unconditional) | code | | open |
+| M10.2 | Below the minimum width: the page shows the desktop layout with one defined behavior the design picks with the owner (the page scrolls sideways, or a notice says the page needs a wider screen), and nothing on the page breaks or overlaps at 390 px | code | | open |
+| M10.3 | Tests follow: the narrow and small-screen acceptance specs (`aoe4-narrow-layout`, `aoe4-small-screen`, and the 390 px / under-768 cases in `aoe4-editor-width`, `aoe4-split-layout`, `aoe4-step-annotations`, `aoe4-marker-labels`, `aoe4-my-builds`, `aoe4-save-open`, `aoe4-save-status`, `aoe4-auto-run`) are deleted or rewritten for the desktop layout, plus one spec for the M10.2 behavior; unit tests of removed code go with it; `npm run lint:dup` stays clean | code | | open |
+| M10.4 | `docs/aoe4-build-order*.md` and `ARCHITECTURE.md` drop the narrow-layout rules and state the supported widths and the M10.2 behavior | code | | open |
+| M10.5 | Owner checks the page on the PR preview and then production at a desktop width and on a phone | evidence | | open |
+
+## M11: AoE4 workbench: readable results charts and clear step waits
 
 **Outcome:** The results charts are easier to read and explore: each time chart can be zoomed into a
 window of game time, the Units produced chart shows one line per unit line with its veterancy upgrades
@@ -234,15 +253,15 @@ explanations scattered around the page.
 
 ### Exit criteria
 
-Drafted 2026-11-16 from the owner's (milestone) backlog requests of 2026-11-12 to 2026-11-15; awaiting owner confirmation. Left for later milestones: mobile removal (owner: its own milestone), sim accuracy, gather rates and patch tracking, step repeat, research occupying its building, rename a saved build, English tech gaps, spread of outcomes.
+Drafted 2026-11-16 as M10 (Q108); the owner chose mobile removal first, so this moves to M11 as a draft and is confirmed again when M11 starts. Left for later milestones: sim accuracy, gather rates and patch tracking, step repeat, research occupying its building, rename a saved build, English tech gaps, spread of outcomes.
 
 | id | criterion | kind | covered by | status |
 |----|-----------|------|------------|--------|
-| M10.1 | Time window: on every results chart with a game-time x axis, drag-selecting a range zooms that chart to it, the zoomed chart pans along game time, and a reset control returns it to the full game; each chart zooms on its own, and a page reload shows every chart at the full game (not persisted); the reset control is keyboard reachable with an accessible name | code | | open |
-| M10.2 | Unit lines: the Units produced chart draws one series per unit line, every tier of the line (e.g. all spearman tiers) in one color, and marks each veterancy/tier upgrade of that line (the `upgradeTargets` upgrades) with a dot or vertical marker at the upgrade's finish time, for every unit line with tier upgrades | code | | open |
-| M10.3 | One marker control: chart markers are defined in one place for all charts; clicking a marker kind in the shared control shows or hides its vertical lines on every chart at once | code | | open |
-| M10.4 | Chart rows as a real table: the results chart rows render as a table (semantic rows and cells) so collapsed rows line up cleanly; drag reorder, caret collapse and their persistence keep working | code | | open |
-| M10.5 | Specific wait reasons: the simulator reports what a waiting step waited on (the missing prerequisite by name, the resource and amount short, or the busy or missing building), and the step annotation shows it, e.g. "waiting for Castle Age (The White Tower)", "waiting for 50 gold", "waiting for a free Archery Range"; the generic categories stay in the API result | code | | open |
-| M10.6 | Help modal: a help button on the AoE4 page opens one "How this page works" modal that explains the page, including the step-kind legend and what the yellow step tint means; the inline legends and hints it absorbs are removed from the page | code | | open |
-| M10.7 | `docs/aoe4-build-order*.md`, `ARCHITECTURE.md` and `docs/api/openapi.json` describe the changes; Playwright covers zoom and reset, unit-line series and upgrade markers, the shared marker control, the table layout with reorder/collapse, a specific wait reason, and the help modal | code | | open |
-| M10.8 | Owner checks the changes on the PR previews and then production | evidence | | open |
+| M11.1 | Time window: on every results chart with a game-time x axis, drag-selecting a range zooms that chart to it, the zoomed chart pans along game time, and a reset control returns it to the full game; each chart zooms on its own, and a page reload shows every chart at the full game (not persisted); the reset control is keyboard reachable with an accessible name | code | | open |
+| M11.2 | Unit lines: the Units produced chart draws one series per unit line, every tier of the line (e.g. all spearman tiers) in one color, and marks each veterancy/tier upgrade of that line (the `upgradeTargets` upgrades) with a dot or vertical marker at the upgrade's finish time, for every unit line with tier upgrades | code | | open |
+| M11.3 | One marker control: chart markers are defined in one place for all charts; clicking a marker kind in the shared control shows or hides its vertical lines on every chart at once | code | | open |
+| M11.4 | Chart rows as a real table: the results chart rows render as a table (semantic rows and cells) so collapsed rows line up cleanly; drag reorder, caret collapse and their persistence keep working | code | | open |
+| M11.5 | Specific wait reasons: the simulator reports what a waiting step waited on (the missing prerequisite by name, the resource and amount short, or the busy or missing building), and the step annotation shows it, e.g. "waiting for Castle Age (The White Tower)", "waiting for 50 gold", "waiting for a free Archery Range"; the generic categories stay in the API result | code | | open |
+| M11.6 | Help modal: a help button on the AoE4 page opens one "How this page works" modal that explains the page, including the step-kind legend and what the yellow step tint means; the inline legends and hints it absorbs are removed from the page | code | | open |
+| M11.7 | `docs/aoe4-build-order*.md`, `ARCHITECTURE.md` and `docs/api/openapi.json` describe the changes; Playwright covers zoom and reset, unit-line series and upgrade markers, the shared marker control, the table layout with reorder/collapse, a specific wait reason, and the help modal | code | | open |
+| M11.8 | Owner checks the changes on the PR previews and then production | evidence | | open |

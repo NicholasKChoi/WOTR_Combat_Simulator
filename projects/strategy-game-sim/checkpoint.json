@@ -7,9 +7,7 @@
   },
   "milestone": {
     "id": "M10",
-    "step": "0 criteria",
-    "waiting": [
-      "Q108"
-    ]
+    "step": "1 design",
+    "waiting": []
   }
 }
