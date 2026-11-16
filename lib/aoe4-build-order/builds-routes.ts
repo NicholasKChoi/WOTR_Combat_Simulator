@@ -5,13 +5,17 @@ import { takeSaveSlot } from './save-rate-limit';
 import { checkSaveBuildRequest, isSavedBuildId, savedBuildId, savedBuildPath, savedBuildSchema, type SavedBuild } from './saved-builds';
 import type { BuildOrderCatalog } from './schema';
 
+/** Resolves the BuildStore on demand, so a storage failure inside a route becomes a 503 reply. */
 export type StoreGetter = () => Promise<BuildStore>;
 
+/** A reply with a status, optional headers and an `{ error }` body (Builds routes). */
 export const errorReply = (status: number, error: string, headers?: Record<string, string>): RouteReply<BuildsError> => ({ status, ...(headers && { headers }), body: { error } });
+/** The 503 reply for a storage failure; logs the cause (Builds routes). */
 export const storageUnavailable = (cause: unknown): RouteReply<BuildsError> => {
   console.error('builds: storage failed', cause);
   return errorReply(503, 'storage is unavailable; try again later');
 };
+/** The 500 reply for a build id that could not be created; logs the cause (Builds routes). */
 export const idFailure = (cause: unknown): RouteReply<BuildsError> => {
   console.error('builds: id generation failed', cause);
   return errorReply(500, 'the build id could not be created');
@@ -31,6 +35,7 @@ export function disallowedMethod(method: string | undefined, methods: readonly s
   return method !== undefined && allowed.includes(method) ? null : methodNotAllowed(method, allowed);
 }
 
+/** Handles POST /builds: validates the body, makes the content-addressed id, takes a rate-limit slot, then stores the build (Builds routes). */
 export async function saveBuildReply(
   req: { method: string | undefined; body: unknown; clientKey: string },
   deps: { store: StoreGetter; catalog: BuildOrderCatalog; nowMs: number; makeId?: (record: SavedBuild) => Promise<string> },
@@ -68,6 +73,7 @@ async function readSavedBuild(store: BuildStore, id: string): Promise<RouteReply
   return { status: 200, headers: { 'Cache-Control': 'public, max-age=31536000, immutable' }, body: { ...parsed.data, id } };
 }
 
+/** Handles GET of /builds/{id}, and DELETE outside production (Builds routes). */
 export async function savedBuildReply(
   req: { method: string | undefined; id: unknown },
   deps: { store: StoreGetter; env: string | null },

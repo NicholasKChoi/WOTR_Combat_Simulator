@@ -7,22 +7,28 @@ import path from 'node:path';
 import { namedBuildKey } from './named-builds';
 import { deploymentEnv, rateCounterKey, savedBuildKey } from './saved-builds';
 
+/** Whether a create wrote a new key or found it already there. */
 export type PutResult = 'created' | 'exists';
 
+/** Whether a compare-and-swap replace wrote, or lost to a missing key or a changed etag. */
 export type ReplaceResult = 'replaced' | 'conflict';
 
+/** A stored value with the etag a later replaceNamed must present. */
 export interface StoredWithEtag {
   value: unknown;
   etag: string;
 }
 
+/** A rate-limit counter: the window it counts in and the saves counted so far. */
 export interface CounterUpdate {
   windowStart: number;
   count: number;
 }
 
+/** The outcome of bumping a counter: the new count, 'contended' when retries ran out, or 'refused' at the limit. */
 export type CounterResult = CounterUpdate | 'contended' | 'refused';
 
+/** Storage for saved builds, named builds and save-rate counters (Builds routes, Named builds routes). */
 export interface BuildStore {
   putBuild(id: string, json: string): Promise<PutResult>;
   getBuild(id: string): Promise<unknown | null>;
@@ -37,8 +43,10 @@ export interface BuildStore {
   deleteNamed(id: string): Promise<void>;
 }
 
+/** The directory the file store uses when BUILDS_LOCAL_DIR is unset. */
 export const BUILDS_LOCAL_DIR_DEFAULT = '.builds-local';
 
+/** The counter after one more save in the window, or 'refused' once the limit is reached; a new window restarts at 1. */
 export function nextCounter(stored: unknown, windowStart: number, limit: number): CounterUpdate | 'refused' {
   const previous = stored as Partial<CounterUpdate> | null | undefined;
   if (previous?.windowStart !== windowStart || typeof previous.count !== 'number') return { windowStart, count: 1 };
@@ -90,6 +98,7 @@ function buildMethods(env: string, text: TextByKey): Omit<BuildStore, 'bumpCount
   };
 }
 
+/** The maps of build JSON and counters that a memory store reads and writes. */
 export interface MemoryBacking {
   builds: Map<string, string>;
   counters: Map<string, CounterUpdate>;
@@ -97,7 +106,7 @@ export interface MemoryBacking {
 
 const newMemoryBacking = (): MemoryBacking => ({ builds: new Map(), counters: new Map() });
 
-// Stores given the same backing share its maps, so tests can run two envs over one storage.
+/** Creates an in-process BuildStore; stores given the same backing share its maps, so tests can run two envs over one storage. */
 export function createMemoryBuildStore(env = 'development', { builds, counters }: MemoryBacking = newMemoryBacking()): BuildStore {
   const readNow = (key: string): string | null => builds.get(key) ?? null;
   return {
@@ -127,6 +136,7 @@ export function createMemoryBuildStore(env = 'development', { builds, counters }
 
 const hasCode = (error: unknown, code: string): boolean => (error as NodeJS.ErrnoException | null)?.code === code;
 
+/** Creates a BuildStore that keeps one file per key under `dir`, for next dev, Vitest and Playwright. */
 export function createFileBuildStore(dir: string, env: string): BuildStore {
   const root = path.resolve(dir);
   // A key must map to itself under root: a `..` segment that stays inside root could still alias
@@ -202,6 +212,7 @@ async function storeFor(env: NodeJS.ProcessEnv): Promise<BuildStore> {
 
 let processStore: Promise<BuildStore> | undefined;
 
+/** Picks the store from the environment, Blob when BUILDS_STORE_ID is set and files otherwise; with no argument it creates the process's store once and reuses it (Builds routes). */
 export function buildStoreFromEnv(env?: NodeJS.ProcessEnv): Promise<BuildStore> {
   if (env !== undefined) return storeFor(env);
   processStore ??= storeFor(process.env).catch((error: unknown) => {

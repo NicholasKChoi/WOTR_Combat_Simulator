@@ -1,6 +1,8 @@
 import { BaseArmy } from './army';
 
+/** The three ways a battle ends: attacker win, defender win or tie (Round order). */
 export const OUTCOME_KINDS = ['attacker', 'defender', 'tie'] as const;
+/** The outcome of one finished battle, named by the winning side or tie (Round order). */
 export type OutcomeKind = typeof OUTCOME_KINDS[number];
 
 const SURVIVOR_LABELS: Record<OutcomeKind, string> = {
@@ -9,6 +11,7 @@ const SURVIVOR_LABELS: Record<OutcomeKind, string> = {
   tie: "n/a",
 };
 
+/** Names the outcome of a finished battle from which armies still have combat strength; throws while both do (Round order). */
 export function battleOutcome(attack: BaseArmy, defend: BaseArmy): OutcomeKind {
   const attackAlive = attack.isArmyAlive();
   const defendAlive = defend.isArmyAlive();
@@ -24,6 +27,7 @@ export function battleOutcome(attack: BaseArmy, defend: BaseArmy): OutcomeKind {
   return 'tie';
 }
 
+/** Records one battle's armies, round count and each side's hits per round. */
 export class BattleResult {
   attackArmy: BaseArmy;
   defendArmy: BaseArmy;
@@ -68,6 +72,7 @@ export class BattleResult {
   }
 }
 
+/** Summary of one battle: the final armies, rounds, mean hits per round and the survivor label. */
 export interface BattleStats {
   attack: BaseArmy;
   defend: BaseArmy;
@@ -77,13 +82,16 @@ export interface BattleStats {
   survivor: string;
 }
 
+/** Rolls the given number of six-sided dice; callers swap it to control the random source. */
 export type DiceRoller = (numDice: number) => number[];
 
-// Separate from the army-size threshold in BaseArmy.takeHit, which is also 5 but means something else.
+/** Most combat dice a side rolls per round (Round order); separate from the army-size threshold in BaseArmy.takeHit, which is also 5 but means something else. */
 export const MAX_COMBAT_DICE = 5;
+/** Most missed dice a side re-rolls per round, one per leader (Round order). */
 export const MAX_LEADER_REROLLS = 5;
 const MIN_HIT_FACE = 5;
 
+/** Rolls numdice fair six-sided dice. */
 export function rollDice(numdice: number): number[] {
   let min = 1;
   let max = 6;
@@ -121,6 +129,7 @@ function calculateCombatRollResults(opts: CombatRollOps): CombatRollResults {
 }
 
 
+/** Plays one round in order: combat rolls, leader re-rolls, simultaneous casualties, then the record (Round order). */
 export function resolveRound(battle: BattleResult, roll: DiceRoller): void {
   let attack = battle.attackArmy;
   let defend = battle.defendArmy;
@@ -145,13 +154,15 @@ export function resolveRound(battle: BattleResult, roll: DiceRoller): void {
   battle.recordRound(attackHits, defendHits);
 }
 
-// Later termination rules, such as a round limit, are added as fields here.
+/** Options that end a battle early; later termination rules are added as fields here (Extension points). */
 export type BattleOptions = {};
 
+/** Whether the battle is over: true once either side has no combat strength (Extension points). */
 export function shouldStop(battle: BattleResult, options: BattleOptions): boolean {
   return !battle.attackArmy.isArmyAlive() || !battle.defendArmy.isArmyAlive();
 }
 
+/** Runs rounds until a side is eliminated and returns the recorded battle (Round order). */
 export function Battle(attack: BaseArmy, defend: BaseArmy, roll: DiceRoller = rollDice, options: BattleOptions = {}): BattleResult {
   const battleResult = new BattleResult(attack, defend);
 

@@ -41,6 +41,7 @@ export function researchEntry(baseId: string, state: EffectState): SnapshotEntry
   return picked;
 }
 
+/** The step handler for `research`: pays for the tech and queues it at the target building, or reports what the step waits on (Model rules). */
 export const researchHandler: StepHandler<'research'> = (step, index, state) => {
   const entry = researchEntry(step.tech, state);
   if (!entry) {
@@ -76,8 +77,7 @@ export function convertUnits(state: EngineState, upgrade: SnapshotEntry): void {
   recordUnits(state, target, moved);
 }
 
-// The tier at payment sets only a unit's cost, production time and population; the unit spawns at the highest
-// researched tier, never below the tier paid.
+/** The entry of a unit at the highest tier researched so far, else its first entry; the tier at payment sets only a unit's cost, production time and population, and the unit spawns at the highest researched tier, never below the tier paid (Model rules). */
 export function resolveUnitEntry(baseId: string, state: EffectState): SnapshotEntry | undefined {
   const entries = state.data.byBaseId.get(baseId);
   if (!entries) {
@@ -94,6 +94,7 @@ export function resolveUnitEntry(baseId: string, state: EffectState): SnapshotEn
   return entries.find((entry) => entry.age === tier) ?? entries[0];
 }
 
+/** The notes for research steps whose tech effects are ignored or unmodeled (Technologies). */
 export function researchNotes(order: BuildOrder, data: GameData): BuildOrderNote[] {
   const notes: BuildOrderNote[] = [];
   order.steps.forEach((step, index) => {

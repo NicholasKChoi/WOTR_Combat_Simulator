@@ -6,10 +6,13 @@ import { rateCounterKey, savedBuildKey } from './saved-builds';
 
 const COUNTER_ATTEMPTS = 3;
 
-// @vercel/blob reads VERCEL_BLOB_RETRIES from process.env on every put, head and del call (default 10; get is
-// not retried), and bumpCounter's attempts multiply those retries.
+/**
+ * The retry count given to @vercel/blob unless VERCEL_BLOB_RETRIES is already set. The SDK reads it on every put,
+ * head and del call (default 10; get is not retried), and bumpCounter's attempts multiply those retries.
+ */
 export const BLOB_SDK_RETRIES = 1;
 
+/** Creates the BuildStore over the Vercel Blob store `storeId`, with every key namespaced by `env`. */
 export function createBlobBuildStore(storeId: string, env: string): BuildStore {
   if (!process.env.VERCEL_BLOB_RETRIES) process.env.VERCEL_BLOB_RETRIES = String(BLOB_SDK_RETRIES);
   const putOptions = { access: 'private', addRandomSuffix: false, contentType: 'application/json', storeId } as const;

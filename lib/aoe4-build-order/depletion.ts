@@ -3,11 +3,13 @@ import { formatMinSec } from './format-time';
 import { FINITE_GATHER_NODES, FINITE_NODE_REFS } from './model';
 import type { BuildOrder, FiniteNodeRef, NodeDepletion, NodeRef, SimWarning } from './model';
 
+/** When villagers first arrived at a depleted node and how many have arrived in all (Depletion). */
 export interface IdleArrival {
   at: number;
   idleVillagers: number;
 }
 
+/** The stock of one finite node ref: starting amount, what remains, when it ran out and the villagers left idle (Depletion). */
 export interface RefStock {
   // null is infinite.
   amount: number | null;
@@ -18,17 +20,22 @@ export interface RefStock {
   idleArrival: IdleArrival | null;
 }
 
+/** The stock of every finite ref a run names (Depletion). */
 export type NodeStock = Map<FiniteNodeRef, RefStock>;
 
+/** The part of SimInputs that sets each ref's starting amount (Depletion). */
 export interface NodeStockInputs {
   nodeAmounts: Readonly<Record<FiniteNodeRef, number | null>>;
 }
 
+/** Villagers gathering each node ref. */
 export type Gatherers = Readonly<Partial<Record<NodeRef, number>>>;
+/** A ref's gather rate per villager, in resource per second. */
 export type RateOf = (ref: FiniteNodeRef) => number;
 
 const STEP_NODE_FIELDS = ['rally', 'to', 'from', 'then'] as const;
 
+/** The finite node refs a build order names, in FINITE_NODE_REFS order (Depletion). */
 export function runRefs(order: BuildOrder): FiniteNodeRef[] {
   const named = new Set<unknown>(FINITE_GATHER_NODES);
   Object.keys(order.start?.villagers ?? {}).forEach((node) => named.add(node));
@@ -44,6 +51,7 @@ export function runRefs(order: BuildOrder): FiniteNodeRef[] {
   return FINITE_NODE_REFS.filter((ref) => named.has(ref));
 }
 
+/** Creates full stocks for the given refs from the starting amounts in the inputs (Depletion). */
 export function createNodeStock(refs: readonly FiniteNodeRef[], inputs: NodeStockInputs): NodeStock {
   const stock: NodeStock = new Map();
   for (const ref of refs) {
@@ -53,6 +61,7 @@ export function createNodeStock(refs: readonly FiniteNodeRef[], inputs: NodeStoc
   return stock;
 }
 
+/** Whether a ref's stock has reached 0; a ref with infinite or no stock never has (Depletion). */
 export function isDepleted(stock: NodeStock, ref: FiniteNodeRef): boolean {
   return stock.get(ref)?.remaining === 0;
 }
@@ -61,7 +70,7 @@ function drawable(stock: NodeStock): [FiniteNodeRef, RefStock][] {
   return [...stock].filter(([, entry]) => entry.remaining !== null && entry.remaining > 0);
 }
 
-// Returns what each ref actually lost, which is what its gatherers earn.
+/** Takes seconds of gathering out of each stock and returns what each ref actually lost, which is what its gatherers earn (Depletion). */
 export function drawDown(stock: NodeStock, gatherers: Gatherers, rateOf: RateOf, seconds: number): Partial<Record<FiniteNodeRef, number>> {
   const drawn: Partial<Record<FiniteNodeRef, number>> = {};
   for (const [ref, entry] of drawable(stock)) {
@@ -77,6 +86,7 @@ export function drawDown(stock: NodeStock, gatherers: Gatherers, rateOf: RateOf,
   return drawn;
 }
 
+/** The earliest time a stock being drawn reaches 0 at the current gatherers and rates, or null when none will (Depletion). */
 export function nextRunOut(stock: NodeStock, gatherers: Gatherers, rateOf: RateOf, now: number): number | null {
   let earliest: number | null = null;
   for (const [ref, entry] of drawable(stock)) {
@@ -89,7 +99,7 @@ export function nextRunOut(stock: NodeStock, gatherers: Gatherers, rateOf: RateO
   return earliest;
 }
 
-// The first record wins.
+/** Records when a depleted ref ran out and how many villagers were idle; the first record wins (Depletion). */
 export function recordRunOut(stock: NodeStock, ref: FiniteNodeRef, at: number, idleVillagers: number): void {
   const entry = stock.get(ref)!;
   if (!isDepleted(stock, ref) || entry.depletedAt !== null) {
@@ -99,6 +109,7 @@ export function recordRunOut(stock: NodeStock, ref: FiniteNodeRef, at: number, i
   entry.idleAtRunOut = idleVillagers;
 }
 
+/** Records villagers arriving at a depleted ref; ignores a count of 0 or a ref that has not run out (Depletion). */
 export function recordIdleArrival(stock: NodeStock, ref: FiniteNodeRef, at: number, count: number): void {
   if (count <= 0 || !isDepleted(stock, ref)) {
     return;
@@ -107,7 +118,7 @@ export function recordIdleArrival(stock: NodeStock, ref: FiniteNodeRef, at: numb
   entry.idleArrival = addIdleArrival(entry.idleArrival, at, count);
 }
 
-// The first arrival's at is kept; idleVillagers adds up every arrival.
+/** Adds an arrival to an idle record: the first arrival's at is kept and idleVillagers adds up every arrival (Depletion). */
 export function addIdleArrival(record: IdleArrival | null, at: number, count: number): IdleArrival {
   return { at: record?.at ?? at, idleVillagers: (record?.idleVillagers ?? 0) + count };
 }
@@ -139,6 +150,7 @@ function idleArrivalWarning(ref: FiniteNodeRef, at: number, idle: number): SimWa
   };
 }
 
+/** The farm-idle warning for villagers that found no free farm, or an empty list when none did. */
 export function farmIdleWarnings(record: IdleArrival | null): SimWarning[] {
   if (record === null) {
     return [];
@@ -155,6 +167,7 @@ export function farmIdleWarnings(record: IdleArrival | null): SimWarning[] {
   ];
 }
 
+/** Builds the per-ref depletions and the node-depleted and idle-arrival warnings from the stocks (Depletion). */
 export function depletionResults(stock: NodeStock): { depletions: NodeDepletion[]; warnings: SimWarning[] } {
   const depletions: NodeDepletion[] = [];
   const warnings: SimWarning[] = [];
@@ -186,6 +199,7 @@ function tieRank(warning: SimWarning): number[] {
   return [0, FINITE_NODE_REFS.indexOf(warning.node), warning.code === 'node-depleted' ? 0 : 1];
 }
 
+/** Orders warnings by time; at one instant node warnings come first, then farm-idle, then step-stuck by step. */
 export function sortWarnings(warnings: readonly SimWarning[]): SimWarning[] {
   return [...warnings].sort((a, b) => {
     if (a.at !== b.at) {

@@ -19,21 +19,24 @@ import { productionBuildingSeries } from './production-buildings';
 import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 
-// Output resolution, not a game number.
+/** Seconds between the samples of the result series: output resolution, not a game number (Outputs). */
 export const SAMPLE_SECONDS = 5;
 
 const SECONDS_PER_MINUTE = 60;
 
+/** Where the villagers of a producer go: a node and an optional walk override (Model rules). */
 export interface RallySource {
   node: NodeRef;
   walkSeconds?: number;
 }
 
+/** A paid unit or research in the queue of a building, with what completing it does (Model rules). */
 export interface PaidItem {
   entry: SnapshotEntry;
   complete(state: EngineState, at: BuildingInstance): void;
 }
 
+/** The unit a building produces and how many unpaid units remain; continuous for the default villager order (Model rules). */
 export interface ProductionOrder {
   // Index into order.steps; null is the default continuous villager order.
   step: number | null;
@@ -42,6 +45,7 @@ export interface ProductionOrder {
   remaining: number | null;
 }
 
+/** One completed building with its queue, paid items and rally (Model rules). */
 export interface BuildingInstance {
   baseId: string;
   // 1-based, creation order within the baseId.
@@ -65,6 +69,7 @@ interface SpawnedUnits {
   changes: UnitChange[];
 }
 
+/** The mutable state of a running simulation, which step handlers and civ hooks read and write (Model rules). */
 export interface EngineState extends EffectState {
   readonly data: GameData;
   readonly inputs: SimInputs;
@@ -112,10 +117,12 @@ export interface EngineState extends EffectState {
   schedule(time: number, apply: (state: EngineState) => void): void;
 }
 
+/** What a step handler reports: it started, or what it waits on and the resources it reserves (Model rules). */
 export type StepStart =
   | { started: true }
   | { started: false; waitingOn: StepWait; reserve?: Readonly<Record<ResourceKind, number>> };
 
+/** Tries to start one step of an action against the engine state (Model rules). */
 export type StepHandler<A extends BuildStep['action'] = BuildStep['action']> = (
   step: Extract<BuildStep, { action: A }>,
   index: number,
@@ -200,7 +207,7 @@ function waitForSlot(state: EngineState, ref: NodeRef, count: number): void {
   }
 }
 
-// Every arrival at a ref goes through here.
+/** Sends arriving villagers to a ref: idle when it has run dry, else to its open slots; every arrival at a ref goes through here (Depletion). */
 export function assignGatherers(state: EngineState, ref: NodeRef, count: number): void {
   if (isDry(state, ref)) {
     state.idle[ref] += count;
@@ -245,6 +252,7 @@ function isVillagerProducer(state: EngineState, baseId: string): boolean {
   return state.rules.villagerProducer?.(byDefault, { ...ruleContext(state), baseId }) ?? byDefault;
 }
 
+/** Adds a completed instance of a building, setting its default rally and villager order and counting its supply (Model rules). */
 export function addBuildingInstance(state: EngineState, baseId: string): BuildingInstance {
   const list = state.instances.get(baseId) ?? [];
   state.instances.set(baseId, list);
@@ -268,6 +276,7 @@ function supplyOf(state: EngineState, baseId: string): number {
   return state.rules.supplyProvider?.(supply, { ...ruleContext(state), baseId }) ?? supply;
 }
 
+/** Whether the trigger of a step holds now; an absent trigger always does (Model rules). */
 export function triggerHolds(trigger: Trigger | undefined, state: EngineState): boolean {
   if (trigger === undefined) {
     return true;
@@ -510,6 +519,7 @@ const move: StepHandler<'move'> = (step, index, state) => {
   return { started: true };
 };
 
+/** The step handler of each action (Extension points). */
 export const stepHandlers: { [A in BuildStep['action']]?: StepHandler<A> } = { produce, pause, rally, research: researchHandler, build, move };
 
 // Arms the step if its trigger holds, then tries to start it; null while it stays unarmed.
@@ -910,6 +920,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
 
 const BREAKDOWN_REASONS: readonly StepWait[] = ['resources', 'villagers', 'population', 'prerequisite'];
 
+/** Adds seconds to the wait breakdown of each given step under what it waits on, for the four countable reasons. */
 export function accrueWait(engine: Pick<Engine, 'steps'>, stepIndexes: readonly number[], seconds: number): void {
   for (const index of stepIndexes) {
     const timing = engine.steps[index];
@@ -976,6 +987,7 @@ function unitSeries(engine: Engine, times: number[]): UnitSeries[] {
   }));
 }
 
+/** Runs a validated build order on the data and inputs and returns the sampled result; the same input gives the same result (Determinism, bounds and resources). */
 export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: SimInputs, rules: CivRules = civRules(order.civ)): SimulationResult {
   const engine = createEngine(order, data, inputs, rules);
   const times = sampleTimes(inputs.durationSeconds);

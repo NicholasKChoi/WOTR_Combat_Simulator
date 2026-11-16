@@ -2,12 +2,14 @@
 import { MAX_REPORTED_ISSUES, type BuildsError, type SimulateError } from './api';
 import type { BuildOrderIssue } from './model';
 
+/** The framework-neutral reply a route handler returns: status, headers and optional body (Route). */
 export interface RouteReply<Body = unknown> {
   status: number;
   headers?: Record<string, string>;
   body?: Body;
 }
 
+/** The part of a Next response that sendReply writes to. */
 export interface ReplyTarget<Body = unknown> {
   status(code: number): ReplyTarget<Body>;
   setHeader(name: string, value: string): unknown;
@@ -15,10 +17,12 @@ export interface ReplyTarget<Body = unknown> {
   end(chunk?: string): void;
 }
 
+/** Whether a value is a non-null, non-array object, as a JSON request body must be (Route). */
 export function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** The 405 reply, with the allowed methods in `Allow` (Route). */
 export function methodNotAllowed(method: string | undefined, allowed: readonly string[]): RouteReply<BuildsError> {
   return {
     status: 405,
@@ -27,21 +31,24 @@ export function methodNotAllowed(method: string | undefined, allowed: readonly s
   };
 }
 
+/** The one-`syntax`-issue error for a request body that is not a JSON object (Route). */
 export function notAnObjectError(): SimulateError {
   const message = 'request body: must be a JSON object';
   return { error: message, issues: [{ code: 'syntax', message }] };
 }
 
-// The caller guarantees at least one issue: the first one's message is the error.
+/** Builds the 400 body from at least one issue (the caller guarantees it): the first issue's message is the error, and issues past MAX_REPORTED_ISSUES are dropped and counted in omittedIssues (Route). */
 export function issuesError(all: readonly BuildOrderIssue[]): SimulateError {
   const issues = all.slice(0, MAX_REPORTED_ISSUES);
   const omittedIssues = all.length - issues.length;
   return { error: issues[0].message, issues, ...(omittedIssues > 0 ? { omittedIssues } : {}) };
 }
 
-// Body comes from the response alone. json is declared as a method, so its parameter is bivariant even under
-// strictFunctionTypes; inferring Body from the reply too would let a response type that lacks one of the reply's
-// bodies compile.
+/**
+ * Writes a RouteReply to the response. Body is inferred from the response alone: json is declared as a method,
+ * so its parameter is bivariant even under strictFunctionTypes, and inferring Body from the reply too would let
+ * a response type that lacks one of the reply's bodies compile.
+ */
 export function sendReply<Body>(res: ReplyTarget<Body>, reply: RouteReply<NoInfer<Body>>): void {
   res.status(reply.status);
   for (const [name, value] of Object.entries(reply.headers ?? {})) res.setHeader(name, value);

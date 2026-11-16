@@ -12,6 +12,7 @@ import {
   type Trigger,
 } from './model';
 
+/** The choices the editor offers for each step field, derived from the game data. */
 export interface StepOptions {
   actions: readonly BuildStep['action'][];
   triggerKinds: readonly ('none' | Trigger['kind'])[];
@@ -30,6 +31,7 @@ export interface StepOptions {
 const ACTIONS: readonly BuildStep['action'][] = ['produce', 'pause', 'build', 'research', 'move', 'rally'];
 const TRIGGER_KINDS: StepOptions['triggerKinds'] = ['none', 'time', 'villagers', 'depleted', 'bank'];
 
+/** Orders strings by UTF-16 code unit, independent of locale. */
 export function compareCodeUnits(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
@@ -49,6 +51,7 @@ function unionOf(entries: readonly SnapshotEntry[], pick: (entry: SnapshotEntry)
   return new Set(entries.flatMap(pick));
 }
 
+/** Derives StepOptions from the game data: ids sorted by lowest age, then code unit, with their display names. */
 export function stepOptions(data: GameData): StepOptions {
   const ageOf = (baseId: string) => data.byBaseId.get(baseId) ?? [];
   const byAge = (ids: Iterable<string>) => sortedByAge([...ids].map((id) => [id, ageOf(id)] as const));

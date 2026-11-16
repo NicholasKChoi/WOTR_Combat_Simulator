@@ -6,7 +6,7 @@ function hasBuildingEntry(data: GameData, baseId: string): boolean {
   return data.byBaseId.get(baseId)?.some((entry) => entry.type === 'building') ?? false;
 }
 
-// A building baseId that some unit entry lists in producedBy.
+/** The building baseIds that some unit entry lists in producedBy (Outputs). */
 export function productionBuildingIds(data: GameData): ReadonlySet<string> {
   const ids = new Set<string>();
   for (const entry of data.byId.values()) {
@@ -18,7 +18,7 @@ export function productionBuildingIds(data: GameData): ReadonlySet<string> {
   return ids;
 }
 
-// samples[i] maps a building baseId to its completed instances at times[i].
+/** Completed-instance counts per production building, ordered by first appearance; samples[i] maps a building baseId to its completed instances at times[i] (Outputs). */
 export function productionBuildingSeries(data: GameData, samples: readonly ReadonlyMap<string, number>[]): BuildingSeries[] {
   const series = [...productionBuildingIds(data)].flatMap((baseId) => {
     const counts = samples.map((sample) => sample.get(baseId) ?? 0);
