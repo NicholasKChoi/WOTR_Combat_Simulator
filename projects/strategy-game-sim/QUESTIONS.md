@@ -22,17 +22,16 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q104
+next: Q105
 
-## Q103: Run the M9 retro (milestone close)?
+## Q104: Run the M9 retro now (not found as run)?
 kind: handoff
 blocks: retro
 options: A) Done | B) Not now
-recommendation: A: retro lastRun predates M9's last merge; run it, then start M10 (the nextMilestoneScope in checkpoint.json)
-thread: 1571667387734827149
+recommendation: A: run it in a terminal, then answer Done
 
-M9 is closed: every exit criterion is done. The retro is interactive, so a headless drive does not run it.
+Owner answered Q103 'Done', but no retro report is newer than retros/retro-20261031.md and checkpoint retro.lastRun (2026-11-12) predates M9's last merge, so the retro has not run. It is interactive; a headless pass cannot run it.
 - Run `/code-factory:manage strategy-game-sim retro` in a terminal in the code repo.
-- Until it runs, the factory has no more work: all 44 rows are integrated.
+- Nothing else is queued: all 44 rows are integrated; M10 (checkpoint nextMilestoneScope) starts after the retro.
 
 ### Answer
