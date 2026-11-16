@@ -64,10 +64,10 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-175 | Write the StarCraft helper design doc | none | none | starcraft-helper | standard | | | sgs-175-starcraft-helper-design-doc | ec0bb7c391bd8ad7c8887d303433090763b28ed6 | integrated | | 183 | tickets/SGS-175-starcraft-helper-design-doc.md |
 | SGS-177 | Make simulate.test literal scan comment-aware | none | none | aoe4-build-order | low | | | sgs-177-simulate-test-comment-aware-scan | 81b403014011a30fd2f0c44023f45e5aba9602de | integrated | | 186 | tickets/SGS-177-simulate-test-comment-aware-scan.md |
 | SGS-178 | Remove unreferenced NAMED_BUILD_VERSION | none | none | aoe4-build-order | low | | | sgs-178-remove-unreferenced-named-build-version | 5188c080ff5c47a711e5bc54e86197cd221f266b | integrated | | 187 | tickets/SGS-178-remove-unreferenced-named-build-version.md |
-| SGS-179 | Add MIN_SUPPORTED_VIEWPORT; delete narrow and small-screen specs | M10 | M10.3 | | low | | | | | draft | | | tickets/SGS-179-min-viewport-delete-narrow-specs.md |
-| SGS-183 | Tabs-layout cases to the default viewport | M10 | M10.3 | | low | | | | | draft | | | tickets/SGS-183-tabs-layout-cases-to-default-viewport.md |
-| SGS-180 | Split-layout specs to desktop viewports | M10 | M10.3 | | low | SGS-179 | | | | draft | | | tickets/SGS-180-split-layout-specs-to-desktop-viewports.md |
-| SGS-181 | Width-row specs: editor, annotations, chart views | M10 | M10.3 | | low | SGS-179 | | | | draft | | | tickets/SGS-181-width-row-specs-editor-annotations-chart-views.md |
-| SGS-182 | Save, load and auto-run specs to desktop viewports | M10 | M10.3 | | low | SGS-179 | | | | draft | | | tickets/SGS-182-save-load-auto-run-specs-to-desktop-viewports.md |
-| SGS-184 | One desktop layout: remove tabs and breakpoints, add width floor | M10 | M10.1,M10.2,M10.3 | | standard | SGS-179,SGS-180,SGS-181,SGS-182,SGS-183 | | | | draft | | | tickets/SGS-184-one-desktop-layout-width-floor.md |
-| SGS-185 | Docs: desktop-only AoE4 page | M10 | M10.4 | | low | SGS-184 | | | | draft | | | tickets/SGS-185-docs-desktop-only-page.md |
+| SGS-179 | Add MIN_SUPPORTED_VIEWPORT; delete narrow and small-screen specs | M10 | M10.3 | | low | | | sgs-179-min-viewport-delete-narrow-specs | 212efb7a6f00de8c274c27a858d4d824f7a16059 | integrated | | 188 | tickets/SGS-179-min-viewport-delete-narrow-specs.md |
+| SGS-183 | Tabs-layout cases to the default viewport | M10 | M10.3 | | low | | | sgs-183-tabs-layout-cases-to-default-viewport | 271f0682233f9df2d4e4c3dda9e2886138447c73 | tested | | | tickets/SGS-183-tabs-layout-cases-to-default-viewport.md |
+| SGS-180 | Split-layout specs to desktop viewports | M10 | M10.3 | | low | SGS-179 | | | | spec_ready | | | tickets/SGS-180-split-layout-specs-to-desktop-viewports.md |
+| SGS-181 | Width-row specs: editor, annotations, chart views | M10 | M10.3 | | low | SGS-179 | | | | spec_ready | | | tickets/SGS-181-width-row-specs-editor-annotations-chart-views.md |
+| SGS-182 | Save, load and auto-run specs to desktop viewports | M10 | M10.3 | | low | SGS-179 | | | | spec_ready | | | tickets/SGS-182-save-load-auto-run-specs-to-desktop-viewports.md |
+| SGS-184 | One desktop layout: remove tabs and breakpoints, add width floor | M10 | M10.1,M10.2,M10.3 | | standard | SGS-179,SGS-180,SGS-181,SGS-182,SGS-183 | | | | spec_ready | | | tickets/SGS-184-one-desktop-layout-width-floor.md |
+| SGS-185 | Docs: desktop-only AoE4 page | M10 | M10.4 | | low | SGS-184 | | | | spec_ready | | | tickets/SGS-185-docs-desktop-only-page.md |

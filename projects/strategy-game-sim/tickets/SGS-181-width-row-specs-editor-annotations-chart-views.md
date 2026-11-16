@@ -35,8 +35,9 @@ Every change is in `acceptance/`. Names below are pointers to where to look. Unu
   - The tick-overlap loop (`[360, 768, 1280]`, height 900) becomes rows over `[MIN_SUPPORTED_VIEWPORT, WIDE_VIEWPORT]`, with the no-overlap, not-clipped and no-sideways-scroll assertions unchanged. Rename the case so the row's viewport width still appears in its title and no title names a width that is no longer sampled.
   - Drop every `showTab` call (there are about 17, in every chart-view case) and the `showTab` import. A case that read Results content right after `showTab('results')` keeps a wait on that content (the next assertion's own `toBeVisible`, `toHaveCount`, `expect.poll` or `toPass`).
 - Follow the exemplar `acceptance/aoe4-chart-views.spec.ts` and the repo lesson: any new or changed check that compares layout values reads them in one `evaluate` under `expect.poll` or `toPass`; the existing ones keep that shape.
-- Check before editing: re-grep these three files at the base for `showTab`, `TABS_VIEWPORT`, `PHONE`, `setViewportSize`, `viewport:` and any width under 1200 (the three files hold the only narrow-width cases the design inventory assigns here; a hit not listed above is handled the same way and listed in the report).
+- Check before editing (a step for the implementer, not an acceptance criterion): re-grep these three files at the base for `showTab`, `TABS_VIEWPORT`, `PHONE`, `setViewportSize`, `viewport:` and any width under 1200 (the three files hold the only narrow-width cases the design inventory assigns here; a hit not listed above is handled the same way and listed in the report).
 - Docs: no doc describes these spec cases (searched outside `acceptance/`); no doc changes. Not touching `acceptance/helpers.ts` (`SPLIT_MIN_WIDTH`, `TABS_VIEWPORT` and `showTab` stay until the code ticket removes them, and other step-1 tickets still import them).
+- The chart tick loop and the popover loop move from fixed heights (900 and 760) to each row's own height (`MIN_SUPPORTED_VIEWPORT` and `WIDE_VIEWPORT` heights). The assertions do not depend on height, but the popover case scrolls lines into view; the implementer's report says so.
 - Existing tests: every case not named above keeps its assertions and expected values. The implementer lists every case edited, renamed, moved or deleted in the report.
 - The rewritten rows and moved cases must not leave a block that `npm run lint:dup` flags as a clone (the test config applies); rows in one loop, not copied blocks.
 
@@ -48,7 +49,7 @@ Single-component change outside the core control loop; no diagram required.
 
 ## Acceptance criteria
 
-- [ ] No case in the three listed files sets a viewport under 1200 px wide: each viewport comes from `MIN_SUPPORTED_VIEWPORT`, `WIDE_VIEWPORT` or the default project viewport (a typecheck passes with the unused imports removed; the implementer also greps these files for `PHONE`, `TABS_VIEWPORT` and `showTab`, as a wording check, not a count).
+- [ ] Every case in the three listed files runs at a viewport at least 1200 px wide: each viewport comes from `MIN_SUPPORTED_VIEWPORT`, `WIDE_VIEWPORT` or the default project viewport. Shown by the three per-file `npm run acceptance` runs passing; a deleted case is shown by the spec's case list. Imports and constants the deletions leave unused are removed, confirmed in review. (respec 1)
 - [ ] The half-editor case runs at `MIN_SUPPORTED_VIEWPORT` and fails if the textarea's client width falls below half of `build-order-editor`'s width there; the typical-line, gutter-drops-finish-time and Build-panel-no-overflow cases each run for both `MIN_SUPPORTED_VIEWPORT` and `WIDE_VIEWPORT` and keep their assertions (a test fails if the gutter shows a finish time, the textarea content is narrower than a 48-character line, or the page or `panel-build` scrolls sideways at either viewport).
 - [ ] "Table keeps the finish time" and "hover marks the active step" run at the default viewport; the first fails if the table view's finish times differ from the gutter's or are not visible, and the second fails if hovering an annotation row does not set its active mark and a visible box shadow.
 - [ ] The cases for the removed boundary (the editor at 768 px and wider keeping the M8 layout, and the 767, 768, 850 compact-boundary rows) no longer exist in `aoe4-editor-width.spec.ts`, proven by the spec's case list and a clean typecheck, not a search.
@@ -62,3 +63,9 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 none
+
+## Re-spec 1 - 2026-11-16
+
+- The first acceptance criterion was a search over code (grep for `PHONE`, `TABS_VIEWPORT`, `showTab`) with a typecheck that cannot detect unused imports.
+- It is now stated as behavior (every case runs at 1200 px or wider, shown by passing per-file acceptance runs); the grep stays as the check-before-editing step. Added the fixed-height to row-height note for the chart and popover loops.
+- No branch work exists; nothing else changed.
