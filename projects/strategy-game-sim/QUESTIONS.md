@@ -31,6 +31,7 @@ options: A) Research waits for a fully idle building: literal, but breaks prebui
 recommendation: B: A fails the prebuilt-build bar and floors; B keeps them and still reports busy buildings
 research: reports/M11-research-3.md
 thread: 1572015078448832526
+answered: 2026-11-16T22:27Z discord
 
 You decide how literally "wait for an idle building" applies to researches; the engine ticket and every prebuilt build wait on it.
 - Option A (literal): a research also waits for other researches at its building. Measured on a prototype: two prebuilt builds leave steps 73-78 and 49-55 unstarted at 20 min, so the "no waiting" bar fails.
@@ -39,6 +40,7 @@ You decide how literally "wait for an idle building" applies to researches; the 
 - B still shows "a free Archery Range" whenever a research meets a training building. Only a research queued behind another research shows its payment time as its start.
 
 ### Answer
+A) Research waits for a fully idle building: literal, but breaks prebuilt builds
 
 ## Q119: Approve the M11 design defaults 1/4: unit lines and markers?
 kind: confirmation
