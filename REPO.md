@@ -67,7 +67,7 @@ questionResearch: medium          # none | low | medium | high: how much researc
 schemaLibrary: zod                # validation library (added with the AoE4 build schema)
 exemplars:                        # retro 2026-11-15: agents copied local helpers with none named
   - path: "acceptance/aoe4-chart-views.spec.ts"
-    shows: chart acceptance spec; helpers take a chart id; layout values read in one evaluate (lineEndYs) under toPass; shared setup from acceptance/helpers.ts
+    shows: chart acceptance spec; helpers take a chart id; layout values read in one evaluate (readLayout, lineEndYs in acceptance/helpers.ts) under toPass; shared setup from acceptance/helpers.ts
   - path: "acceptance/aoe4-build-order-step-band.spec.ts"
     shows: hover/focus sequence; scroll targets into view instantly first; state read in one evaluate under expect.poll
   - path: "lib/aoe4-build-order/blob-fake-test-helpers.ts"
