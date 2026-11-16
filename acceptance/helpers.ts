@@ -255,11 +255,6 @@ export async function scrollInstantly(page: Page, top: number): Promise<number> 
   }, top)
 }
 
-// Read after two frames in one evaluate, so a scroll started by the last render has moved the page.
-export function settledScrollY(page: Page): Promise<number> {
-  return page.evaluate(() => new Promise<number>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(window.scrollY)))))
-}
-
 export async function expectInvalidNoRun(page: Page): Promise<void> {
   await expect(page.getByTestId('auto-run-status')).toHaveAttribute('data-status', 'invalid')
   await expectNoRun(page)
