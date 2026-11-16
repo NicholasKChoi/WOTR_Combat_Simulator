@@ -642,16 +642,16 @@ describe('notes', () => {
         ])
     })
 
-    it('marks every note info and none error', () => {
-        expect(result.notes.map((n) => n.severity)).toEqual(['info', 'info'])
+    it('marks every note debug and none error', () => {
+        expect(result.notes.map((n) => n.severity)).toEqual(['debug', 'debug'])
         expect(result.notes.some((n) => n.severity === 'error')).toBe(false)
     })
 
-    it('marks info the note of every tech in the data', () => {
+    it('marks debug the note of every tech in the data', () => {
         const techs = [...data.byBaseId.values()].filter(([e]) => e.type === 'technology' || e.type === 'upgrade')
         const notes = researchNotes(buildOrder(techs.map(([e]): BuildStep => ({ action: 'research', tech: e.baseId }))), data)
         expect(notes.length).toBeGreaterThan(1)
-        expect(notes.filter((n) => n.severity !== 'info')).toEqual([])
+        expect(notes.filter((n) => n.severity !== 'debug')).toEqual([])
     })
 
     it('is a pure function of the order and the data', () => {
