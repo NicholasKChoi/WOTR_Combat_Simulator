@@ -68,10 +68,8 @@ tbody > tr > td.kindBorder {
     gap: 0.25rem;
 }
 
-@container build-editor (width < 768px) {
-    .gutterEndTime {
-        display: none;
-    }
+.gutterEndTime {
+    display: none;
 }
 
 .runCell .times {

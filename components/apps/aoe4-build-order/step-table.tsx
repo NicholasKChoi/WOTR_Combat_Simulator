@@ -87,7 +87,7 @@ function actionFields(step: BuildStep, options: StepOptions): FieldDef[] {
 
 function Labeled({ field, children }: { field: string; children: React.ReactNode }) {
     return (
-        <label className="d-flex d-md-inline-flex flex-wrap align-items-center gap-1 me-2 mb-1">
+        <label className="d-inline-flex flex-wrap align-items-center gap-1 me-2 mb-1">
             <span className="small text-muted">{FIELD_LABELS[field]}</span>
             {children}
         </label>
@@ -241,7 +241,7 @@ function StartRow(props: { order: BuildOrder; catalog: BuildOrderCatalog; onChan
     const pairs = startPairs(order)
     return (
         <tr data-testid="step-start-row" onPointerEnter={() => onActiveStepChange(null)} onFocus={() => onActiveStepChange(null)}>
-            {withRunCell ? <td className={styles.startSpacer} /> : null}
+            {withRunCell ? <td /> : null}
             <td>
                 <span className="small text-muted me-2">Start</span>
                 {order.start === undefined ? (
