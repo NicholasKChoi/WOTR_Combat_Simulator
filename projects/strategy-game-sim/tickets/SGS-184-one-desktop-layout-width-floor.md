@@ -71,3 +71,15 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 none
+
+## Rework 1 - 2026-11-16 (review)
+
+Review passed the production code at tip 09023924d1a47342f6771eb96010581e8474661f; only two new acceptance cases cannot reliably fail. Report: reports/SGS-184-review-1.md.
+
+Findings:
+- `acceptance/aoe4-min-width.spec.ts:81-100`: the resize case hand-rolls a no-run check that waits 500 ms, equal to `AUTO_RUN_DEBOUNCE_MS`, so a debounced run started by the resize may be missed.
+- `acceptance/aoe4-split-layout.spec.ts:75-82`: "columns are the same before and after the first run" can read `before` after the run has answered, so it cannot fail.
+
+Required fixes:
+- [x] In `aoe4-min-width.spec.ts`, wrap the resize loop in `expectNoRun` (`acceptance/helpers.ts:227`) and use `SPLIT_VIEWPORT` instead of the two 1280x800 literals. (rework 1)
+- [x] In `aoe4-split-layout.spec.ts`, hold the first simulate with `holdNextSimulate`, assert status is not `current`, read the columns with null-safe lookups, release with `waitForRun`, then compare before and after. Mutation check: dropping the Results column until a result exists must fail the case. (rework 1)

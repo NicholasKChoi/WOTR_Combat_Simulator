@@ -157,11 +157,12 @@ active milestone's design.
   or extract it instead (past copies drifted, e.g. two resource tolerances with different values).
 - Check every engine rule change against `docs/aoe4-build-order.md`; a doc sentence the diff leaves
   contradicted by the code is blocking.
-- For UI changes, screenshot each touched UI state at 360x760, 768 and 1280px wide and look at them. A
-  highlight or error state must change something visible, not just an attribute. Sticky or fixed
-  elements must leave at least 60% of a 360x760 viewport and of a 1280x720 viewport. The text editor must
-  keep at least 50% of the content width at 390px and at 1280px. Messages must read as plain sentences.
-- For layout and chart changes, check the page at 390, 700 and 1280px wide: no horizontal overflow, and
+- For UI changes, screenshot each touched UI state at 1200, 1280 and 1800px wide and look at them (390 only to
+  check the below-minimum rules). A highlight or error state must change something visible, not just an
+  attribute. Sticky or fixed elements must leave at least 60% of a 1200x800 viewport and of a 1280x720
+  viewport. The text editor must keep at least 50% of the content width at 1200 and 1280px. Messages must
+  read as plain sentences.
+- For layout and chart changes, check the page at 1200, 1280 and 1800px wide: no horizontal overflow, and
   no overlapping axis, tick or marker labels.
 - Don't mix Bootstrap `d-*`, `flex-*` or spacing utilities with module CSS on the same element (the
   utilities are `!important` and override it). Build conditional classNames with `cn`, not template literals.

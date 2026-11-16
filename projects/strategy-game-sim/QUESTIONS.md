@@ -22,4 +22,16 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q112
+next: Q113
+
+## Q112: M10.5: check the AoE4 build-order page on desktop and on a phone, then report what you saw
+kind: handoff
+blocks: M10.5 (Owner checks the page on the PR preview and then production…)
+options: A) Done, looks right | B) Done, found a problem (say what) | C) Not now
+thread: 1571985177868242974
+
+M10.5 is the owner's check of the desktop-only AoE4 page; all code for M10 (SGS-184, SGS-185) is merged to main.
+- On the production page (or a preview of main), open the AoE4 build order at a desktop width (1200+ px): two columns, no tabs.
+- On a phone: the page should keep its 1200 px layout and scroll sideways, with nothing overlapping.
+
+### Answer
