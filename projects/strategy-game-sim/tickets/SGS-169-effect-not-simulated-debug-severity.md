@@ -64,3 +64,14 @@ none
 - Underspecified: Scope put statements in `docs/aoe4-build-order.md` that live in `-format.md` and `-ui.md`, and the docs criterion named only two files.
 - Changed: Scope names each doc file and its statements; the docs criterion covers every file under `docs/`.
 - Existing branch work still stands: none existed beyond the ticket.
+
+## Rework 1 - 2026-11-16 (review, text)
+
+Findings (reports/SGS-169-review-1.md; no earlier gate has passed tip ec70f1d84d1aecabd6222555047892888585bb34):
+
+1. `docs/aoe4-build-order.md:482-483` (text): step 4 of the tech classification still says the `tech-effect-unmodeled` note is worded with the tech's `baseId` "so the user sees its effect is not simulated". The page now hides these notes; only the API response carries them.
+
+Required fixes:
+
+- [ ] In `docs/aoe4-build-order.md` step 4 of the tech classification, change "so the user sees" to "so an API client sees". Keep the rest of the sentence and the example message unchanged.
+- [ ] Change nothing else.
