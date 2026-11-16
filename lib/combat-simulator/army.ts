@@ -1,9 +1,11 @@
+/** Unit counts of one side as submitted (Armies). */
 export interface Army {
   regulars: number;
   elites: number;
   leaders: number;
 }
 
+/** A side's mutable unit counts, which take hits in the fixed casualty order (Armies, Casualties). */
 export class BaseArmy {
   regulars: number = 0;
   elites: number = 0;

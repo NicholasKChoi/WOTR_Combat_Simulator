@@ -36,6 +36,7 @@ async function newCredentials(random: RandomBytes | undefined): Promise<{ id: st
   return { id, editSecret, secretHash: await editSecretHash(editSecret) };
 }
 
+/** Handles POST /named-builds: validates the body, makes a new id and edit secret, takes a rate-limit slot, then stores revision 1 (Named builds routes). */
 export async function createNamedBuildReply(
   req: { method: string | undefined; body: unknown; clientKey: string },
   deps: { store: StoreGetter; catalog: BuildOrderCatalog; nowMs: number; random?: RandomBytes },
@@ -129,6 +130,7 @@ async function updateNamedBuild(
   }
 }
 
+/** Handles GET and PUT of /named-builds/{id}, and DELETE outside production (Named builds routes). */
 export async function namedBuildReply(
   req: { method: string | undefined; id: unknown; body: unknown; authorization: string | undefined; ifMatch: string | undefined; clientKey: string },
   deps: { store: StoreGetter; catalog: BuildOrderCatalog; env: string | null; nowMs: number },

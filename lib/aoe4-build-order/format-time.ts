@@ -1,3 +1,4 @@
+/** Formats seconds, rounded to whole seconds, as m:ss. */
 export function formatMinSec(seconds: number): string {
   const total = Math.round(seconds);
   const sec = total % 60;

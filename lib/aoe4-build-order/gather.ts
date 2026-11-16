@@ -15,7 +15,7 @@ function applyAll(base: number, properties: readonly string[], target: ModifierT
   return properties.reduce((value, property) => modifiedValue(value, property, target, state), base);
 }
 
-// Per villager, in resource per second.
+/** Resource per second one villager earns at a node over its whole trip cycle, with effects and drop-off distance applied (Model rules). */
 export function effectiveGatherRate(node: GatherNodeId, state: EffectState, inputs: SimInputs): number {
   const rules = state.data.base.gatherNodes[node];
   const target = villagerTarget(state);

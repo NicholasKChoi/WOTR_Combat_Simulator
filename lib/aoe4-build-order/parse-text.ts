@@ -3,6 +3,7 @@ import { formatMinSec } from './format-time';
 import { NODE_REFS, shortText } from './model';
 import type { BuildOrder, BuildOrderIssue, BuildOrderLines, BuildStart, BuildStep, FiniteNodeRef, NodeRef, ResourceKind, Trigger } from './model';
 
+/** The result of parsing paste text: the order with its line numbers, or syntax issues with the partial order (Build order input). */
 export type ParseTextResult =
   | { ok: true; order: BuildOrder; lines: BuildOrderLines }
   | { ok: false; issues: BuildOrderIssue[]; partial: { order: BuildOrder; lines: BuildOrderLines } };
@@ -257,6 +258,7 @@ function parseStart(t: Tokens): BuildStart {
   return start;
 }
 
+/** Parses paste text, one step per line, into a BuildOrder with its source line numbers; grammar errors are `syntax` issues (Build order input). */
 export function parseBuildOrderText(text: string): ParseTextResult {
   const steps: BuildStep[] = [];
   const lines: BuildOrderLines = { steps: [] };
@@ -388,11 +390,12 @@ function formatAction(step: BuildStep): string {
   }
 }
 
+/** Formats one step as its paste line, trigger first (Build order input). */
 export function formatBuildStep(step: BuildStep): string {
   return words(formatTrigger(step), formatAction(step));
 }
 
-// Total: never throws. Numbers print as String(n), so only non-negative integer orders re-parse equal.
+/** Formats a BuildOrder as paste text, one line per step. Total: never throws. Numbers print as String(n), so only non-negative integer orders re-parse equal (Build order input). */
 export function formatBuildOrderText(order: BuildOrder): string {
   const out: string[] = [];
   const start = order.start === undefined ? undefined : formatStart(order.start);

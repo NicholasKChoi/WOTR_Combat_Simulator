@@ -2,6 +2,7 @@ import type { BuildOrder, BuildOrderIssue, BuildOrderLines } from './model';
 import { parseBuildOrderText } from './parse-text';
 import { SIM_INPUT_BOUNDS, checkBuildOrder, type BuildOrderCatalog } from './schema';
 
+/** The result of turning paste text into a validated BuildOrder: the order, or issues sorted by line (Build order input). */
 export type TextToBuildResult =
   | { ok: true; order: BuildOrder; lines: BuildOrderLines }
   | { ok: false; issues: BuildOrderIssue[]; lines?: BuildOrderLines };
@@ -14,6 +15,7 @@ function withoutStep({ step, ...rest }: BuildOrderIssue): BuildOrderIssue {
   return rest;
 }
 
+/** Parses paste text and validates it against the catalog, returning the order or the issues sorted by line; browser-safe (Build order input). */
 export function textToBuildOrder(text: string, catalog: BuildOrderCatalog): TextToBuildResult {
   const maxChars = SIM_INPUT_BOUNDS.textChars.max;
   if (text.length > maxChars) {

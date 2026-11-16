@@ -27,8 +27,10 @@ function bound(min: number, max: number, integer = true): InputBound {
   return Object.freeze({ min, max, integer });
 }
 
-// Request-size caps that keep every run bounded, not game numbers: the 200 caps are fixed here rather than read
-// from maxPopCap so a data change cannot loosen them.
+/**
+ * Request-size caps that keep every run bounded, not game numbers: the 200 caps are fixed here rather than read
+ * from maxPopCap so a data change cannot loosen them (Determinism, bounds and resources).
+ */
 export const SIM_INPUT_BOUNDS = Object.freeze({
   textChars: bound(0, 20000),
   steps: bound(0, 200),
@@ -49,8 +51,10 @@ export const SIM_INPUT_BOUNDS = Object.freeze({
   nodeAmount: bound(0, 100000),
 });
 
+/** The name of one input bound in SIM_INPUT_BOUNDS. */
 export type BoundKey = keyof typeof SIM_INPUT_BOUNDS;
 
+/** The default simulation inputs that do not come from the game data (Route). */
 export const INPUT_DEFAULTS = Object.freeze({
   durationSeconds: 1200,
   autoHouses: true,
@@ -61,6 +65,7 @@ export const INPUT_DEFAULTS = Object.freeze({
 
 const TRIP_FIELDS = ['walkSecondsCamp', 'walkSecondsTownCenter', 'dropOffSeconds'] as const;
 
+/** The optional fields each step action may carry beyond its required ones. */
 export const OPTIONAL_STEP_FIELDS: Readonly<Record<BuildStep['action'], readonly string[]>> = {
   produce: ['instance', 'count', 'rally', 'walkSeconds'],
   rally: ['instance', 'walkSeconds'],
@@ -70,6 +75,7 @@ export const OPTIONAL_STEP_FIELDS: Readonly<Record<BuildStep['action'], readonly
   move: ['walkSeconds'],
 };
 
+/** What an id in a step names: a building, unit, tech or node. */
 export type IdKind = 'building' | 'unit' | 'tech' | 'node';
 
 const ENTRY_TYPES: Record<Exclude<IdKind, 'node'>, readonly SnapshotEntry['type'][]> = {
@@ -78,14 +84,17 @@ const ENTRY_TYPES: Record<Exclude<IdKind, 'node'>, readonly SnapshotEntry['type'
   tech: ['technology', 'upgrade'],
 };
 
+/** A JSON object whose values are not yet checked. */
 export type Fields = Record<string, unknown>;
 
+/** Where an issue points: a label, and the step and pasted line when known. */
 export interface Where {
   label: string;
   step?: number;
   line?: number;
 }
 
+/** Whether a value is a non-null, non-array object. */
 export function isRecord(value: unknown): value is Fields {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -97,6 +106,7 @@ function issue(code: BuildOrderIssue['code'], where: Where, text: string): Build
   return found;
 }
 
+/** Why a number breaks its input bound, or undefined when it holds (Determinism, bounds and resources). */
 export function outOfRange(value: number, key: BoundKey): string | undefined {
   const { min, max, integer } = SIM_INPUT_BOUNDS[key];
   if (!Number.isFinite(value)) return `${value} is not a finite number`;
@@ -105,10 +115,12 @@ export function outOfRange(value: number, key: BoundKey): string | undefined {
   return undefined;
 }
 
+/** The snapshot entries of a baseId that fit a kind of id. */
 export function entriesOf(data: GameData, baseId: string, kind: Exclude<IdKind, 'node'>): readonly SnapshotEntry[] {
   return (data.byBaseId.get(baseId) ?? []).filter((e) => ENTRY_TYPES[kind].includes(e.type));
 }
 
+/** Why a node ref is invalid: an issue code and a reason. */
 export interface NodeRefProblem {
   code: 'syntax' | 'unknown-id' | 'out-of-range' | 'invalid';
   reason: string;
@@ -120,7 +132,7 @@ function isGatherNode(id: string): id is GatherNodeId {
   return (GATHER_NODES as readonly string[]).includes(id);
 }
 
-// Returns null for a valid ref. finiteOnly also rejects farm and wood, which never run dry.
+/** The problem with a node ref, or null for a valid ref; finiteOnly also rejects farm and wood, which never run dry (Build order input). */
 export function nodeRefIssue(value: unknown, finiteOnly: boolean): NodeRefProblem | null {
   if (typeof value !== 'string') return { code: 'syntax', reason: 'node must be a string' };
   const [node, ...suffix] = value.split('#');
@@ -144,6 +156,7 @@ export function nodeRefIssue(value: unknown, finiteOnly: boolean): NodeRefProble
 
 type RejectedTech = { code: 'unsupported-tech' | 'unknown-tech-effect'; property: string };
 
+/** What validation and the editor read from the game data: the step options plus start, rejected-tech, landmark and default-input facts (Build order input). */
 export interface BuildOrderCatalog extends StepOptions {
   civ: CivId;
   startVillagerTotal: number;
@@ -191,6 +204,7 @@ function inputDefaultsOf(data: GameData): BuildOrderCatalog['inputDefaults'] {
   };
 }
 
+/** Derives the BuildOrderCatalog from the game data (Build order input). */
 export function buildOrderCatalog(data: GameData): BuildOrderCatalog {
   const options = stepOptions(data);
   const { villagers, buildings } = data.civData.startingState;
@@ -227,6 +241,7 @@ function editDistance(a: string, b: string): number {
   return previous[b.length];
 }
 
+/** The choice closest to a value by edit distance, for a suggestion, or undefined when none is near enough. */
 export function nearestId(value: string, choices: readonly string[]): string | undefined {
   const wanted = value.toLowerCase();
   let best: string | undefined;
@@ -434,7 +449,9 @@ function stepUnion(catalog: BuildOrderCatalog | undefined) {
   );
 }
 
+/** When a step becomes eligible to start: a time, a villager count, a depleted node or a bank level (Model rules). */
 export type Trigger = z.output<typeof triggerSchema>;
+/** One step of a build order, tagged by its action (Build order input). */
 export type BuildStep = z.output<ReturnType<typeof stepUnion>>;
 
 function stepSchema(catalog: BuildOrderCatalog | undefined): z.ZodType<BuildStep> {
@@ -476,6 +493,7 @@ const startSchema = z.object(
   { error: 'must be an object' },
 );
 
+/** The starting villager split and rally of a build order (Build order input). */
 export type BuildStart = z.output<typeof startSchema>;
 
 const text = <T extends string = string>(then?: Check) => field<T>((value) => (typeof value === 'string' ? then?.(value) : syntax('must be a string')));
@@ -525,6 +543,7 @@ function orderObject(catalog: BuildOrderCatalog | undefined) {
   );
 }
 
+/** A build order: civ, name, optional start and steps (Build order input). */
 export type BuildOrder = z.output<ReturnType<typeof orderObject>>;
 
 // A catalog is treated as immutable, so its schema is built once.
@@ -559,8 +578,10 @@ function withCrossChecks(order: ReturnType<typeof orderObject>, catalog: BuildOr
   );
 }
 
+/** Schema of a build order's structure alone, without the catalog checks (Build order input). */
 export const buildOrderShape: z.ZodType<BuildOrder> = orderSchema(undefined);
 
+/** Schema of a build order checked against the catalog's ids and rules (Build order input). */
 export function buildOrderSchema(catalog: BuildOrderCatalog): z.ZodType<BuildOrder> {
   return orderSchema(catalog);
 }
@@ -610,6 +631,7 @@ function toOrderIssue(found: ZodIssue, lines: BuildOrderLines | undefined): Buil
   return result;
 }
 
+/** Validates a value as a BuildOrder, returning it or issues sorted by where they sit in the order, with line numbers when given; skipWholeOrderRules leaves out the whole-order rules (Build order input). */
 export function checkBuildOrder(
   value: unknown,
   catalog: BuildOrderCatalog,
@@ -647,6 +669,7 @@ function keyedRecord<T>(keyProblem: (key: string) => Problem | undefined, item: 
   });
 }
 
+/** Schema of the request `inputs`, where every field is optional (Route). */
 export function simInputsSchema(catalog: BuildOrderCatalog) {
   const nodes = Object.keys(catalog.inputDefaults.trips);
   const unknownNode = (node: string): Problem | undefined => (nodes.includes(node) ? undefined : { code: 'unknown-id', text: `unknown node "${shortText(node)}"` });
@@ -679,6 +702,7 @@ export function simInputsSchema(catalog: BuildOrderCatalog) {
   );
 }
 
+/** Validates the request `inputs` and fills each absent field from the defaults, returning SimInputs or issues (Route). */
 export function checkSimInputs(value: unknown, catalog: BuildOrderCatalog): { ok: true; inputs: SimInputs } | { ok: false; issues: BuildOrderIssue[] } {
   const result = simInputsSchema(catalog).safeParse(value ?? {});
   if (!result.success) {
@@ -708,6 +732,7 @@ export function checkSimInputs(value: unknown, catalog: BuildOrderCatalog): { ok
   };
 }
 
+/** Validates and completes the request `inputs` against the game data, building its catalog first (Route). */
 export function resolveSimInputs(partial: unknown, data: GameData): ReturnType<typeof checkSimInputs> {
   return checkSimInputs(partial, buildOrderCatalog(data));
 }

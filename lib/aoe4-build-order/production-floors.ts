@@ -1,9 +1,11 @@
+/** The least villagers, military units and food per minute a prebuilt build must reach at the 1200 s sample. */
 export interface ProductionFloor {
   villager: number;
   military: Record<string, number>;
   foodPerMinute: number;
 }
 
+/** The production floors of each prebuilt build, keyed by build name. */
 export const PRODUCTION_FLOORS: Record<string, ProductionFloor> = {
   'ENG Spear/Longbow into MAA/Crossbow': {
     villager: 61,
@@ -27,16 +29,19 @@ export const PRODUCTION_FLOORS: Record<string, ProductionFloor> = {
   },
 };
 
+/** The most of any one resource a prebuilt build may leave floating at 1200 s. */
 export const MAX_FLOATING_AT_1200 = 2600;
 
+/** One floor or cap check: a label, the measured value and the bound. */
 export type FloorCheck = [label: string, actual: number, bound: number];
 
+/** The part of a simulation result that the floor checks read. */
 export interface FloorSampleSource {
   gatherRates: { food: number[] };
   floating: Record<'food' | 'wood' | 'gold' | 'stone', number[]>;
 }
 
-// Each runner asserts atLeast with toBeGreaterThanOrEqual and atMost with toBeLessThanOrEqual.
+/** The checks of a result at one sample against a build's floors: atLeast holds units and food per minute, atMost the floating cap. Each runner asserts atLeast with toBeGreaterThanOrEqual and atMost with toBeLessThanOrEqual. */
 export function productionChecks(
   floors: ProductionFloor,
   result: FloorSampleSource,

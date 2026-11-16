@@ -12,6 +12,7 @@ const BUILDS: readonly BuildOrder[] = [
   english1tcCouncilHall as unknown as BuildOrder,
 ];
 
+/** Returns a copy of the prebuilt build orders. */
 export function listBuilds(): BuildOrder[] {
   return [...BUILDS];
 }

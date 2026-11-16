@@ -8,57 +8,73 @@ import { formatBuildOrderText } from './parse-text';
 import { buildOrderShape, checkBuildOrder, outOfRange, type BuildOrderCatalog } from './schema';
 import { textToBuildOrder } from './text-to-build';
 
+/** The format version stored in every saved build. */
 export const SAVED_BUILD_VERSION = 1;
 
+/** Schema of a saved build record: version, build order and duration (Saving a build and opening it by link). */
 export const savedBuildSchema = z.object({
   version: z.literal(SAVED_BUILD_VERSION),
   buildOrder: buildOrderShape,
   durationSeconds: z.number().int(),
 });
 
+/** The stored record of a saved build (Saving a build and opening it by link). */
 export type SavedBuild = z.infer<typeof savedBuildSchema>;
+/** The body of POST /builds: a saved build without its version (Builds routes). */
 export type SaveBuildRequest = Omit<SavedBuild, 'version'>;
+/** The body of a successful save: the build id and the page path that opens it (Builds routes). */
 export interface SaveBuildResponse {
   id: string;
   path: string;
 }
 
+/** The form of a saved-build id: 11 base64url characters. */
 export const SAVED_BUILD_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
+/** The largest allowed saved build, in JSON bytes; a larger one is a 413 (Builds routes). */
 export const SAVED_BUILD_MAX_BYTES = 65_536;
+/** The longest allowed build name, in characters. */
 export const SAVED_NAME_MAX_CHARS = 100;
 
 const ID_LENGTH = 11;
 
+/** Whether a value is a well-formed saved-build id (Builds routes). */
 export function isSavedBuildId(value: unknown): value is string {
   return typeof value === 'string' && SAVED_BUILD_ID_PATTERN.test(value);
 }
 
+/** Encodes bytes as unpadded base64url. */
 export function base64UrlEncode(bytes: Uint8Array): string {
   const base64 = btoa(String.fromCharCode(...bytes));
   return base64.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
 
+/** The SHA-256 of a text as unpadded base64url. */
 export async function base64UrlSha256(text: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return base64UrlEncode(new Uint8Array(digest));
 }
 
+/** The content-addressed id of a record, the first 11 characters of its hash, so the same build gets the same id (Builds routes). */
 export async function savedBuildId(record: SavedBuild): Promise<string> {
   return (await base64UrlSha256(JSON.stringify(record))).slice(0, ID_LENGTH);
 }
 
+/** Maps VERCEL_ENV to the storage prefix: production and preview as they are, anything else development. */
 export function storageEnv(vercelEnv: string | undefined): string {
   return vercelEnv === 'production' || vercelEnv === 'preview' ? vercelEnv : 'development';
 }
 
-// On Vercel an unset VERCEL_ENV must not fall back to the development prefix, which also allows DELETE.
+/** The storage env of a deployment, or null on Vercel when VERCEL_ENV is unset, which must not fall back to the development prefix because that also allows DELETE (Builds routes). */
 export function deploymentEnv(env: { VERCEL?: string; VERCEL_ENV?: string }): string | null {
   if (env.VERCEL && !env.VERCEL_ENV) return null;
   return storageEnv(env.VERCEL_ENV);
 }
 
+/** The storage key of a saved build in a deployment env. */
 export const savedBuildKey = (env: string, id: string): string => `${env}/builds/${id}.json`;
+/** The storage key of a client's save-rate counter. */
 export const rateCounterKey = (env: string, clientKey: string): string => `${env}/rate-limit/${clientKey}.json`;
+/** The page path that opens a saved build (Saving a build and opening it by link). */
 export const savedBuildPath = (id: string): string => `/apps/aoe4-build-order?b=${id}`;
 
 type SaveCheck =
@@ -96,6 +112,7 @@ function roundTripIssues(order: BuildOrder, catalog: BuildOrderCatalog): BuildOr
   return [{ code: 'invalid', message: 'build order: reopening it as text would change the build; use whole numbers for times and counts' }];
 }
 
+/** Checks a save body into the record and its JSON, or a 400 with issues or a 413 over SAVED_BUILD_MAX_BYTES; the build must also survive a round trip through paste text (Builds routes). */
 export function checkSaveBuildRequest(body: unknown, catalog: BuildOrderCatalog): SaveCheck {
   if (!isPlainObject(body)) return { ok: false, status: 400, error: notAnObjectError() };
   const checked = checkBuildOrder(body.buildOrder, catalog);

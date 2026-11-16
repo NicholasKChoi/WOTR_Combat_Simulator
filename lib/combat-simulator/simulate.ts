@@ -2,13 +2,17 @@ import { Army, BaseArmy } from './army';
 import { Battle, BattleOptions, DiceRoller, OUTCOME_KINDS, battleOutcome, rollDice } from './battle';
 import type { FightOutcomes, FightResponse, OutcomeTally, RoundStats, SurvivorCombination } from './fight-api';
 
+/** The battle count N used when a request gives none (Number of battles N). */
 export const DEFAULT_BATTLES = 1000;
+/** The largest allowed battle count N (Number of battles N). */
 export const MAX_BATTLES = 100000;
+/** Most hits one side can score in a round: 5 combat dice, and re-rolls only of misses (Round order). */
 export const MAX_HITS_PER_ROUND = 5;
 
 const SIDES = ['attacker', 'defender'] as const;
 type Side = typeof SIDES[number];
 
+/** One finished battle as OutcomeAccumulator takes it: outcome, rounds, the winner's survivors and hits per round. */
 export interface BattleRecord {
   outcome: string;
   rounds: number;
@@ -30,6 +34,7 @@ function newHitTally(): number[] {
   return new Array(MAX_HITS_PER_ROUND + 1).fill(0);
 }
 
+/** Tallies recorded battles into outcome counts, round statistics, survivors and hits per round (Outcome reporting). */
 export class OutcomeAccumulator {
   private readonly kinds: readonly string[];
   private readonly outcomeCounts = new Map<string, number>();
@@ -146,6 +151,7 @@ export class OutcomeAccumulator {
   }
 }
 
+/** Runs N independent battles from fresh copies of both armies and returns their statistics (Independence of battles, Outcome reporting). */
 export function simulateBattles(
   attack: Army,
   defend: Army,

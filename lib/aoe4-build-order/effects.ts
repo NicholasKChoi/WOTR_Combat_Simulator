@@ -1,6 +1,7 @@
 import type { GameData, SnapshotEffect, SnapshotEntry } from './data';
 import type { OverlayEffect, TechSupport } from './model';
 
+/** The effect properties the engine interprets (Technologies). */
 export const SUPPORTED_EFFECT_PROPERTIES: ReadonlySet<string> = new Set([
   'foodGatherRate',
   'woodGatherRate',
@@ -15,7 +16,7 @@ export const SUPPORTED_EFFECT_PROPERTIES: ReadonlySet<string> = new Set([
   'productionSpeed',
 ]);
 
-// Combat and non-economy stats: a tech carrying them still costs resources and queue time.
+/** Combat and non-economy effect properties the engine ignores: a tech carrying them still costs resources and queue time (Technologies). */
 export const IGNORED_EFFECT_PROPERTIES: ReadonlySet<string> = new Set([
   'areaOfEffect',
   'attackSpeed',
@@ -65,6 +66,7 @@ function classifyTechnology(entry: SnapshotEntry, data: GameData): TechSupport {
   return ignored.length > 0 ? { kind: 'effects-ignored', properties: ignored } : { kind: 'supported' };
 }
 
+/** Classifies a technology or upgrade as supported, effects-ignored, effects-unmodeled or rejected; throws for any other entry (Technologies). */
 export function classifyTech(entry: SnapshotEntry, data: GameData): TechSupport {
   switch (entry.type) {
     case 'technology':
@@ -76,6 +78,7 @@ export function classifyTech(entry: SnapshotEntry, data: GameData): TechSupport 
   }
 }
 
+/** What effect evaluation reads: the data, age, completed buildings, research and gatherer coverage (Model rules). */
 export interface EffectState {
   readonly data: GameData;
   readonly age: number;
@@ -88,6 +91,7 @@ export interface EffectState {
   readonly coverage: Readonly<Record<string, number>>;
 }
 
+/** The unit or building a modifier is evaluated for: its baseId, classes and producing building. */
 export interface ModifierTarget {
   baseId: string;
   classes: readonly string[];
@@ -95,6 +99,7 @@ export interface ModifierTarget {
   producer?: string;
 }
 
+/** Whether at least one instance of a building has completed. */
 export function hasBuilding(state: EffectState, baseId: string): boolean {
   return (state.buildings.get(baseId) ?? 0) >= 1;
 }
@@ -143,7 +148,7 @@ function conditionWeight(effect: SnapshotEffect | OverlayEffect, target: Modifie
   return state.coverage[building];
 }
 
-// productionSpeed is a speed: callers divide the production time by the result.
+/** Applies the active change and multiply effects of a property to a base value, weighting conditional ones; productionSpeed is a speed, so callers divide the production time by the result (Model rules). */
 export function modifiedValue(base: number, property: string, target: ModifierTarget, state: EffectState): number {
   let change = 0;
   let multiplier = 1;

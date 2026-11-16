@@ -51,6 +51,7 @@ const entrySchema = z.object({
   description: z.string().optional(),
 });
 
+/** Validates a civ's aoe4world snapshot file (Data sources). */
 export const snapshotFileSchema: z.ZodType<Snapshot> = z.object({
   source: sourceSchema,
   units: z.array(entrySchema),
@@ -71,6 +72,7 @@ const gatherNodeRulesSchema = z.object({
   createdBy: z.string().optional(),
 });
 
+/** Validates the civ-independent hand-entered rules file (Data sources). */
 export const baseRulesFileSchema: z.ZodType<BaseRules> = z.object({
   gatherNodes: z.record(gatherNode, gatherNodeRulesSchema),
   builderScaling: z.object({ numerator: handNumber, offset: handNumber }),
@@ -87,6 +89,7 @@ const overlayEffectSchema = z.object({
   unverified: z.boolean(),
 });
 
+/** Validates a civ's hand-entered rules file (Data sources). */
 export const civRulesFileSchema: z.ZodType<CivData> = z.object({
   startingState: z.object({
     age: handNumber,

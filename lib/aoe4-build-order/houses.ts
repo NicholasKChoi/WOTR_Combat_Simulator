@@ -6,6 +6,7 @@ import { RESOURCE_KINDS } from './model';
 import type { SimInputs } from './model';
 import type { EngineState } from './simulate';
 
+/** What auto-house planning reads: pending supply, population growth, the bank and the income (Model rules). */
 export interface HouseDemand {
   // Every building under construction: its supply and its expected completion time.
   pending: { supply: number; completesAt: number }[];
@@ -32,8 +33,7 @@ function gatherSeconds(cost: Readonly<Resources>, demand: HouseDemand): number |
   return seconds;
 }
 
-// Houses due now: supply must arrive before the projected population outgrows it, and the window to plan over is
-// the walk and build time plus the time to gather one house's cost.
+/** How many houses are due now: supply must arrive before the projected population outgrows it, and the window to plan over is the walk and build time plus the time to gather one house's cost (Model rules). */
 export function planAutoHouse(state: EngineState, inputs: SimInputs, data: GameData, demand: HouseDemand): number {
   const house = data.byBaseId.get(HOUSE_ID)?.[0];
   const byDefault = data.supply.get(HOUSE_ID)?.value ?? 0;
