@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { AOE4_PAGE, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, openPage, waitForRun } from './helpers'
+import { AOE4_PAGE, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, holdNextSimulate, openPage, waitForRun } from './helpers'
 
 const scrollWidth = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth)
 
@@ -73,12 +73,20 @@ test.describe('AoE4 workbench split layout', () => {
       if (/hydrat/i.test(e.message)) hydration.push(e.message)
     })
     const columns = () =>
-      page.evaluate(() => ['build-column', 'results-column'].map((id) => Math.round(document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().left)))
+      page.evaluate(() =>
+        ['build-column', 'results-column'].map((id) => {
+          const left = document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect().left
+          return left === undefined ? null : Math.round(left)
+        }),
+      )
     await page.setViewportSize(SPLIT_VIEWPORT)
-    const first = waitForRun(page, () => page.goto(AOE4_PAGE))
+    const release = await holdNextSimulate(page)
+    await page.goto(AOE4_PAGE)
     await expect(page.getByTestId('workbench-split')).toBeVisible()
+    await expect(page.getByTestId('auto-run-status')).not.toHaveAttribute('data-status', 'current')
     const before = await columns()
-    await first
+    expect(before.every((left) => left !== null)).toBe(true)
+    await waitForRun(page, async () => release())
     expect(await columns()).toEqual(before)
     expect(hydration).toEqual([])
   })

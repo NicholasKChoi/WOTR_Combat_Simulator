@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, isSimulatePost, openPage, waitForRun } from './helpers'
+import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, expectNoRun, openPage, waitForRun } from './helpers'
 
 const PHONE = { width: 390, height: 844 }
 const BELOW_MINIMUM = [
@@ -67,15 +67,11 @@ test.describe('AoE4 page below the minimum supported width', () => {
   })
 
   test('resizing across 1200 and back keeps the focused editor and its text and runs nothing', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.setViewportSize(SPLIT_VIEWPORT)
     await openPage(page)
     const textarea = page.getByTestId('build-order-text')
     await waitForRun(page, () => textarea.fill(EDITED))
     await textarea.focus()
-    const posts: string[] = []
-    page.on('request', (r) => {
-      if (isSimulatePost(r)) posts.push(r.url())
-    })
     const state = () =>
       page.evaluate(() => ({
         focused: document.activeElement?.getAttribute('data-testid'),
@@ -83,14 +79,14 @@ test.describe('AoE4 page below the minimum supported width', () => {
         columns: ['build-column', 'results-column'].map((id) => document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect().width > 0),
         scrollsSideways: document.documentElement.scrollWidth > window.innerWidth,
       }))
-    for (const [viewport, scrollsSideways] of [
-      [PHONE, true],
-      [{ width: 1280, height: 800 }, false],
-    ] as const) {
-      await page.setViewportSize(viewport)
-      await expect.poll(state).toEqual({ focused: 'build-order-text', value: EDITED, columns: [true, true], scrollsSideways })
-    }
-    await page.waitForTimeout(500)
-    expect(posts).toEqual([])
+    await expectNoRun(page, async () => {
+      for (const [viewport, scrollsSideways] of [
+        [PHONE, true],
+        [SPLIT_VIEWPORT, false],
+      ] as const) {
+        await page.setViewportSize(viewport)
+        await expect.poll(state).toEqual({ focused: 'build-order-text', value: EDITED, columns: [true, true], scrollsSideways })
+      }
+    })
   })
 })
