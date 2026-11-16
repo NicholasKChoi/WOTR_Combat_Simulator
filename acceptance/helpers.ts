@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { test as base, expect, type APIRequestContext, type Page, type Request, type Response, type Route } from '@playwright/test'
+import { test as base, expect, type APIRequestContext, type Locator, type Page, type Request, type Response, type Route } from '@playwright/test'
 import { RESULT_CHART_IDS } from '../components/apps/aoe4-build-order/chart-layout'
 import { AUTO_RUN_DEBOUNCE_MS, type AutoRunStatus } from '../components/apps/aoe4-build-order/auto-run'
 import { FINITE_GATHER_NODES, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
@@ -127,6 +127,39 @@ export async function plotPoint(page: Page, chartTestId: string, fraction: numbe
     const r = el.getBoundingClientRect()
     return { x: r.left + r.width * at, y: r.top + r.height / 2 }
   }, fraction)
+}
+
+export interface Layout {
+  x: number
+  y: number
+  width: number
+  height: number
+  d: string | null
+  text: string
+}
+
+// Rect, path `d` and text of every element matching each selector under `root`, all read in one evaluate so a
+// comparison between them cannot span a smooth scroll or chart redraw. Compare values from one call only.
+export function readLayout<K extends string>(root: Locator, selectors: Record<K, string>): Promise<Record<K, Layout[]>> {
+  return root.evaluate<Record<string, Layout[]>, Record<string, string>>(
+    (el, found: Record<string, string>) =>
+      Object.fromEntries(
+        Object.entries(found).map(([name, selector]) => [
+          name,
+          [...el.querySelectorAll(selector)].map((target) => {
+            const { x, y, width, height } = target.getBoundingClientRect()
+            return { x, y, width, height, d: target.getAttribute('d'), text: target.textContent ?? '' }
+          }),
+        ]),
+      ),
+    selectors,
+  ) as Promise<Record<K, Layout[]>>
+}
+
+// The end y of each series' path in a chart, in the order of `keys`; NaN for a series with no path.
+export async function lineEndYs(page: Page, chartTestId: string, keys: string[]): Promise<number[]> {
+  const found = await readLayout(page.getByTestId(chartTestId), Object.fromEntries(keys.map((key) => [key, `path[data-series="${key}"]`])))
+  return keys.map((key) => Number(found[key][0]?.d?.match(/-?[\d.]+/g)?.at(-1)))
 }
 
 export const AOE4_PAGE = '/apps/aoe4-build-order'

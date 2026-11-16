@@ -3,7 +3,7 @@ import { join } from 'path'
 import { test, expect, type APIRequestContext } from '@playwright/test'
 import Ajv2020 from 'ajv/dist/2020'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
-import { CHART_IDS, INFINITE_NODES, buildOrderFrom, openPage, postSimulate, showTab, waitForRun } from './helpers'
+import { CHART_IDS, INFINITE_NODES, buildOrderFrom, openPage, postSimulate, readLayout, showTab, waitForRun } from './helpers'
 
 // next dev compiles the route on its first request, which can take longer than a simulation.
 const WARM_UP_TIMEOUT_MS = 60_000
@@ -110,7 +110,8 @@ test.describe('Gathered resources chart', () => {
     const pinnedFood = chart.locator('path[data-series="pinned:food"]')
     await expect(food).toHaveCount(1)
     await expect(pinnedFood).toHaveCount(1)
-    expect(await pinnedFood.getAttribute('d')).not.toBe(await food.getAttribute('d'))
+    const drawn = await readLayout(chart, { food: 'path[data-series="food"]', pinned: 'path[data-series="pinned:food"]' })
+    expect(drawn.pinned[0].d).not.toBe(drawn.food[0].d)
     expect(((await pinnedFood.getAttribute('stroke-dasharray')) ?? '').trim()).not.toBe('')
     expect(await food.getAttribute('stroke-dasharray')).toBeNull()
   })

@@ -3,7 +3,7 @@ import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { formatBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { AOE4_PAGE, CHART_IDS, acceptBeforeUnload, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, bodyDuration, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, holdNextSimulate, isSimulatePost, openPage, plotPoint, showTab, waitForRun } from './helpers'
+import { AOE4_PAGE, CHART_IDS, acceptBeforeUnload, INVALID_PASTE, RESOURCE_CHARTS, SIMULATE_PATH, TABS_VIEWPORT, bodyDuration, expectFlySyntaxIssue, expectInvalidNoRun, expectedCompareKeys, hexToRgb, holdNextSimulate, isSimulatePost, openPage, plotPoint, readLayout, showTab, waitForRun } from './helpers'
 
 const DASH = '—'
 const MINUS = '−'
@@ -12,6 +12,7 @@ const DEFAULT_PASTE = formatBuildOrderText(listBuilds()[0])
 const NO_MILITARY_PASTE = 'start -> sheep'
 
 const LOAD_DURATION = 1200
+const FOOD_PATHS = { current: 'path[data-series="food"]', pinned: 'path[data-series="pinned:food"]' }
 const status = (page: Page) => page.getByTestId('auto-run-status')
 const lastGoodOpacity = (page: Page) => page.getByTestId('results-last-good').evaluate((el) => Number(getComputedStyle(el).opacity))
 
@@ -269,10 +270,12 @@ test.describe('AoE4 build order pin and compare', () => {
     // The shared x axis runs out to the pinned run's 1200 s, past the 300 s current run.
     const chart = page.getByTestId('chart-gather-rates')
     await expect(chart.locator('.recharts-cartesian-axis-tick-value', { hasText: /^20:00$/ })).toHaveCount(1)
-    const box = async (key: string) => (await path(page, 'chart-gather-rates', key).boundingBox())!
-    const current = await box('food')
-    const pinned = await box('pinned:food')
-    expect(pinned.width).toBeGreaterThan(current.width * 2)
+    await expect
+      .poll(async () => {
+        const { current, pinned } = await readLayout(chart, FOOD_PATHS)
+        return pinned[0].width > current[0].width * 2
+      })
+      .toBe(true)
   })
 
   test('a pinned run that ends earlier shows run ends at on the pinned side of a military row the current run has', async ({ page }) => {
@@ -354,9 +357,8 @@ test.describe('AoE4 build order pin and compare', () => {
     // Same pin: its run was 300 s, so the pinned line still ends at 5:00 while the current one runs to 10:00.
     await expect
       .poll(async () => {
-        const pinnedBox = await path(page, 'chart-gather-rates', 'pinned:food').boundingBox()
-        const currentBox = await path(page, 'chart-gather-rates', 'food').boundingBox()
-        return pinnedBox !== null && currentBox !== null && pinnedBox.width < currentBox.width
+        const { current, pinned } = await readLayout(page.getByTestId('chart-gather-rates'), FOOD_PATHS)
+        return pinned.length === 1 && current.length === 1 && pinned[0].width < current[0].width
       })
       .toBe(true)
   })
@@ -418,11 +420,12 @@ test.describe('AoE4 build order pin and compare', () => {
 
     for (const chart of CHART_IDS) {
       const root = page.getByTestId(chart)
-      const label = (await root.locator('.recharts-label').boundingBox())!
-      const ticks = await root.locator('.recharts-cartesian-axis-tick-value', { hasText: /^\d+$/ }).all()
-      expect(ticks.length).toBeGreaterThan(1)
-      for (const tick of ticks) {
-        const box = (await tick.boundingBox())!
+      const { labels, ticks } = await readLayout(root, { labels: '.recharts-label', ticks: '.recharts-cartesian-axis-tick-value' })
+      expect(labels).toHaveLength(1)
+      const [label] = labels
+      const numberTicks = ticks.filter((tick) => /^\d+$/.test(tick.text))
+      expect(numberTicks.length).toBeGreaterThan(1)
+      for (const box of numberTicks) {
         const disjoint =
           label.x + label.width <= box.x || box.x + box.width <= label.x ||
           label.y + label.height <= box.y || box.y + box.height <= label.y
