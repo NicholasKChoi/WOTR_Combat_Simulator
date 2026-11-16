@@ -231,6 +231,24 @@ test.describe('AoE4 step annotations in the text view', () => {
       await expect(popover(page)).toHaveCount(0)
     })
 
+    test('blank, comment and unparseable lines show no popover on hover or caret', async ({ page }) => {
+      const text = ['start 6 sheep -> sheep', '', '# a comment', 'build barracks with 9 from sheep', 'build barracks with 9 from sheep'].join('\n')
+      await openText(page, text)
+      await page.getByTestId('build-order-text').fill(text.replace('\nbuild barracks with 9 from sheep\n', '\nnot a step at all\n'))
+      const lines = page.getByTestId('build-order-line-annotation')
+      for (const lineNumber of [2, 3, 4]) {
+        const line = lines.nth(lineNumber - 1)
+        await expect(line).not.toHaveAttribute('data-status', /.+/)
+        await line.hover()
+        await expect(popover(page)).toHaveCount(0)
+        await page.mouse.move(0, 0)
+        await caretTo(page, line)
+        await expect(popover(page)).toHaveCount(0)
+      }
+      await caretTo(page, lines.nth(4))
+      await expect(popover(page)).toHaveCount(1)
+    })
+
     test('the caret alone shows the popover for its step line, moves with the caret and hides off a run line or on blur', async ({ page }) => {
       await openText(page)
       const first = await lineAt(page, 0)
