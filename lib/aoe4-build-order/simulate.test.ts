@@ -807,6 +807,27 @@ describe('performance', () => {
     })
 })
 
+const COMMENTS_STRINGS_AND_REGEXES = /\/\*[\s\S]*?\*\/|\/\/.*$|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`|\/\^.*?\$\//gm
+
+function numericLiteralsIn(code: string): string[] {
+    const bare = code.replace(COMMENTS_STRINGS_AND_REGEXES, (token) => (token.startsWith('/*') || token.startsWith('//') ? ' ' : "''"))
+    return [...bare.matchAll(/(?<![\w.])\d[\d.]*(?:e-?\d+)?/g)].map((m) => m[0])
+}
+
+describe('numericLiteralsIn', () => {
+    it.each([
+        ['an apostrophe in a doc comment', "/** doesn't count 42 */\nconst a = 7", ['7']],
+        ['a backtick in a doc comment', '/** the `x` value 42 */\nconst a = 8', ['8']],
+        ['digits in a block comment', '/* 42 */ const a = 9', ['9']],
+        ['digits in a line comment with a quote', "// it's 42\nconst a = 3", ['3']],
+        ['a // inside a string', "const a = 'http://x'; const b = 4", ['4']],
+        ['a /* inside a string', 'const a = "/* 42"; const b = 6', ['6']],
+        ['digits inside strings', "const a = 'x 42' + `y 43` + \"z 44\"", []],
+    ])('reads %s as comment or string text only', (_name, code, expected) => {
+        expect(numericLiteralsIn(code)).toEqual(expected)
+    })
+})
+
 describe('source shape', () => {
     const source = (file: string) => readFileSync(join(__dirname, file), 'utf8')
 
@@ -821,13 +842,7 @@ describe('source shape', () => {
     })
 
     it('has no numeric literal beyond 0, 1, 60, the sample step and the one shared tolerance', () => {
-        const literalsOf = (file: string) => {
-            const code = source(file)
-                .replace(/\/\/.*$/gm, '')
-                .replace(/'[^']*'|`[^`]*`/g, "''")
-                .replace(/\/\^.*?\$\//g, "''")
-            return [...code.matchAll(/(?<![\w.])\d[\d.]*(?:e-?\d+)?/g)].map((m) => m[0])
-        }
+        const literalsOf = (file: string) => numericLiteralsIn(source(file))
         for (const file of ['simulate.ts', 'civ-rules.ts']) {
             const literals = literalsOf(file)
             expect(literals.filter((n) => !['0', '1', '60', '5'].includes(n)), file).toEqual([])
