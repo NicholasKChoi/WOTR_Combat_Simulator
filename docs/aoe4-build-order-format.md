@@ -1,7 +1,8 @@
 # AoE4 Build Order Simulator: format and API
 
 The build order the simulator accepts (JSON and the paste text format), the issues it reports for bad input,
-the simulate, builds and named-builds routes, and the result the simulator returns. The simulation rules are
+the simulate, builds and named-builds routes, the storage behind the builds routes, and the result the simulator
+returns. The simulation rules are
 in the [model doc](aoe4-build-order.md), which reviews judge simulator behavior against; what the page does
 with a result is in the [page doc](aoe4-build-order-ui.md). `docs/api/openapi.json` is the authoritative
 request and response contract (see [Route](#route)).
@@ -255,11 +256,10 @@ request and response.
 - `GET` sends `Cache-Control: public, max-age=31536000, immutable`, because a saved build never changes. An id
   that is malformed and an id with no build give the same 404.
 - `DELETE` exists outside production only; in production the route answers it with 405. It also answers 405
-  when `VERCEL` is set without `VERCEL_ENV`, where every builds route answers 503 anyway, because the store
-  cannot be chosen.
-- The storage comes from `buildStoreFromEnv` in `build-store.ts`, and the per-client limit is
-  `SAVE_RATE_LIMIT` in `save-rate-limit.ts`. A 429 carries `Retry-After`. A save refused by the limit writes
-  nothing, so the stored count never passes the limit.
+  when `VERCEL` is set without `VERCEL_ENV`, where every builds route answers 503 anyway (see
+  [Storage](#storage)).
+- The storage and the per-client limit (`SAVE_RATE_LIMIT`) are described under [Storage](#storage). A 429
+  carries `Retry-After`.
 - When the build id cannot be created the save answers 500 before any store call.
 
 #### Named builds routes
@@ -286,6 +286,67 @@ adapt the request and response.
   deletes cost nothing.
 - `DELETE` exists outside production only, as for saved builds: in production, and when `VERCEL` is set without
   `VERCEL_ENV`, it is 405 with `Allow: GET, PUT`.
+
+## Storage
+
+The builds and named-builds routes read and write through the `BuildStore` interface in
+`lib/aoe4-build-order/build-store.ts`. It has three implementations: a memory store and a file store in
+`build-store.ts`, and the Vercel Blob store in `blob-build-store.ts`. Every store prefixes the keys it writes
+with its env: `<env>/builds/<id>.json` for saved builds, `namedBuildKey` for named builds and
+`<env>/rate-limit/<client>.json` for save counters.
+
+**Choosing the store.** `buildStoreFromEnv` picks the store from the environment:
+
+- The env prefix is `VERCEL_ENV` when it is `production` or `preview`, and `development` for any other
+  value. When `VERCEL` is set without `VERCEL_ENV`, `buildStoreFromEnv` rejects, so every builds route
+  answers 503.
+- The Blob store is used only when `BUILDS_STORE_ID` is set and non-empty. It is loaded with a dynamic
+  `import()`.
+- Otherwise the file store is used. It writes under `.builds-local/`, or under `BUILDS_LOCAL_DIR` when that is
+  set and non-empty.
+
+**Saved builds.** `putBuild` gives `created`, or `exists` when the key is already stored. `getBuild` gives the
+stored value or `null`, and `deleteBuild` removes it.
+
+**Named builds.** Each store also holds editable named builds:
+
+- `createNamed` gives `created` or `exists`.
+- `getNamed` is always a fresh read, never a cached one, and returns the value with an opaque etag.
+- `replaceNamed` is a compare-and-swap on that etag. It writes only when the key exists and its etag is still
+  the one given, and it never re-reads the etag to try again. A changed etag or an absent build gives
+  `conflict`, except that the Blob store gives `replaced` when its read-back (below) shows the JSON it sent.
+- `deleteNamed` removes the build.
+
+**Blob store.**
+
+- Its fresh reads (`getNamed` and the counter read) request the blob uncompressed
+  (`accept-encoding: identity`), so the etag is the strong form that `ifMatch` compares against. A fresh read
+  that still gets a weak `W/` etag throws, which the routes answer as 503. The read-back (below) makes the
+  same kind of read, but any error in it counts as not landed.
+- When the `put` of a build write throws, the store makes a fresh read of the key. The build writes are
+  `create`, behind `putBuild` and `createNamed`, and `replaceNamed`. The write counts as done when the stored
+  value, serialized with `JSON.stringify`, is the exact text the store sent, because a write whose response
+  was lost may have landed before the SDK's retry failed.
+- Otherwise `create` gives `exists` when `head` finds the key and rethrows the put error when it does not.
+  `replaceNamed` gives `conflict` for a precondition or not-found error, and for any other put error when
+  `head` reports the key absent (`ifMatch` on a deleted blob raises a plain `BlobError`); it rethrows the put
+  error otherwise.
+- Creating the store sets `VERCEL_BLOB_RETRIES` to 1 when that variable is unset or empty, and keeps a value
+  already set. `@vercel/blob` reads it as the retry count of each `put`, `head` and `del` call (default 10);
+  `get` makes a single request.
+
+**Save limit.** `save-rate-limit.ts` owns the per-client save limit (`SAVE_RATE_LIMIT`), and its counter
+lives in the store. `bumpCounter` returns the new count, `refused` or `contended`:
+
+- `nextCounter` in `build-store.ts` is the one counter step every store calls. A save past the limit is
+  `refused` and writes nothing, so the stored count never passes the limit.
+- The Blob store's `bumpCounter` makes no read-back after a failed write, because parallel saves from one
+  client write identical counter JSON, and a read-back would count every losing writer as landed. After a 412,
+  or when the counter it was creating now exists, it starts its next attempt with a fresh read and a new `put`.
+  It rethrows any other error, and gives `contended` after its third attempt.
+
+**Live test.** `blob-build-store.live.test.ts` checks a real Blob store. It is skipped unless `BLOB_LIVE=1`
+(`npm run test:blob-live`).
 
 ## Outputs
 
