@@ -480,7 +480,7 @@ and `productionSpeed`. `IGNORED_EFFECT_PROPERTIES` are the combat properties (`h
 4. Empty or absent `effects` (`admiralty`) and no `OverlayEffect` with `grantedBy` equal to its
    `baseId`: `effects-unmodeled`. It costs resources and queue time like any technology, and each research
    step of it gets one `tech-effect-unmodeled` note with empty `properties`, worded with the tech's
-   `baseId` so the user sees its effect is not simulated (`admiralty: its effect is not simulated; it still
+   `baseId` so an API client sees its effect is not simulated (`admiralty: its effect is not simulated; it still
    costs resources and queue time.`). With such an overlay row it is `supported`.
 5. Otherwise: `supported`.
 
