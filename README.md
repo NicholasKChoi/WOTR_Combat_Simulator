@@ -11,7 +11,7 @@ either to estimate odds or to make fair random picks. A landing page links to ea
 |---|---|---|
 | WOTR combat simulator | `/apps/combat-simulator` | [docs/combat-simulator.md](docs/combat-simulator.md) |
 | AoE4 build order | `/apps/aoe4-build-order` | [docs/aoe4-build-order.md](docs/aoe4-build-order.md) |
-| StarCraft helper | `/apps/starcraft-helper` | none |
+| StarCraft helper | `/apps/starcraft-helper` | [docs/starcraft-helper.md](docs/starcraft-helper.md) |
 
 ## Getting started
 
