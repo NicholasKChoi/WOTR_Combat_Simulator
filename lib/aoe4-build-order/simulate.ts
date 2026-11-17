@@ -7,7 +7,7 @@ import type { IdleArrival, NodeStock } from './depletion';
 import { hasBuilding, modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import type { Resources } from './engine-common';
-import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, canAffordHeld, costOf, heldNeed, markCompleted, payCost, recordUnits, villagerWalkSeconds } from './engine-common';
+import { HOUSE_ID, RESOURCE_TOLERANCE, VILLAGER_ID, canAfford, canAffordHeld, costOf, heldNeed, instanceFree, markCompleted, payCost, recordUnits, villagerWalkSeconds } from './engine-common';
 import { formatMinSec } from './format-time';
 import { effectiveGatherRate } from './gather';
 import { planAutoHouse } from './houses';
@@ -114,6 +114,8 @@ export interface EngineState extends EffectState {
   readonly spawned: Map<string, SpawnedUnits>;
   // One auto-house's cost while a due house is not started; set only by the house passes of an instant.
   houseHold: Readonly<Resources> | undefined;
+  // Free targets the waiting cursor step keeps idle until all its targets are free; set only by offerSteps.
+  held: { step: number; instances: ReadonlySet<BuildingInstance> } | null;
   // Events run in (time, insertion) order.
   schedule(time: number, apply: (state: EngineState) => void): void;
 }
@@ -121,7 +123,7 @@ export interface EngineState extends EffectState {
 /** What a step handler reports: it started, or what it waits on and the resources it reserves (Model rules). */
 export type StepStart =
   | { started: true }
-  | { started: false; waitingOn: StepWait; reserve?: Readonly<Record<ResourceKind, number>> };
+  | { started: false; waitingOn: StepWait; reserve?: Readonly<Record<ResourceKind, number>>; hold?: readonly BuildingInstance[] };
 
 /** Tries to start one step of an action against the engine state (Model rules). */
 export type StepHandler<A extends BuildStep['action'] = BuildStep['action']> = (
@@ -144,7 +146,7 @@ interface Engine extends EngineState {
   readonly events: ScheduledEvent[];
   // First non-reaction step not yet started; every earlier non-reaction step has started.
   cursor: number;
-  // What the armed cursor step waits to afford, when it waits on resources alone.
+  // What the armed cursor step reserves while it waits on resources or a busy building.
   reserve: Readonly<Resources> | undefined;
   // What armed reactions wait to afford; a wake time only, never reserved.
   reactionNeeds: { step: number; cost: Readonly<Resources> }[];
@@ -404,6 +406,10 @@ const produce: StepHandler<'produce'> = (step, index, state) => {
   if (!canAffordHeld(state, total)) {
     return { started: false, waitingOn: 'resources', reserve: total };
   }
+  const free = targets.filter((target) => instanceFree(state, target, index));
+  if (free.length < targets.length) {
+    return { started: false, waitingOn: 'prerequisite', reserve: total, hold: free };
+  }
   const replaced = targets.map((target) => target.order?.step ?? null);
   for (const target of targets) {
     const order: ProductionOrder = { step: index, unit: step.unit, remaining: step.count === undefined ? null : step.count - 1 };
@@ -561,6 +567,7 @@ function offerReactions(engine: Engine): void {
 function offerSteps(engine: Engine): void {
   engine.reserve = undefined;
   offerReactions(engine);
+  engine.held = null;
   const steps = engine.order.steps;
   for (; engine.cursor < steps.length; engine.cursor += 1) {
     if (isReaction(steps[engine.cursor])) {
@@ -572,6 +579,7 @@ function offerSteps(engine: Engine): void {
     }
     if (outcome.started === false) {
       engine.reserve = outcome.reserve;
+      engine.held = outcome.hold?.length ? { step: engine.cursor, instances: new Set(outcome.hold) } : null;
       return;
     }
   }
@@ -631,7 +639,7 @@ function startProduction(engine: Engine): void {
       if (instance.order === null && isVillagerProducer(engine, instance.baseId)) {
         instance.order = { step: null, unit: VILLAGER_ID, remaining: null };
       }
-      if (instance.paid.length === 0 && instance.order && instance.order.remaining !== 0) {
+      if (instance.paid.length === 0 && instance.order && instance.order.remaining !== 0 && !engine.held?.instances.has(instance)) {
         payOrder(engine, instance);
       }
       if (instance.paid.length > 0) {
@@ -903,6 +911,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     cursor: 0,
     reserve: undefined,
     houseHold: undefined,
+    held: null,
     reactionNeeds: [],
     needs: [],
     constructing: [],

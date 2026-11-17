@@ -183,13 +183,13 @@ describe('ENG Spear/Longbow into MAA/Crossbow', () => {
         const result = simulateBuildOrder(build, data, inputsFor(data, { durationSeconds: 1800 }))
         expect(result.warnings.filter((w) => w.code === 'idle-arrival' || w.code === 'step-stuck')).toEqual([])
     })
-    it('runs its first two gold deposits dry at pinned times by 1800 s and keeps the third stocked', () => {
+    it('runs its first gold deposit dry at a pinned time by 1800 s and keeps the second and third stocked', () => {
         if (build === undefined) {
             throw new Error('build missing')
         }
         const { depletions } = simulateBuildOrder(build, data, inputsFor(data, { durationSeconds: 1800 }))
-        expect(depletions.find((d) => d.node === 'gold')?.depletedAt).toBe(1181.189167905695)
-        expect(depletions.find((d) => d.node === 'gold#2')?.depletedAt).toBe(1591.5225012390283)
+        expect(depletions.find((d) => d.node === 'gold')?.depletedAt).toBe(1206.874034229912)
+        expect(depletions.find((d) => d.node === 'gold#2')?.depletedAt).toBeNull()
         expect(depletions.find((d) => d.node === 'gold#3')?.depletedAt).toBeNull()
     })
 })

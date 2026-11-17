@@ -4,7 +4,7 @@ import { buildGameData, loadGameData } from './data'
 import type { BaseRules, CivData, GameData, Snapshot } from './data'
 import type { EffectState } from './effects'
 import { FINITE_GATHER_NODES, GATHER_NODES } from './model'
-import type { BuildOrder, BuildStart, BuildStep, FiniteGatherNodeId, GatherNodeId, SimInputs, SimulationResult, Trigger, TripInputs } from './model'
+import type { BuildOrder, BuildStart, BuildStep, FiniteGatherNodeId, GatherNodeId, ResourceKind, SimInputs, SimulationResult, Trigger, TripInputs } from './model'
 import { resolveSimInputs } from './schema'
 import { simulateBuildOrder, stepHandlers } from './simulate'
 import type { StepHandler } from './simulate'
@@ -42,6 +42,15 @@ export function editGameData(edit: (parts: Parts) => void, from: GameData = ENGL
 // Villager producers make no villagers on their own, so only produce steps spawn villagers.
 export function noAutoVillagers(from: GameData = ENGLISH): GameData {
     return editGameData((parts) => void (parts.base.villagerTarget.value = 0), from)
+}
+
+export function startingWith(age: number, buildings: string[], resources: Record<ResourceKind, number>, edit: (parts: Parts) => void = () => {}): GameData {
+    return editGameData((parts) => {
+        parts.civData.startingState.age.value = age
+        parts.civData.startingState.buildings.value = buildings
+        parts.civData.startingState.resources.value = resources
+        edit(parts)
+    })
 }
 
 export function withStartFarms(farms: number, from: GameData = ENGLISH): GameData {
@@ -89,6 +98,10 @@ export function series(result: SimulationResult, baseId: string): number[] {
 
 export function countAt(result: SimulationResult, baseId: string, t: number): number {
     return series(result, baseId)[sampleIndex(result, t)]
+}
+
+export function tierCountAt(result: SimulationResult, unitId: string, t: number): number {
+    return result.unitsProduced.find((u) => u.unitId === unitId)?.counts[sampleIndex(result, t)] ?? 0
 }
 
 // Installs a handler for action for the duration of fn, then puts back whatever was registered before.

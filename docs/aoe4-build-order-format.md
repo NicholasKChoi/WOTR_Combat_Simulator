@@ -461,7 +461,8 @@ A reaction skips the earlier-step condition: it is `not-reached` only while its 
 otherwise follows the same states.
 
 A step waits while it cannot be paid, while supply has no room, while the unit's entry is above the
-current age, or while no building instance it targets exists. A `build` step also waits while its
+current age, or while no building instance it targets exists. A `produce` or `research` step also waits
+while the building instances it needs are busy ([Queues](aoe4-build-order.md#model-rules)). A `build` step also waits while its
 building's entry is above the current age or while fewer than `builders` villagers are at `from`, gathering
 or idle; a `move` step with a number `count` waits while fewer than `count` are. A reaction waits for the same
 reasons from its run-out instant on, without waiting for earlier steps or holding back later ones. Each reason is reported: `waitingOn`
@@ -470,12 +471,14 @@ and reports the first check that fails:
 
 | `waitingOn` | produced when |
 |---|---|
-| `prerequisite` | `produce`: no targeted instance exists, or the unit's entry is above the current age. `build`: the building's entry is above the current age. `research`: no producing instance exists, or every tier of the tech is above the current age. An action with no handler always reports it |
+| `prerequisite` | `produce`: no targeted instance exists, or the unit's entry is above the current age, or a targeted instance is not free. `build`: the building's entry is above the current age. `research`: no producing instance exists, or every tier of the tech is above the current age, or no candidate instance is free. An action with no handler always reports it |
 | `villagers` | `build`: fewer than `builders` villagers gather at `from` or idle there. `move` with a number `count`: fewer than `count` do. `move` with `count: all` never waits and never reports it |
 | `population` | `produce`: the population after paying would pass supply |
-| `resources` | the step is otherwise ready but the bank is short of its cost, plus a due auto-house's hold on the resources it spends, except for an explicit `build house` step ([Houses and supply](aoe4-build-order.md#model-rules)); this is the only reason that reserves |
+| `resources` | every earlier check passes but the bank is short of the step's cost, plus a due auto-house's hold on the resources it spends, except for an explicit `build house` step ([Houses and supply](aoe4-build-order.md#model-rules)) |
 
-The order is `prerequisite`, then `villagers` or `population`, then `resources`. `rally` and `pause`
+The order is a missing building or an age (`prerequisite`), then `villagers` or `population`, then
+`resources`, then, for `produce` and `research`, a busy building (`prerequisite`). A non-reaction step
+waiting on `resources` or on a busy building reserves its cost; no other wait reserves. `rally` and `pause`
 never wait. A `trigger` or `earlier-step` reason is only reported for a step that never armed. A `produce` step completes when no
 instance carries its order any more: a counted one at the spawn of its last unit on the last instance, a
 continuous one (or a counted one replaced early) when a later `produce` or `pause` on that producer

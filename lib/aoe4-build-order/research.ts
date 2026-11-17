@@ -1,20 +1,14 @@
 import type { GameData, SnapshotEntry } from './data';
 import { classifyTech } from './effects';
 import type { EffectState } from './effects';
-import { canAffordHeld, costOf, markCompleted, payCost, recordUnits } from './engine-common';
+import { canAffordHeld, costOf, instanceFree, markCompleted, payCost, recordUnits } from './engine-common';
 import { researchMarker } from './markers';
 import type { BuildOrder, BuildOrderNote } from './model';
 import type { BuildingInstance, EngineState, PaidItem, StepHandler } from './simulate';
 
-// Queue length is not consulted: the first candidate building with an instance takes it on instance 1.
-function researchTarget(state: EngineState, candidates: readonly string[]): BuildingInstance | undefined {
-  for (const baseId of candidates) {
-    const first = state.instances.get(baseId)?.[0];
-    if (first) {
-      return first;
-    }
-  }
-  return undefined;
+// Every instance of the candidate buildings, in candidate order, then instance number.
+function candidateInstances(state: EngineState, candidates: readonly string[]): BuildingInstance[] {
+  return candidates.flatMap((baseId) => state.instances.get(baseId) ?? []);
 }
 
 function researchItem(entry: SnapshotEntry, index: number): PaidItem {
@@ -41,19 +35,23 @@ export function researchEntry(baseId: string, state: EffectState): SnapshotEntry
   return picked;
 }
 
-/** The step handler for `research`: pays for the tech and queues it at the target building, or reports what the step waits on (Model rules). */
+/** The step handler for `research`: pays for the tech on the first free candidate instance, or reports what the step waits on (Model rules). */
 export const researchHandler: StepHandler<'research'> = (step, index, state) => {
   const entry = researchEntry(step.tech, state);
   if (!entry) {
     return { started: false, waitingOn: 'prerequisite' };
   }
-  const target = researchTarget(state, step.at === undefined ? entry.producedBy : [step.at]);
-  if (!target) {
+  const instances = candidateInstances(state, step.at === undefined ? entry.producedBy : [step.at]);
+  if (instances.length === 0) {
     return { started: false, waitingOn: 'prerequisite' };
   }
   const cost = costOf(entry, 1);
   if (!canAffordHeld(state, cost)) {
     return { started: false, waitingOn: 'resources', reserve: cost };
+  }
+  const target = instances.find((instance) => instanceFree(state, instance, index));
+  if (!target) {
+    return { started: false, waitingOn: 'prerequisite', reserve: cost };
   }
   payCost(state, cost, 'research');
   target.paid.push(researchItem(entry, index));

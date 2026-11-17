@@ -112,8 +112,8 @@ describe('auto-houses with other house steps', () => {
 describe('prebuilt builds at 1800 s', () => {
     // Digests of spawnedPopulation, spent, steps, populationCapReachedAt, depletions and markers at 1800 s.
     it.each([
-        ['ENG 1TC', '01831aa5a1b79212'],
-        ['ENG Spear/Longbow into MAA/Crossbow', 'eda1702ca717e524'],
+        ['ENG 1TC', 'ebe79d4a4c219f04'],
+        ['ENG Spear/Longbow into MAA/Crossbow', 'f3b256384c4bcf0f'],
     ])('%s timeline matches the pinned digest', (name, pinned) => {
         const build = listBuilds().find((b) => b.name === name)!
         const result = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1800 }))
