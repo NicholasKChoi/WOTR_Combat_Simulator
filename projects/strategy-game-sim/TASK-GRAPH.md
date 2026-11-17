@@ -74,3 +74,15 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-186 | Remove unused locals in acceptance specs | none | none | | low | | | sgs-186-remove-unused-acceptance-spec-locals | 50b1dc9a798664a7d4062af2b6e9a92a41c8853a | integrated | | 193 | tickets/SGS-186-remove-unused-acceptance-spec-locals.md |
 | SGS-187 | Remove unused settledScrollY helper | none | none | | low | SGS-184 | | sgs-187-remove-unused-settled-scroll-y | f7ff09f4c088105819c70c532d447ed985e3295c | integrated | | 196 | tickets/SGS-187-remove-unused-settled-scroll-y.md |
 | SGS-188 | Auto-run acceptance: also listen for pageerror | none | none | aoe4-build-order | low | | | sgs-188-aoe4-auto-run-listen-pageerror | 3e602640271861133fe2b21567309cd9271c105f | integrated | | 197 | tickets/SGS-188-aoe4-auto-run-listen-pageerror.md |
+| SGS-189 | Reorder the Knight/Longbow and Council Hall prebuilt builds | M11 | M11.5 | | low | none | | | | draft | | | tickets/SGS-189-reorder-knight-longbow-council-hall-builds.md |
+| SGS-191 | Unit-line data in the result: lineName and upgrade marker unit | M11 | M11.2 | | standard | none | | | | draft | | | tickets/SGS-191-unit-line-data-in-result.md |
+| SGS-194 | Results charts render as one table | M11 | M11.4 | | standard | none | | | | draft | | | tickets/SGS-194-results-charts-one-table.md |
+| SGS-196 | Chart time-window math and zoom bar | M11 | M11.1 | | low | none | | | | draft | | | tickets/SGS-196-chart-time-window-math-and-zoom-bar.md |
+| SGS-190 | Steps wait for a free building (produce and research) | M11 | M11.5 | | high | SGS-189 | | | | draft | | | tickets/SGS-190-steps-wait-for-free-building.md |
+| SGS-195 | One shared marker control for every chart | M11 | M11.3 | | standard | SGS-194 | | | | draft | | | tickets/SGS-195-one-marker-control-for-every-chart.md |
+| SGS-192 | Record what a waiting step waits for (waitingFor, waitDetails) | M11 | M11.5 | | high | SGS-190 | | | | draft | | | tickets/SGS-192-record-what-a-waiting-step-waits-for.md |
+| SGS-197 | Drag-select zoom, pan and reset on every chart | M11 | M11.1 | | standard | SGS-195,SGS-196 | | | | draft | | | tickets/SGS-197-drag-select-zoom-pan-reset-on-every-chart.md |
+| SGS-193 | Step annotations name the wait | M11 | M11.5 | | standard | SGS-192 | | | | draft | | | tickets/SGS-193-step-annotations-name-the-wait.md |
+| SGS-198 | Units chart: one line per unit line, with upgrade dots | M11 | M11.2 | | standard | SGS-191,SGS-197 | | | | draft | | | tickets/SGS-198-units-chart-unit-lines-and-upgrade-dots.md |
+| SGS-199 | How this page works help modal | M11 | M11.6 | | low | SGS-193,SGS-197,SGS-198 | | | | draft | | | tickets/SGS-199-page-help-modal.md |
+| SGS-200 | M11 docs: UI doc, format doc check, ARCHITECTURE.md | M11 | M11.7 | | low | SGS-190,SGS-191,SGS-192,SGS-193,SGS-197,SGS-198,SGS-199 | | | | draft | | | tickets/SGS-200-m11-docs-ui-doc-and-architecture.md |
