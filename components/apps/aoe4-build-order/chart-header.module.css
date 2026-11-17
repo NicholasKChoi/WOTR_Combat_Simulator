@@ -1,11 +1,16 @@
-.chartHeader {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: 0.5rem;
+.cell {
+    padding: 0.25rem 0.25rem 0.25rem 0;
+    vertical-align: middle;
 }
 
-.chartHeader > h3 {
+.title {
+    padding: 0.25rem 0.5rem 0.25rem 0;
+    text-align: start;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+
+.title > h3 {
     margin: 0;
 }
 

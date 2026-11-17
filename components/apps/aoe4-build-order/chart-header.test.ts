@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { type ChartControls, ChartHeader, chartHandleKey } from './chart-header'
+import { type ChartControls, ChartHeaderRow, chartHandleKey } from './chart-header'
 
 describe('chartHandleKey', () => {
     it.each([
@@ -18,11 +18,11 @@ describe('chartHandleKey', () => {
     })
 })
 
-describe('ChartHeader', () => {
+describe('ChartHeaderRow', () => {
     const layout: ChartControls = { collapsed: false, dragging: false, reorderHelpId: 'help-id', onToggle: () => {}, onMoveKey: () => {}, onHandlePointerDown: () => {} }
     const render = (props: { layout?: Partial<ChartControls> | null } = {}) =>
         renderToStaticMarkup(
-            createElement(ChartHeader, {
+            createElement(ChartHeaderRow, {
                 title: 'Gather rates',
                 bodyId: 'body-id',
                 layout: props.layout === null ? undefined : { ...layout, ...props.layout },
@@ -31,11 +31,18 @@ describe('ChartHeader', () => {
         )
     const tag = (html: string, testId: string) => html.match(new RegExp(`<[a-z0-9]+[^>]*data-testid="${testId}"[^>]*>`))?.[0] ?? ''
 
-    it('puts the handle, title, caret and controls in that order', () => {
+    const cells = (html: string) => [...html.matchAll(/<(td|th)([^>]*)>(.*?)<\/\1>/g)].map((m) => ({ tag: m[1], attrs: m[2], inner: m[3] }))
+
+    it('is a header row of four cells holding the handle, title, caret and controls in that order', () => {
         const html = render()
-        const positions = ['chart-drag-handle', '<h3', 'chart-collapse', 'extra-control'].map((marker) => html.indexOf(marker))
-        expect(positions.every((position) => position >= 0)).toBe(true)
-        expect([...positions].sort((a, b) => a - b)).toEqual(positions)
+        expect(html).toMatch(/^<tr[^>]*data-testid="chart-header-row"/)
+        const [handle, title, caret, controls] = cells(html)
+        expect(cells(html).map((c) => c.tag)).toEqual(['td', 'th', 'td', 'td'])
+        expect(handle.inner).toContain('chart-drag-handle')
+        expect(title.attrs).toContain('scope="rowgroup"')
+        expect(title.inner).toMatch(/^<h3 class="h5">Gather rates<\/h3>$/)
+        expect(caret.inner).toContain('chart-collapse')
+        expect(controls.inner).toContain('extra-control')
     })
 
     it('labels the handle with the title and points it at the help text', () => {
@@ -59,8 +66,12 @@ describe('ChartHeader', () => {
         expect(render({ layout: { collapsed: true } })).toContain('extra-control')
     })
 
-    it('renders the title and the controls with no handle and no caret without layout', () => {
+    it('renders the title and the controls with empty handle and caret cells without layout', () => {
         const html = render({ layout: null })
+        const [handle, title, caret, controls] = cells(html)
+        expect([handle.inner, caret.inner]).toEqual(['', ''])
+        expect(title.inner).toContain('Gather rates')
+        expect(controls.inner).toContain('extra-control')
         expect(html).toContain('Gather rates')
         expect(html).toContain('extra-control')
         expect(html).not.toContain('chart-drag-handle')

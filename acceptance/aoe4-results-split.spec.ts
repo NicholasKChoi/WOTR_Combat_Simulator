@@ -36,12 +36,12 @@ test.describe('AoE4 results take the full width', () => {
     })
   }
 
-  test('the four charts are direct children of the results container and wrap no column', async ({ page }) => {
+  test('the four charts are the row groups of the chart table, in order, and wrap no column', async ({ page }) => {
     await page.setViewportSize(WIDE_VIEWPORT)
     await openResults(page)
-    const children = await page.getByTestId('results-last-good').evaluate((el) => [...el.children].map((child) => child.getAttribute('data-testid')))
-    expect(children.filter((id) => CHART_IDS.some((chart) => chart === id))).toEqual(CHART_IDS)
-    expect(children.slice(-CHART_IDS.length)).toEqual(CHART_IDS)
+    const groups = await page.getByTestId('chart-table').evaluate((table) => [...table.children].map((child) => `${child.tagName}:${child.getAttribute('data-testid')}`))
+    expect(groups.filter((group) => group.startsWith('TBODY:'))).toEqual(CHART_IDS.map((id) => `TBODY:${id}`))
+    expect(groups.slice(-CHART_IDS.length)).toEqual(CHART_IDS.map((id) => `TBODY:${id}`))
   })
 
   test('a build with no steps still draws the charts and shows no step rows or legend', async ({ page }) => {
