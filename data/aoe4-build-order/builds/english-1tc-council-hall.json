@@ -235,10 +235,6 @@
       "tech": "steeled-arrow"
     },
     {
-      "action": "research",
-      "tech": "iron-undermesh"
-    },
-    {
       "trigger": {
         "kind": "time",
         "seconds": 690
@@ -255,6 +251,10 @@
       "to": "gold#3"
     },
     {
+      "action": "research",
+      "tech": "iron-undermesh"
+    },
+    {
       "trigger": {
         "kind": "time",
         "seconds": 780
@@ -264,18 +264,6 @@
       "from": "wood",
       "builders": 4,
       "then": "wood"
-    },
-    {
-      "action": "research",
-      "tech": "fertilization"
-    },
-    {
-      "action": "research",
-      "tech": "veteran-longbowmen"
-    },
-    {
-      "action": "research",
-      "tech": "veteran-spearmen"
     },
     {
       "action": "research",
@@ -321,19 +309,19 @@
     },
     {
       "action": "research",
+      "tech": "fertilization"
+    },
+    {
+      "action": "research",
+      "tech": "veteran-longbowmen"
+    },
+    {
+      "action": "research",
+      "tech": "veteran-spearmen"
+    },
+    {
+      "action": "research",
       "tech": "decarbonization"
-    },
-    {
-      "action": "research",
-      "tech": "insulated-helm"
-    },
-    {
-      "action": "research",
-      "tech": "balanced-projectiles"
-    },
-    {
-      "action": "research",
-      "tech": "wedge-rivets"
     },
     {
       "action": "research",
@@ -358,6 +346,18 @@
       "building": "farm",
       "from": "wood",
       "then": "farm"
+    },
+    {
+      "action": "research",
+      "tech": "insulated-helm"
+    },
+    {
+      "action": "research",
+      "tech": "balanced-projectiles"
+    },
+    {
+      "action": "research",
+      "tech": "wedge-rivets"
     },
     {
       "trigger": {
