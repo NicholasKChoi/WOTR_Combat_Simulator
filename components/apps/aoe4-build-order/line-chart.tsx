@@ -126,14 +126,14 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
 
     useEffect(() => {
         const text = measureRef.current
-        if (!text || labelKey === '') return
+        if (!text || labelKey === '' || collapsed) return
         const widths = new Map<string, number>()
         for (const label of labelKey.split('\n')) {
             text.textContent = label
             widths.set(label, text.getComputedTextLength())
         }
         setLabelWidths(widths)
-    }, [labelKey, chartWidth])
+    }, [labelKey, chartWidth, collapsed])
 
     const placed = chartWidth === null ? [] : placeMarkers(labelled, end, plotWidth, (label) => labelWidths.get(label) ?? estimateLabelWidth(label))
     const rows = placed.reduce((max, p) => Math.max(max, p.row + 1), 0)

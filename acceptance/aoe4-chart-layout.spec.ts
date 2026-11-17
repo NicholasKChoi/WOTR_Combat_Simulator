@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import { CHART_LAYOUT_STORAGE_KEY, type ChartId } from '../components/apps/aoe4-build-order/chart-layout'
-import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, openPage, showView } from './helpers'
+import { markerLabel } from '../components/apps/aoe4-build-order/chart-rows'
+import type { SimulationResult } from '../lib/aoe4-build-order/model'
+import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, openPage, showView, waitForRun } from './helpers'
 
 const [UNITS, RATES, GATHERED, FLOATING] = CHART_IDS
 const DEFAULT_ORDER: readonly string[] = CHART_IDS
@@ -459,6 +461,52 @@ test.describe('AoE4 chart drag reorder', () => {
     await expect(chart(page, UNITS)).toHaveAttribute('data-dragging', 'true')
     await page.mouse.up()
     await expectLayout(page, [RATES, GATHERED, UNITS, FLOATING], [UNITS])
+  })
+})
+
+test.describe('AoE4 chart marker labels after collapse', () => {
+  test.use({ viewport: { width: 1280, height: 2800 } })
+
+  const ABBEY_LINE = 'at 9 vils build abbey-of-kings with 3 from sheep then sheep'
+
+  const labelPlacements = (page: Page, text: string) =>
+    page.evaluate(
+      ({ ids, text }) =>
+        Object.fromEntries(
+          ids.map((id) => {
+            const chartEl = document.querySelector(`[data-testid="${id}"]`)!
+            const label = [...chartEl.querySelectorAll('text.recharts-label')].find((el) => el.textContent === text)
+            const plotRight = chartEl.querySelector('.recharts-cartesian-grid')?.getBoundingClientRect().right
+            if (!label || plotRight === undefined) return [id, null]
+            return [id, { anchor: label.getAttribute('text-anchor'), fits: label.getBoundingClientRect().right <= plotRight + 0.5 }]
+          }),
+        ),
+      { ids: [GATHERED, FLOATING], text },
+    )
+
+  test('a chart whose markers change while collapsed places its labels like an always-expanded chart once expanded', async ({ page }) => {
+    await openResults(page)
+    await control(page, GATHERED, 'chart-collapse').click()
+    await expectLayout(page, DEFAULT_ORDER, [GATHERED])
+
+    const text = await page.getByTestId('build-order-text').inputValue()
+    expect(text).toContain(ABBEY_LINE)
+    const response = await waitForRun(page, () =>
+      page.getByTestId('build-order-text').fill(text.replace(ABBEY_LINE, '@6:00 build abbey-of-kings with 3 from sheep then sheep')),
+    )
+    const result = (await response.json()) as SimulationResult
+    const feudal = result.markers.find((m) => m.kind === 'age-up' && m.label.startsWith('Feudal'))
+    expect(feudal, 'the run reaches Feudal').toBeDefined()
+    await waitForRun(page, () => page.getByTestId('duration-seconds').fill(String(Math.ceil(feudal!.at) + 12)))
+
+    const feudalLabel = markerLabel(feudal!)
+    await expect.poll(async () => (await labelPlacements(page, feudalLabel))[FLOATING]).toEqual({ anchor: 'end', fits: true })
+
+    await control(page, GATHERED, 'chart-collapse').click()
+    await expect(chart(page, GATHERED).getByTestId('chart-body')).toBeVisible()
+    await expect
+      .poll(() => labelPlacements(page, feudalLabel))
+      .toEqual({ [GATHERED]: { anchor: 'end', fits: true }, [FLOATING]: { anchor: 'end', fits: true } })
   })
 })
 
