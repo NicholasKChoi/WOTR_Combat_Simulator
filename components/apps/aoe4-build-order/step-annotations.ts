@@ -2,19 +2,15 @@ import type { SimulateResponse } from '../../../lib/aoe4-build-order/api'
 import { VILLAGER_ID } from '../../../lib/aoe4-build-order/engine-common'
 import type { BuildStep, StepTiming, StepWait } from '../../../lib/aoe4-build-order/model'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
+import { waitDetailText } from '../../../lib/aoe4-build-order/wait-detail'
 import { formatBuildStep, parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
 import type { LiveInput, ShownInput } from './auto-run'
-
-const BREAKDOWN_ORDER = ['resources', 'villagers', 'population', 'prerequisite'] as const
 
 const EN_DASH = '–'
 
 export const LONG_WAIT_SECONDS = 60
 
 export const formatStepTime = (seconds: number | null): string => (seconds === null ? EN_DASH : formatMinSec(seconds))
-
-export const formatWaitBreakdown = (breakdown: StepRun['waitBreakdown']): string =>
-    breakdown.map((w) => `${w.reason} ${formatMinSec(w.seconds)}`).join(', ')
 
 export const STEP_KINDS = {
     'age-up': 'Age up',
@@ -34,7 +30,8 @@ export interface StepRun {
     startedAt: number | null
     completedAt: number | null
     waitSeconds: number
-    waitBreakdown: { reason: (typeof BREAKDOWN_ORDER)[number]; seconds: number }[]
+    waits: { text: string; seconds: number }[]
+    waitingForText: string | null
     waitingOn: StepWait | null
     blockedBy: string
     longWait: boolean
@@ -54,28 +51,26 @@ export const annotationDetailText = (run: Pick<StepRun, 'status' | 'waitSeconds'
     return `${waited === STILL_WAITING ? 'Still waiting' : `Waited ${waited}`}. Blocked by: ${run.blockedBy === '' ? 'nothing' : run.blockedBy}`
 }
 
-function blockedByText(timing: StepTiming, breakdown: StepRun['waitBreakdown']): string {
+function blockedByText(timing: StepTiming, waits: StepRun['waits'], waitingForText: string | null): string {
     if (timing.status === 'not-reached') return `not reached (${timing.waitingOn})`
-    const reasons = formatWaitBreakdown(breakdown)
-    if (timing.status !== 'waiting') return reasons
-    const still = `still waiting on ${timing.waitingOn}`
-    return reasons === '' ? still : `${reasons}, ${still}`
+    const parts = waits.map((w) => `${w.text} ${formatMinSec(w.seconds)}`)
+    if (timing.status === 'waiting') parts.push(waitingForText === null ? `still waiting on ${timing.waitingOn}` : `still waiting for ${waitingForText}`)
+    return parts.join(', ')
 }
 
 function stepRun(timing: StepTiming): StepRun {
-    const waitBreakdown = BREAKDOWN_ORDER.flatMap((reason) => {
-        const seconds = timing.waitBreakdown[reason] ?? 0
-        return seconds > 0 ? [{ reason, seconds }] : []
-    })
+    const waits = timing.waitDetails.filter((w) => w.seconds > 0).map((w) => ({ text: waitDetailText(w.detail), seconds: w.seconds }))
+    const waitingForText = timing.waitingFor === null ? null : waitDetailText(timing.waitingFor)
     return {
         runStep: timing.step,
         status: timing.status,
         startedAt: timing.startedAt,
         completedAt: timing.completedAt,
         waitSeconds: timing.waitSeconds,
-        waitBreakdown,
+        waits,
+        waitingForText,
         waitingOn: timing.waitingOn,
-        blockedBy: blockedByText(timing, waitBreakdown),
+        blockedBy: blockedByText(timing, waits, waitingForText),
         longWait: timing.waitSeconds >= LONG_WAIT_SECONDS,
         flagged: timing.status === 'waiting' || timing.status === 'not-reached',
     }
