@@ -282,19 +282,19 @@ describe('auto-house demand leaves out the orders of held instances', () => {
     const busy: BuildStep[] = [produce('man-at-arms', { instance: 2, count: 1 }), produce('spearman', { instance: 1 }), produce('spearman', { instance: 3 })]
     const held: BuildStep[] = [...busy, produce('spearman', { trigger: at(1) })]
     const houseSeconds = constructionSeconds(game.byBaseId.get('house')![0].costs.time, 1, game)
-    // With the held orders counted, the first house starts once its wood is banked.
-    const countingHeld = 48.383333333
     const simulate = (steps: BuildStep[]) => {
         const { done, rules } = housesDone()
         const result = run(steps, { game, start, rules, inputs: { durationSeconds: short, walkSeconds: 0, nodeAmounts: { sheep: null } } })
         return { result, houseStarts: done.map((t) => t - houseSeconds) }
     }
     const withHold = simulate(held)
+    // With the held orders counted, the first house starts where the no-hold build starts it.
+    const countingHeld = simulate(busy).houseStarts[0]
 
     it('holds barracks 1 and 3 through the instant the first house would start if their orders counted', () => {
         expect(withHold.result.steps[3]).toMatchObject({ armedAt: 1, startedAt: 70, waitBreakdown: { prerequisite: 69 } })
         expect(countingHeld).toBeGreaterThan(2)
-        expect(countingHeld).toBeLessThan(70)
+        expect(countingHeld).toBeLessThan(withHold.result.steps[3].startedAt!)
         expect([5, 45, 50, 65].map((t) => countAt(withHold.result, 'spearman', t))).toEqual([2, 2, 2, 2])
     })
 
@@ -303,8 +303,8 @@ describe('auto-house demand leaves out the orders of held instances', () => {
         expect(withHold.houseStarts[0]).toBe(withHold.result.steps[3].startedAt)
     })
 
-    it('still counts producers that are not held, so the same build with no hold starts its first house when the wood is banked', () => {
-        expect(simulate(busy).houseStarts[0]).toBeCloseTo(countingHeld, 6)
+    it('still counts producers that are not held, so the same build with no hold starts its first house at 48.383 s', () => {
+        expect(countingHeld).toBeCloseTo(48.383333333, 6)
     })
 
     it('keeps every floating resource at or above zero and gives the same result twice', () => {

@@ -148,7 +148,8 @@ Where the pieces plug in:
   [Wait details](../../docs/aoe4-build-order-format.md#wait-details).
 - A `produce` or `research` step starts only on free instances (`instanceFree`). While a `produce` waits for a
   busy building, `offerSteps` records the instances it holds in `held`, `startProduction` pays nothing for the
-  order of a held instance, and `houseDemand` leaves that order's rate out of the projected population. Rules: [Queues](../../docs/aoe4-build-order.md#model-rules).
+  order of a held instance, and `houseDemand` leaves that order's rate out of the projected population.
+  Rules: [Queues](../../docs/aoe4-build-order.md#model-rules).
 - Payment checks come from `engine-common.ts` (`canAfford`, `canAffordHeld`, `payCost`) and are used by the
   handlers and by production. A need that cannot be met feeds `nextWake`, so the wait is reported rather than
   the spend happening early.
