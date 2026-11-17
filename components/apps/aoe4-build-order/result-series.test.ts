@@ -10,8 +10,8 @@ function result(): SimulationResult {
         sampleSeconds: 5,
         times: [0, 5, 10],
         unitsProduced: [
-            { unitId: 'spearman-2', baseId: 'spearman', name: 'Spearman', tier: 2, counts: [0, 1, 2] },
-            { unitId: 'spearman-3', baseId: 'spearman', name: 'Spearman', tier: 3, counts: [0, 0, 4] },
+            { unitId: 'spearman-2', baseId: 'spearman', name: 'Spearman', lineName: 'Spearman', tier: 2, counts: [0, 1, 2] },
+            { unitId: 'spearman-3', baseId: 'spearman', name: 'Spearman', lineName: 'Spearman', tier: 3, counts: [0, 0, 4] },
         ],
         productionBuildings: [{ baseId: 'barracks', name: 'Barracks', counts: [0, 1, 1] }],
         gatherRates: { food: [1, 2, 3], wood: [4, 5, 6], gold: [7, 8, 9], stone: [10, 11, 12] },
