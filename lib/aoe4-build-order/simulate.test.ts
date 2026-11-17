@@ -417,7 +417,7 @@ describe('rally scope', () => {
 })
 
 describe('switch and pause', () => {
-    it('lets the villager in production finish and keeps the scout cost when switching', () => {
+    it('waits for the villager in production, charges nothing before it starts, then trains the scout and resumes villagers at its spawn', () => {
         const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(10) }])
         expect(result.floating.food[sampleIndex(result, 10)]).toBeCloseTo(150 + 6 * r * 10, 9)
         expect(countAt(result, 'villager', 20)).toBe(1)

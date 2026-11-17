@@ -232,7 +232,7 @@ describe('ages', () => {
         ])
     })
 
-    it('keeps paid items and offers next-age units at the age-up instant', () => {
+    it('keeps the unit paid before the age-up, then starts the next-age unit when that unit completes', () => {
         const result = run(
             [abbey, { action: 'produce', producer: 'barracks', unit: 'man-at-arms' }, { action: 'produce', producer: 'barracks', unit: 'spearman' }],
             { ...options, inputs: { ...noHouses, durationSeconds: 120 } },

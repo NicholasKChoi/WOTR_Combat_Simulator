@@ -224,7 +224,7 @@ It checks, in order: an entry of the tech is at or below the current age, a cand
 instance, resources cover its cost, and a candidate instance is free. It takes the first free instance in
 candidate order, then instance number, so while every candidate is busy it waits and takes whichever
 frees first. It never holds an instance. `research` has no `instance` field, and a tech with no producing
-building and no `at` never starts. With a capital town center and two idle town centers, `research
+building and no `at` never starts. With an idle capital town center and two idle town centers, `research
 textiles` goes to the capital town center and `research textiles at town-center` to town center 1; with
 town center 1 busy and town center 2 idle, `research textiles at town-center` goes to town center 2.
 
