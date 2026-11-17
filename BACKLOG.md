@@ -34,3 +34,4 @@ pull from here; triage moves an item into a milestone or deletes it.
   Recommended: milestone (small), priority medium. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 - **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
+- **Bump next 16.4.3 to 16.4.6.** Moderate advisory GHSA-mfr8-8qww-v76h covers next 16.3.0 to 16.4.4; the code uses neither `use cache` nor `unstable_cache`, so it is not reachable. Recommended: standalone chore, Priority: low. (discovery standalone 2026-11-16, standard, discovery/standalone-20261116-1.md)
