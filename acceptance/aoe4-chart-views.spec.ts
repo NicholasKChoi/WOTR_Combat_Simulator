@@ -294,11 +294,11 @@ test.describe('AoE4 chart view toggles', () => {
 
     const woodItem = chart(page, RATES).locator('[data-testid="chart-series-legend-item"][data-series="wood"]')
     await woodItem.click()
-    await expect(woodItem).toHaveAttribute('aria-pressed', 'true')
+    await expect(woodItem).toHaveAttribute('aria-pressed', 'false')
     for (const view of ['rate', 'villagers', 'rate']) {
       await option(page, RATES, view).click()
       await expectPressed(page, RATES, view, view === 'rate' ? 'villagers' : 'rate')
-      await expect(woodItem).toHaveAttribute('aria-pressed', 'true')
+      await expect(woodItem).toHaveAttribute('aria-pressed', 'false')
       await expect(line(page, RATES, 'wood')).toHaveCount(0)
       await expect(line(page, RATES, 'pinned:wood')).toHaveCount(0)
       await expect(line(page, RATES, 'food')).toHaveCount(1)

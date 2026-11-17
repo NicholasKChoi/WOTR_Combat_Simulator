@@ -24,7 +24,7 @@ export function SeriesLegend({ series, pinned, hidden, onToggle }: SeriesLegendP
                         className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
                         data-testid="chart-series-legend-item"
                         data-series={item.key}
-                        aria-pressed={hidden.has(item.key)}
+                        aria-pressed={!hidden.has(item.key)}
                         style={hidden.has(item.key) ? { opacity: 0.5 } : undefined}
                         onClick={() => onToggle(item.key)}
                     >

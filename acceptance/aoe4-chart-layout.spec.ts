@@ -62,7 +62,7 @@ test.describe('AoE4 chart collapse and reorder', () => {
     await villagers.click()
     const legendItem = chart(page, RATES).getByTestId('chart-series-legend-item').first()
     await legendItem.click()
-    await expect(legendItem).toHaveAttribute('aria-pressed', 'true')
+    await expect(legendItem).toHaveAttribute('aria-pressed', 'false')
     const hiddenKey = await legendItem.getAttribute('data-series')
 
     await control(page, RATES, 'chart-collapse').click()
@@ -80,7 +80,7 @@ test.describe('AoE4 chart collapse and reorder', () => {
     await expect(control(page, RATES, 'chart-collapse')).toHaveAttribute('aria-expanded', 'true')
     await expect(villagers).toHaveAttribute('aria-pressed', 'true')
     await expect(chart(page, RATES).locator('.recharts-label', { hasText: 'Villagers' })).toBeVisible()
-    await expect(chart(page, RATES).locator(`[data-testid="chart-series-legend-item"][data-series="${hiddenKey}"]`)).toHaveAttribute('aria-pressed', 'true')
+    await expect(chart(page, RATES).locator(`[data-testid="chart-series-legend-item"][data-series="${hiddenKey}"]`)).toHaveAttribute('aria-pressed', 'false')
   })
 
   test('the view toggle works while Gather rates is collapsed and its choice survives expanding', async ({ page }) => {

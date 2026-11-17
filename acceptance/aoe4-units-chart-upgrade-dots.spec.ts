@@ -303,7 +303,7 @@ test.describe('AoE4 Units chart unit lines and upgrade dots', () => {
     await expect(dotsOf(page, PINNED_DOT)).toHaveCount(upgradesOf(full).length)
 
     await legendItem(page, LINE).click()
-    await expect(legendItem(page, LINE)).toHaveAttribute('aria-pressed', 'true')
+    await expect(legendItem(page, LINE)).toHaveAttribute('aria-pressed', 'false')
     await expect(lineOf(page, LINE)).toHaveCount(0)
     await expect(lineOf(page, PINNED_LINE)).toHaveCount(0)
     await expect(dotsOf(page, `${DOT}[data-series="${LINE}"]`)).toHaveCount(0)
