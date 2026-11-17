@@ -59,29 +59,29 @@ test.describe('unitsProduced lineName', () => {
 })
 
 test.describe('research markers unit', () => {
-    test('a unit-upgrade research marker carries the target baseId, a veteran-longbowmen marker shows longbowman', () => {
-      const marker = knight.markers.find((m) => m.label === 'veteran-longbowmen')
-      expect(marker).toBeDefined()
-      expect(marker?.unit).toBe('longbowman')
-    })
-
-    test('every marker whose label is an upgradeTargets key carries exactly that target; every other marker has no unit key', () => {
-      const all = [...knight.markers, ...maa.markers]
-      expect(all.filter((m) => m.label in upgradeTargets).length).toBeGreaterThan(0)
-      for (const marker of all) {
-        if (marker.kind !== 'age-up' && marker.label in upgradeTargets) {
-          expect(marker.unit, marker.label).toBe(upgradeTargets[marker.label].value)
-        } else {
-          expect(Object.keys(marker), `${marker.kind} ${marker.label}`).not.toContain('unit')
-        }
-      }
-    })
-
-    test('age-up markers and non-unit researches are present and have no unit key', () => {
-      const all = [...knight.markers, ...maa.markers]
-      expect(all.some((m) => m.kind === 'age-up')).toBe(true)
-      const plain = knight.markers.find((m) => m.label === 'horticulture')
-      expect(plain).toBeDefined()
-      expect(Object.keys(plain!)).toEqual(['kind', 'label', 'at'])
-    })
+  test('a unit-upgrade research marker carries the target baseId, a veteran-longbowmen marker shows longbowman', () => {
+    const marker = knight.markers.find((m) => m.label === 'veteran-longbowmen')
+    expect(marker).toBeDefined()
+    expect(marker?.unit).toBe('longbowman')
   })
+
+  test('every marker whose label is an upgradeTargets key carries exactly that target; every other marker has no unit key', () => {
+    const all = [...knight.markers, ...maa.markers]
+    expect(all.filter((m) => m.label in upgradeTargets).length).toBeGreaterThan(0)
+    for (const marker of all) {
+      if (marker.kind !== 'age-up' && marker.label in upgradeTargets) {
+        expect(marker.unit, marker.label).toBe(upgradeTargets[marker.label].value)
+      } else {
+        expect(Object.keys(marker), `${marker.kind} ${marker.label}`).not.toContain('unit')
+      }
+    }
+  })
+
+  test('age-up markers and non-unit researches are present and have no unit key', () => {
+    const all = [...knight.markers, ...maa.markers]
+    expect(all.some((m) => m.kind === 'age-up')).toBe(true)
+    const plain = knight.markers.find((m) => m.label === 'horticulture')
+    expect(plain).toBeDefined()
+    expect(Object.keys(plain!)).toEqual(['kind', 'label', 'at'])
+  })
+})
