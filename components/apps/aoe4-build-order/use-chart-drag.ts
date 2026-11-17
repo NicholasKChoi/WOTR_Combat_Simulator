@@ -1,8 +1,6 @@
 import { type PointerEvent, useEffect, useRef, useState } from 'react'
-import { dropIndexAt } from './chart-drag'
+import { DRAG_THRESHOLD_PX, dropIndexAt } from './chart-drag'
 import type { ChartId } from './chart-layout'
-
-const DRAG_THRESHOLD_PX = 4
 
 export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, toIndex: number) => void) {
     const [dragging, setDragging] = useState<ChartId | null>(null)
