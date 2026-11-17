@@ -91,6 +91,14 @@ export function wholeNumberAxis(rows: readonly ChartRow[], hidden: ReadonlySet<s
     return { domain: [0, top], ticks }
 }
 
+export function valueAt(times: readonly number[], values: readonly number[], at: number): number {
+    const next = times.findIndex((t) => t >= at)
+    if (next === -1) return values[values.length - 1]
+    if (times[next] === at || next === 0) return values[next]
+    const span = times[next] - times[next - 1]
+    return values[next - 1] + ((values[next] - values[next - 1]) * (at - times[next - 1])) / span
+}
+
 export const PALETTE: readonly string[] = [
     '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
     '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
-import { toChartRows } from './chart-rows'
-import { buildingSeries, gatherRatesSeries, resourceSeries, unitSeries, unitsProducedSeries } from './result-series'
+import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
+import { type PinnedSeries, toChartRows } from './chart-rows'
+import type { TimeWindow } from './chart-zoom'
+import { buildingSeries, gatherRatesSeries, resourceSeries, unitLineSeries, unitUpgradeDots, unitsProducedSeries, visibleUpgradeDots, type UpgradeDot } from './result-series'
 
 function result(): SimulationResult {
     return {
@@ -30,32 +32,130 @@ function result(): SimulationResult {
     }
 }
 
-describe('unitSeries', () => {
-    it('keys each unit entry by unitId and names it with its tier, in unitsProduced order', () => {
-        const series = unitSeries(result())
-        expect(series.map((s) => s.key)).toEqual(['spearman-2', 'spearman-3'])
-        expect(series.map((s) => s.name)).toEqual(['Spearman (tier 2)', 'Spearman (tier 3)'])
+describe('unitLineSeries', () => {
+    const lines = (): SimulationResult => ({
+        ...result(),
+        unitsProduced: [
+            { unitId: 'longbowman-2', baseId: 'longbowman', name: 'Longbowman', lineName: 'Longbowman', tier: 2, counts: [0, 3, 3] },
+            { unitId: 'spearman-2', baseId: 'spearman', name: 'Spearman', lineName: 'Spearman', tier: 2, counts: [0, 1, 2] },
+            { unitId: 'longbowman-3', baseId: 'longbowman', name: 'Veteran Longbowman', lineName: 'Longbowman', tier: 3, counts: [0, 0, 5] },
+        ],
     })
 
-    it('uses the counts as values, aligned with times', () => {
+    it('draws one series per baseId in order of first appearance, named by lineName, with the tiers summed per sample', () => {
+        expect(unitLineSeries(lines())).toEqual([
+            { key: 'longbowman', name: 'Longbowman', values: [0, 3, 8] },
+            { key: 'spearman', name: 'Spearman', values: [0, 1, 2] },
+        ])
+    })
+
+    it('aligns the summed values with times', () => {
         const input = result()
-        const rows = toChartRows(input.times, unitSeries(input))
-        expect(rows).toEqual([
-            { t: 0, 'spearman-2': 0, 'spearman-3': 0 },
-            { t: 5, 'spearman-2': 1, 'spearman-3': 0 },
-            { t: 10, 'spearman-2': 2, 'spearman-3': 4 },
+        expect(toChartRows(input.times, unitLineSeries(input))).toEqual([
+            { t: 0, spearman: 0 },
+            { t: 5, spearman: 1 },
+            { t: 10, spearman: 6 },
         ])
     })
 
     it('returns no series when no unit was produced', () => {
-        expect(unitSeries({ ...result(), unitsProduced: [] })).toEqual([])
+        expect(unitLineSeries({ ...result(), unitsProduced: [] })).toEqual([])
     })
 
     it('does not mutate the result', () => {
-        const input = result()
+        const input = lines()
         const before = structuredClone(input)
-        unitSeries(input)
+        unitLineSeries(input)
         expect(input).toEqual(before)
+    })
+})
+
+describe('unitUpgradeDots', () => {
+    const run = (markers: ChartMarker[]): SimulationResult => ({ ...result(), markers })
+
+    it('gives one dot per marker whose unit the run produced, in marker order, two for two upgrades of one line', () => {
+        const dots = unitUpgradeDots(
+            run([
+                { kind: 'unit-tier', label: 'veteran-spearmen', at: 40, unit: 'spearman' },
+                { kind: 'unit-tier', label: 'elite-spearmen', at: 20, unit: 'spearman' },
+            ]),
+        )
+        expect(dots).toEqual([
+            { key: 'spearman', label: 'veteran-spearmen', at: 40 },
+            { key: 'spearman', label: 'elite-spearmen', at: 20 },
+        ])
+    })
+
+    it('drops a marker whose line the run never produced, and markers without a unit including age-ups', () => {
+        const dots = unitUpgradeDots(
+            run([
+                { kind: 'unit-tier', label: 'veteran-longbowmen', at: 10, unit: 'longbowman' },
+                { kind: 'age-up', label: 'Feudal Age', at: 30 },
+                { kind: 'economy', label: 'wheelbarrow', at: 50 },
+            ]),
+        )
+        expect(dots).toEqual([])
+    })
+
+    it('judges each run by its own lines', () => {
+        const marker: ChartMarker = { kind: 'unit-tier', label: 'veteran-longbowmen', at: 10, unit: 'longbowman' }
+        const other: SimulationResult = {
+            ...run([marker]),
+            unitsProduced: [{ unitId: 'longbowman-2', baseId: 'longbowman', name: 'Longbowman', lineName: 'Longbowman', tier: 2, counts: [0, 1, 1] }],
+        }
+        expect(unitUpgradeDots(run([marker]))).toEqual([])
+        expect(unitUpgradeDots(other)).toEqual([{ key: 'longbowman', label: 'veteran-longbowmen', at: 10 }])
+    })
+})
+
+describe('visibleUpgradeDots', () => {
+    const drawn: PinnedSeries = {
+        times: [0, 4, 8],
+        series: [
+            { key: 'spearman', name: 'Spearman', values: [0, 2, 6] },
+            { key: 'archer', name: 'Archer', values: [1, 1, 1] },
+        ],
+    }
+    const whole: TimeWindow = { from: 0, to: 8 }
+    const none = new Set<string>()
+    const dot = (key: string, at: number, label = 'upgrade'): UpgradeDot => ({ key, label, at })
+
+    it('keeps several dots of one line in input order, with the value from valueAt', () => {
+        expect(visibleUpgradeDots([dot('spearman', 6, 'b'), dot('spearman', 4, 'a')], drawn, whole, none)).toEqual([
+            { key: 'spearman', label: 'b', at: 6, value: 4 },
+            { key: 'spearman', label: 'a', at: 4, value: 2 },
+        ])
+    })
+
+    it('keeps two dots at one instant', () => {
+        expect(visibleUpgradeDots([dot('spearman', 4, 'a'), dot('spearman', 4, 'b')], drawn, whole, none).map((d) => [d.label, d.at, d.value])).toEqual([
+            ['a', 4, 2],
+            ['b', 4, 2],
+        ])
+    })
+
+    it('drops a dot whose key the run has no series for, and keeps a line only this run has', () => {
+        const dots = [dot('longbowman', 4), dot('archer', 4)]
+        expect(visibleUpgradeDots(dots, drawn, whole, none).map((d) => d.key)).toEqual(['archer'])
+        expect(visibleUpgradeDots(dots, { times: [0, 8], series: [{ key: 'longbowman', name: 'L', values: [0, 8] }] }, whole, none)).toEqual([
+            { key: 'longbowman', label: 'upgrade', at: 4, value: 4 },
+        ])
+    })
+
+    it('drops a dot of a hidden key and keeps the others', () => {
+        expect(visibleUpgradeDots([dot('spearman', 4), dot('archer', 4)], drawn, whole, new Set(['spearman'])).map((d) => d.key)).toEqual(['archer'])
+    })
+
+    it('keeps dots exactly on the window edges and drops dots just outside', () => {
+        const shown: TimeWindow = { from: 2, to: 6 }
+        const dots = [dot('archer', 1.9, 'before'), dot('archer', 2, 'from'), dot('archer', 6, 'to'), dot('archer', 6.1, 'after')]
+        expect(visibleUpgradeDots(dots, drawn, shown, none).map((d) => d.label)).toEqual(['from', 'to'])
+    })
+
+    it('puts a dot between samples on the interpolated line, not at the previous sample', () => {
+        const [placed] = visibleUpgradeDots([dot('spearman', 6)], drawn, whole, none)
+        expect(placed.value).toBe(4)
+        expect(drawn.series[0].values).not.toContain(4)
     })
 })
 
@@ -124,9 +224,9 @@ describe('gatherRatesSeries', () => {
 describe('unitsProducedSeries', () => {
     const input = result()
 
-    it('plots unitSeries in the units view and buildingSeries in the buildings view', () => {
+    it('plots unitLineSeries in the units view and buildingSeries in the buildings view', () => {
         expect(input.productionBuildings.length).toBeGreaterThan(0)
-        expect(unitsProducedSeries('units', input)).toEqual(unitSeries(input))
+        expect(unitsProducedSeries('units', input)).toEqual(unitLineSeries(input))
         expect(unitsProducedSeries('buildings', input)).toEqual(buildingSeries(input))
         expect(unitsProducedSeries('buildings', input).map((s) => s.key)).toEqual(['barracks'])
     })

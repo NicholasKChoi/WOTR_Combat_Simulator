@@ -111,7 +111,7 @@ A 200 draws four line charts, each with a series legend titled "Series" (one tog
 
 | chart | series keys | series names |
 |---|---|---|
-| Units produced (Units view) | each `unitsProduced` `unitId`, in result order | `<name> (tier <tier>)` |
+| Units produced (Units view) | each `unitsProduced` `baseId`, in order of first appearance (one line per unit line, every tier summed) | the entry's `lineName` |
 | Gather rates (Rate view) | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Gathered resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
