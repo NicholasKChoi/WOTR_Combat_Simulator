@@ -9,6 +9,7 @@ import cn from 'classnames'
 import Layout from '../../components/layout'
 import { BuildInput, type EditorView } from '../../components/apps/aoe4-build-order/build-input'
 import { BuildTextEditor } from '../../components/apps/aoe4-build-order/build-text-editor'
+import { PageHelp } from '../../components/apps/aoe4-build-order/page-help'
 import { IssueList } from '../../components/apps/aoe4-build-order/issue-list'
 import { statusDescribesResults } from '../../components/apps/aoe4-build-order/auto-run-status'
 import { buildAnnotations } from '../../components/apps/aoe4-build-order/step-annotations'
@@ -331,7 +332,10 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                 <title>{pageTitle}</title>
             </Head>
             <section className={cn(utilStyles.headingMd, 'container', workbenchStyles.pageSection)}>
-                <h1>{pageTitle}</h1>
+                <div className={workbenchStyles.headingRow}>
+                    <h1>{pageTitle}</h1>
+                    <PageHelp />
+                </div>
                 <BuildInput
                     runBarRef={runBarRef}
                     entries={entries}
