@@ -37,21 +37,24 @@ export const estimateLabelWidth = (label: string): number => label.length * LABE
 
 // Labels are stacked in rows: a marker takes the first row whose last label ends before this one starts, so
 // markers close in time never share a row. A label that fits on neither side of its line is pinned to the
-// plot's left edge (dx shifts it there) so it never covers the Y-axis ticks.
+// plot's left edge (dx shifts it there) so it never covers the Y-axis ticks. `end` is the plot's span in seconds and
+// `origin` the time at its left edge.
 export function placeMarkers(
     markers: readonly ChartMarker[],
     end: number,
     plotWidth: number,
     labelWidth: (label: string) => number = estimateLabelWidth,
+    origin = 0,
 ): PlacedMarker[] {
     const rowEnds: number[] = []
     return markers.map((marker) => {
+        const at = marker.at - origin
         const width = (labelWidth(markerLabel(marker)) * end) / plotWidth
-        const fitsRight = marker.at + width <= end
-        const pinned = !fitsRight && marker.at - width < 0
+        const fitsRight = at + width <= end
+        const pinned = !fitsRight && at - width < 0
         const side = fitsRight || pinned ? 'left' : 'right'
-        const dx = pinned ? (-marker.at * plotWidth) / end : 0
-        const [from, to] = pinned ? [0, width] : side === 'left' ? [marker.at, marker.at + width] : [marker.at - width, marker.at]
+        const dx = pinned ? (-at * plotWidth) / end : 0
+        const [from, to] = pinned ? [0, width] : side === 'left' ? [at, at + width] : [at - width, at]
         let row = rowEnds.findIndex((rowEnd) => rowEnd < from)
         if (row < 0) row = rowEnds.length
         rowEnds[row] = to

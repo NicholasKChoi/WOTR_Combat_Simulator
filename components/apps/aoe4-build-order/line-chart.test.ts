@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
-import { SeriesChart } from './line-chart'
+import { SeriesChart, bandIn } from './line-chart'
 
 const render = (series: Parameters<typeof SeriesChart>[0]['series'], markers?: ChartMarker[], pinnedMarkers?: ChartMarker[]) =>
     renderToString(
@@ -176,5 +176,24 @@ describe('series legend and label rows', () => {
         expect(render([])).toContain('data-label-rows="0"')
         const html = render([{ key: 'a', name: 'A', values: [1, 2] }], [{ kind: 'age-up', label: 'Feudal', at: 2 }, { kind: 'other', label: 'x', at: 3 }])
         expect(html).toContain('data-label-rows="0"')
+    })
+})
+
+describe('bandIn', () => {
+    const shown = { from: 100, to: 200 }
+    it.each([
+        ['a span inside the window is kept', { from: 120, to: 150 }, { from: 120, to: 150 }],
+        ['a span crossing the start is clipped to it', { from: 50, to: 150 }, { from: 100, to: 150 }],
+        ['a span crossing the end is clipped to it', { from: 150, to: 300 }, { from: 150, to: 200 }],
+        ['a span around the window becomes the window', { from: 0, to: 300 }, { from: 100, to: 200 }],
+        ['a span wholly before the window is absent', { from: 10, to: 90 }, null],
+        ['a span ending at the window start has no width inside it', { from: 50, to: 100 }, null],
+        ['a span starting at the window end has no width inside it', { from: 200, to: 250 }, null],
+        ['a point inside is kept', { from: 150, to: 150 }, { from: 150, to: 150 }],
+        ['a point on the start edge is kept', { from: 100, to: 100 }, { from: 100, to: 100 }],
+        ['a point on the end edge is kept', { from: 200, to: 200 }, { from: 200, to: 200 }],
+        ['a point outside is absent', { from: 201, to: 201 }, null],
+    ])('%s', (_name, band, expected) => {
+        expect(bandIn(band, shown)).toEqual(expected)
     })
 })

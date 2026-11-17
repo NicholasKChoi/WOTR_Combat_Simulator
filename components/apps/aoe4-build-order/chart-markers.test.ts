@@ -106,6 +106,13 @@ describe('placeMarkers', () => {
         const [p] = placeMarkers([marker(100, 'x')], 200, 200, () => 150)
         expect(p).toMatchObject({ side: 'left', dx: -100 })
     })
+
+    it('measures a marker from the origin, so a label pinned over the full game fits unpinned once the origin moves', () => {
+        const [full] = placeMarkers([marker(100, 'x')], 200, 200, () => 150)
+        const [windowed] = placeMarkers([marker(100, 'x')], 200, 200, () => 150, 90)
+        expect(full).toMatchObject({ side: 'left', dx: -100 })
+        expect(windowed).toMatchObject({ side: 'left', dx: 0 })
+    })
 })
 
 describe('marker labelling', () => {
