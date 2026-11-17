@@ -22,61 +22,86 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q126
+next: Q131
 
-## Q123: How should the 3 prebuilt builds be fixed under the literal idle-building rule?
+## Q126: Approve the 12-ticket M11 plan 1/2: engine, builds, docs. Yes: ticket writing starts
+kind: confirmation
+blocks: M11 (AoE4 workbench: readable results charts and clear step waits)
+options: A) Approve: ticket writing starts | B) Change something: ticket writing waits; reply with what to change
+recommendation: A: the plan follows the approved design and covers every exit criterion
+research: reports/M11-plan-approval-research-1.md
+thread: 1572093837915201537
+
+You decide whether this split of the work is right before tickets are written; nothing is built until you say yes. Each ticket is one PR that auto-merges to production once its checks pass.
+- Reorder two prebuilt builds (Knight/Longbow, Council Hall): small, no logic change. Recommend yes.
+- Steps wait for a free building, for units and research: the biggest rule change; shifts timings of existing builds and drops four Castle blacksmith researches from Spear/Longbow. Recommend yes.
+- Add unit-line names and upgrade-marker units to the simulation result: small, new fields only. Recommend yes.
+- Record what a waiting step is waiting for in the result: large engine change, no timing change. Recommend yes.
+- Step annotations name the wait (for example "a free Archery Range 0:23"): small. Recommend yes.
+- Final docs ticket (UI doc, format doc check, architecture notes): small, runs last. Recommend yes.
+
+### Answer
+
+## Q127: Approve the 12-ticket M11 plan 2/2: charts, zoom, help. Yes: ticket writing starts
+kind: confirmation
+blocks: M11 (AoE4 workbench: readable results charts and clear step waits)
+options: A) Approve: ticket writing starts | B) Change something: ticket writing waits; reply with what to change
+recommendation: A: the plan follows the approved design and covers every exit criterion
+research: reports/M11-plan-approval-research-1.md
+thread: 1572093842025349240
+
+You decide whether this split of the work is right before tickets are written; nothing is built until you say yes. Each ticket is one PR that auto-merges to production once its checks pass.
+- Results charts render as one table so rows align when some are collapsed: medium. Recommend yes.
+- One shared marker control that hides and labels marker kinds on every chart: medium. Recommend yes.
+- Zoom math and zoom bar (pan buttons, reset): small, nothing visible until the next ticket. Recommend yes.
+- Drag-select zoom, Shift+drag pan and reset on every chart: large, UI only. Recommend yes.
+- Units chart shows one line per unit line, with upgrade dots (current run filled, pinned run dashed rings): medium. Recommend yes.
+- "How this page works" help modal: medium. Recommend yes.
+
+### Answer
+
+## Q128: Help text for the page: describe features before they ship, or wait?
 kind: decision
 blocks: M11 (AoE4 workbench: readable results charts and clear step waits)
-options: A) Reorder steps in 3 builds, add a blacksmith to Spear/Longbow: all bars kept, one pinned test re-pinned | B) As A but Spear/Longbow drops 4 Castle blacksmith researches: bars kept, build loses upgrades | C) No build edits, lower floors and bars: weaker guarantees
-recommendation: A: keeps every bar and the builds' strength
-research: design/M11.md
-thread: 1572019025955921930
+options: A) Write the help for the page as it is when it lands: later features get added at the end, so it may be briefly incomplete | B) Land the help last: it describes the finished page, but you get no help button until the end
+recommendation: A: nothing shipped ever mentions a missing feature, and help arrives early at the cost of one small follow-up edit
+research: reports/M11-help-timing-research-1.md
+thread: 1572093844290281538
 
-You chose the literal rule: a research waits for a fully idle building. Measured on a prototype, three prebuilt builds then miss their bars, so one of them needs a fix. Planning waits on this.
-- Knight/Longbow (17 knights vs floor 23, farm-idle) and 1TC Council Hall (wood 3021 vs cap 2600, steps 49-55 unstarted, farm-idle) are fixed by reordering research steps only.
-- Spear/Longbow (steps 73-78 unstarted at 20 min) cannot be fixed by reordering alone.
-- Option A edits all three: Spear/Longbow gets a second blacksmith step and its first blacksmith trigger moves 950 s to 900 s. After the edits every floor, cap and bar passes (last Spear/Longbow step starts at 1181.7 s); its pinned gold test is re-pinned.
-- Option B: as A, but Spear/Longbow drops its four Castle-age blacksmith researches instead (passes, last start 1179.1 s, build loses upgrades).
-- Option C: no build edits; lower bars: knight floor 23 to 17, wood cap to at least 3100, two builds exempt from the 20 min all-steps-started and farm-idle bars.
-
-### Answer
-
-## Q124: Approve the M11 design defaults 4/4 (updated): busy-building engine?
-kind: confirmation
-blocks: M11 (AoE4 workbench: readable results charts and clear step waits)
-options: A) Approve: planning starts | B) Change something: reply with what and the design is revised
-recommendation: A: each default took the smaller, reversible choice
-research: design/M11.md
-thread: 1572019029118427166
-
-You decide whether these busy-building engine picks match what you want; planning waits on it. Updated for your literal-idle answer (earlier approval of this item is void).
-- A busy-building wait counts as 'prerequisite' in the API; no new wait value.
-- A produce or research checks the busy building last, after population and resources, and reserves its cost meanwhile.
-- A produce on several buildings starts only when all are free at once.
-- Only the current step holds buildings; reactions hold none and treat held ones as busy.
-- A building is free when nothing is paid in its queue (even if its order waits to pay); this now applies to researches too, so a research chain runs back to back.
-- A research takes the first idle building among its candidates, so a second blacksmith runs a second research at once.
-- The free test is one function in engine-common.ts, avoiding an import cycle.
-- Floors are not lowered silently; build fixes follow your answer to the separate question.
+Only you can weigh an early, partial help button against a late, complete one; the help modal ticket waits on this, and every change goes live to production as soon as it merges.
+- The help text is designed to cover the marker control, the unit-line chart with upgrade dots, zoom/pan/reset, and the new "waiting for ..." wording. Those arrive in separate changes that may merge after the help button does.
+- A) The help button ships early and covers only what is live then. The closing docs change adds the missing sections once those features are live. Visitors never read about a feature that is not there.
+- B) The help button ships after the wait-text, unit-line and zoom changes. Text is complete the first time, but the help button is the last thing to appear.
+- Describing unshipped features is not offered: it would mislead visitors on production.
 
 ### Answer
 
-## Q125: Approve the M11 design defaults 1/4 (updated): unit lines, markers, pinned dots?
+## Q129: While zoomed, should the y axis also count the data just outside the window? A: yes, it may show slightly larger values than visible
+kind: decision
+blocks: M11 (AoE4 workbench: readable results charts and clear step waits)
+options: A) Count the two edge rows: axis may reach a little past what the window shows, lines run cleanly to the edges | B) Only rows inside the window: tighter axis, but lines may be cut off at the edges or the axis jumps as you pan
+recommendation: A: it is the design as written and keeps the axis steady while panning
+research: reports/M11-zoom-yaxis-research-1.md
+thread: 1572093848153366568
+
+You decide this because it is a look-and-feel tradeoff in the zoomed charts; the zoom work waits on it, and the plan picks A if you do not answer.
+- Zoom lines run to both edges of the window by drawing one extra data point just before and just after it.
+- A (recommended): those two extra points also set the vertical scale. Example: wood floating just before a spend can make the top of the axis a bit higher than anything visible in the window.
+- B: only points inside the window set the scale. The axis hugs the visible lines, but a line heading to an off-window value can be clipped at the edge, or the axis can jump as you pan.
+- Either way the effect is small; it also decides what the zoom test checks.
+
+### Answer
+
+## Q130: Close the backlog item "research occupies its building" once the busy-building change merges? Yes: it is removed from the backlog
 kind: confirmation
 blocks: M11 (AoE4 workbench: readable results charts and clear step waits)
-options: A) Approve: planning starts | B) Change something: reply with what and the design is revised
-recommendation: A: pinned dots need no schema change and cost about 60 lines
-research: design/M11.md
-thread: 1572019656451948685
+options: A) Close it when the change merges: the build order then already does what the item asks | B) Keep it open: reply with the remainder you want
+recommendation: A: the change covers the whole item
+research: reports/M11-backlog-research-occupies-research-1.md
+thread: 1572093850674274456
 
-You asked why pinned runs get no upgrade dots. It was only a clutter choice; no schema change is needed, since the page already holds the pinned run's full result. The design now draws them.
-- Upgrades show as a dot on the unit's line, not a vertical line each.
-- The Units chart is one line per unit type (tiers summed); no per-tier view.
-- Line names come from the server: the words the tiers share (Spearman, not Hardened Spearman).
-- The upgrade-to-unit link rides on the marker, not on a catalog sent to the page.
-- NEW: a pinned run also gets upgrade dots: dashed rings on its dashed line, in the pinned colour, no vertical lines. About 60 more lines of work.
-- Hiding a unit line in the legend hides its dots, current and pinned; hiding the upgrade-marker kind does not hide the dots.
-- The marker control keeps hover/focus labelling and adds click to hide a kind.
-- All marker code moves into one module.
+You decide whether the backlog item is done, because the milestone text still lists it as "left for later" and only you know if you want more than the approved design builds. Nothing is blocked; the item just stays listed until you answer.
+- The item asks that a research needs its building and that units queued there pause while it runs. The approved busy-building change does both: a research waits until the building is fully idle, and the building makes no units until it ends.
+- What would remain if kept open: a research cannot queue behind another research or a unit; it waits, so two researches at one building run one after the other. Only worth keeping if you want queueing.
 
 ### Answer
