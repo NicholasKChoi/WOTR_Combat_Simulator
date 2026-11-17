@@ -674,7 +674,9 @@ function houseDemand(engine: Engine): HouseDemand {
       const order = instance.order;
       const entry = order && order.remaining !== 0 ? resolveUnitEntry(order.unit, engine) : undefined;
       if (entry && !defaultVillagersDone(engine, order!)) {
-        populationPerSecond += entry.costs.popcap / productionSeconds(engine, entry, instance.baseId);
+        // Computed even for a held instance: it checks the production time of every unfinished order.
+        const rate = entry.costs.popcap / productionSeconds(engine, entry, instance.baseId);
+        populationPerSecond += engine.held?.instances.has(instance) ? 0 : rate;
       }
     }
   }

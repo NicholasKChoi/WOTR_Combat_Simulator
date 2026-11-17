@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import type { CivRules } from './civ-rules'
+import { constructionSeconds } from './construction'
 import type { GameData } from './data'
 import { instanceFree } from './engine-common'
 import type { BuildStart, BuildStep, ResourceKind, SimulationResult } from './model'
 import { researchHandler } from './research'
 import { stepHandlers } from './simulate'
 import type { BuildingInstance, EngineState, PaidItem, StepStart } from './simulate'
-import { at, countAt, noAutoVillagers, noneNegative, run, startingWith, withHandler } from './test-helpers'
+import { at, countAt, housesDone, noAutoVillagers, noneNegative, run, startingWith, withHandler } from './test-helpers'
 
 const plenty = { food: 5000, wood: 5000, gold: 5000, stone: 0 }
 const houses = ['house', 'house', 'house']
@@ -264,6 +266,60 @@ describe('a target never free by the horizon', () => {
             ['not-reached', 'earlier-step'],
         ])
         expect(result.warnings.filter((w) => w.code === 'step-stuck').map((w) => w.step)).toEqual([1])
+    })
+})
+
+describe('auto-house demand leaves out the orders of held instances', () => {
+    // Barracks 1 and 3 each train one spearman by 2 s, then stay held for the last step until barracks 2 frees at 70 s.
+    // Wood starts at 0, so a house that is due waits for its wood.
+    const game = startingWith(2, ['capital-town-center', 'barracks', 'barracks', 'barracks', 'house', 'house'], { ...plenty, wood: 0 }, (parts) => {
+        parts.snapshot.units.forEach((e) => {
+            e.costs.time = ({ spearman: 2, 'man-at-arms': 70 } as Record<string, number>)[e.baseId] ?? e.costs.time
+            e.costs.wood = e.baseId === 'spearman' ? 0 : e.costs.wood
+        })
+    })
+    const start: BuildStart = { villagers: { sheep: 7, wood: 2 }, rally: 'sheep' }
+    const busy: BuildStep[] = [produce('man-at-arms', { instance: 2, count: 1 }), produce('spearman', { instance: 1 }), produce('spearman', { instance: 3 })]
+    const held: BuildStep[] = [...busy, produce('spearman', { trigger: at(1) })]
+    const houseSeconds = constructionSeconds(game.byBaseId.get('house')![0].costs.time, 1, game)
+    const simulate = (steps: BuildStep[]) => {
+        const { done, rules } = housesDone()
+        const result = run(steps, { game, start, rules, inputs: { durationSeconds: short, walkSeconds: 0, nodeAmounts: { sheep: null } } })
+        return { result, houseStarts: done.map((t) => t - houseSeconds) }
+    }
+    const withHold = simulate(held)
+    // With the held orders counted, the first house starts where the no-hold build starts it.
+    const countingHeld = simulate(busy).houseStarts[0]
+
+    it('holds barracks 1 and 3 through the instant the first house would start if their orders counted', () => {
+        expect(withHold.result.steps[3]).toMatchObject({ armedAt: 1, startedAt: 70, waitBreakdown: { prerequisite: 69 } })
+        expect(countingHeld).toBeGreaterThan(2)
+        expect(countingHeld).toBeLessThan(withHold.result.steps[3].startedAt!)
+        expect([5, 45, 50, 65].map((t) => countAt(withHold.result, 'spearman', t))).toEqual([2, 2, 2, 2])
+    })
+
+    it('starts the first house later, at the held step start, once the new orders count', () => {
+        expect(withHold.houseStarts[0]).toBe(70)
+        expect(withHold.houseStarts[0]).toBe(withHold.result.steps[3].startedAt)
+    })
+
+    it('still counts producers that are not held, so the same build with no hold starts its first house at 48.383 s', () => {
+        expect(countingHeld).toBeCloseTo(48.383333333, 6)
+    })
+
+    it('keeps every floating resource at or above zero and gives the same result twice', () => {
+        noneNegative(withHold.result)
+        expect(simulate(held)).toEqual(withHold)
+    })
+
+    it('checks the production time of a held order while auto houses plan supply', () => {
+        // Barracks 1 pays its man-at-arms at 0 and is held from 10 s, after which the order's time turns invalid.
+        const holdsAt10 = timed(2, ['capital-town-center', 'barracks', 'barracks', ...houses], { 'man-at-arms': 10, spearman: 1000 })
+        const rules: CivRules = { productionModifier: (seconds, ctx) => (ctx.entry.baseId === 'man-at-arms' && ctx.time > 10 ? 0 : seconds) }
+        const steps = [produce('man-at-arms', { instance: 1 }), produce('spearman', { instance: 2, count: 1 }), produce('spearman', { trigger: at(1) })]
+        const runWith = (autoHouses: boolean) => run(steps, { game: holdsAt10, rules, inputs: { durationSeconds: short, autoHouses } })
+        expect(countAt(runWith(false), 'man-at-arms', short)).toBe(1)
+        expect(() => runWith(true)).toThrow(new Error('production time for "man-at-arms" at "barracks" must be a positive finite number, got 0'))
     })
 })
 

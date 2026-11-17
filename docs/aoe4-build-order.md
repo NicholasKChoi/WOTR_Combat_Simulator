@@ -344,7 +344,10 @@ plus the gather time of one house's cost: for each resource of the cost, what th
 resource's current income from the current gatherers, the largest of them. The bank is the real bank, with no
 step reserve taken off it, so the gather time is 0 while the cost is banked. While a resource of the cost is
 short and nobody gathers it, no house is due. The projection adds to the current population the combined
-rate of every producer with an order, in population per second, over the window. When it passes the
+rate of every producer with an order, in population per second, over the window. An instance held for a
+waiting step (Queues) adds nothing, since its order pays nothing while held. Each run reads the hold the
+latest step offer left, so in the instant the held step starts, the runs before the offer that starts it
+still leave the instance out, and the run after production starts counts its new order. When it passes the
 headroom, enough houses are due at once to cover the difference, each with its own `houseBuilders` builders;
 houses run concurrently. The headroom is the supply plus the supply of the buildings under construction that
 finish within the window (one finishing exactly at the window counts), so a long build such as a landmark
