@@ -232,8 +232,11 @@ test.describe('AoE4 marker control', () => {
     await expectLines(page, result.markers.length - labelsOf(result, kind).length)
     expect(await seriesCount()).toBeGreaterThanOrEqual(before)
 
-    await waitForRun(page, () => setDurationInPlace(page, '1200'))
+    const next = (await (await waitForRun(page, () => setDurationInPlace(page, '1500'))).json()) as SimulationResult
+    const nextOfKind = next.markers.filter((m) => m.kind === kind).length
+    expect(nextOfKind, 'the new run still has the hidden kind').toBeGreaterThan(0)
     await expect(item(control, kind)).toHaveAttribute('aria-pressed', 'false')
+    await expectLines(page, next.markers.length - nextOfKind)
   })
 
   test('the active item and a keyboard-focused item look different from the rest', async ({ page }) => {
