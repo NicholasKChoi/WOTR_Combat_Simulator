@@ -1,7 +1,8 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
-import type { SimulationResult } from '../lib/aoe4-build-order/model'
+import type { SimulationResult, StepTiming } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
+import { waitDetailText } from '../lib/aoe4-build-order/wait-detail'
 import { formatBuildOrderText, parseBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { STEP_KINDS, formatStepTime } from '../components/apps/aoe4-build-order/step-annotations'
 import { MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, buildOrderFrom, expectNoRun, holdNextSimulate, openPage, showView, simulateOk, waitForRun } from './helpers'
@@ -528,5 +529,60 @@ test.describe('AoE4 step run cells', () => {
       expect(cell.width).toBe('4px')
       expect(cell.color).toBe(colorOf.get(cell.kind!))
     }
+  })
+})
+
+test.describe('AoE4 step annotations name what the step waited for', () => {
+  const nonZero = (timing: StepTiming) => timing.waitDetails.filter((entry) => entry.seconds > 0)
+  const entriesText = (timing: StepTiming) => nonZero(timing).map((entry) => `${waitDetailText(entry.detail)} ${formatMinSec(entry.seconds)}`)
+  const stillWaitingText = (timing: StepTiming) => [...entriesText(timing), `still waiting for ${waitDetailText(timing.waitingFor!)}`].join(', ')
+
+  async function expectTableAndPopover(page: Page, step: number, timing: StepTiming, expected: string) {
+    await showView(page, 'table')
+    await expect(page.getByTestId('step-run').first()).toBeVisible()
+    await expect(rows(page).nth(step).getByTestId('step-blocked-by')).toHaveText(expected)
+    await showView(page, 'text')
+    const line = page.locator('[data-testid="build-order-line-annotation"][data-status]').nth(step)
+    await line.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
+    await expect(line).toHaveAttribute('data-status', timing.status)
+    await line.hover()
+    await expect(page.getByTestId('build-order-annotation-popover')).toHaveText(`Still waiting. Blocked by: ${expected}`)
+  }
+
+  for (const { name, text, kind, article } of [
+    { name: 'a knight at Dark Age waits for Castle Age', text: ['start 6 sheep -> sheep', 'produce knight from stable x1'].join('\n'), kind: 'age', article: 'Castle Age' },
+    { name: 'a man-at-arms with no barracks waits for a Barracks', text: ['start 6 sheep -> sheep', 'produce man-at-arms from barracks x1'].join('\n'), kind: 'building', article: 'a Barracks' },
+  ]) {
+    test(`${name}: the run cell and the popover read the entries then the tail`, async ({ page, request }) => {
+      const result = await simulateOk<SimulationResult>(request, buildOrderFrom(text), DURATION)
+      const timing = result.steps[0]
+      expect(timing.status).toBe('waiting')
+      expect(timing.waitingFor?.kind).toBe(kind)
+      expect(waitDetailText(timing.waitingFor!)).toBe(article)
+      expect(nonZero(timing).length).toBeGreaterThan(0)
+      const expected = stillWaitingText(timing)
+      expect(expected.endsWith(`still waiting for ${article}`)).toBe(true)
+      expect(expected).not.toBe(`still waiting for ${article}`)
+      await openPage(page)
+      await setText(page, text)
+      await expectTableAndPopover(page, 0, timing, expected)
+    })
+  }
+
+  test('a villager that waits for a busy town center reads a free building and its seconds', async ({ page, request }) => {
+    const text = ['start 6 sheep -> sheep', 'produce scout from capital-town-center x1', 'produce villager from capital-town-center'].join('\n')
+    const result = await simulateOk<SimulationResult>(request, buildOrderFrom(text), DURATION)
+    const timing = result.steps[1]
+    expect(timing.waitBreakdown.prerequisite).toBeGreaterThan(0)
+    const entries = nonZero(timing)
+    expect(entries).toHaveLength(1)
+    const detail = entries[0].detail
+    if (detail.kind !== 'building-busy') throw new Error(`expected a building-busy entry, got ${detail.kind}`)
+    const expected = `a free ${detail.buildings[0].name.replace(/^The /, '')} ${formatMinSec(entries[0].seconds)}`
+    await openPage(page)
+    await setText(page, text)
+    await showView(page, 'table')
+    await expect(page.getByTestId('step-run').first()).toBeVisible()
+    await expect(rows(page).nth(1).getByTestId('step-blocked-by')).toHaveText(expected)
   })
 })

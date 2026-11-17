@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { SimulateResponse } from '../../../lib/aoe4-build-order/api'
-import type { StepTiming } from '../../../lib/aoe4-build-order/model'
+import type { StepTiming, StepWaitDetail, StepWaitEntry } from '../../../lib/aoe4-build-order/model'
 import { parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { annotationsByLine, buildAnnotations, alignSteps, annotationDetailText, finishedText, formatStepTime, formatWaitBreakdown, stepKind, stepSpan, waitedText, type AnnotationInput, type StepAnnotation, type StepKind } from './step-annotations'
+import { annotationsByLine, buildAnnotations, alignSteps, annotationDetailText, finishedText, formatStepTime, stepKind, stepSpan, waitedText, type AnnotationInput, type StepAnnotation, type StepKind } from './step-annotations'
 
 const LANDMARKS = ['kings-palace']
 
@@ -51,13 +51,6 @@ describe('step time formatting', () => {
     it('formats seconds as m:ss and null as an en dash', () => {
         expect(formatStepTime(65)).toBe('1:05')
         expect(formatStepTime(null)).toBe('–')
-    })
-
-    it('joins wait reasons with m:ss durations', () => {
-        expect(formatWaitBreakdown([{ reason: 'resources', seconds: 2 }, { reason: 'villagers', seconds: 75 }])).toBe(
-            'resources 0:02, villagers 1:15'
-        )
-        expect(formatWaitBreakdown([])).toBe('')
     })
 })
 
@@ -181,17 +174,50 @@ describe('StepRun', () => {
         return run
     }
 
-    it.each<[StepTiming['status'], StepTiming['waitingOn'], StepTiming['waitBreakdown'], string, boolean]>([
-        ['completed', null, { villagers: 3 }, 'villagers 0:03', false],
-        ['completed', null, { prerequisite: 4, population: 0, resources: 2, villagers: 3 }, 'resources 0:02, villagers 0:03, prerequisite 0:04', false],
-        ['completed', null, {}, '', false],
-        ['in-progress', null, {}, '', false],
-        ['waiting', 'prerequisite', { resources: 2 }, 'resources 0:02, still waiting on prerequisite', true],
-        ['waiting', 'resources', {}, 'still waiting on resources', true],
-        ['not-reached', 'trigger', {}, 'not reached (trigger)', true],
-    ])('%s waiting on %s reads %j and flagged %s', (status, waitingOn, waitBreakdown, blockedBy, flagged) => {
-        const run = runOf({ status, waitingOn, waitBreakdown })
+    const GOLD: StepWaitDetail = { kind: 'resources', short: { gold: 50 } }
+    const CASTLE: StepWaitDetail = { kind: 'age', age: 3, landmark: null }
+    const BARRACKS: StepWaitDetail = { kind: 'building', buildings: [{ baseId: 'barracks', name: 'Barracks' }], instance: null }
+    const BUSY: StepWaitDetail = { kind: 'building-busy', buildings: [{ baseId: 'archery-range', name: 'Archery Range' }], instance: null, every: false }
+    const entry = (detail: StepWaitDetail, seconds: number): StepWaitEntry => ({ detail, seconds })
+
+    it.each<[string, Partial<StepTiming>, string, boolean]>([
+        ['completed with one entry', { waitDetails: [entry(GOLD, 30)] }, '50 gold 0:30', false],
+        ['completed keeps list order, not reason order', { waitDetails: [entry(CASTLE, 70), entry(GOLD, 30), entry(BUSY, 23)] }, 'Castle Age 1:10, 50 gold 0:30, a free Archery Range 0:23', false],
+        ['completed leaves out zero-second entries', { waitDetails: [entry(GOLD, 0), entry(BUSY, 23)] }, 'a free Archery Range 0:23', false],
+        ['completed with no entry', {}, '', false],
+        ['in-progress with no entry', { status: 'in-progress' }, '', false],
+        ['in-progress with an entry', { status: 'in-progress', waitDetails: [entry(GOLD, 5)] }, '50 gold 0:05', false],
+        ['waiting with entries then waitingFor', { status: 'waiting', waitingOn: 'prerequisite', waitingFor: CASTLE, waitDetails: [entry(GOLD, 2), entry(CASTLE, 1200)] }, '50 gold 0:02, Castle Age 20:00, still waiting for Castle Age', true],
+        ['waiting prints the entry for its own target', { status: 'waiting', waitingOn: 'prerequisite', waitingFor: BARRACKS, waitDetails: [entry(BARRACKS, 1200)] }, 'a Barracks 20:00, still waiting for a Barracks', true],
+        ['waiting with waitingFor and no entry', { status: 'waiting', waitingOn: 'prerequisite', waitingFor: CASTLE }, 'still waiting for Castle Age', true],
+        ['waiting with a zero-second entry and waitingFor', { status: 'waiting', waitingOn: 'prerequisite', waitingFor: CASTLE, waitDetails: [entry(GOLD, 0)] }, 'still waiting for Castle Age', true],
+        ['waiting without waitingFor falls back to waitingOn', { status: 'waiting', waitingOn: 'prerequisite', waitDetails: [entry(GOLD, 2)] }, '50 gold 0:02, still waiting on prerequisite', true],
+        ['waiting without waitingFor and no entry', { status: 'waiting', waitingOn: 'resources' }, 'still waiting on resources', true],
+        ['not-reached ignores waitingFor and entries', { status: 'not-reached', waitingOn: 'trigger', waitingFor: CASTLE, waitDetails: [entry(GOLD, 30)] }, 'not reached (trigger)', true],
+    ])('%s', (_name, overrides, blockedBy, flagged) => {
+        const run = runOf(overrides)
         expect([run.blockedBy, run.flagged]).toEqual([blockedBy, flagged])
+    })
+
+    it('builds waits from the details only, in order, without zero-second entries, and waitingForText from waitingFor', () => {
+        const run = runOf({
+            status: 'waiting',
+            waitingOn: 'prerequisite',
+            waitBreakdown: { resources: 99 },
+            waitingFor: CASTLE,
+            waitDetails: [entry(BUSY, 23), entry(GOLD, 0), entry(CASTLE, 7)],
+        })
+        expect(run.waits).toEqual([
+            { text: 'a free Archery Range', seconds: 23 },
+            { text: 'Castle Age', seconds: 7 },
+        ])
+        expect(run.waitingForText).toBe('Castle Age')
+        expect(run.blockedBy).not.toContain('resources')
+        expect('waitBreakdown' in run).toBe(false)
+    })
+
+    it('reads waitingForText as null when waitingFor is null', () => {
+        expect(runOf({ status: 'waiting', waitingOn: 'resources' }).waitingForText).toBeNull()
     })
 
     it.each([

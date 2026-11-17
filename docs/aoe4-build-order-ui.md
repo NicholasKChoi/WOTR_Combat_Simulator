@@ -99,9 +99,10 @@ Once a result is shown, the table view adds a run cell as the first cell of ever
 (`step-kind-legend`) above the table (the text view shows the same legend above its editor). The cell has a left border in the step's kind colour (age up, research, military,
 villager, building, economy; any other step has a border with no colour and no badge), a kind badge, and, when the step
 lines up with a step of the shown run, its started and finished times (`m:ss`, `ongoing` for a step still under way, an
-en dash for one that never started), the time it waited and what blocked it. The cell labels the three times Started, Finished and Waited; a `waiting` or `not-reached` step has no Waited label and reads `still waiting` in place of a time. A step that waited on
-resources, villagers, population or a prerequisite lists each cause with a non-zero time as `<cause> <m:ss>`, in that order, joined with `, `; a `waiting` step adds
-`still waiting on <cause>`, and a `not-reached` step reads `not reached (<cause>)`. A cell whose step is `waiting` or `not-reached`,
+en dash for one that never started), the time it waited and what blocked it. The cell labels the three times Started, Finished and Waited; a `waiting` or `not-reached` step has no Waited label and reads `still waiting` in place of a time. A step that waited lists each thing it waited for, named
+by what it was (such as `50 gold` or `a free Archery Range`), with a non-zero time as `<what> <m:ss>`, in the order the result records them and joined with `, `; an entry
+with no time is left out. A `waiting` step ends with `still waiting for <what>`, or with `still waiting on <cause>` when the result names no `waitingFor` for it, and
+a `not-reached` step reads `not reached (<cause>)`. The popover's `Blocked by:` part shows the same text. A cell whose step is `waiting` or `not-reached`,
 or waited 60 s or longer, has a warning background. The start row has an empty first cell. Steps line up by their
 canonical text (`formatBuildStep`): the longest common run of identical steps at the top of the build and then at the
 bottom match the shown run's steps, and every step between them has no times. Editing one step leaves the other steps their
