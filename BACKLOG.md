@@ -31,5 +31,4 @@ pull from here; triage moves an item into a milestone or deletes it.
 - **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 (standalone chore) Priority: low - **Bump next 16.4.3 to 16.4.6.** Moderate advisory GHSA-mfr8-8qww-v76h covers next 16.3.0 to 16.4.4; the code uses neither `use cache` nor `unstable_cache`, so it is not reachable. Recommended: standalone chore, Priority: low. (discovery standalone 2026-11-16, standard, discovery/standalone-20261116-1.md)
-- **houseDemand counts a held instance order.** `houseDemand` in `lib/aoe4-build-order/simulate.ts` still counts the order of an instance a waiting step is holding, so auto-houses may be planned slightly early while that lasts; not measured. (standalone chore) Priority: low. Reported by SGS-190 review.
 
