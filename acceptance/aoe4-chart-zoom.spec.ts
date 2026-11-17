@@ -190,10 +190,18 @@ test.describe('AoE4 chart zoom select', () => {
     await setupKnightLongbow(page)
     await caret(page, RATES).click()
     await expect(chart(page, RATES)).toHaveAttribute('data-collapsed', 'true')
-    await page.mouse.move(400, 300)
+    const point = await chart(page, RATES).evaluate((el) => {
+      const rect = el.getBoundingClientRect()
+      const x = rect.left + rect.width * 0.3
+      const y = rect.top + rect.height / 2
+      return { x, y, onChart: document.elementFromPoint(x, y)?.closest('tbody')?.dataset.testid }
+    })
+    expect(point.onChart, 'the press point is on the collapsed chart').toBe(RATES)
+    await page.mouse.move(point.x, point.y)
     await page.mouse.down()
-    await page.mouse.move(700, 300, { steps: 6 })
+    await page.mouse.move(point.x + 300, point.y, { steps: 6 })
     await page.mouse.up()
+    expect(await zoomOf(page, RATES), 'the drag across the collapsed chart zoomed nothing').toBeNull()
     await caret(page, RATES).click()
     await expect(plot(page, RATES)).toBeVisible()
     await expectUnzoomed(page, RATES)
@@ -408,6 +416,29 @@ test.describe('AoE4 chart zoom markers, pinned age-ups and the step band', () =>
     await expect(chart(page, RATES).getByTestId('chart-pinned-legend')).toHaveCount(1)
   })
 
+  for (const viewport of [MIN_SUPPORTED_VIEWPORT, WIDE_VIEWPORT]) {
+    test(`a label near the window's right edge stays inside the plot box at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport)
+      const result = await setupKnightLongbow(page)
+      await select(page, RATES, 0.5, 790 / END)
+      const shown = await zoomed(page, RATES)
+      const near = result.markers.filter((m) => m.kind === 'age-up' && m.at >= shown.from && m.at <= shown.to && shown.to - m.at <= 20)
+      expect(near.length, 'an age-up is inside the window within 20 s of its right edge').toBeGreaterThan(0)
+      await expect(async () => {
+        const { grid, labels } = await chart(page, RATES).evaluate((el) => {
+          const g = el.querySelector('.recharts-cartesian-grid')!.getBoundingClientRect()
+          const texts = [...el.querySelectorAll('svg text.recharts-label')].filter((t) => !t.getAttribute('transform')?.includes('rotate'))
+          return { grid: { left: g.left, right: g.right }, labels: texts.map((t) => ({ text: t.textContent, left: t.getBoundingClientRect().left, right: t.getBoundingClientRect().right })) }
+        })
+        expect(labels.length).toBeGreaterThan(0)
+        for (const label of labels) {
+          expect(label.left, label.text ?? '').toBeGreaterThanOrEqual(grid.left - 1)
+          expect(label.right, label.text ?? '').toBeLessThanOrEqual(grid.right + 1)
+        }
+      }).toPass()
+    })
+  }
+
   test('with every line hidden, the pinned legend shows only while a pinned age-up is inside the window', async ({ page }) => {
     const result = await setupKnightLongbow(page)
     await page.getByTestId('pin-run').click()
@@ -453,6 +484,35 @@ test.describe('AoE4 chart zoom markers, pinned age-ups and the step band', () =>
     await row(outside!.step).hover()
     await expect(bands).toHaveCount(0)
     await expect(chart(page, RATES).getByTestId('chart-step-band')).toHaveCount(1)
+  })
+
+  test('a step band crossing the window start is clipped to the grid with the step own times', async ({ page }) => {
+    const result = await setupKnightLongbow(page)
+    await showView(page, 'table')
+    await expect(chart(page, UNITS)).toBeVisible()
+    const crossing = result.steps.find((s) => s.startedAt !== null && s.completedAt !== null && s.completedAt - s.startedAt >= 40 && s.startedAt >= 200 && s.completedAt <= 900)!
+    expect(crossing, 'the build has a step of 40 s or more between 200 s and 900 s').toBeDefined()
+    const middle = (crossing.startedAt! + crossing.completedAt!) / 2
+    await select(page, UNITS, middle / END, (crossing.completedAt! + 60) / END)
+    const shown = await zoomed(page, UNITS)
+    expect(crossing.startedAt!).toBeLessThan(shown.from)
+    expect(shown.from).toBeLessThan(crossing.completedAt!)
+    expect(crossing.completedAt!).toBeLessThanOrEqual(shown.to)
+
+    const bands = chart(page, UNITS).getByTestId('chart-step-band')
+    await page.getByTestId('step-row').nth(crossing.step).hover()
+    await expect(bands).toHaveCount(1)
+    await expect(bands).toHaveAttribute('data-from', String(crossing.startedAt))
+    await expect(bands).toHaveAttribute('data-to', String(crossing.completedAt))
+    await expect(async () => {
+      const { grid, band } = await chart(page, UNITS).evaluate((el) => {
+        const g = el.querySelector('.recharts-cartesian-grid')!.getBoundingClientRect()
+        const b = el.querySelector('[data-testid="chart-step-band"]')!.getBoundingClientRect()
+        return { grid: { left: g.left, width: g.width }, band: { left: b.left, right: b.right } }
+      })
+      expect(Math.abs(band.left - grid.left)).toBeLessThanOrEqual(1)
+      expect(Math.abs(band.right - (grid.left + ((crossing.completedAt! - shown.from) / (shown.to - shown.from)) * grid.width))).toBeLessThanOrEqual(1.5)
+    }).toPass()
   })
 })
 
@@ -584,9 +644,11 @@ test.describe('AoE4 chart zoom independence and persistence', () => {
     await caret(page, RATES).click()
     await caret(page, RATES).click()
     await stays()
+    const before = () => page.evaluate((id) => document.querySelector(`[data-testid="${id}"]`)!.previousElementSibling?.getAttribute('data-testid') ?? null, RATES)
+    expect(await before(), 'the chart sits after the units chart before the reorder').toBe(UNITS)
     await handle(page, RATES).focus()
     await page.keyboard.press('ArrowDown')
-    await expect.poll(() => page.evaluate((id) => document.querySelector(`[data-testid="${id}"]`)!.previousElementSibling?.getAttribute('data-testid') ?? null, RATES)).not.toBeNull()
+    await expect.poll(before).toBe(GATHERED)
     await stays()
     await chart(page, RATES).locator('[data-testid="chart-view-option"][data-view="villagers"]').click()
     await stays()
