@@ -156,15 +156,17 @@ engine or the build is tuned, and the page shows them for any run.
   English landmark that produces longbowmen); the 2:30 Council Hall builders come from sheep and return to
   sheep; the villager splits the guide lists at each time are approximate, set by rallies rather than moves;
   `horticulture` is added at Feudal for the farms; the guide's Castle tech `fertilization` is kept and
-  reached through an added `the-white-tower`.
+  reached through an added `the-white-tower`; the order of the added blacksmith techs against the
+  farms is chosen so the build keeps its production floors and floating-resource cap.
 
   Added after the guide (from 7:30 on): three more wood-to-farm farms at 450 s; at 600 s an archery range, a
   second barracks, four farms and continuous longbowmen and spearmen from them; at 660 s a blacksmith with
-  `steeled-arrow` and `iron-undermesh`; at 690 s a mining camp at `gold#3` and eight wood gatherers moved
-  there; at 780 s `the-white-tower` (four builders from wood) for Castle, then `fertilization`,
-  `veteran-longbowmen`, `veteran-spearmen`, `bloomery` and `fitted-leatherwork`; at 900 s five farms built
-  from wood (returning to wood) for the sheep gatherers, then the Castle blacksmith techs, `lumber-preservation`,
-  `textiles`, `specialized-pick` and two more wood-to-farm farms. Past the population cap these techs spend part
+  `steeled-arrow`; at 690 s a mining camp at `gold#3` and eight wood gatherers moved there, then
+  `iron-undermesh`; at 780 s `the-white-tower` (four builders from wood) for Castle, then `bloomery` and
+  `fitted-leatherwork`; at 900 s five farms built from wood (returning to wood) for the sheep gatherers, then
+  `fertilization`, `veteran-longbowmen`, `veteran-spearmen` and the Castle blacksmith tech `decarbonization`,
+  then `lumber-preservation`, `textiles`, `specialized-pick` and two more wood-to-farm farms, then the Castle
+  blacksmith techs `insulated-helm`, `balanced-projectiles` and `wedge-rivets`. Past the population cap these techs spend part
   of the economy's income, and the rest floats. The gold reaction `gold` to `gold#2` is the first reaction step;
   `gold#3`, `gold#4` and `gold#5` each move to the next deposit, `gold#5` to wood, and the last reaction moves
   the sheep gatherers to the farms built at 900 s.

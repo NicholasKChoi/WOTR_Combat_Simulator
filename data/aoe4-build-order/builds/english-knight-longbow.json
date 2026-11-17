@@ -217,10 +217,6 @@
       "tech": "steeled-arrow"
     },
     {
-      "action": "research",
-      "tech": "fitted-leatherwork"
-    },
-    {
       "trigger": {
         "kind": "time",
         "seconds": 563
@@ -249,18 +245,14 @@
       "then": "wood"
     },
     {
-      "action": "research",
-      "tech": "bloomery"
-    },
-    {
-      "action": "research",
-      "tech": "iron-undermesh"
-    },
-    {
       "action": "build",
       "building": "stable",
       "from": "wood",
       "then": "wood"
+    },
+    {
+      "action": "research",
+      "tech": "fitted-leatherwork"
     },
     {
       "trigger": {
@@ -307,6 +299,10 @@
       "then": "farm"
     },
     {
+      "action": "research",
+      "tech": "bloomery"
+    },
+    {
       "trigger": {
         "kind": "time",
         "seconds": 720
@@ -326,6 +322,10 @@
       "then": "farm"
     },
     {
+      "action": "research",
+      "tech": "iron-undermesh"
+    },
+    {
       "action": "produce",
       "producer": "stable",
       "unit": "knight"
@@ -337,18 +337,6 @@
     {
       "action": "research",
       "tech": "balanced-projectiles"
-    },
-    {
-      "action": "research",
-      "tech": "wedge-rivets"
-    },
-    {
-      "action": "research",
-      "tech": "decarbonization"
-    },
-    {
-      "action": "research",
-      "tech": "insulated-helm"
     },
     {
       "trigger": {
@@ -377,6 +365,14 @@
       "building": "farm",
       "from": "wood",
       "then": "farm"
+    },
+    {
+      "action": "research",
+      "tech": "wedge-rivets"
+    },
+    {
+      "action": "research",
+      "tech": "decarbonization"
     },
     {
       "trigger": {
@@ -433,6 +429,10 @@
       "building": "farm",
       "from": "wood",
       "then": "farm"
+    },
+    {
+      "action": "research",
+      "tech": "insulated-helm"
     },
     {
       "trigger": {
