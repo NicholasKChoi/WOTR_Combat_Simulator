@@ -96,7 +96,7 @@ test.describe('spec structure', () => {
   })
 
   test('response-side schemas are closed and require every property the type does not mark optional', () => {
-    const optional: Record<string, string[]> = { BuildOrderIssue: ['line', 'step', 'suggestion'], SimulateError: ['omittedIssues'] }
+    const optional: Record<string, string[]> = { BuildOrderIssue: ['line', 'step', 'suggestion'], SimulateError: ['omittedIssues'], ChartMarker: ['unit'] }
     for (const name of RESPONSE_SCHEMAS) {
       const schema = schemas[name]
       expect(schema.additionalProperties, name).toBe(false)
@@ -489,7 +489,7 @@ test.describe('exported types match the spec', () => {
     warnings: true,
     markers: true,
   }
-  const chartMarker: Record<keyof ChartMarker, true> = { kind: true, label: true, at: true }
+  const chartMarker: Record<keyof ChartMarker, true> = { kind: true, label: true, at: true, unit: true }
   const nodeDepletion: Record<keyof NodeDepletion, true> = { node: true, amount: true, depletedAt: true }
   type WarningKeys<C extends SimWarning['code']> = Record<keyof Extract<SimWarning, { code: C }>, true>
   const nodeWarning = { code: true, severity: true, message: true, node: true, at: true, idleVillagers: true } as const
@@ -504,7 +504,7 @@ test.describe('exported types match the spec', () => {
     { code: true, severity: true, message: true, at: true, idleVillagers: true },
     { code: true, severity: true, message: true, step: true, waitingOn: true, at: true },
   ]
-  const unitSeries: Record<keyof UnitSeries, true> = { unitId: true, baseId: true, name: true, tier: true, counts: true }
+  const unitSeries: Record<keyof UnitSeries, true> = { unitId: true, baseId: true, name: true, lineName: true, tier: true, counts: true }
   const buildingSeries: Record<keyof BuildingSeries, true> = { baseId: true, name: true, counts: true }
   const stepTiming: Record<keyof StepTiming, true> = { step: true, status: true, armedAt: true, startedAt: true, completedAt: true, waitSeconds: true, waitingOn: true, waitBreakdown: true }
   const buildOrderIssue: Record<keyof BuildOrderIssue, true> = { code: true, message: true, step: true, line: true, suggestion: true }

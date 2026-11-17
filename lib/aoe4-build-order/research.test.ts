@@ -147,6 +147,27 @@ describe('a unit spawns at the highest researched tier, with the cost and time o
     })
 })
 
+describe('unit series lineName', () => {
+    const game = startingWith(4, ['barracks', 'barracks', ...houses], plenty, (parts) => {
+        entriesOf(parts, 'veteran-spearmen').forEach((e) => {
+            e.costs.time = 50
+        })
+    })
+    const produce = (unit: string, instance: number): BuildStep => ({ action: 'produce', producer: 'barracks', instance, unit, count: 2 })
+    const lineNames = (result: SimulationResult, baseId: string) => result.unitsProduced.filter((u) => u.baseId === baseId).map((u) => u.lineName)
+
+    it('is equal across the tiers of one baseId after a conversion', () => {
+        const result = run([produce('spearman', 2), { action: 'research', tech: 'veteran-spearmen', at: 'barracks' }], { game })
+        expect(result.unitsProduced.map((u) => u.unitId)).toEqual(['spearman-2', 'spearman-3'])
+        expect(lineNames(result, 'spearman')).toEqual(['Spearman', 'Spearman'])
+    })
+
+    it('names the whole line when only the lowest tier was produced', () => {
+        const result = run([produce('man-at-arms', 2)], { game })
+        expect(result.unitsProduced.map((u) => [u.unitId, u.name, u.lineName])).toEqual([['man-at-arms-1', 'Vanguard Man-at-Arms', 'Man-at-Arms']])
+    })
+})
+
 describe('veterancy converts units already spawned', () => {
     // No town center, so spearmen are the only units produced.
     function gameWith(edit: (parts: Parts) => void): GameData {

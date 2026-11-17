@@ -112,6 +112,8 @@ export interface UnitSeries {
   unitId: string;
   baseId: string;
   name: string;
+  // Display name of the whole unit line; equal for every series of one baseId, whichever tiers were produced.
+  lineName: string;
   tier: number;
   counts: number[];
 }
@@ -149,6 +151,8 @@ export interface ChartMarker {
   kind: ChartMarkerKind;
   label: string;
   at: number;
+  // The target unit baseId of a research in the data's upgradeTargets, whatever its kind; absent otherwise and on age-ups.
+  unit?: string;
 }
 
 /** The result of one simulation: series sampled over time, step timings, markers, notes and warnings (Outputs). */

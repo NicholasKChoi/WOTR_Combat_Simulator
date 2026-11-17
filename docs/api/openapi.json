@@ -317,6 +317,7 @@
                           "unitId": "villager-1",
                           "baseId": "villager",
                           "name": "Villager",
+                          "lineName": "Villager",
                           "tier": 1,
                           "counts": [
                             0,
@@ -797,6 +798,7 @@
                           "unitId": "villager-1",
                           "baseId": "villager",
                           "name": "Villager",
+                          "lineName": "Villager",
                           "tier": 1,
                           "counts": [
                             0,
@@ -4535,6 +4537,7 @@
           "unitId",
           "baseId",
           "name",
+          "lineName",
           "tier",
           "counts"
         ],
@@ -4551,6 +4554,10 @@
           "name": {
             "type": "string",
             "description": "Display name of the entry."
+          },
+          "lineName": {
+            "type": "string",
+            "description": "Display name of the whole unit line: the longest run of whole words that ends the name of every tier of the baseId, else the name of its lowest-age entry. Equal for every series of one baseId, whichever tiers the run produced."
           },
           "tier": {
             "type": "integer",
@@ -5076,6 +5083,10 @@
             "type": "number",
             "minimum": 0,
             "description": "Game time in seconds the age was reached or the research completed."
+          },
+          "unit": {
+            "type": "string",
+            "description": "The baseId of the unit line the research upgrades, present when the researched tech is a unit upgrade of the civ data, whatever the marker kind. Absent on age-up markers and on every other research."
           }
         }
       },

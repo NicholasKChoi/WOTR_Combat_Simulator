@@ -16,9 +16,13 @@ export function researchMarkerKind(entry: SnapshotEntry): Exclude<ChartMarkerKin
   return 'other';
 }
 
-/** The chart marker for a research that completes at a time, labeled with its baseId (Outputs). */
-export function researchMarker(entry: SnapshotEntry, at: number): ChartMarker {
-  return { kind: researchMarkerKind(entry), label: entry.baseId, at };
+/** The chart marker for a research that completes at a time, labeled with its baseId, and with the unit it upgrades when given (Outputs). */
+export function researchMarker(entry: SnapshotEntry, at: number, unit?: string): ChartMarker {
+  const marker: ChartMarker = { kind: researchMarkerKind(entry), label: entry.baseId, at };
+  if (unit !== undefined) {
+    marker.unit = unit;
+  }
+  return marker;
 }
 
 /** The age-up chart marker for reaching an age at a time, labeled with the age name (Outputs). */

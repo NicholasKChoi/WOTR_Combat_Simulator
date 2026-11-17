@@ -125,3 +125,41 @@ describe('result markers', () => {
         ])
     })
 })
+
+describe('result marker unit', () => {
+    const upgradeKeys = [...ENGLISH.upgradeTargets.keys()]
+    const lateGame = (parts: Parts) => {
+        const start = parts.civData.startingState
+        start.age.value = 4
+        start.buildings.value = ['capital-town-center', 'barracks', 'stable', 'archery-range', 'blacksmith', 'mill', 'house', 'house', 'house']
+        start.resources.value = { food: 5000, wood: 5000, gold: 5000, stone: 0 }
+    }
+    const researched = (tech: string): ChartMarker => {
+        const result = markersOf([{ action: 'research', tech, trigger: at(0) }], editGameData(lateGame))
+        expect(result.steps[0].status).toBe('completed')
+        return result.markers.find((m) => m.label === tech)!
+    }
+
+    it('sets unit to the target of every upgradeTargets research, whatever its kind', () => {
+        expect(upgradeKeys.length).toBeGreaterThan(5)
+        for (const key of upgradeKeys) {
+            expect(researched(key).unit, key).toBe(ENGLISH.upgradeTargets.get(key)!.value)
+        }
+    })
+
+    it('leaves the unit key absent on a research outside upgradeTargets and on an age-up', () => {
+        expect(ENGLISH.upgradeTargets.has('steeled-arrow')).toBe(false)
+        const other = researched('steeled-arrow')
+        expect(other.label).toBe('steeled-arrow')
+        expect('unit' in other).toBe(false)
+        const ages = markersOf([abbey]).markers.filter((m) => m.kind === 'age-up')
+        expect(ages).toHaveLength(1)
+        expect('unit' in ages[0]).toBe(false)
+    })
+
+    it('sets unit on a marker only when given one', () => {
+        const entry = entryOf('veteran-spearmen')
+        expect(researchMarker(entry, 5, 'spearman')).toEqual({ kind: 'unit-tier', label: 'veteran-spearmen', at: 5, unit: 'spearman' })
+        expect('unit' in researchMarker(entry, 5)).toBe(false)
+    })
+})

@@ -24,7 +24,7 @@ function researchItem(entry: SnapshotEntry, index: number): PaidItem {
       state.researchedIds.add(entry.id);
       convertUnits(state, entry);
       state.researched.add(entry.baseId);
-      state.markers.push(researchMarker(entry, state.time));
+      state.markers.push(researchMarker(entry, state.time, state.data.upgradeTargets.get(entry.baseId)?.value));
       markCompleted(state, index);
     },
   };

@@ -357,12 +357,16 @@ A `SimulationResult` holds:
   `durationSeconds`. When `durationSeconds` is not a multiple of `s`, the last sample is `durationSeconds`
   itself, after the last multiple below it. Every series below has one value per sample. The t=0 sample
   reflects the state after the zero-time steps at t=0 have started.
-- `unitsProduced`: one `UnitSeries` per unit entry and tier (`unitId`, `baseId`, `name`, `tier`, the
+- `unitsProduced`: one `UnitSeries` per unit entry and tier (`unitId`, `baseId`, `name`, `lineName`, `tier`, the
   entry's age) that held a produced unit at some instant, ordered by the first instant it held one, then
   `unitId`. `counts` are the produced units at that tier at each sample: a veterancy upgrade moves units to
   a higher tier's series, and a series whose units all moved stays listed at 0. The series of one `baseId`
   sum to its cumulative produced units. Starting units are not produced and never appear in it, so every
-  series starts at 0.
+  series starts at 0. `lineName` is the display name of the whole unit line, equal for every series of one
+  `baseId` whichever tiers the run produced: the longest run of whole words (split on single spaces) that
+  ends the name of every tier of that `baseId`, else the name of its lowest-age entry (`Spearman` for
+  `Hardened Spearman`, `Veteran Spearman`; `Man-at-Arms` for `Vanguard Man-at-Arms`, `Early Man-at-Arms`, `Man-at-Arms`,
+  `Elite Man-at-Arms`).
 - `productionBuildings`: one `BuildingSeries` (`baseId`, `name`, `counts`) per production building. A building
   `baseId` is a production building when some unit entry of the civ's data lists it in `producedBy`; the
   set comes from the data only, so `house` is not one and the starting `capital-town-center` and a built
@@ -395,12 +399,14 @@ A `SimulationResult` holds:
   `waitSeconds` for a started step and to the time from `armedAt` to the horizon for a `waiting` one, and a
   reason with 0 seconds is absent.
 - `ages`: each age reached and its `reachedAt` time.
-- `markers`: `ChartMarker`s (`kind`, `label`, `at`) for the charts: one `age-up` marker per age reached after
+- `markers`: `ChartMarker`s (`kind`, `label`, `at`, and `unit` when set) for the charts: one `age-up` marker per age reached after
   the start age (label `Feudal`, `Castle` or `Imperial`, `at` its `reachedAt`) and one per completed research
   (label the tech's `baseId`, `at` the step's `completedAt`). `age-up` comes only from a landmark; a research
   marker's `kind` is the first match of: `economy` (class `economic_upgrade`), `unit-tier` (a veterancy
   upgrade: type `upgrade` or class `scar_unit_upgrade`), `blacksmith` (produced at the blacksmith), else
-  `other`. Markers are sorted by `at`,
+  `other`. `unit` is the `baseId` of the unit line a research upgrades, set whenever the researched tech is a
+  unit upgrade of the civ data (whatever its `kind`); it is absent on `age-up` markers and on every other
+  research. Markers are sorted by `at`,
   then by kind in the order `age-up`, `economy`, `unit-tier`, `blacksmith`, `other`, then by `label`; markers at
   the same instant are all kept. There is no marker for the start age or for work that has not completed by
   the horizon, and markers do not affect the simulation.

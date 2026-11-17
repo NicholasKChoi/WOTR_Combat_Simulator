@@ -18,6 +18,7 @@ import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model
 import { productionBuildingSeries } from './production-buildings';
 import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
+import { unitLineName } from './unit-lines';
 
 /** Seconds between the samples of the result series: output resolution, not a game number (Outputs). */
 export const SAMPLE_SECONDS = 5;
@@ -982,6 +983,7 @@ function unitSeries(engine: Engine, times: number[]): UnitSeries[] {
     unitId: entry.id,
     baseId: entry.baseId,
     name: entry.name,
+    lineName: unitLineName((engine.data.byBaseId.get(entry.baseId) ?? []).filter((e) => e.type === 'unit')),
     tier: entry.age,
     counts: times.map((t) => changes.reduce((sum, change) => (change.time <= t ? sum + change.delta : sum), 0)),
   }));
