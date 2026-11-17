@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
 import { CHART_LAYOUT_STORAGE_KEY, type ChartId } from '../components/apps/aoe4-build-order/chart-layout'
-import { CHART_IDS, SPLIT_VIEWPORT, openPage, showView } from './helpers'
+import { markerLabel } from '../components/apps/aoe4-build-order/chart-rows'
+import type { SimulationResult } from '../lib/aoe4-build-order/model'
+import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, openPage, showView, waitForRun } from './helpers'
 
 const [UNITS, RATES, GATHERED, FLOATING] = CHART_IDS
 const DEFAULT_ORDER: readonly string[] = CHART_IDS
@@ -13,7 +15,7 @@ const stored = (page: Page) => page.evaluate((key) => localStorage.getItem(key),
 // One evaluate so a redraw cannot land between reads.
 const readLayout = (page: Page) =>
   page.evaluate(() => {
-    const charts = [...document.querySelectorAll('[data-testid="results-last-good"] > [data-collapsed]')]
+    const charts = [...document.querySelectorAll('[data-testid="chart-table"] > tbody[data-collapsed]')]
     return {
       order: charts.map((el) => el.getAttribute('data-testid')),
       collapsed: charts.filter((el) => el.getAttribute('data-collapsed') === 'true').map((el) => el.getAttribute('data-testid')),
@@ -256,6 +258,60 @@ test.describe('AoE4 chart collapse and reorder', () => {
   })
 })
 
+test.describe('AoE4 chart table alignment', () => {
+  for (const [name, viewport] of [
+    ['minimum supported', MIN_SUPPORTED_VIEWPORT],
+    ['wide', WIDE_VIEWPORT],
+  ] as const) {
+    test(`at the ${name} viewport every chart header shares four column positions and nothing overflows sideways`, async ({ page }) => {
+      await page.setViewportSize(viewport)
+      await openResults(page)
+      await control(page, RATES, 'chart-collapse').click()
+      await control(page, FLOATING, 'chart-collapse').click()
+      await expectLayout(page, DEFAULT_ORDER, [RATES, FLOATING])
+
+      const read = () =>
+        page.evaluate(() => {
+          const table = document.querySelector('[data-testid="chart-table"]')!
+          const groups = [...table.querySelectorAll(':scope > tbody')]
+          const headers = groups.map((group) => {
+            const header = group.querySelector('[data-testid="chart-header-row"]')!
+            const cells = [...header.children] as HTMLElement[]
+            return {
+              id: group.getAttribute('data-testid'),
+              lefts: cells.map((cell) => cell.getBoundingClientRect().left),
+              cells: cells.length,
+              overflow: cells.filter((cell) => cell.scrollWidth > cell.clientWidth).length,
+              collapsed: group.getAttribute('data-collapsed') === 'true',
+              groupHeight: group.getBoundingClientRect().height,
+              headerHeight: header.getBoundingClientRect().height,
+            }
+          })
+          const column = document.querySelector('[data-testid="results-column"]')!
+          return {
+            headers,
+            tableScroll: table.scrollWidth - table.clientWidth,
+            columnScroll: column.scrollWidth - column.clientWidth,
+            pageScroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          }
+        })
+
+      await expect.poll(async () => {
+        const { headers, tableScroll, columnScroll, pageScroll } = await read()
+        const [first, ...rest] = headers
+        return {
+          count: headers.length,
+          cells: headers.map((h) => h.cells),
+          aligned: rest.every((h) => h.lefts.every((left, i) => Math.abs(left - first.lefts[i]) <= 1)),
+          overflowing: headers.map((h) => h.overflow),
+          collapsedHeightsMatch: headers.filter((h) => h.collapsed).every((h) => Math.abs(h.groupHeight - h.headerHeight) <= 1),
+          scrolls: [tableScroll, columnScroll, pageScroll].map((extra) => extra <= 0),
+        }
+      }).toEqual({ count: 4, cells: [4, 4, 4, 4], aligned: true, overflowing: [0, 0, 0, 0], collapsedHeightsMatch: true, scrolls: [true, true, true] })
+    })
+  }
+})
+
 test.describe('AoE4 chart drag reorder', () => {
   test.use({ viewport: { width: 1280, height: 2800 } })
 
@@ -263,7 +319,7 @@ test.describe('AoE4 chart drag reorder', () => {
   const sectionBoxes = (page: Page) =>
     page.evaluate(() =>
       Object.fromEntries(
-        [...document.querySelectorAll('[data-testid="results-last-good"] > [data-collapsed]')].map((el) => {
+        [...document.querySelectorAll('[data-testid="chart-table"] > tbody[data-collapsed]')].map((el) => {
           const rect = el.getBoundingClientRect()
           return [el.getAttribute('data-testid'), { top: rect.top, bottom: rect.bottom }]
         }),
@@ -360,6 +416,43 @@ test.describe('AoE4 chart drag reorder', () => {
     expect(await stored(page)).toBeNull()
   })
 
+  test('while dragging, the moved group is at 60% opacity once: the tbody carries it and its rows read 1', async ({ page }) => {
+    await openResults(page)
+    const opacities = () =>
+      page.evaluate((id) => {
+        const group = document.querySelector(`[data-testid="${id}"]`)!
+        const opacity = (el: Element) => Number(getComputedStyle(el).opacity)
+        return { group: opacity(group), rows: [...group.querySelectorAll(':scope > tr')].map(opacity) }
+      }, UNITS)
+    await expect.poll(opacities).toEqual({ group: 1, rows: [1, 1] })
+    await startDrag(page, UNITS, GATHERED)
+    await expect(chart(page, UNITS)).toHaveAttribute('data-dragging', 'true')
+    await expect.poll(opacities).toEqual({ group: 0.6, rows: [1, 1] })
+    await page.mouse.up()
+    await expect.poll(opacities).toEqual({ group: 1, rows: [1, 1] })
+  })
+
+  test('the drop position follows the whole row group midpoint, not the header row midpoint', async ({ page }) => {
+    await openResults(page)
+    const boxes = await page.evaluate(() => {
+      const rect = (id: string) => {
+        const group = document.querySelector(`[data-testid="${id}"]`)!
+        const header = group.querySelector('[data-testid="chart-header-row"]')!.getBoundingClientRect()
+        const whole = group.getBoundingClientRect()
+        return { headerMid: header.top + header.height / 2, groupMid: whole.top + whole.height / 2 }
+      }
+      return rect('chart-gather-rates')
+    })
+    expect(boxes.groupMid - boxes.headerMid).toBeGreaterThan(100)
+    const handle = await control(page, UNITS, 'chart-drag-handle').boundingBox()
+    const x = handle!.x + handle!.width / 2
+    await page.mouse.move(x, handle!.y + handle!.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(x, (boxes.headerMid + boxes.groupMid) / 2, { steps: 10 })
+    await page.mouse.up()
+    await expectLayout(page, DEFAULT_ORDER)
+  })
+
   test('a collapsed chart drags like an expanded one', async ({ page }) => {
     await openResults(page)
     await control(page, UNITS, 'chart-collapse').click()
@@ -368,6 +461,52 @@ test.describe('AoE4 chart drag reorder', () => {
     await expect(chart(page, UNITS)).toHaveAttribute('data-dragging', 'true')
     await page.mouse.up()
     await expectLayout(page, [RATES, GATHERED, UNITS, FLOATING], [UNITS])
+  })
+})
+
+test.describe('AoE4 chart marker labels after collapse', () => {
+  test.use({ viewport: { width: 1280, height: 2800 } })
+
+  const ABBEY_LINE = 'at 9 vils build abbey-of-kings with 3 from sheep then sheep'
+
+  const labelPlacements = (page: Page, text: string) =>
+    page.evaluate(
+      ({ ids, text }) =>
+        Object.fromEntries(
+          ids.map((id) => {
+            const chartEl = document.querySelector(`[data-testid="${id}"]`)!
+            const label = [...chartEl.querySelectorAll('text.recharts-label')].find((el) => el.textContent === text)
+            const plotRight = chartEl.querySelector('.recharts-cartesian-grid')?.getBoundingClientRect().right
+            if (!label || plotRight === undefined) return [id, null]
+            return [id, { anchor: label.getAttribute('text-anchor'), fits: label.getBoundingClientRect().right <= plotRight + 0.5 }]
+          }),
+        ),
+      { ids: [GATHERED, FLOATING], text },
+    )
+
+  test('a chart whose markers change while collapsed places its labels like an always-expanded chart once expanded', async ({ page }) => {
+    await openResults(page)
+    await control(page, GATHERED, 'chart-collapse').click()
+    await expectLayout(page, DEFAULT_ORDER, [GATHERED])
+
+    const text = await page.getByTestId('build-order-text').inputValue()
+    expect(text).toContain(ABBEY_LINE)
+    const response = await waitForRun(page, () =>
+      page.getByTestId('build-order-text').fill(text.replace(ABBEY_LINE, '@6:00 build abbey-of-kings with 3 from sheep then sheep')),
+    )
+    const result = (await response.json()) as SimulationResult
+    const feudal = result.markers.find((m) => m.kind === 'age-up' && m.label.startsWith('Feudal'))
+    expect(feudal, 'the run reaches Feudal').toBeDefined()
+    await waitForRun(page, () => page.getByTestId('duration-seconds').fill(String(Math.ceil(feudal!.at) + 12)))
+
+    const feudalLabel = markerLabel(feudal!)
+    await expect.poll(async () => (await labelPlacements(page, feudalLabel))[FLOATING]).toEqual({ anchor: 'end', fits: true })
+
+    await control(page, GATHERED, 'chart-collapse').click()
+    await expect(chart(page, GATHERED).getByTestId('chart-body')).toBeVisible()
+    await expect
+      .poll(() => labelPlacements(page, feudalLabel))
+      .toEqual({ [GATHERED]: { anchor: 'end', fits: true }, [FLOATING]: { anchor: 'end', fits: true } })
   })
 })
 

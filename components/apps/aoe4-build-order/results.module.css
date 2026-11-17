@@ -6,8 +6,23 @@
     min-width: 30rem;
 }
 
-.chart {
-    min-width: 0;
+.chartTable {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+.handleColumn,
+.caretColumn {
+    width: 3rem;
+}
+
+.controlsColumn {
+    width: 11rem;
+}
+
+.chartBodyCell {
+    padding: 0;
 }
 
 .legend {
@@ -19,7 +34,7 @@
     overflow-wrap: anywhere;
 }
 
-.chart[data-dragging='true'] {
+.chartGroup[data-dragging='true'] {
     opacity: 0.6;
 }
 

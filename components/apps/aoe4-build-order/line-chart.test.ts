@@ -60,6 +60,17 @@ describe('chart controls', () => {
         )
     const button = (html: string, id: string) => html.match(new RegExp(`<button[^>]*data-testid="${id}"[^>]*>`))?.[0] ?? ''
 
+    it('renders a tbody root with a header row, then one body row whose single cell spans four columns', () => {
+        const html = renderWith({})
+        expect(html).toMatch(/^<tbody[^>]*data-testid="chart-x"/)
+        expect(html).toMatch(/<\/tbody>$/)
+        const rows = [...html.matchAll(/<tr[^>]*data-testid="([^"]+)"[^>]*>/g)].map((m) => m[1])
+        expect(rows).toEqual(['chart-header-row', 'chart-body-row'])
+        const bodyRow = html.slice(html.indexOf('data-testid="chart-body-row"'))
+        expect([...bodyRow.matchAll(/<td[^>]*>/g)].map((m) => m[0])).toEqual([expect.stringContaining('colSpan="4"')])
+        expect(html).toMatch(/<th scope="rowgroup"[^>]*><h3[^>]*>Gather rates<\/h3><\/th>/)
+    })
+
     it('has no handle and no caret without layout', () => {
         const html = renderWith()
         for (const id of ['chart-drag-handle', 'chart-collapse']) expect(html).not.toContain(id)
@@ -70,6 +81,7 @@ describe('chart controls', () => {
         const controlsId = button(html, 'chart-collapse').match(/aria-controls="([^"]+)"/)?.[1]
         expect(button(html, 'chart-collapse')).toContain('aria-expanded="false"')
         expect(html).toContain('data-collapsed="true"')
+        expect(html).toMatch(/<tr[^>]*data-testid="chart-body-row"[^>]*hidden/)
         expect(html).toMatch(new RegExp(`<div(?=[^>]*data-testid="chart-body")(?=[^>]*id="${controlsId}")(?=[^>]*hidden)[^>]*></div>`))
         expect(html).not.toContain('chart-series-legend')
         expect(html).toContain('extra-control')
@@ -80,6 +92,7 @@ describe('chart controls', () => {
         const controlsId = button(html, 'chart-collapse').match(/aria-controls="([^"]+)"/)?.[1]
         expect(button(html, 'chart-collapse')).toContain('aria-expanded="true"')
         expect(html).toContain('data-collapsed="false"')
+        expect(html).toMatch(/<tr(?![^>]*hidden)[^>]*data-testid="chart-body-row"/)
         expect(html).toMatch(new RegExp(`<div(?=[^>]*data-testid="chart-body")(?=[^>]*id="${controlsId}")(?![^>]*hidden)[^>]*>`))
         expect(html).toContain('chart-series-legend')
         expect(html).toContain('extra-control')

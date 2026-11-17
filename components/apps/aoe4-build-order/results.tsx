@@ -12,6 +12,7 @@ import type { ChartLayoutControls } from './use-chart-layout'
 import { ChartViewToggle, type ChartView, type GatherRatesView, type UnitsProducedView } from './chart-view-toggle'
 import { gatherRatesSeries, resourceSeries, unitSeries, unitsProducedSeries } from './result-series'
 import styles from './workbench.module.css'
+import resultStyles from './results.module.css'
 
 const GATHER_RATES_VIEWS: readonly ChartView<GatherRatesView>[] = [
     { value: 'rate', label: 'Rate' },
@@ -91,34 +92,42 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
             <p data-testid="chart-order-status" role="status" className="visually-hidden">
                 {orderStatus}
             </p>
-            {layout.order.map((id) => {
-                const chart = charts[id]
-                return (
-                    <SeriesChart
-                        key={id}
-                        testId={id}
-                        title={chart.title}
-                        yLabel={chart.yLabel}
-                        times={result.times}
-                        highlight={highlight}
-                        markers={result.markers}
-                        series={chart.series(result)}
-                        pinnedMarkers={pinned?.markers}
-                        pinned={pinned ? { times: pinned.times, series: chart.series(pinned) } : undefined}
-                        headerControls={chart.headerControls}
-                        offsetLines={id === 'chart-units-produced' && unitsProducedView === 'buildings'}
-                        sectionRef={drag.sectionRef(id)}
-                        layout={{
-                            collapsed: layout.collapsed.includes(id),
-                            dragging: drag.dragging === id,
-                            reorderHelpId,
-                            onToggle: () => toggle(id),
-                            onMoveKey: (direction) => moveByKey(id, direction),
-                            onHandlePointerDown: (event) => drag.start(id, event),
-                        }}
-                    />
-                )
-            })}
+            <table data-testid="chart-table" aria-label="Results charts" className={resultStyles.chartTable}>
+                <colgroup>
+                    <col className={resultStyles.handleColumn} />
+                    <col />
+                    <col className={resultStyles.caretColumn} />
+                    <col className={resultStyles.controlsColumn} />
+                </colgroup>
+                {layout.order.map((id) => {
+                    const chart = charts[id]
+                    return (
+                        <SeriesChart
+                            key={id}
+                            testId={id}
+                            title={chart.title}
+                            yLabel={chart.yLabel}
+                            times={result.times}
+                            highlight={highlight}
+                            markers={result.markers}
+                            series={chart.series(result)}
+                            pinnedMarkers={pinned?.markers}
+                            pinned={pinned ? { times: pinned.times, series: chart.series(pinned) } : undefined}
+                            headerControls={chart.headerControls}
+                            offsetLines={id === 'chart-units-produced' && unitsProducedView === 'buildings'}
+                            sectionRef={drag.sectionRef(id)}
+                            layout={{
+                                collapsed: layout.collapsed.includes(id),
+                                dragging: drag.dragging === id,
+                                reorderHelpId,
+                                onToggle: () => toggle(id),
+                                onMoveKey: (direction) => moveByKey(id, direction),
+                                onHandlePointerDown: (event) => drag.start(id, event),
+                            }}
+                        />
+                    )
+                })}
+            </table>
         </div>
     )
 }
