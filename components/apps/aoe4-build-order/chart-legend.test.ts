@@ -2,8 +2,8 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ChartMarker, ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
-import type { PinnedSeries } from './chart-rows'
-import { MarkerControl, pinnedLegendShown } from './chart-legend'
+import type { ChartSeries, PinnedSeries } from './chart-rows'
+import { MarkerControl, SeriesLegend, pinnedLegendShown } from './chart-legend'
 
 const pinnedOf = (...keys: string[]): PinnedSeries => ({ times: [0, 5], series: keys.map((key) => ({ key, name: key, values: [1, 2] })) })
 
@@ -66,5 +66,41 @@ describe('MarkerControl markup', () => {
     it('marks only the item whose kind is active', () => {
         expect(items(html([], 'economy')).filter((i) => i.active).map((i) => i.kind)).toEqual(['economy'])
         expect(html([], null)).not.toContain('data-active')
+    })
+})
+
+describe('SeriesLegend markup', () => {
+    const series: ChartSeries[] = [
+        { key: 'a', name: 'A', values: [1, 2] },
+        { key: 'b', name: 'B', values: [1, 2] },
+    ]
+    const pinned = pinnedOf('p')
+    const html = (hidden: string[]) => renderToStaticMarkup(createElement(SeriesLegend, { series, pinned, hidden: new Set(hidden), onToggle: () => {} }))
+    const items = (markup: string) =>
+        [...markup.matchAll(/<button[^>]*data-testid="chart-series-legend-item"[^>]*>/g)].map((m) => ({
+            key: m[0].match(/data-series="([^"]+)"/)?.[1],
+            pressed: m[0].match(/aria-pressed="([^"]+)"/)?.[1],
+            style: m[0].match(/style="([^"]*)"/)?.[1],
+        }))
+
+    it('is pressed and full opacity while shown, not pressed and at 50% opacity while hidden, including a pinned-only series', () => {
+        expect(items(html([]))).toEqual([
+            { key: 'a', pressed: 'true', style: undefined },
+            { key: 'b', pressed: 'true', style: undefined },
+            { key: 'p', pressed: 'true', style: undefined },
+        ])
+        expect(items(html(['b', 'p']))).toEqual([
+            { key: 'a', pressed: 'true', style: undefined },
+            { key: 'b', pressed: 'false', style: 'opacity:0.5' },
+            { key: 'p', pressed: 'false', style: 'opacity:0.5' },
+        ])
+    })
+
+    it('reads the same pressed value as the marker control for a shown and a hidden entry', () => {
+        const markers: ChartMarker[] = [{ kind: 'economy', label: 'Wheelbarrow', at: 3 }]
+        const markerPressed = (hidden: ChartMarkerKind[]) =>
+            renderToStaticMarkup(createElement(MarkerControl, { markers, hidden: new Set(hidden), active: null, onToggle: () => {}, onHover: () => {}, onFocusKind: () => {} })).match(/aria-pressed="([^"]+)"/)?.[1]
+        expect(items(html([]))[0].pressed).toBe(markerPressed([]))
+        expect(items(html(['a']))[0].pressed).toBe(markerPressed(['economy']))
     })
 })

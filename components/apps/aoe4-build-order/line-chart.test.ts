@@ -169,7 +169,7 @@ describe('series legend and label rows', () => {
 
     it('renders one pressed-state button per series with its key', () => {
         const html = render([{ key: 'a', name: 'A', values: [1, 2] }, { key: 'b', name: 'B', values: [1, 2] }])
-        expect([...html.matchAll(/data-series="([^"]+)" aria-pressed="false"/g)].map((m) => m[1])).toEqual(['a', 'b'])
+        expect([...html.matchAll(/data-series="([^"]+)" aria-pressed="true"/g)].map((m) => m[1])).toEqual(['a', 'b'])
     })
 
     it('renders the label-row count, 0 without markers and 0 on the server with markers', () => {
