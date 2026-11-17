@@ -72,8 +72,6 @@ describe('ChartHeaderRow', () => {
         expect([handle.inner, caret.inner]).toEqual(['', ''])
         expect(title.inner).toContain('Gather rates')
         expect(controls.inner).toContain('extra-control')
-        expect(html).toContain('Gather rates')
-        expect(html).toContain('extra-control')
         expect(html).not.toContain('chart-drag-handle')
         expect(html).not.toContain('chart-collapse')
     })
