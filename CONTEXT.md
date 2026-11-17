@@ -25,6 +25,7 @@ this list only names the surfaces.
 - Routes: `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`, `/apps/aoe4-build-order`.
 - AoE4 build library list merges (SGS-124, beside design/M8.md C6): `withMyBuilds(list, mine)` and `withLoadedEntry(list, entry)` in `components/apps/aoe4-build-order/build-library.ts`; acceptance helper `acceptBeforeUnload(page)` in `acceptance/helpers.ts`.
 - AoE4 chart view selection (SGS-137, design/M9.md C7): `gatherRatesSeries(view, run)` and `unitsProducedSeries(view, run)` in `components/apps/aoe4-build-order/result-series.ts`.
+- AoE4 Units chart upgrade dots (SGS-198, beside design/M11.md C13, C16): `visibleUpgradeDots(dots, run, shown, hidden)` in `components/apps/aoe4-build-order/result-series.ts`, the rule for which upgrade dots a chart draws and at what value.
 
 ## Design docs
 

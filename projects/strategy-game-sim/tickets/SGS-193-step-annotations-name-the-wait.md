@@ -73,3 +73,13 @@ none
 - Underspecified: whether a `waiting` step prints the entry for the target it still waits for; the design acceptance sentence and the B-W10 table disagreed.
 - Changed: owner chose option (a) (Q133): the table stands, no entry is omitted; Scope, the `waiting` and acceptance criteria and the Castle Age and Barracks cases now assert the full text (entries, then the tail); the open question is deleted.
 - No branch work exists yet; nothing to keep or discard.
+
+## Rework 1 - 2026-11-17 (review)
+
+Findings (reports/SGS-193-review-5.md; review passed tip cd3add99 otherwise):
+- `acceptance/aoe4-step-annotations.spec.ts:582-585`, `:541-542`, `:566-567`: new tests repeat the steps of the file's `openTable(page, text)` helper (`:27-32`) instead of calling it.
+
+Required fixes:
+- [ ] Busy test: replace lines 582-585 with `await openTable(page, text)`.
+- [ ] Loop test: replace `openPage` + `setText` with `await openTable(page, text)`; delete the `showView(page, 'table')` and step-run visibility lines at the top of `expectTableAndPopover`.
+- [ ] No assertion changes.

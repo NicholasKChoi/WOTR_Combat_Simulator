@@ -29,6 +29,7 @@ kind: handoff
 blocks: none
 options: A) Done | B) Not now
 recommendation: B: nothing waits on it
+thread: 1572328649590439966
 
 Two optional state migrations (007 upgrade-auto, 008 rescan-issues) are pending; the factory runs fine without them.
 - Run /code-factory:upgrade in a Claude Code session in the code repo (not blocking anything).

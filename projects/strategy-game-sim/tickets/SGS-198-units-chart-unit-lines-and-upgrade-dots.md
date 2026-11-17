@@ -70,3 +70,12 @@ none
 - Underspecified: the dot rules (per-run stale key, hidden line, window, same-instant duplicates, overlap order) were to be proven by a `SeriesChart` server-render test, which cannot see recharts SVG; no function owned the stale-key rule; the docs row was deferred to SGS-200; the `<title>` placement and z-layer behaviour of `ReferenceDot` were misstated.
 - Changed: new pure `visibleUpgradeDots` in `result-series.ts` owns every draw rule and is unit-tested; B-U9 overlap and titles move to the acceptance spec; this ticket now rewrites the "Units produced (Units view)" docs row; legend-name criterion de-duplicates per `baseId`; Unverified assumptions corrected; `ifOverflow` left to the implementer; On merge adds the new Key surface.
 - Branch work: none exists yet (Depends-on tickets not integrated).
+
+## Rework 1 - 2026-11-17 (review)
+
+Findings (reports/SGS-198-review-4.md; review passed tip 55c83d7 otherwise):
+- `components/apps/aoe4-build-order/result-series.test.ts:36-50`: the `unitLineSeries` order test cannot fail if lines are sorted by key or tier (fixture longbowman-2, spearman-2, longbowman-3; first-appearance = alphabetical = tier order). B-U1 requires it to fail for both.
+- Ticket assumption corrected: dots on the same recharts layer do NOT draw in render order; the branch uses explicit zIndex (pinned 600, current 601), which satisfies B-U9. No code change.
+
+Required fixes:
+- [ ] Reorder the fixture to spearman-3 (counts [0,1,2]), longbowman-2 ([0,3,3]), longbowman-3 ([0,0,5]); expected result spearman [0,1,2] then longbowman [0,3,8]. Confirm that sorting by key, and sorting by tier, each fail it (see review report).
