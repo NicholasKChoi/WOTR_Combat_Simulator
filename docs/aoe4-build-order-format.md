@@ -399,7 +399,8 @@ A `SimulationResult` holds:
   `waitSeconds` for a started step and to the time from `armedAt` to the horizon for a `waiting` one, and a
   reason with 0 seconds is absent. `waitingFor` is what the last failed check waits for, a `StepWaitDetail`
   (below): it is set at each offer the step fails, `null` once the step starts, so at the horizon a `waiting`
-  step has the detail of its last failed offer and every other step has `null`. `waitDetails` lists the
+  step has the detail of its last failed offer and every other step has `null`. A step offered more than
+  once at one instant keeps the detail of the last offer, which the next waiting interval accrues. `waitDetails` lists the
   seconds waited per target ([Wait details](#wait-details)).
 - `ages`: each age reached and its `reachedAt` time.
 - `markers`: `ChartMarker`s (`kind`, `label`, `at`, and `unit` when set) for the charts: one `age-up` marker per age reached after
@@ -430,13 +431,13 @@ A `SimulationResult` holds:
   built farm, message `1 villager arrived at farm from 0:50 on with no free farm and waits idle until one is
   built.`, and one `step-stuck`
   warning (severity `warning`) for each step still `waiting` at the horizon, whose message reads `step 12
-  (build) was still waiting on resources at 60:00, from 11:40.` (1-based step number; `at` is the step's
+  (build) was still waiting on prerequisite at 60:00, from 11:40.` (1-based step number; `at` is the step's
   `armedAt`). They are sorted by `at`; at the same `at`, node warnings come first in node-ref order with
   `node-depleted` before `idle-arrival` for one node, then `farm-idle`, then `step-stuck` by step index. See
   [Severity](aoe4-build-order.md#severity).
 
-The page draws four graphs over time from it, with the chart markers (see the [page doc](aoe4-build-order-ui.md#page); the warnings are lists beside them): units produced (by
-unit and tier), gather rates, gathered resources, and floating resources. `spent` and `populationCapReachedAt` feed the compare
+The page draws four graphs over time from it, with the chart markers (see the [page doc](aoe4-build-order-ui.md#page); the warnings are lists beside them): units produced (one
+line per unit line, or per production building), gather rates, gathered resources, and floating resources. `spent` and `populationCapReachedAt` feed the compare
 table, and `spawnedPopulation` has no graph.
 
 The life of one non-reaction step is shown below. The diagram is conceptual: its states are not values in
@@ -509,7 +510,7 @@ waited for. Each interval the step waits under a `waitBreakdown` reason adds its
 target matches `waitingFor`, or appends an entry. Targets match by kind and, for `age`, the age; for
 `building` and `building-busy`, the buildings and instance (so a missing Barracks and a busy one are two
 entries); `resources`, `villagers` and `population` each have one target. An entry keeps the numbers of
-the interval that created it, except that an `age` entry takes the landmark a later interval names, and a
+the interval that created it (and, for `building-busy`, its `every`), except that an `age` entry takes the landmark a later interval names, and a
 later `null` landmark does not clear it. A target never waited on for any time has no entry. `age`,
 `building` and `building-busy` entries count under `prerequisite`, the others under the reason of the same
 name, so for each reason the seconds of its entries add up to `waitBreakdown`. `waitDetails` is `[]` for a
