@@ -1,6 +1,6 @@
 # AoE4 Build Order Simulator: page behavior
 
-How the build order page behaves: its layout, the editor and step table, the charts, pinning and comparing
+How the build order page behaves: its layout, the editor and step table, the charts, the help dialog, pinning and comparing
 runs, and saving and opening builds, including the script and smoke-test routes to the same save. The
 simulation rules are in the [model doc](aoe4-build-order.md), the build order input, the routes and the
 result the page draws are in the [format doc](aoe4-build-order-format.md), and reviews judge simulation
@@ -10,14 +10,14 @@ behavior against the model doc. This doc is the reference for what the page does
 
 The page is `/apps/aoe4-build-order`, made for a desktop viewport and supported from 1200 px wide. A run bar stays at the top of the viewport while the page scrolls, and it never takes more than 40% of the viewport height: when its content is taller, the bar scrolls inside itself. The page section turns off the browser's scroll anchoring, so a bar that shrinks does not move the page. The page only scrolls above the columns, so the bar stays stuck only as far as the page still scrolls. It
 holds the build select (labelled Build, see below), the `durationSeconds` number input (default 1200), a text/table toggle,
-a save panel (`save-panel`) on its own row, with the save buttons, Save a new version and Save as copy, and the save status (see below), and the run status (`auto-run-status`), which comes last. There is no run button: the page re-runs the simulation on edit. Below the bar, Build and Results sit side by side in two equal columns, always both shown, with no tabs. The two columns fill the viewport below the run bar and each scrolls on its own, so the page does not scroll to reach either column's content. The Tab order follows the DOM order: the run bar's controls, then the Build column, then the Results column, with no positive `tabindex` anywhere and no arrow-key handling in the workbench; within the save row the order is the buttons, the status, the link, then Copy link. The Build column and the Results column carry the headings `Build order` and `Results` at the same size; the text editor's textarea takes its accessible name from the `Build order` heading. The Text and Table buttons are never disabled by the Results column. The step table wraps to fit the Build panel's column, a table that still cannot fit scrolls inside its own box (`step-table-scroll`), and the Build panel itself never scrolls sideways. Resizing the viewport across 1200 px changes nothing but the sideways scroll described below: no panel is remounted and no run starts, so editor focus and text, an uncommitted table cell and the chart state carry across it. The server render is the same two-column layout, so the first paint is the layout the page keeps.
+a save panel (`save-panel`) on its own row, with the save buttons, Save a new version and Save as copy, and the save status (see below), and the run status (`auto-run-status`), which comes last. There is no run button: the page re-runs the simulation on edit. Below the bar, Build and Results sit side by side in two equal columns, always both shown, with no tabs. The two columns fill the viewport below the run bar and each scrolls on its own, so the page does not scroll to reach either column's content. The Tab order follows the DOM order: the `How this page works` button (see Help dialog), the run bar's controls, then the Build column, then the Results column, with no positive `tabindex` anywhere and no arrow-key handling in the workbench; within the save row the order is the buttons, the status, the link, then Copy link. The Build column and the Results column carry the headings `Build order` and `Results` at the same size; the text editor's textarea takes its accessible name from the `Build order` heading. The Text and Table buttons are never disabled by the Results column. The step table wraps to fit the Build panel's column, a table that still cannot fit scrolls inside its own box (`step-table-scroll`), and the Build panel itself never scrolls sideways. Resizing the viewport across 1200 px changes nothing but the sideways scroll described below: no panel is remounted and no run starts, so editor focus and text, an uncommitted table cell and the chart state carry across it. The server render is the same two-column layout, so the first paint is the layout the page keeps.
 
 Below 1200 px, including a phone or a browser zoom that makes the CSS viewport less than 1200 px wide, the page section is as wide as it is at 1200 px and holds the same two columns, and the document scrolls sideways; vertical behavior is unchanged and no notice is shown. The `Layout` container stays centered at its own max-width, so the section starts inside the viewport and overflows to the right of the container rather than starting at the page edge, and the `Layout` header stays as wide as the viewport.
 
 The Build panel shows one editor view
 at a time: the text view is a textarea with a line number beside each line that grows to its text (at least 8
 rows) and does not scroll vertically itself (the Build column scrolls vertically; a line longer than the box scrolls sideways; filling the text from the select, a load or the table starts it scrolled to the left, while typing keeps the caret's scroll), and the table view is the
-step table. After a result, the text view also shows an annotation for each step line in a second gutter between the line numbers and the textarea: the step's kind colour as a left border and its started and finished times without labels (the finished time is hidden in the gutter, and the step table and its run cells still show it), dimmed in the same stale state as the step table; hovering the annotation, or putting the caret on its step line, shows a popover at once (not a delayed browser title) with the time it waited and what blocked it, and for a `waiting` or `not-reached` step it reads `Still waiting. Blocked by: ...` instead of a time; the popover is drawn outside the narrow annotation column, stays inside the viewport and ignores the pointer, and the gutter lines stay unfocusable. Blank, comment, `start` and unparseable lines have an empty annotation. The text view is compact at every width: the gutter, annotations and textarea use a 0.875rem font, the annotation column is narrower and the gutter, annotation and textarea padding is tightened, so more of each line shows. Hovering a gutter annotation, or putting the caret on a step line, shades that step's span on the charts as a table row does; the last of the two inputs wins, so leaving a hovered annotation clears the shading and the popover until the next caret move, and blurring the textarea clears both. The kind legend renders above the text editor as well as above the step table, while a result is shown and the text has at least one parsed step, including when another line has a syntax error. The view survives runs but not a reload.
+step table. After a result, the text view also shows an annotation for each step line in a second gutter between the line numbers and the textarea: the step's kind colour as a left border and its started and finished times without labels (the finished time is hidden in the gutter, and the step table and its run cells still show it), dimmed in the same stale state as the step table; hovering the annotation, or putting the caret on its step line, shows a popover at once (not a delayed browser title) with the time it waited and what blocked it, and for a `waiting` or `not-reached` step it reads `Still waiting. Blocked by: ...` instead of a time; the popover is drawn outside the narrow annotation column, stays inside the viewport and ignores the pointer, and the gutter lines stay unfocusable. Blank, comment, `start` and unparseable lines have an empty annotation. The text view is compact at every width: the gutter, annotations and textarea use a 0.875rem font, the annotation column is narrower and the gutter, annotation and textarea padding is tightened, so more of each line shows. Hovering a gutter annotation, or putting the caret on a step line, shades that step's span on the charts as a table row does; the last of the two inputs wins, so leaving a hovered annotation clears the shading and the popover until the next caret move, and blurring the textarea clears both. The step kinds are explained in the help dialog (see below); the page shows no kind legend in the text view or the table view. The view survives runs but not a reload.
 The select groups its entries as My builds (the builds this browser saved, newest first), Opened links (builds opened
 by a `?n=` or `?b=` link, in the order they were opened; a shared build reads `<name> (shared)` and a `?b=` build
 `<name> (<id>)`) and Templates (the shipped builds); an empty group is not shown. Choosing a template replaces the
@@ -95,8 +95,8 @@ whole seconds); clearing an optional number field omits it, while an empty or in
 field leaves the step as it was. Bounds are checked when the input settles, not in the table. An edit while a run
 is in flight keeps the shown result until a newer run lands.
 
-Once a result is shown, the table view adds a run cell as the first cell of every step row, and a legend of the step kinds
-(`step-kind-legend`) above the table (the text view shows the same legend above its editor). The cell has a left border in the step's kind colour (age up, research, military,
+Once a result is shown, the table view adds a run cell as the first cell of every step row; the help dialog explains the step kinds, and the
+page shows no legend of them in either view. The cell has a left border in the step's kind colour (age up, research, military,
 villager, building, economy; any other step has a border with no colour and no badge), a kind badge, and, when the step
 lines up with a step of the shown run, its started and finished times (`m:ss`, `ongoing` for a step still under way, an
 en dash for one that never started), the time it waited and what blocked it. The cell labels the three times Started, Finished and Waited; a `waiting` or `not-reached` step has no Waited label and reads `still waiting` in place of a time. A step that waited lists each thing it waited for, named
@@ -122,22 +122,33 @@ The table lists each chart's default view. Gather rates and Units produced each 
 Rate (the default, `gatherRates`, y axis label `Per minute`) and Villagers (`gatherers`, keys and names as the resource rows, y axis
 label `Villagers`). Units produced offers Units (the default, y axis label `Count`) and Buildings (each `productionBuildings`
 entry, key `baseId`, name `name`, in result order, y axis label `Buildings`). The choice is not stored and resets on reload. The
-pinned run follows the view, drawn from its own `gatherers` or `productionBuildings` (matched to the current lines by key); a building
+pinned run follows the view, drawn from its own `gatherers`, unit lines or `productionBuildings` (matched to the current lines by key, a unit line by its `baseId`); a unit line or building
 only the pinned run has gets only a dashed line.
 In the Buildings view each line is drawn at or a small amount above its true count (a different amount per visible building, none for the first, the same at every time, always below half a building), so buildings with equal counts do not draw on top of each other; the y axis shows whole numbers only and the tooltip shows each building's true count. A pinned building's line is drawn at the same offset as the current line with its key, and a building hidden in the legend takes no offset.
+
+Upgrade dots: in the Units view only, each unit line that the run produced carries one filled dot (`chart-upgrade-dot`) for each upgrade of that line the run researched, which is each `markers` entry whose `unit` names the line (`veteran-spearmen` for the Spearman line). The dot sits on the line at its value at the marker's time, with the marker's label and time as its hover title, in the line's colour with a white outline and above the lines, so two upgrades at one instant draw two dots at one point. An upgrade of a line the run never produced has no dot, judged per run. With a pinned run, each of its upgrades of a line it produced is a dashed ring (`chart-pinned-upgrade-dot`, white fill, dashed outline in the pinned line's colour, titled `<label> (pinned) <m:ss>`) on the pinned dashed line, so a line only the pinned run has gets its rings; where a ring and a dot share a point both show, the ring around the dot. Hiding a line in the series legend hides its dots and rings, and showing it brings them back. The marker control's `Unit tier` item hides only that kind's vertical lines, not the dots, and a pinned run's upgrades draw no vertical line. A dot or ring outside a zoom window is not drawn, and the Buildings view draws none.
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
 it again restores it; the legend has one item per series, named without a suffix: with a pinned run, an item for a series in both runs hides and restores both its lines, and a series only the pinned run has is listed once, with a dashed swatch. The tooltip lists only the current run's series; pinned lines and markers are not in it. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. By default only `age-up` markers carry a
 text label `<label> <m:ss>` (for example `Castle 13:24`) above the plot, stacked in rows by their measured width so each stays
 readable. A marker without a text label stays a line and shows `<label> <m:ss>` as a hover title. Tooltip values are shown rounded to
-at most 1 decimal place. One marker control titled "Markers", above the charts and shared by all of them, lists one entry per
-kind present, each a button: hovering or focusing it labels that kind's markers on every chart in place of the age-up labels (the age-up labels
-return when no entry is hovered or focused, and a hovered entry wins over a focused one). Clicking an entry, or pressing Enter or Space on it,
-hides that kind's lines and labels on every chart (the entry is dimmed and `aria-pressed` is `"false"`) and clicking again restores them; a hovered or focused hidden kind labels nothing and the age-up labels show instead. The hidden kinds are not stored: they survive a new run, collapsing and reordering, and reset on reload. Entries are: `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
-and `Other` (`#6b6bd6`). A run with no markers draws neither lines nor the marker control. Clicking a series
-legend item does not hide markers. The pinned run's `age-up` markers (no other kind) are drawn as dashed `6 4`
-vertical lines in the age-up colour without text labels (hover title `<age> (pinned) <m:ss>`); hiding the `age-up` kind in the marker control hides them too, unless the current run has no age-up marker. The marker control lists only the
-current run's kinds. A chart that draws at least one pinned line or pinned marker has one entry `dashed = pinned build`
+at most 1 decimal place. Charts have no marker legend of their own; the marker control below is the only one.
+
+Marker control: one control titled "Markers" sits above the chart table, shared by all the charts, inside `results-last-good` so it dims with them. It lists one
+entry per marker kind present in the shown run's markers, in the order `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
+and `Other` (`#6b6bd6`), each a button named `<kind> markers`; a run with no markers draws neither lines nor the control. Clicking an entry, or
+pressing Enter or Space on it, hides that kind's vertical lines and their labels on every chart at once and clicking again restores them; focus stays on the entry.
+`aria-pressed` means shown: `"true"` while the kind is drawn and `"false"` while it is hidden, and a hidden entry is dimmed. Hovering or focusing an entry
+labels that kind's markers on every chart in place of the age-up labels (the age-up labels return when no entry is hovered or focused, and a hovered entry wins over a focused one).
+A hovered or focused hidden kind has nothing to label, so the age-up labels show instead; with the `Age-up` kind hidden and no entry hovered or focused, no chart shows a
+label. The pinned run's `age-up` markers (no other kind) are drawn as dashed `6 4`
+vertical lines in the age-up colour without text labels (hover title `<age> (pinned) <m:ss>`) and follow the `Age-up` toggle: hiding that kind hides them too, unless
+the current run has no age-up marker, when they always show. The control lists only the current run's kinds, and changes nothing else: not the series, the step
+band, the upgrade dots or any zoom; clicking a series legend item does not hide markers. The hidden kinds are not stored: they survive a new run, a view toggle, collapsing,
+reordering, zooming and pinning, and a kind that leaves a later run and returns is still hidden. They reset on reload. The entries come after the info messages toggle and
+before the first chart's drag handle in the Tab order, and the control has no arrow-key handling.
+
+A chart that draws at least one pinned line or pinned marker has one entry `dashed = pinned build`
 (`chart-pinned-legend`) after the series legend; hiding every pinned line through the series legend removes it unless a pinned
 age-up marker is drawn, and showing a series restores it. Messages come from `warnings` and `notes`, `warnings` entries first.
 Those of severity `warning` appear in a warnings list. Those of severity `info` sit behind a toggle reading
@@ -145,14 +156,20 @@ Those of severity `warning` appear in a warnings list. Those of severity `info` 
 "Hide info messages". The toggle starts collapsed on page load and keeps its state across later runs. Each
 message shows its `message` text only. Messages of severity `debug` are not shown, and the page has no control to show them. With no message of a severity there is no list for it.
 
-Chart controls: each chart's title row holds, in order, a drag handle (`chart-drag-handle`, a grip button labelled
+Chart table: Results draws the charts as one table (`chart-table`, labelled `Results charts`) under the marker control, and the table has
+no header row of its own. Each chart is a row group (its chart id as `data-testid`) of a header row (`chart-header-row`) and a body row (`chart-body-row`), the
+title is the row group's header cell, and the four columns are fixed: the drag handle, the title, the collapse caret and the view toggle. Every chart's handle,
+title, caret and toggle therefore line up in their columns, whatever mix of charts is collapsed or expanded, at 1200 px and wider. The table never makes the Results
+column scroll sideways, and each plot fills the width of its body row. The key results panel is outside the table.
+
+Chart controls: each chart's header row holds, in order, a drag handle (`chart-drag-handle`, a grip button labelled
 "Reorder <title> chart"), the title, a collapse caret (`chart-collapse`) and, on Gather rates and Units produced, the view toggle.
-Collapsing a chart hides everything under the title row (the series legend and the plot); the handle, the
-title, the caret and the view toggle stay visible and usable. The hidden series, the chosen view and the
+Collapsing a chart hides its body row (the zoom bar, the plot, the series legend and the pinned legend), so a collapsed chart is exactly its header row; the handle, the
+title, the caret and the view toggle stay visible and usable. The hidden series, the chosen view, the zoom window and the
 pinned run survive a collapse and a move, and a collapsed chart draws no step band, markers or pinned lines while the others keep
 theirs. The caret flips between "Collapse <title> chart" and "Expand <title> chart", is toggled by click, Enter or Space, and
 keeps focus. A chart is reordered by dragging its handle with the primary mouse button, or with ArrowUp and ArrowDown while the
-handle is focused; other keys do nothing, and the arrow keys do nothing while a pointer drag is in progress (from pointer down until it ends). A drag starts after the pointer has moved 4px, leaves the order unchanged until the
+handle is focused; other keys do nothing, and the arrow keys do nothing while a pointer drag is in progress (from pointer down until it ends). A drag starts after the pointer has moved 4px, dims the moved chart's rows, leaves the order unchanged until the
 drop, and drops the chart where the pointer's height places it among the other charts. Escape or a cancelled pointer ends the
 drag with no change, and a touch drag that starts on the handle does not scroll the page. A collapsed chart reorders like an expanded one. After a
 move that changes the order, the moved chart's handle has focus and a visually hidden status (`chart-order-status`) names the chart
@@ -164,6 +181,27 @@ holds chart ids and, when the key results panel is collapsed, `key-results`; `or
 that is not valid JSON or has another version gives the default layout; unknown and duplicate ids are dropped and a missing id
 is appended to the order. Loading the page writes nothing: with nothing stored the key stays unset until a chart or the key
 results panel is moved or collapsed. When the store is unavailable or blocked, the layout lasts for the page session and no error is shown.
+
+Zoom: each chart has its own time window, which starts as the whole game. Pressing the primary mouse button inside a chart's plot area (the grid, not the axes, the
+marker label rows, the legends or the zoom bar) and dragging selects a stretch of time. Nothing happens until the pointer has moved 4 px; then a grey
+band (`chart-zoom-selection`) follows the pointer, and on release the chart zooms to the selected seconds, rounded to whole seconds. A selection shorter than 30 s, or one
+that spans the whole game, changes nothing, and the band is gone after every release. Selecting inside a zoomed chart zooms further, and Reset still returns to the whole
+game, not to the previous window. Escape, a cancelled pointer or a lost pointer capture during a selection removes the band and keeps the window. A collapsed chart has no plot to select in.
+
+While a chart is zoomed its x axis spans the window and its lines draw only the samples in it, reaching both edges; the y axis fits them. A marker, upgrade dot, pinned
+upgrade dot or pinned age-up outside the window is not drawn, marker labels are placed within the window, and the highlighted step span is cut to the window (and absent when it
+lies wholly outside). The chart's row group carries `data-zoom-from` and `data-zoom-to` in whole seconds. A zoom bar (`chart-zoom-bar`) appears above the plot only
+while the chart is zoomed. It shows the range as `<m:ss> to <m:ss>` (`chart-zoom-range`), the buttons `Show earlier in <title> chart` and `Show later in <title> chart`
+(`chart-zoom-pan-earlier`, `chart-zoom-pan-later`) and `Reset zoom` (`chart-zoom-reset`, named `Reset <title> chart zoom`). A pan button moves the window by half its length. At the
+start or end of the game the matching button is dimmed and does nothing, and it stays focusable (`aria-disabled`, not `disabled`). Dragging inside a zoomed chart's plot area with Shift held
+pans instead: after 4 px the window follows the pointer, release keeps the new window, and Escape or a cancelled pointer restores the window from before the drag; with the
+chart not zoomed, Shift and drag does nothing. Reset, by click, Enter or Space, shows the whole game again, removes the zoom bar and moves focus to that chart's collapse caret.
+
+Zooming one chart changes no other chart, the step highlight, which marker kinds are hidden or any series' hidden state. A chart's window survives collapsing and expanding, reordering,
+the view toggle, a new run, and a pin or unpin; when a run or a pin changes the game's length the window is cut to the new length, and when nothing usable is left (the
+window starts at or past the end, is shorter than 30 s, or covers the whole game) the chart is unzoomed. Windows are not stored, so every chart shows the whole game after a reload. Zoom, pan and
+Reset work while the charts are dimmed. In a zoomed chart the Tab order is the handle, the caret and the view toggle of its header row, then Show earlier, Show later and Reset
+zoom (the range text takes no focus), then the plot's own stops, then the series legend. There is no keyboard way to select a range, and Escape outside a drag does nothing.
 
 Key results panel: under the "Results" heading, a "Key results" title row (`compare-heading`) holds a collapse caret
 (`compare-collapse`), then "Pin this run" and "Unpin". Collapsing the panel hides the pinned label and the compare table; the title
@@ -236,6 +274,19 @@ named with `1TC` has a `whenever gold runs out move all gold to gold#2` reaction
 
 The four prebuilt builds are `ENG 1TC`, `ENG Knight/Longbow (King's Palace)`, `ENG Spear/Longbow into
 MAA/Crossbow` and `ENG 1TC Council Hall`.
+
+## Help dialog
+
+The page title's heading row holds the `h1` and, beside it on one line, a `How this page works` button (`help-open`), inside the page section. The button comes before the run
+bar's controls in the DOM and Tab order. It is always enabled, with no result, invalid text or a run in flight, and clicking it, or pressing Enter or Space on it, starts no run
+and changes no page state.
+
+The button opens a modal dialog (`help-modal`, a native `<dialog>` titled `How this page works`) that explains the page: the editor views, the step kinds with their legend
+(`step-kind-legend`, which is shown only in the dialog), the yellow tint and what `Blocked by` lists, the charts, pin and compare, and saving. This doc does not repeat the dialog's
+text. While the dialog is open the page behind it is inert, focus is on its Close button (`help-close`, the first control in the dialog), and Tab and Shift+Tab move among the
+dialog's own controls only. Its content scrolls inside the dialog and starts at the top on every open. The Close button, Escape, or a click on the backdrop outside the dialog's box
+closes it, and focus returns to the `How this page works` button; a click inside the dialog does not close it. The content is the same on every open, and the dialog keeps nothing
+between opens. The server render includes the dialog closed.
 
 ## Saving a build and opening it by link
 

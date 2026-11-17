@@ -50,7 +50,8 @@ Rules: [Model rules](../../docs/aoe4-build-order.md#model-rules).
 - `simulate.ts`: `simulateBuildOrder`, the event loop, the engine state, the step handlers for `produce`,
   `pause`, `rally`, `build` and `move`, production queues and result assembly. See [The event loop](#the-event-loop).
 - `engine-common.ts`: cost and payment helpers (`costOf`, `canAfford`, `canAffordHeld`, `payCost`), the
-  resource tolerance and small bookkeeping shared by handlers.
+  resource tolerance, `instanceFree`, the one test of whether a building instance is free for a step, and small
+  bookkeeping shared by handlers.
 - `gather.ts`: `effectiveGatherRate`, the per-villager rate for a node.
 - `construction.ts`: `constructionSeconds`, build time for a number of builders.
 - `houses.ts`: `planAutoHouse`, the automatic house planning.
@@ -58,7 +59,8 @@ Rules: [Model rules](../../docs/aoe4-build-order.md#model-rules).
   warnings. Rules: [Depletion](../../docs/aoe4-build-order.md#depletion).
 - `effects.ts`: the overlay effect interpreter (`modifiedValue`) and `classifyTech`, which sorts a technology
   into supported and ignored effects. Rules: [Technologies](../../docs/aoe4-build-order.md#technologies).
-- `research.ts`: the `research` step handler, unit upgrade conversion and the research notes.
+- `research.ts`: the `research` step handler, which takes the first free instance of its candidate buildings,
+  unit upgrade conversion and the research notes.
 - `wait-detail.ts`: what a waiting step waits for: the builders a handler calls to describe a failed check
   (`ageWait`, `buildingWait`, `busyWait`, `resourceWait`, `villagerWait`, `populationWait`), the key and
   breakdown reason of a detail, and its words (`waitDetailText`). Browser-safe: its only value imports are
@@ -66,7 +68,10 @@ Rules: [Model rules](../../docs/aoe4-build-order.md#model-rules).
 - `civ-rules.ts`: the `CivRules` hook interface and `civRules`, the per-civilization lookup. Rules:
   [CivRules seams](../../docs/aoe4-build-order.md#civrules-seams).
 - `landmarks.ts`: the class-name rule that identifies a landmark.
-- `markers.ts`: chart marker kinds and ordering for age-ups and research.
+- `markers.ts`: chart marker kinds and ordering for age-ups and research; a research marker carries the unit
+  line it upgrades.
+- `unit-lines.ts`: `unitLineName`, the display name of a unit line, which `simulate.ts` puts on every
+  `unitsProduced` series.
 - `production-buildings.ts`: which buildings produce units, and their per-sample count series.
 - `format-time.ts`: `formatMinSec`, the time text used in messages and the text format.
 
@@ -137,6 +142,13 @@ Where the pieces plug in:
 - `offerSteps` offers reaction steps, then the step at the cursor. Each step goes to its handler in
   `stepHandlers` (`produce`, `pause`, `rally`, `research`, `build`, `move`); `research` is
   `researchHandler` from `research.ts`.
+- A handler that cannot start a step returns what the step waits for as a wait detail built with `wait-detail.ts`.
+  `offerStep` stores it as `waitingFor`, and `accrueWait` adds each waiting interval's seconds to `waitBreakdown`
+  by reason and to `waitDetails` by target. Rules:
+  [Wait details](../../docs/aoe4-build-order-format.md#wait-details).
+- A `produce` or `research` step starts only on free instances (`instanceFree`). While a `produce` waits for a
+  busy building, `offerSteps` records the instances it holds in `held`, and `startProduction` pays nothing for the
+  order of a held instance. Rules: [Queues](../../docs/aoe4-build-order.md#model-rules).
 - Payment checks come from `engine-common.ts` (`canAfford`, `canAffordHeld`, `payCost`) and are used by the
   handlers and by production. A need that cannot be met feeds `nextWake`, so the wait is reported rather than
   the spend happening early.
@@ -147,7 +159,7 @@ Where the pieces plug in:
 - Houses: `runHousePass` calls `planAutoHouse` in `houses.ts`.
 - Result assembly, after the loop ends: each step gets its final status, then the depletion results, the
   step-stuck warnings and the farm idle warnings are sorted into `warnings`, and the series, markers, notes and
-  step timings are returned as the `SimulationResult`.
+  step timings are returned as the `SimulationResult`. `unitSeries` builds `unitsProduced` with `unitLineName`.
 
 ## Where to change what
 
@@ -157,6 +169,8 @@ In terms of files:
 
 - A new step action: its type in `schema.ts` and an entry in `stepHandlers` in `simulate.ts`; each of the
   handler's `started: false` returns names a `detail` built with the `wait-detail.ts` builders.
+- A new wait detail kind: its type in `model.ts`, then its builder, breakdown reason, key and words in
+  `wait-detail.ts`; a route change also updates `docs/api/openapi.json`.
 - A new civilization rule: a hook in `civ-rules.ts`, called from the engine.
 - A new data field: its type in `data.ts` and schema in `data-schema.ts`, then the data file under
   `data/aoe4-build-order/`.
