@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react'
 import cn from 'classnames'
 
 import type { ChartMarkerKind, SimulationResult } from '../../../lib/aoe4-build-order/model'
@@ -8,12 +8,12 @@ import { stepSpan } from './step-annotations'
 import { SeriesChart } from './line-chart'
 import { MarkerControl } from './chart-legend'
 import { type MarkerView, labelKindOf, liveMarkerKind } from './chart-markers'
-import { toggleHidden } from './chart-rows'
+import { type ChartSeries, toggleHidden } from './chart-rows'
 import { useChartDrag } from './use-chart-drag'
 import type { ChartId } from './chart-layout'
 import type { ChartLayoutControls } from './use-chart-layout'
 import { ChartViewToggle, type ChartView, type GatherRatesView, type UnitsProducedView } from './chart-view-toggle'
-import { gatherRatesSeries, resourceSeries, unitSeries, unitsProducedSeries } from './result-series'
+import { gatherRatesSeries, resourceSeries, unitUpgradeDots, unitsProducedSeries } from './result-series'
 import styles from './workbench.module.css'
 import resultStyles from './results.module.css'
 
@@ -56,6 +56,7 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
     if (liveFocus !== focusKind) setFocusKind(liveFocus)
     const labelKind = labelKindOf(result.markers, hiddenKinds, liveHover, liveFocus)
     const markerView: MarkerView = { hidden: hiddenKinds, labelKind }
+    const upgradeDots = useMemo(() => ({ current: unitUpgradeDots(result), pinned: pinned ? unitUpgradeDots(pinned) : undefined }), [result, pinned])
 
     useEffect(() => {
         const id = focusAfterMove.current
@@ -63,7 +64,7 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
         if (id) container.current?.querySelector<HTMLButtonElement>(`[data-testid="${id}"] [data-testid="chart-drag-handle"]`)?.focus()
     }, [layout.order])
 
-    const charts: Record<ChartId, { title: string; yLabel: string; series: (run: SimulationResult) => ReturnType<typeof unitSeries>; headerControls?: ReactNode }> = {
+    const charts: Record<ChartId, { title: string; yLabel: string; series: (run: SimulationResult) => ChartSeries[]; headerControls?: ReactNode }> = {
         'chart-units-produced': {
             title: 'Units produced',
             yLabel: unitsProducedView === 'buildings' ? 'Buildings' : 'Count',
@@ -121,6 +122,7 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
                 </colgroup>
                 {layout.order.map((id) => {
                     const chart = charts[id]
+                    const unitDots = id === 'chart-units-produced' && unitsProducedView === 'units' ? upgradeDots : undefined
                     return (
                         <SeriesChart
                             key={id}
@@ -134,6 +136,8 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
                             series={chart.series(result)}
                             pinnedMarkers={pinned?.markers}
                             pinned={pinned ? { times: pinned.times, series: chart.series(pinned) } : undefined}
+                            upgradeDots={unitDots?.current}
+                            pinnedUpgradeDots={unitDots?.pinned}
                             headerControls={chart.headerControls}
                             offsetLines={id === 'chart-units-produced' && unitsProducedView === 'buildings'}
                             sectionRef={drag.sectionRef(id)}

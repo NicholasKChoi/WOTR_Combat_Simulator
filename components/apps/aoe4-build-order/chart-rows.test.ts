@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
-import { type ChartRow, PALETTE, formatChartValue, isLineHidden, legendItems, lineOffsets, pinnedKey, seriesColor, toChartRows, toOffsetChartRows, toggleHidden, trueCount, wholeNumberAxis } from './chart-rows'
+import { type ChartRow, PALETTE, formatChartValue, isLineHidden, legendItems, lineOffsets, pinnedKey, seriesColor, toChartRows, toOffsetChartRows, toggleHidden, trueCount, valueAt, wholeNumberAxis } from './chart-rows'
 
 describe('toChartRows', () => {
     it('makes one row per time with a value per series', () => {
@@ -245,5 +245,21 @@ describe('trueCount', () => {
         expect(row.b).not.toBe(2)
         expect(trueCount(row, 'b')).toBe(2)
         expect(trueCount(row, 'a')).toBe(0)
+    })
+})
+
+describe('valueAt', () => {
+    const times = [0, 10, 20]
+    const values = [0, 5, 8]
+
+    it.each([
+        [0, 0],
+        [10, 5],
+        [4, 2],
+        [12.5, 5.75],
+        [20, 8],
+        [25, 8],
+    ])('at %s gives %s', (at, expected) => {
+        expect(valueAt(times, values, at)).toBeCloseTo(expected, 10)
     })
 })

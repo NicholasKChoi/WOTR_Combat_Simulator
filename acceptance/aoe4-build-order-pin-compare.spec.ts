@@ -72,11 +72,11 @@ test.describe('AoE4 build order pin and compare', () => {
       expect(await pinned.getAttribute('stroke')).toBe(await current.getAttribute('stroke'))
     }
     expect(first.unitsProduced.length).toBeGreaterThan(0)
-    for (const { unitId } of first.unitsProduced) {
-      const pinned = path(page, 'chart-units-produced', `pinned:${unitId}`)
+    for (const baseId of new Set(first.unitsProduced.map((u) => u.baseId))) {
+      const pinned = path(page, 'chart-units-produced', `pinned:${baseId}`)
       await expect(pinned).toHaveCount(1)
       expect(((await pinned.getAttribute('stroke-dasharray')) ?? '').trim()).not.toBe('')
-      expect(await path(page, 'chart-units-produced', unitId).getAttribute('stroke-dasharray')).toBeNull()
+      expect(await path(page, 'chart-units-produced', baseId).getAttribute('stroke-dasharray')).toBeNull()
     }
   })
 

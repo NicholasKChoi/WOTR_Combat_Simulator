@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import type { TooltipProps } from 'recharts'
-import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
 import {
@@ -25,6 +25,7 @@ import { ChartZoomBar } from './chart-zoom-bar'
 import { type TimeWindow, rowsInWindow } from './chart-zoom'
 import { type PlotBox, useChartZoom } from './use-chart-zoom'
 import type { StepSpan } from './step-annotations'
+import { type UpgradeDot, visibleUpgradeDots } from './result-series'
 import styles from './results.module.css'
 
 const LABEL_LINE_HEIGHT = 14
@@ -37,6 +38,11 @@ const CHART_MARGIN_PX = 5
 const LABEL_FONT_SIZE = 12
 const BAND_COLOR = '#0d6efd'
 
+const DOT_RADIUS = 4
+const PINNED_DOT_RADIUS = 5
+// Recharts orders same-layer reference dots by registration, which put the current dots first in the DOM; explicit layers keep the filled dot above the pinned ring.
+const PINNED_DOT_Z_INDEX = 600
+const DOT_Z_INDEX = 601
 const SELECTION_COLOR = '#6c757d'
 
 const NO_MARKER_VIEW: MarkerView = { hidden: new Set(), labelKind: null }
@@ -71,12 +77,14 @@ interface SeriesChartProps {
     sectionRef?: (element: HTMLElement | null) => void
     offsetLines?: boolean
     markerView?: MarkerView
+    upgradeDots?: readonly UpgradeDot[]
+    pinnedUpgradeDots?: readonly UpgradeDot[]
 }
 
 const trueCountFormatter: TooltipProps<number | string | readonly (number | string)[], number | string>['formatter'] = (value, _name, item) =>
     item.payload && typeof item.dataKey === 'string' ? trueCount(item.payload as ChartRow, item.dataKey) : formatChartValue(value)
 
-export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout, sectionRef, offsetLines = false, markerView = NO_MARKER_VIEW }: SeriesChartProps) {
+export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout, sectionRef, offsetLines = false, markerView = NO_MARKER_VIEW, upgradeDots = [], pinnedUpgradeDots = [] }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
     const [chartWidth, setChartWidth] = useState<number | null>(null)
     const end = Math.max(1, ...times, ...(pinned?.times ?? []))
@@ -101,6 +109,8 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const labelled = labelledMarkers(visible, markerView.labelKind)
     const ageUpHidden = markerView.hidden.has('age-up') && ageUpMarkers(markers).length > 0
     const pinnedAgeUps = ageUpHidden ? [] : drawn(ageUpMarkers(pinnedMarkers))
+    const currentDots = visibleUpgradeDots(upgradeDots, { times, series }, shown, hidden)
+    const pinnedDots = pinned ? visibleUpgradeDots(pinnedUpgradeDots, pinned, shown, hidden) : []
     const labelKey = labelled.map(markerLabel).join('\n')
 
     useEffect(() => {
@@ -253,6 +263,42 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                                 >
                                                     <title>{`${marker.label} (pinned) ${formatMinSec(marker.at)}`}</title>
                                                 </ReferenceLine>
+                                            ))}
+                                            {pinnedDots.map((dot, i) => (
+                                                <ReferenceDot
+                                                    key={`pinned:${dot.key}:${dot.label}:${dot.at}:${i}`}
+                                                    x={dot.at}
+                                                    y={dot.value}
+                                                    r={PINNED_DOT_RADIUS}
+                                                    zIndex={PINNED_DOT_Z_INDEX}
+                                                    fill="#fff"
+                                                    stroke={pinnedColor(series, dot.key, pinned?.series.findIndex((s) => s.key === dot.key) ?? 0)}
+                                                    strokeWidth={2}
+                                                    strokeDasharray="3 2"
+                                                    data-testid="chart-pinned-upgrade-dot"
+                                                    data-series={pinnedKey(dot.key)}
+                                                    data-label={dot.label}
+                                                    data-at={dot.at}
+                                                >
+                                                    <title>{`${dot.label} (pinned) ${formatMinSec(dot.at)}`}</title>
+                                                </ReferenceDot>
+                                            ))}
+                                            {currentDots.map((dot, i) => (
+                                                <ReferenceDot
+                                                    key={`${dot.key}:${dot.label}:${dot.at}:${i}`}
+                                                    x={dot.at}
+                                                    y={dot.value}
+                                                    r={DOT_RADIUS}
+                                                    zIndex={DOT_Z_INDEX}
+                                                    fill={seriesColor(series.findIndex((s) => s.key === dot.key))}
+                                                    stroke="#fff"
+                                                    data-testid="chart-upgrade-dot"
+                                                    data-series={dot.key}
+                                                    data-label={dot.label}
+                                                    data-at={dot.at}
+                                                >
+                                                    <title>{`${dot.label} ${formatMinSec(dot.at)}`}</title>
+                                                </ReferenceDot>
                                             ))}
                                             {selection ? (
                                                 <ReferenceArea
