@@ -538,8 +538,6 @@ test.describe('AoE4 step annotations name what the step waited for', () => {
   const stillWaitingText = (timing: StepTiming) => [...entriesText(timing), `still waiting for ${waitDetailText(timing.waitingFor!)}`].join(', ')
 
   async function expectTableAndPopover(page: Page, step: number, timing: StepTiming, expected: string) {
-    await showView(page, 'table')
-    await expect(page.getByTestId('step-run').first()).toBeVisible()
     await expect(rows(page).nth(step).getByTestId('step-blocked-by')).toHaveText(expected)
     await showView(page, 'text')
     const line = page.locator('[data-testid="build-order-line-annotation"][data-status]').nth(step)
@@ -563,8 +561,7 @@ test.describe('AoE4 step annotations name what the step waited for', () => {
       const expected = stillWaitingText(timing)
       expect(expected.endsWith(`still waiting for ${article}`)).toBe(true)
       expect(expected).not.toBe(`still waiting for ${article}`)
-      await openPage(page)
-      await setText(page, text)
+      await openTable(page, text)
       await expectTableAndPopover(page, 0, timing, expected)
     })
   }
@@ -579,10 +576,7 @@ test.describe('AoE4 step annotations name what the step waited for', () => {
     const detail = entries[0].detail
     if (detail.kind !== 'building-busy') throw new Error(`expected a building-busy entry, got ${detail.kind}`)
     const expected = `a free ${detail.buildings[0].name.replace(/^The /, '')} ${formatMinSec(entries[0].seconds)}`
-    await openPage(page)
-    await setText(page, text)
-    await showView(page, 'table')
-    await expect(page.getByTestId('step-run').first()).toBeVisible()
+    await openTable(page, text)
     await expect(rows(page).nth(1).getByTestId('step-blocked-by')).toHaveText(expected)
   })
 })
