@@ -96,7 +96,7 @@ test.describe('spec structure', () => {
   })
 
   test('response-side schemas are closed and require every property the type does not mark optional', () => {
-    const optional: Record<string, string[]> = { BuildOrderIssue: ['line', 'step', 'suggestion'], SimulateError: ['omittedIssues'] }
+    const optional: Record<string, string[]> = { BuildOrderIssue: ['line', 'step', 'suggestion'], SimulateError: ['omittedIssues'], ChartMarker: ['unit'] }
     for (const name of RESPONSE_SCHEMAS) {
       const schema = schemas[name]
       expect(schema.additionalProperties, name).toBe(false)
