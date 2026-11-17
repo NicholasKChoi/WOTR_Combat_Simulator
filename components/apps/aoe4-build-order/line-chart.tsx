@@ -2,14 +2,12 @@ import { type ReactNode, useEffect, useRef, useState } from 'react'
 import type { TooltipProps } from 'recharts'
 import { CartesianGrid, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatMinSec } from '../../../lib/aoe4-build-order/format-time'
-import type { ChartMarker, ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
+import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
 import {
     type ChartSeries,
-    MARKER_COLORS,
     type PinnedSeries,
     formatChartValue,
     isLineHidden,
-    markerLabel,
     pinnedColor,
     pinnedKey,
     seriesColor,
@@ -20,13 +18,13 @@ import {
     type ChartRow,
     wholeNumberAxis,
 } from './chart-rows'
+import { MARKER_COLORS, type MarkerView, ageUpMarkers, estimateLabelWidth, labelledMarkers, markerLabel, placeMarkers, visibleMarkers } from './chart-markers'
 import { type ChartControls, ChartHeaderRow } from './chart-header'
-import { MarkerLegend, PinnedLegend, SeriesLegend, pinnedLegendShown } from './chart-legend'
+import { PinnedLegend, SeriesLegend, pinnedLegendShown } from './chart-legend'
 import type { StepSpan } from './step-annotations'
 import styles from './results.module.css'
 
 const LABEL_LINE_HEIGHT = 14
-const LABEL_CHAR_PX = 8
 const Y_AXIS_WIDTH = 110
 // Lowers the x tick labels so the 0:00 label clears the y axis's bottom tick, which is centred on the axis line; the taller axis keeps them inside the chart.
 const X_TICK_MARGIN_PX = 12
@@ -36,55 +34,7 @@ const CHART_MARGIN_PX = 5
 const LABEL_FONT_SIZE = 12
 const BAND_COLOR = '#0d6efd'
 
-export interface PlacedMarker {
-    marker: ChartMarker
-    side: 'left' | 'right'
-    row: number
-    dx: number
-}
-
-const estimateLabelWidth = (label: string): number => label.length * LABEL_CHAR_PX
-
-// Labels are stacked in rows: a marker takes the first row whose last label ends before this one starts, so
-// markers close in time never share a row. A label that fits on neither side of its line is pinned to the
-// plot's left edge (dx shifts it there) so it never covers the Y-axis ticks.
-export function placeMarkers(
-    markers: readonly ChartMarker[],
-    end: number,
-    plotWidth: number,
-    labelWidth: (label: string) => number = estimateLabelWidth,
-): PlacedMarker[] {
-    const rowEnds: number[] = []
-    return markers.map((marker) => {
-        const width = (labelWidth(markerLabel(marker)) * end) / plotWidth
-        const fitsRight = marker.at + width <= end
-        const pinned = !fitsRight && marker.at - width < 0
-        const side = fitsRight || pinned ? 'left' : 'right'
-        const dx = pinned ? (-marker.at * plotWidth) / end : 0
-        const [from, to] = pinned ? [0, width] : side === 'left' ? [marker.at, marker.at + width] : [marker.at - width, marker.at]
-        let row = rowEnds.findIndex((rowEnd) => rowEnd < from)
-        if (row < 0) row = rowEnds.length
-        rowEnds[row] = to
-        return { marker, side, row, dx }
-    })
-}
-
-export const ageUpMarkers = (markers: readonly ChartMarker[]): ChartMarker[] => markers.filter((m) => m.kind === 'age-up')
-
-const hasKind = (markers: readonly ChartMarker[], kind: ChartMarkerKind): boolean => markers.some((m) => m.kind === kind)
-
-// `active` must be a kind that has markers; activeMarkerKind guarantees it.
-export const labelledMarkers = (markers: readonly ChartMarker[], active: ChartMarkerKind | null): ChartMarker[] =>
-    active === null ? ageUpMarkers(markers) : markers.filter((m) => m.kind === active)
-
-export function activeMarkerKind(markers: readonly ChartMarker[], hoverKind: ChartMarkerKind | null, focusKind: ChartMarkerKind | null): ChartMarkerKind | null {
-    return [hoverKind, focusKind].find((kind) => kind !== null && hasKind(markers, kind)) ?? null
-}
-
-// A legend item that unmounts (its kind's markers are gone, or the chart collapsed) fires no mouseleave or blur,
-// so a hover or focus kind it left behind is reset here.
-export const liveMarkerKind = (markers: readonly ChartMarker[], kind: ChartMarkerKind | null, collapsed: boolean): ChartMarkerKind | null =>
-    kind !== null && !collapsed && hasKind(markers, kind) ? kind : null
+const NO_MARKER_VIEW: MarkerView = { hidden: new Set(), labelKind: null }
 
 interface SeriesChartProps {
     testId: string
@@ -100,28 +50,24 @@ interface SeriesChartProps {
     layout?: ChartControls
     sectionRef?: (element: HTMLElement | null) => void
     offsetLines?: boolean
+    markerView?: MarkerView
 }
 
 const trueCountFormatter: TooltipProps<number | string | readonly (number | string)[], number | string>['formatter'] = (value, _name, item) =>
     item.payload && typeof item.dataKey === 'string' ? trueCount(item.payload as ChartRow, item.dataKey) : formatChartValue(value)
 
-export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout, sectionRef, offsetLines = false }: SeriesChartProps) {
+export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout, sectionRef, offsetLines = false, markerView = NO_MARKER_VIEW }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
     const [chartWidth, setChartWidth] = useState<number | null>(null)
     const end = Math.max(1, ...times, ...(pinned?.times ?? []))
     const plotWidth = Math.max(1, (chartWidth ?? 0) - Y_AXIS_WIDTH - 2 * CHART_MARGIN_PX)
     const [labelWidths, setLabelWidths] = useState<ReadonlyMap<string, number>>(new Map())
     const measureRef = useRef<SVGTextElement>(null)
-    const pinnedAgeUps = ageUpMarkers(pinnedMarkers)
     const collapsed = layout?.collapsed ?? false
-    const [hoverKind, setHoverKind] = useState<ChartMarkerKind | null>(null)
-    const [focusKind, setFocusKind] = useState<ChartMarkerKind | null>(null)
-    const liveHover = liveMarkerKind(markers, hoverKind, collapsed)
-    const liveFocus = liveMarkerKind(markers, focusKind, collapsed)
-    if (liveHover !== hoverKind) setHoverKind(liveHover)
-    if (liveFocus !== focusKind) setFocusKind(liveFocus)
-    const active = activeMarkerKind(markers, liveHover, liveFocus)
-    const labelled = labelledMarkers(markers, active)
+    const visible = visibleMarkers(markers, markerView.hidden)
+    const labelled = labelledMarkers(visible, markerView.labelKind)
+    const ageUpHidden = markerView.hidden.has('age-up') && ageUpMarkers(markers).length > 0
+    const pinnedAgeUps = ageUpHidden ? [] : ageUpMarkers(pinnedMarkers)
     const labelKey = labelled.map(markerLabel).join('\n')
 
     useEffect(() => {
@@ -215,7 +161,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                                 data-to={highlight.to}
                                             />
                                         ) : null}
-                                        {markers.map((marker) => {
+                                        {visible.map((marker) => {
                                             const place = placedByMarker.get(marker)
                                             return (
                                                 <ReferenceLine
@@ -263,7 +209,6 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                     hidden={hidden}
                                     onToggle={(key) => setHidden((h) => toggleHidden(h, key))}
                                 />
-                                <MarkerLegend markers={markers} active={active} onHover={setHoverKind} onFocusKind={setFocusKind} />
                                 {pinnedLegendShown(pinned, hidden, pinnedAgeUps.length) && <PinnedLegend />}
                             </>
                         )}

@@ -1,6 +1,9 @@
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import type { ChartMarker, ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
 import type { PinnedSeries } from './chart-rows'
-import { pinnedLegendShown } from './chart-legend'
+import { MarkerControl, pinnedLegendShown } from './chart-legend'
 
 const pinnedOf = (...keys: string[]): PinnedSeries => ({ times: [0, 5], series: keys.map((key) => ({ key, name: key, values: [1, 2] })) })
 
@@ -15,5 +18,53 @@ describe('pinnedLegendShown', () => {
         ['a hidden key the pinned run does not have', pinnedOf('a'), ['b'], 0, true],
     ])('%s', (_, pinned, hidden, ageUps, expected) => {
         expect(pinnedLegendShown(pinned, new Set(hidden), ageUps)).toBe(expected)
+    })
+})
+
+describe('MarkerControl markup', () => {
+    const markers: ChartMarker[] = [
+        { kind: 'blacksmith', label: 'steeled-arrow', at: 4 },
+        { kind: 'age-up', label: 'Feudal', at: 2 },
+        { kind: 'blacksmith', label: 'iron-undermesh', at: 5 },
+        { kind: 'economy', label: 'Wheelbarrow', at: 3 },
+    ]
+    const html = (hidden: ChartMarkerKind[] = [], active: ChartMarkerKind | null = null, list: ChartMarker[] = markers) =>
+        renderToStaticMarkup(createElement(MarkerControl, { markers: list, hidden: new Set(hidden), active, onToggle: () => {}, onHover: () => {}, onFocusKind: () => {} }))
+    const items = (markup: string) =>
+        [...markup.matchAll(/<button[^>]*data-testid="chart-marker-legend-item"[^>]*>/g)].map((m) => ({
+            kind: m[0].match(/data-kind="([^"]+)"/)?.[1],
+            pressed: m[0].match(/aria-pressed="([^"]+)"/)?.[1],
+            name: m[0].match(/aria-label="([^"]+)"/)?.[1],
+            style: m[0].match(/style="([^"]*)"/)?.[1],
+            active: m[0].includes('data-active="true"'),
+        }))
+
+    it('lists one item per kind present, in kind order, named for the kind', () => {
+        expect(items(html()).map((i) => [i.kind, i.name])).toEqual([
+            ['age-up', 'Age-up markers'],
+            ['economy', 'Economy markers'],
+            ['blacksmith', 'Blacksmith markers'],
+        ])
+    })
+
+    it('titles the control with an h3 Markers heading and puts the swatch before the label text', () => {
+        expect(html()).toMatch(/data-testid="chart-marker-legend"[^>]*><h3 class="h6 mb-1">Markers<\/h3>/)
+        expect(html()).toMatch(/data-kind="age-up"[^>]*><span[^>]*background-color:#b8860b[^>]*><\/span>Age-up<\/button>/)
+    })
+
+    it('renders nothing without markers', () => {
+        expect(html([], null, [])).toBe('')
+    })
+
+    it('is pressed and full opacity while shown, not pressed and at 50% opacity while hidden', () => {
+        const [shown, hidden] = [items(html()).find((i) => i.kind === 'economy'), items(html(['economy'])).find((i) => i.kind === 'economy')]
+        expect(shown).toMatchObject({ pressed: 'true', style: undefined })
+        expect(hidden).toMatchObject({ pressed: 'false', style: 'opacity:0.5' })
+        expect(items(html(['economy'])).filter((i) => i.pressed === 'false').map((i) => i.kind)).toEqual(['economy'])
+    })
+
+    it('marks only the item whose kind is active', () => {
+        expect(items(html([], 'economy')).filter((i) => i.active).map((i) => i.kind)).toEqual(['economy'])
+        expect(html([], null)).not.toContain('data-active')
     })
 })

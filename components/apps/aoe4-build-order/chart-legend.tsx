@@ -1,7 +1,8 @@
 import cn from 'classnames'
 
 import { CHART_MARKER_KINDS, type ChartMarker, type ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
-import { type ChartSeries, MARKER_COLORS, MARKER_KIND_LABELS, type PinnedSeries, isLineHidden, legendItems } from './chart-rows'
+import { type ChartSeries, type PinnedSeries, isLineHidden, legendItems } from './chart-rows'
+import { MARKER_COLORS, MARKER_KIND_LABELS } from './chart-markers'
 import styles from './results.module.css'
 
 interface SeriesLegendProps {
@@ -57,19 +58,21 @@ export function PinnedLegend() {
     )
 }
 
-interface MarkerLegendProps {
+interface MarkerControlProps {
     markers: readonly ChartMarker[]
+    hidden: ReadonlySet<ChartMarkerKind>
     active: ChartMarkerKind | null
+    onToggle(kind: ChartMarkerKind): void
     onHover(kind: ChartMarkerKind | null): void
     onFocusKind(kind: ChartMarkerKind | null): void
 }
 
-export function MarkerLegend({ markers, active, onHover, onFocusKind }: MarkerLegendProps) {
+export function MarkerControl({ markers, hidden, active, onToggle, onHover, onFocusKind }: MarkerControlProps) {
     const kinds = CHART_MARKER_KINDS.filter((kind) => markers.some((m) => m.kind === kind))
     if (kinds.length === 0) return null
     return (
-        <div className={cn(styles.legend, 'small mb-3 pt-2 border-top')} data-testid="chart-marker-legend">
-            <h4 className="h6 mb-1">Markers</h4>
+        <div className={cn(styles.legend, 'small mb-3')} data-testid="chart-marker-legend">
+            <h3 className="h6 mb-1">Markers</h3>
             <ul className="list-inline mb-0">
                 {kinds.map((kind) => (
                     <li key={kind} className="list-inline-item">
@@ -79,7 +82,10 @@ export function MarkerLegend({ markers, active, onHover, onFocusKind }: MarkerLe
                             data-testid="chart-marker-legend-item"
                             data-kind={kind}
                             data-active={kind === active ? 'true' : undefined}
-                            aria-label={`Show ${MARKER_KIND_LABELS[kind]} marker labels`}
+                            aria-pressed={!hidden.has(kind)}
+                            aria-label={`${MARKER_KIND_LABELS[kind]} markers`}
+                            style={hidden.has(kind) ? { opacity: 0.5 } : undefined}
+                            onClick={() => onToggle(kind)}
                             onMouseEnter={() => onHover(kind)}
                             onMouseLeave={() => onHover(null)}
                             onFocus={() => onFocusKind(kind)}

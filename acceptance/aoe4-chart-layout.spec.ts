@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { CHART_LAYOUT_STORAGE_KEY, type ChartId } from '../components/apps/aoe4-build-order/chart-layout'
-import { markerLabel } from '../components/apps/aoe4-build-order/chart-rows'
+import { markerLabel } from '../components/apps/aoe4-build-order/chart-markers'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, openPage, showView, waitForRun } from './helpers'
 

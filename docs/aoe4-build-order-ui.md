@@ -129,15 +129,15 @@ Each series' line carries its key as `data-series` (a pinned run's line carries 
 it again restores it; the legend has one item per series, named without a suffix: with a pinned run, an item for a series in both runs hides and restores both its lines, and a series only the pinned run has is listed once, with a dashed swatch. The tooltip lists only the current run's series; pinned lines and markers are not in it. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. By default only `age-up` markers carry a
 text label `<label> <m:ss>` (for example `Castle 13:24`) above the plot, stacked in rows by their measured width so each stays
 readable. A marker without a text label stays a line and shows `<label> <m:ss>` as a hover title. Tooltip values are shown rounded to
-at most 1 decimal place. A marker legend titled "Markers", in its own row below the series legend, lists one entry per
-kind present, each a button: hovering or focusing it labels that kind's markers in place of the age-up labels (the age-up labels
-return when no entry is hovered or focused, and a hovered entry wins over a focused one; clicking or pressing a key on it does
-nothing more than focus it; collapsing the chart clears it). Entries are: `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
-and `Other` (`#6b6bd6`). A run with no markers draws neither lines nor the marker legend. Clicking a series
+at most 1 decimal place. One marker control titled "Markers", above the charts and shared by all of them, lists one entry per
+kind present, each a button: hovering or focusing it labels that kind's markers on every chart in place of the age-up labels (the age-up labels
+return when no entry is hovered or focused, and a hovered entry wins over a focused one). Clicking an entry, or pressing Enter or Space on it,
+hides that kind's lines and labels on every chart (the entry is dimmed and `aria-pressed` is `"false"`) and clicking again restores them; a hovered or focused hidden kind labels nothing and the age-up labels show instead. The hidden kinds are not stored: they survive a new run, collapsing and reordering, and reset on reload. Entries are: `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
+and `Other` (`#6b6bd6`). A run with no markers draws neither lines nor the marker control. Clicking a series
 legend item does not hide markers. The pinned run's `age-up` markers (no other kind) are drawn as dashed `6 4`
-vertical lines in the age-up colour without text labels (hover title `<age> (pinned) <m:ss>`). The marker legend lists only the
+vertical lines in the age-up colour without text labels (hover title `<age> (pinned) <m:ss>`); hiding the `age-up` kind in the marker control hides them too, unless the current run has no age-up marker. The marker control lists only the
 current run's kinds. A chart that draws at least one pinned line or pinned marker has one entry `dashed = pinned build`
-(`chart-pinned-legend`) after the marker legend; hiding every pinned line through the series legend removes it unless a pinned
+(`chart-pinned-legend`) after the series legend; hiding every pinned line through the series legend removes it unless a pinned
 age-up marker is drawn, and showing a series restores it. Messages come from `warnings` and `notes`, `warnings` entries first.
 Those of severity `warning` appear in a warnings list. Those of severity `info` sit behind a toggle reading
 "Show N info messages" ("Show 1 info message" for one); clicking it lists them and the toggle reads
@@ -146,7 +146,7 @@ message shows its `message` text only. Messages of severity `debug` are not show
 
 Chart controls: each chart's title row holds, in order, a drag handle (`chart-drag-handle`, a grip button labelled
 "Reorder <title> chart"), the title, a collapse caret (`chart-collapse`) and, on Gather rates and Units produced, the view toggle.
-Collapsing a chart hides everything under the title row (the series legend, the plot and the marker legend); the handle, the
+Collapsing a chart hides everything under the title row (the series legend and the plot); the handle, the
 title, the caret and the view toggle stay visible and usable. The hidden series, the chosen view and the
 pinned run survive a collapse and a move, and a collapsed chart draws no step band, markers or pinned lines while the others keep
 theirs. The caret flips between "Collapse <title> chart" and "Expand <title> chart", is toggled by click, Enter or Space, and

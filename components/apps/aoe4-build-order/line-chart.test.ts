@@ -1,10 +1,8 @@
 import { createElement } from 'react'
-import { renderToStaticMarkup, renderToString } from 'react-dom/server'
+import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { ChartMarker, ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
-import { MarkerLegend } from './chart-legend'
-import { type PlacedMarker, SeriesChart, activeMarkerKind, ageUpMarkers, labelledMarkers, liveMarkerKind, placeMarkers } from './line-chart'
-import { markerLabel } from './chart-rows'
+import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
+import { SeriesChart } from './line-chart'
 
 const render = (series: Parameters<typeof SeriesChart>[0]['series'], markers?: ChartMarker[], pinnedMarkers?: ChartMarker[]) =>
     renderToString(
@@ -22,24 +20,6 @@ describe('SeriesChart server render', () => {
         const html = render([])
         expect(html).toContain('data-testid="chart-x"')
         expect(html).toContain('Units produced')
-    })
-
-    it('lists one marker legend item per kind present, in kind order', () => {
-        const html = render([], [
-            { kind: 'blacksmith', label: 'steeled-arrow', at: 4 },
-            { kind: 'age-up', label: 'Feudal', at: 2 },
-            { kind: 'blacksmith', label: 'iron-undermesh', at: 5 },
-        ])
-        const items = [...html.matchAll(/<li class="list-inline-item"><button type="button"[^>]*data-testid="chart-marker-legend-item"[^>]*data-kind="([^"]+)"[^>]*aria-label="([^"]+)"[^>]*><span[^>]*><\/span>([^<]*)<\/button><\/li>/g)]
-        expect(items.map((m) => [m[1], m[2], m[3]])).toEqual([
-            ['age-up', 'Show Age-up marker labels', 'Age-up'],
-            ['blacksmith', 'Show Blacksmith marker labels', 'Blacksmith'],
-        ])
-    })
-
-    it('has no marker legend when markers are empty or omitted', () => {
-        expect(render([], [])).not.toContain('chart-marker-legend')
-        expect(render([])).not.toContain('chart-marker-legend')
     })
 })
 
@@ -104,27 +84,34 @@ describe('chart controls', () => {
     })
 })
 
-describe('age-up markers', () => {
-    const pinnedMarkers: ChartMarker[] = [
-        { kind: 'age-up', label: 'Feudal', at: 2 },
-        { kind: 'economy', label: 'Wheelbarrow', at: 3 },
-        { kind: 'age-up', label: 'Castle', at: 4 },
-        { kind: 'other', label: 'x', at: 5 },
-    ]
+describe('pinned legend with hidden marker kinds', () => {
+    const feudal: ChartMarker = { kind: 'age-up', label: 'Feudal', at: 2 }
+    const wheelbarrow: ChartMarker = { kind: 'economy', label: 'Wheelbarrow', at: 3 }
+    const renderView = (markers: ChartMarker[], hidden: ChartMarker['kind'][]) =>
+        renderToString(
+            createElement(SeriesChart, {
+                testId: 'chart-x',
+                title: 'Units produced',
+                yLabel: 'Units',
+                times: [0, 5],
+                series: [],
+                markers,
+                pinnedMarkers: [feudal],
+                markerView: { hidden: new Set(hidden), labelKind: null },
+            }),
+        )
 
-    it('keeps only age-up markers, in order', () => {
-        expect(ageUpMarkers(pinnedMarkers).map((m) => m.label)).toEqual(['Feudal', 'Castle'])
+    it.each([
+        ['nothing hidden', [feudal], [], true],
+        ['another kind hidden', [feudal], ['economy'], true],
+        ['age-up hidden with a current age-up marker', [feudal], ['age-up'], false],
+        ['age-up hidden with no current age-up marker', [wheelbarrow], ['age-up'], true],
+    ] as const)('%s', (_name, markers, hidden, shown) => {
+        expect(renderView([...markers], [...hidden]).includes('data-testid="chart-pinned-legend"')).toBe(shown)
     })
 
-    it('lists only the current run\'s marker kinds, and nothing when it has none, whatever the pinned run draws', () => {
-        const kinds = (html: string) => [...html.matchAll(/data-testid="chart-marker-legend-item" data-kind="([^"]+)"/g)].map((m) => m[1])
-        const html = render([], [{ kind: 'age-up', label: 'Feudal', at: 2 }], pinnedMarkers)
-        expect(kinds(html)).toEqual(['age-up'])
-        expect(html).not.toContain('pinned-age-up')
-        expect(html).not.toContain('Age-up (pinned)')
-        const none = render([], [], pinnedMarkers)
-        expect(none).not.toContain('chart-marker-legend')
-        expect(none).not.toContain('pinned-age-up')
+    it('draws no marker legend inside the chart', () => {
+        expect(render([], [feudal], [feudal])).not.toContain('chart-marker-legend')
     })
 })
 
@@ -144,13 +131,12 @@ describe('pinned legend', () => {
     const pinnedMarkers: ChartMarker[] = [{ kind: 'age-up', label: 'Feudal', at: 2 }]
     const legendCount = (html: string) => html.match(/data-testid="chart-pinned-legend"/g)?.length ?? 0
 
-    it('renders one dashed entry after the series and marker legends, and not the old pinned key', () => {
+    it('renders one dashed entry after the series legend, and not the old pinned key', () => {
         const html = renderPinned({ pinned, markers: [{ kind: 'age-up', label: 'Feudal', at: 1 }] })
         expect(legendCount(html)).toBe(1)
         const entry = html.slice(html.indexOf('data-testid="chart-pinned-legend"'))
         expect(entry).toMatch(/^[^>]*><span[^>]*data-testid="chart-pinned-legend-swatch"[^>]*data-line-style="dashed"[^>]*><\/span>dashed = pinned build<\/p>/)
-        expect(html.indexOf('data-testid="chart-series-legend"')).toBeLessThan(html.indexOf('data-testid="chart-marker-legend"'))
-        expect(html.indexOf('data-testid="chart-marker-legend"')).toBeLessThan(html.indexOf('data-testid="chart-pinned-legend"'))
+        expect(html.indexOf('data-testid="chart-series-legend"')).toBeLessThan(html.indexOf('data-testid="chart-pinned-legend"'))
         expect(html).not.toContain('chart-pinned-key')
         expect(html).not.toMatch(/<button[^>]*chart-pinned-legend/)
     })
@@ -175,12 +161,10 @@ describe('pinned legend', () => {
     })
 })
 
-describe('series and marker legends', () => {
-    it('titles the series legend and the marker legend, each in its own element', () => {
+describe('series legend and label rows', () => {
+    it('titles the series legend', () => {
         const html = render([{ key: 'a', name: 'A', values: [1, 2] }], [{ kind: 'age-up', label: 'Feudal', at: 2 }])
         expect(html).toMatch(/data-testid="chart-series-legend"[^>]*><h4[^>]*>Series<\/h4>/)
-        expect(html).toMatch(/data-testid="chart-marker-legend"[^>]*><h4[^>]*>Markers<\/h4>/)
-        expect(html).toMatch(/data-testid="chart-series-legend".*?<\/button><\/div><\/div><div[^>]*data-testid="chart-marker-legend"/)
     })
 
     it('renders one pressed-state button per series with its key', () => {
@@ -192,99 +176,5 @@ describe('series and marker legends', () => {
         expect(render([])).toContain('data-label-rows="0"')
         const html = render([{ key: 'a', name: 'A', values: [1, 2] }], [{ kind: 'age-up', label: 'Feudal', at: 2 }, { kind: 'other', label: 'x', at: 3 }])
         expect(html).toContain('data-label-rows="0"')
-    })
-})
-
-describe('placeMarkers', () => {
-    const marker = (at: number, label = 'A very long marker label'): ChartMarker => ({ kind: 'other', label, at })
-    const range = (p: PlacedMarker, end: number, plotWidth: number, px = 8) => {
-        const width = (markerLabel(p.marker).length * px * end) / plotWidth
-        return p.side === 'left' ? [p.marker.at, p.marker.at + width] : [p.marker.at - width, p.marker.at]
-    }
-
-    it('never puts intersecting labels in the same row', () => {
-        const markers = [0, 100, 200, 300, 400, 500].map((at) => marker(at))
-        const placed = placeMarkers(markers, 1000, 600)
-        expect(Math.max(...placed.map((p) => p.row))).toBeGreaterThan(0)
-        for (const [i, p] of placed.entries()) {
-            for (const q of placed.slice(i + 1).filter((o) => o.row === p.row)) {
-                const [a, b] = [range(p, 1000, 600), range(q, 1000, 600)]
-                expect(a[1] <= b[0] || b[1] <= a[0]).toBe(true)
-            }
-        }
-    })
-
-    it('keeps a label that fits in row 0 and reuses row 0 once an earlier label has ended', () => {
-        const placed = placeMarkers([marker(0, 'x'), marker(500, 'y'), marker(900, 'z')], 1000, 1000)
-        expect(placed.map((p) => p.row)).toEqual([0, 0, 0])
-    })
-
-    it('uses more rows when labels are estimated wider', () => {
-        const markers = [0, 100, 200].map((at) => marker(at, 'abc'))
-        const rows = (width: (l: string) => number) => Math.max(...placeMarkers(markers, 1000, 1000, width).map((p) => p.row))
-        expect(rows(() => 10)).toBe(0)
-        expect(rows(() => 250)).toBe(2)
-    })
-
-    it('pins a label that fits on neither side to the left edge', () => {
-        const [p] = placeMarkers([marker(100, 'x')], 200, 200, () => 150)
-        expect(p).toMatchObject({ side: 'left', dx: -100 })
-    })
-})
-
-describe('marker labelling', () => {
-    const markers: ChartMarker[] = [
-        { kind: 'economy', label: 'Wheelbarrow', at: 1 },
-        { kind: 'age-up', label: 'Feudal', at: 2 },
-        { kind: 'economy', label: 'Horticulture', at: 3 },
-        { kind: 'age-up', label: 'Castle', at: 4 },
-    ]
-    const labels = (list: ChartMarker[]) => list.map((m) => m.label)
-
-    it.each([
-        [null, ['Feudal', 'Castle']],
-        ['economy', ['Wheelbarrow', 'Horticulture']],
-        ['age-up', ['Feudal', 'Castle']],
-        ['blacksmith', []],
-    ] as const)('labelledMarkers(markers, %s) keeps exactly that set, in input order', (active, expected) => {
-        expect(labels(labelledMarkers(markers, active))).toEqual(expected)
-    })
-
-    it.each<[string, ChartMarkerKind | null, ChartMarkerKind | null, ChartMarkerKind | null]>([
-        ['neither set', null, null, null],
-        ['hover with markers', 'economy', null, 'economy'],
-        ['hover without markers, no focus', 'blacksmith', null, null],
-        ['hover without markers, focus with markers', 'blacksmith', 'age-up', 'age-up'],
-        ['hover and focus both with markers', 'economy', 'age-up', 'economy'],
-        ['focus only, with markers', null, 'age-up', 'age-up'],
-        ['focus without markers', null, 'other', null],
-    ])('activeMarkerKind: %s', (_name, hover, focus, expected) => {
-        expect(activeMarkerKind(markers, hover, focus)).toBe(expected)
-    })
-
-    it.each<[string, ChartMarkerKind | null, boolean, ChartMarkerKind | null]>([
-        ['null kind', null, false, null],
-        ['kind with markers, expanded', 'economy', false, 'economy'],
-        ['kind with no markers left', 'blacksmith', false, null],
-        ['kind with markers, collapsed', 'economy', true, null],
-    ])('liveMarkerKind: %s', (_name, kind, collapsed, expected) => {
-        expect(liveMarkerKind(markers, kind, collapsed)).toBe(expected)
-    })
-
-    describe('MarkerLegend markup', () => {
-        const html = (active: ChartMarkerKind | null) =>
-            renderToStaticMarkup(createElement(MarkerLegend, { markers, active, onHover: () => {}, onFocusKind: () => {} }))
-        const activeKinds = (markup: string) => [...markup.matchAll(/data-kind="([^"]+)" data-active="true"/g)].map((m) => m[1])
-
-        it('marks only the item whose kind is active', () => {
-            expect(activeKinds(html('economy'))).toEqual(['economy'])
-            expect(activeKinds(html('age-up'))).toEqual(['age-up'])
-            expect(html(null)).not.toContain('data-active')
-        })
-
-        it('renders one button per kind present, in kind order, and nothing without markers', () => {
-            expect([...html(null).matchAll(/<li class="list-inline-item"><button[^>]*data-kind="([^"]+)"/g)].map((m) => m[1])).toEqual(['age-up', 'economy'])
-            expect(renderToStaticMarkup(createElement(MarkerLegend, { markers: [], active: null, onHover: () => {}, onFocusKind: () => {} }))).toBe('')
-        })
     })
 })
