@@ -91,3 +91,14 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 none
+
+## Rework 1 - 2026-11-16 (acceptance-test)
+
+Gates passed earlier: review APPROVE at tip 2b3eccf5f9fe7ad8dce13e2c04417055db5965b0. Acceptance-test added `acceptance/aoe4-simulate-api-unit-lines.spec.ts` (committed 601b81d4a073a58eefeb656130a54442f881c46b on the branch; keep it).
+
+### Findings
+- `acceptance/aoe4-simulate-api-contract.spec.ts:98` "response-side schemas are closed and require every property the type does not mark optional" fails: `ChartMarker.required` correctly leaves the new optional `unit` out, but the spec's `optional` map (line 99) has no `ChartMarker: ['unit']` entry. The ticket's Scope rule (tests that pin schema properties take the new names and nothing else) covers this edit.
+
+### Required fixes
+- [x] Add `ChartMarker: ['unit']` to the `optional` map in `acceptance/aoe4-simulate-api-contract.spec.ts` (line ~99); change nothing else in that spec.
+- [x] Run the contract, markers, veterancy-conversion, research and new unit-lines specs; all pass.

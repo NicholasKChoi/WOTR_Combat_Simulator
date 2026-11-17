@@ -22,19 +22,15 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q133
+next: Q135
 
-## Q132: Bump the Next.js dependency 16.4.3 to 16.4.6 as a low-priority standalone chore?
-kind: confirmation
+## Q134: Run /code-factory:upgrade (optional migrations 007, 008)?
+kind: handoff
 blocks: none
-options: A) Standalone bug: treat as a defect fix | B) Standalone chore, low priority: one small dependency-bump PR | C) Debug: cause unknown | D) Make it a milestone: overkill for a patch bump | E) Docs only | F) Drop: stay on 16.4.3
-recommendation: B: a routine patch bump; the security advisory does not reach us since the code uses neither use cache nor unstable_cache
-research: reports/backlog-triage-research-1.md
-thread: 1572108713928429599
+options: A) Done | B) Not now
+recommendation: B: nothing waits on it
 
-You decide how this backlog item is handled; nothing else waits on it.
-- Next.js 16.4.3 to 16.4.6 is a patch bump from a discovery run.
-- The advisory behind it does not reach us: the code uses neither use cache nor unstable_cache. So low priority.
-- Chore means one small PR; Drop leaves the app on 16.4.3.
+Two optional state migrations (007 upgrade-auto, 008 rescan-issues) are pending; the factory runs fine without them.
+- Run /code-factory:upgrade in a Claude Code session in the code repo (not blocking anything).
 
 ### Answer

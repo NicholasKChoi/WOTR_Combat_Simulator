@@ -77,6 +77,23 @@ design's names exactly.
     assertion there keeps its value. `acceptance/aoe4-build-order-step-band.spec.ts` and
     `acceptance/aoe4-build-order-pin-compare.spec.ts` read `chart-marker` and `chart-pinned-marker` and must pass
     unchanged.
+  - Acceptance specs that depend on page height or on every `h3` being a chart title. Removing the per-chart marker
+    legends shortens the page and the control adds a `Markers` `h3`, so two existing tests break, and their fixes
+    touch only the test. Search for other tests that read all page headings or need scroll room below the last chart.
+    Examples the acceptance run found:
+    - `acceptance/aoe4-chart-layout.spec.ts`, the `ArrowUp`/`ArrowDown` "on the first/last chart changes nothing,
+      keeps focus and does not scroll the page" loop. It scrolls the handle to the top of `results-column` with
+      `scrollIntoView({ block: 'start' })`. On the shorter page that clamps to the column's maximum scroll, so the
+      precondition `before.top < before.max` fails for the last chart. Change only how the test places the handle
+      before the key press: the column must have scroll room both above and below the handle, however much content
+      follows the last chart (for example, align the handle to the end of the column or compute a scroll position
+      inside `(0, max)`). The handle must stay visible and focused. Keep both precondition assertions (`top > 0` and
+      `top < max`) so a page scroll in either direction would still be detected. Every assertion after the key press
+      keeps its value.
+    - `acceptance/aoe4-split-scroll.spec.ts`, "the headings share a size and lead their panels". It collects every
+      `h3` on the page as a chart heading. Scope that query to the chart titles (the headings inside `chart-table`).
+      The check that all chart titles share one size keeps its assertion. The `Markers` heading keeps its
+      `h3`/`h6` markup, which the marker-labels spec and the `MarkerControl` unit test pin.
 - Docs: `docs/aoe4-build-order-ui.md` (Results paragraphs on markers and "Chart controls") states that each chart has
   its own marker legend below the series legend, that clicking or pressing a key on an entry only focuses it, that
   collapsing a chart clears it, that a collapse hides "the marker legend", and that the pinned legend comes "after the
@@ -131,11 +148,46 @@ Single-component change outside the core control loop; no diagram required.
   `labelKindOf` cases are new rows.
 - [ ] `toggleHidden` works on a `ChartMarkerKind` set and a `string` set without mutating its input; a table test with
   a non-string key row covers it.
-- [ ] `aoe4-chart-readability`, `aoe4-build-order-step-band`, `aoe4-build-order-pin-compare` and
-  `aoe4-chart-layout` pass with no changed assertion; `docs/aoe4-build-order-ui.md` has no statement that a marker
-  legend sits in each chart, that clicking an entry only focuses it, or that collapsing clears it.
+- [ ] `aoe4-chart-readability`, `aoe4-build-order-step-band` and `aoe4-build-order-pin-compare` pass with no changed
+  assertion; `docs/aoe4-build-order-ui.md` has no statement that a marker legend sits in each chart, that clicking an
+  entry only focuses it, or that collapsing clears it.
+- [ ] (respec 1) `aoe4-chart-layout` passes with no assertion removed or loosened. The first/last-chart arrow-key tests
+  meet their scroll precondition (the column has room both above and below the focused handle) whatever height the
+  content after the last chart has. The test fails if the key press scrolls `results-column` or the window, moves a
+  chart, announces, stores a layout, or moves focus. Only the handle placement before the key press changes.
+- [ ] (respec 1) `aoe4-split-scroll` "the headings share a size and lead their panels" reads only the chart titles, so
+  the `Markers` heading does not count. It still fails if two chart titles have different font sizes.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
 
 none
+
+## Rework 1 - 2026-11-16 (review)
+
+Gates: review bounced at tip b0c4d35; no earlier gate passed.
+
+### Findings
+- `acceptance/aoe4-marker-labels.spec.ts:235` (test): the "new run" step of `the hidden kinds survive collapsing a chart, pinning, and a new run, and hiding leaves the series lines` calls `setDurationInPlace(page, '1200')`, but the Knight/Longbow template already sets 1200, so no run starts and `waitForRun` times out; the "survives a new run" half of B-M8 is never checked.
+
+### Required fixes
+- [ ] In that step, set a different duration inside the 60-3600 bound (use `'1500'`), read the response, and assert the hidden kind is still in it, then the hidden state and line count:
+  ```ts
+  const next = (await (await waitForRun(page, () => setDurationInPlace(page, '1500'))).json()) as SimulationResult
+  const nextOfKind = next.markers.filter((m) => m.kind === kind).length
+  expect(nextOfKind, 'the new run still has the hidden kind').toBeGreaterThan(0)
+  await expect(item(control, kind)).toHaveAttribute('aria-pressed', 'false')
+  await expectLines(page, next.markers.length - nextOfKind)
+  ```
+  Production code is unchanged; the test must fail if `hiddenKinds` were reset when `result` changes.
+
+## Re-spec 1 - 2026-11-16
+
+- Underspecified: the ticket required `aoe4-chart-layout` to pass unchanged. It did not see that removing the per-chart
+  marker legends shortens the page, which breaks the last-chart scroll precondition. Its search for broken tests also
+  missed `aoe4-split-scroll`, which counts every `h3` as a chart title.
+- Changed: Scope adds both test-only fixes. The layout test places the handle with scroll room both ways, independent
+  of page height, and keeps every assertion. The split-scroll test reads only the headings inside `chart-table`. The
+  "no changed assertion" criterion is split, with two `(respec 1)` criteria.
+- Still stands: all production code at d570df7, the rewritten `aoe4-marker-labels.spec.ts`, the unit tests and the doc
+  edit. Only the two spec files change.

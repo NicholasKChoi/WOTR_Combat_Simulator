@@ -109,3 +109,15 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 none
+
+## Rework 1 - 2026-11-16 (review)
+
+Gates passed earlier: none (review is the first gate). Review bounced tip 819d7892c9759c7ecb9e49fe8dd6a699a2cfce42; full findings in reports/SGS-194-review-1.md.
+
+### Findings
+- `components/apps/aoe4-build-order/line-chart.tsx:127-136`: the text-measuring `<svg>` sits inside `chart-body-row`, which is `display: none` when the chart is collapsed, so every label width measures 0. The width effect re-runs only on `[labelKey, chartWidth]`, so a run that changes while collapsed keeps the zero widths after expanding: marker labels are placed as if they had no width and clip at the plot's right edge or overlap. Reproduced at 1280: collapse Gathered resources, move Feudal to 7:59, set duration 491, expand; label shows "Feu" 52 px past the plot edge. The always-expanded chart and origin/main are correct.
+
+### Required fixes
+- [x] In that effect skip measuring while collapsed (`if (!text || labelKey === '' || collapsed) return`) and add `collapsed` to the deps (`[labelKey, chartWidth, collapsed]`).
+- [x] Add the acceptance case to `acceptance/aoe4-chart-layout.spec.ts` that does the same steps and compares the re-expanded chart's label anchor and right edge with the always-expanded Floating resources chart (spec text is in reports/SGS-194-review-1.md).
+- [x] Run aoe4-chart-layout, aoe4-results-split and aoe4-split-tab-order; all pass.
