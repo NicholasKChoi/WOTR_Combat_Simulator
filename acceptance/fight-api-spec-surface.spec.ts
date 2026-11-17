@@ -49,6 +49,8 @@ const AOE4_SCHEMA_NAMES = [
   'SpendCategory',
   'StepTiming',
   'StepWait',
+  'StepWaitDetail',
+  'StepWaitEntry',
   'Trigger',
   'TripInputOverrides',
   'UnitSeries',

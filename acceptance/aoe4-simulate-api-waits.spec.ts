@@ -238,3 +238,161 @@ test.describe('determinism', () => {
     expect(JSON.stringify(a)).toBe(JSON.stringify(b))
   })
 })
+
+const VILLAGER_ORDER = { action: 'produce', producer: 'capital-town-center', unit: 'villager', count: 1 }
+const SCOUT_AT_10 = { action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: { kind: 'time', seconds: 10 } }
+
+async function simulateSteps(request: APIRequestContext, steps: unknown[], inputs: Record<string, unknown>): Promise<Result> {
+  const buildOrder = { civ: 'english', name: 'Waits', start: { villagers: { sheep: 6 }, rally: 'sheep' }, steps }
+  const response = await postSimulate(request, { buildOrder, inputs })
+  expect(response.status(), await response.text()).toBe(200)
+  return response.json()
+}
+
+function secondsByReason(step: Timing): Record<string, number> {
+  const byReason: Record<string, number> = {}
+  for (const { detail, seconds } of step.waitDetails) {
+    const reason = detail.kind === 'building-busy' || detail.kind === 'building' || detail.kind === 'age' ? 'prerequisite' : detail.kind === 'resources' ? 'resources' : detail.kind
+    byReason[reason] = (byReason[reason] ?? 0) + seconds
+  }
+  return byReason
+}
+
+test.describe('waitingFor and waitDetails say what a wait is for', () => {
+  test('a step that never waited carries a null waitingFor and no details', async ({ request }) => {
+    const result = await simulate(request, lines('produce villager from capital-town-center x1'), { durationSeconds: 60 })
+    expect(result.steps[0]).toMatchObject({ waitSeconds: 0, waitingFor: null, waitDetails: [] })
+  })
+
+  test('a resource wait names the short kinds as whole numbers and keeps one entry for the whole wait', async ({ request }) => {
+    const result = await simulate(request, lines('build barracks with 1 from sheep', 'build barracks with 1 from sheep'), { durationSeconds: 300 })
+    const waiting = result.steps[1]
+    expect(waiting).toMatchObject({ status: 'waiting', waitingOn: 'resources' })
+    expect(waiting.waitingFor?.kind).toBe('resources')
+    const short = (waiting.waitingFor as { short: Record<string, number> }).short
+    expect(Object.keys(short).length).toBeGreaterThan(0)
+    for (const amount of Object.values(short)) {
+      expect(Number.isInteger(amount)).toBe(true)
+      expect(amount).toBeGreaterThanOrEqual(1)
+    }
+    expect(waiting.waitDetails).toHaveLength(1)
+    expect(waiting.waitDetails[0].detail.kind).toBe('resources')
+    expect(waiting.waitDetails[0].seconds).toBeCloseTo(300, 9)
+  })
+
+  test('a started step has a null waitingFor but keeps the details of the wait it finished', async ({ request }) => {
+    const result = await simulate(request, lines('build barracks with 9 from sheep'), { durationSeconds: 300 })
+    const [step] = result.steps
+    expect(step.status).toBe('completed')
+    expect(step.waitSeconds).toBeGreaterThan(0)
+    expect(step.waitingFor).toBeNull()
+    expect(step.waitDetails).toHaveLength(1)
+    expect(step.waitDetails[0].detail).toMatchObject({ kind: 'villagers', node: 'sheep', needed: 9, available: 6 })
+    expect(step.waitDetails[0].seconds).toBeCloseTo(step.waitBreakdown.villagers!, 9)
+  })
+
+  test('a move with too few villagers names the node and the missing count', async ({ request }) => {
+    const result = await simulate(request, lines('move 9 sheep to wood'), { durationSeconds: 60 })
+    expect(result.steps[0].waitingFor).toMatchObject({ kind: 'villagers', node: 'sheep', needed: 9 })
+    const { available } = result.steps[0].waitingFor as { available: number }
+    expect(available).toBeGreaterThanOrEqual(6)
+    expect(available).toBeLessThan(9)
+  })
+
+  test('a step above the age waits for the age, with no landmark when none is under construction', async ({ request }) => {
+    const result = await simulate(request, lines('build stable with 1 from sheep'), { durationSeconds: 600 })
+    expect(result.steps[0]).toMatchObject({ status: 'waiting', waitingFor: { kind: 'age', age: 2, landmark: null } })
+    expect(result.steps[0].waitDetails).toEqual([{ detail: { kind: 'age', age: 2, landmark: null }, seconds: 600 }])
+  })
+
+  test('a produce above the age reports the age before the missing building', async ({ request }) => {
+    const result = await simulate(request, lines('produce knight from stable x1'), { durationSeconds: 60 })
+    expect(result.steps[0]).toMatchObject({ waitingOn: 'prerequisite', waitingFor: { kind: 'age', age: 3, landmark: null } })
+  })
+
+  test('a produce from a building that was never built names the producer and a missing instance number', async ({ request }) => {
+    const none = await simulate(request, lines('produce man-at-arms from barracks x1'), { durationSeconds: 60 })
+    expect(none.steps[0].waitingFor).toMatchObject({ kind: 'building', instance: null })
+    expect((none.steps[0].waitingFor as { buildings: { baseId: string }[] }).buildings.map((b) => b.baseId)).toEqual(['barracks'])
+    const second = await simulate(request, lines('produce villager from capital-town-center#2'), { durationSeconds: 60 })
+    expect(second.steps[0].waitingFor).toMatchObject({ kind: 'building', instance: 2 })
+    expect((second.steps[0].waitingFor as { buildings: { baseId: string }[] }).buildings.map((b) => b.baseId)).toEqual(['capital-town-center'])
+  })
+
+  test('a produce held by supply names what it needs against what is used', async ({ request }) => {
+    const result = await simulate(request, lines('produce villager from capital-town-center x4', '@3:00 produce villager from capital-town-center x1'), {
+      durationSeconds: 300,
+      autoHouses: false,
+    })
+    const detail = result.steps[1].waitingFor as { kind: string; needed: number; used: number; supply: number }
+    expect(detail.kind).toBe('population')
+    expect(detail.needed).toBeGreaterThan(0)
+    expect(detail.used + detail.needed).toBeGreaterThan(detail.supply)
+  })
+
+  test('a produce behind a busy building waits on that building, not on a missing one', async ({ request }) => {
+    const result = await simulateSteps(request, [VILLAGER_ORDER, SCOUT_AT_10], { durationSeconds: 120 })
+    const villagerStep = result.steps[1]
+    expect(villagerStep.waitBreakdown.prerequisite).toBeGreaterThan(0)
+    expect(villagerStep.waitDetails).toHaveLength(1)
+    expect(villagerStep.waitDetails[0].detail).toMatchObject({
+      kind: 'building-busy',
+      instance: null,
+      every: false,
+      buildings: [{ baseId: 'capital-town-center' }],
+    })
+    expect(villagerStep.waitDetails[0].seconds).toBeCloseTo(villagerStep.waitBreakdown.prerequisite!, 9)
+  })
+
+  test('a produce pinned to a busy instance names that instance and is not an every wait', async ({ request }) => {
+    const pinned = { ...VILLAGER_ORDER, instance: 1 }
+    const result = await simulateSteps(request, [pinned, { ...SCOUT_AT_10, instance: 1 }], { durationSeconds: 120 })
+    const [entry] = result.steps[1].waitDetails
+    expect(result.steps[1].waitDetails).toHaveLength(1)
+    expect(entry.detail).toMatchObject({ kind: 'building-busy', instance: 1, every: false, buildings: [{ baseId: 'capital-town-center' }] })
+  })
+
+  test('a wait that changes target keeps one entry per target and the seconds per reason match the breakdown', async ({ request }) => {
+    const result = await simulate(request, lines('build barracks with 9 from sheep', 'build barracks with 1 from sheep'), { durationSeconds: 300 })
+    const second = result.steps[1]
+    expect(second.waitDetails.map((e) => e.detail.kind)).toEqual(['villagers', 'resources'])
+    expect(second.waitingFor?.kind).toBe('resources')
+    expect(second.waitDetails[0].seconds).toBeCloseTo(second.waitBreakdown.villagers!, 9)
+    expect(second.waitDetails[1].seconds).toBeCloseTo(second.waitBreakdown.resources!, 9)
+  })
+
+  test('a not-reached step carries no waitingFor and no details', async ({ request }) => {
+    const result = await simulate(request, lines('@9:00 pause capital-town-center', 'rally capital-town-center -> wood'), { durationSeconds: 300 })
+    for (const step of result.steps) {
+      expect(step.status).toBe('not-reached')
+      expect(step.waitingFor).toBeNull()
+      expect(step.waitDetails).toEqual([])
+    }
+  })
+
+  test('over a whole prebuilt build every reason sums to its breakdown and only waiting steps carry a waitingFor', async ({ request }) => {
+    const response = await postSimulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 1200 } })
+    expect(response.status(), await response.text()).toBe(200)
+    const result: Result = await response.json()
+    expect(result.steps.some((s) => s.waitDetails.length > 0)).toBe(true)
+    for (const step of result.steps) {
+      const byReason = secondsByReason(step)
+      expect(Object.keys(byReason).sort(), `step ${step.step}`).toEqual(Object.keys(step.waitBreakdown).sort())
+      for (const [reason, seconds] of Object.entries(step.waitBreakdown)) expect(byReason[reason], `step ${step.step} ${reason}`).toBeCloseTo(seconds, 6)
+      expect(step.waitingFor !== null, `step ${step.step}`).toBe(step.status === 'waiting')
+      for (const { detail } of step.waitDetails) {
+        if (detail.kind !== 'resources') continue
+        const amounts = Object.values(detail.short)
+        expect(amounts.length, `step ${step.step}`).toBeGreaterThan(0)
+        for (const amount of amounts) expect(Number.isInteger(amount) && amount >= 1, `step ${step.step}`).toBe(true)
+      }
+    }
+  })
+
+  test('the same order twice returns identical waitingFor and waitDetails', async ({ request }) => {
+    const text = lines('build barracks with 9 from sheep', 'build barracks with 1 from sheep', 'research textiles')
+    const [a, b] = await Promise.all([simulate(request, text, { durationSeconds: 300 }), simulate(request, text, { durationSeconds: 300 })])
+    expect(a.steps.some((s) => s.waitDetails.length > 0)).toBe(true)
+    expect(a.steps.map((s) => [s.waitingFor, s.waitDetails])).toEqual(b.steps.map((s) => [s.waitingFor, s.waitDetails]))
+  })
+})

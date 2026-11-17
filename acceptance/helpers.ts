@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { test as base, expect, type APIRequestContext, type Locator, type Page, type Request, type Response, type Route } from '@playwright/test'
 import { RESULT_CHART_IDS } from '../components/apps/aoe4-build-order/chart-layout'
 import { AUTO_RUN_DEBOUNCE_MS, type AutoRunStatus } from '../components/apps/aoe4-build-order/auto-run'
-import { FINITE_GATHER_NODES, type BuildOrder, type SimulationResult } from '../lib/aoe4-build-order/model'
+import { FINITE_GATHER_NODES, type BreakdownReason, type BuildOrder, type SimulationResult, type StepWaitDetail, type StepWaitEntry } from '../lib/aoe4-build-order/model'
 import { buildOrderCatalog, type BuildOrderCatalog } from '../lib/aoe4-build-order/schema'
 import { textToBuildOrder } from '../lib/aoe4-build-order/text-to-build'
 
@@ -54,7 +54,7 @@ export function postFight(request: APIRequestContext, body: Armies | FightBody, 
 // next dev compiles a route on its first request, which can take longer than a simulation.
 export const WARM_UP_TIMEOUT_MS = 60_000
 
-export type Reason = 'resources' | 'villagers' | 'population' | 'prerequisite'
+export type Reason = BreakdownReason
 export type Timing = {
   step: number
   status: 'completed' | 'in-progress' | 'waiting' | 'not-reached'
@@ -63,6 +63,8 @@ export type Timing = {
   waitSeconds: number
   waitingOn: Reason | 'trigger' | 'earlier-step' | null
   waitBreakdown: Partial<Record<Reason, number>>
+  waitingFor: StepWaitDetail | null
+  waitDetails: StepWaitEntry[]
 }
 
 export const SIMULATE_PATH = '/api/aoe4-build-order/simulate'

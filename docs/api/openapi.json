@@ -692,7 +692,9 @@
                           "completedAt": 40,
                           "waitSeconds": 0,
                           "waitingOn": null,
-                          "waitBreakdown": {}
+                          "waitBreakdown": {},
+                          "waitingFor": null,
+                          "waitDetails": []
                         },
                         {
                           "step": 1,
@@ -702,7 +704,9 @@
                           "completedAt": 30,
                           "waitSeconds": 0,
                           "waitingOn": null,
-                          "waitBreakdown": {}
+                          "waitBreakdown": {},
+                          "waitingFor": null,
+                          "waitDetails": []
                         }
                       ],
                       "ages": [
@@ -1725,7 +1729,9 @@
                           "completedAt": 25,
                           "waitSeconds": 0,
                           "waitingOn": null,
-                          "waitBreakdown": {}
+                          "waitBreakdown": {},
+                          "waitingFor": null,
+                          "waitDetails": []
                         },
                         {
                           "step": 1,
@@ -1737,7 +1743,23 @@
                           "waitingOn": null,
                           "waitBreakdown": {
                             "prerequisite": 25
-                          }
+                          },
+                          "waitingFor": null,
+                          "waitDetails": [
+                            {
+                              "detail": {
+                                "kind": "building",
+                                "buildings": [
+                                  {
+                                    "baseId": "mill",
+                                    "name": "Mill"
+                                  }
+                                ],
+                                "instance": null
+                              },
+                              "seconds": 25
+                            }
+                          ]
                         },
                         {
                           "step": 2,
@@ -1747,7 +1769,9 @@
                           "completedAt": 42.42666666666666,
                           "waitSeconds": 0,
                           "waitingOn": null,
-                          "waitBreakdown": {}
+                          "waitBreakdown": {},
+                          "waitingFor": null,
+                          "waitDetails": []
                         }
                       ],
                       "ages": [
@@ -4613,7 +4637,9 @@
           "completedAt",
           "waitSeconds",
           "waitingOn",
-          "waitBreakdown"
+          "waitBreakdown",
+          "waitingFor",
+          "waitDetails"
         ],
         "additionalProperties": false,
         "properties": {
@@ -4694,6 +4720,24 @@
               }
             },
             "description": "Seconds from armedAt spent on each reason; a reason with 0 seconds is absent. Sums to waitSeconds once started, and to the time from armedAt to durationSeconds while waiting."
+          },
+          "waitingFor": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/StepWaitDetail"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the step's last failed check waits for while waiting; null once started, while not-reached, and for a check with no detail."
+          },
+          "waitDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepWaitEntry"
+            },
+            "description": "Seconds waited per distinct target, in the order each was first waited for; a target never waited on has no entry. For each waitBreakdown reason, the seconds of the entries counting under it sum to that reason's seconds."
           }
         }
       },
@@ -4809,6 +4853,284 @@
           "earlier-step"
         ],
         "description": "Why a step has not started yet."
+      },
+      "StepWaitDetail": {
+        "description": "What a waiting step waits for, a oneOf tagged by the kind const. age, building and building-busy count under prerequisite; villagers, population and resources under the reason of the same name.",
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "An age the step's entry needs.",
+            "required": [
+              "kind",
+              "age",
+              "landmark"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "age",
+                "description": "Detail kind: age."
+              },
+              "age": {
+                "type": "integer",
+                "enum": [
+                  2,
+                  3,
+                  4
+                ],
+                "description": "The age the step waits for."
+              },
+              "landmark": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "baseId",
+                      "name"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "baseId": {
+                        "type": "string",
+                        "description": "baseId of the landmark."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Display name of the landmark."
+                      }
+                    },
+                    "description": "The landmark."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "When age is the next age: the landmark of the current age under construction that completes first, ties by baseId; else null."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "A building with no instance yet, or a numbered instance not yet built.",
+            "required": [
+              "kind",
+              "buildings",
+              "instance"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "building",
+                "description": "Detail kind: building."
+              },
+              "buildings": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "baseId",
+                    "name"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "baseId": {
+                      "type": "string",
+                      "description": "baseId of the building."
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Display name of the building from the snapshot, or the baseId when the snapshot has none."
+                    }
+                  }
+                },
+                "description": "The buildings any one of which would do, in candidate order."
+              },
+              "instance": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "The 1-based instance the step names; null when any instance would do."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Built instances that are all busy: the step waits for one to be free.",
+            "required": [
+              "kind",
+              "buildings",
+              "instance",
+              "every"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "building-busy",
+                "description": "Detail kind: building-busy."
+              },
+              "buildings": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "baseId",
+                    "name"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "baseId": {
+                      "type": "string",
+                      "description": "baseId of the building."
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Display name of the building from the snapshot, or the baseId when the snapshot has none."
+                    }
+                  }
+                },
+                "description": "The buildings that have an instance, in candidate order."
+              },
+              "instance": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "The 1-based instance the step names; null when it names none."
+              },
+              "every": {
+                "type": "boolean",
+                "description": "true only for a produce with no instance on two or more instances, which waits for every one of them to be free; then instance is null and buildings has one item."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Too few villagers at a node.",
+            "required": [
+              "kind",
+              "node",
+              "needed",
+              "available"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "villagers",
+                "description": "Detail kind: villagers."
+              },
+              "node": {
+                "$ref": "#/components/schemas/NodeRef",
+                "description": "The node the villagers are taken from."
+              },
+              "needed": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Villagers the step needs there."
+              },
+              "available": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Villagers gathering or idle there at the offer."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Too little supply for the units the step pays.",
+            "required": [
+              "kind",
+              "needed",
+              "used",
+              "supply"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "population",
+                "description": "Detail kind: population."
+              },
+              "needed": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Population the step's units take."
+              },
+              "used": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Population used at the offer, paid units included."
+              },
+              "supply": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Supply at the offer."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "The bank is short of what the step needs.",
+            "required": [
+              "kind",
+              "short"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "resources",
+                "description": "Detail kind: resources."
+              },
+              "short": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": false,
+                "properties": {
+                  "food": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "wood": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "gold": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "stone": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "description": "The amount missing of each short resource, rounded up to a whole number; a covered resource is absent. The need is the step's cost plus a due auto-house's hold where the step is subject to it."
+              }
+            }
+          }
+        ]
+      },
+      "StepWaitEntry": {
+        "type": "object",
+        "description": "Seconds a step waited for one target.",
+        "required": [
+          "detail",
+          "seconds"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/StepWaitDetail",
+            "description": "The target, with the numbers of the first interval that waited for it; an age entry takes a landmark a later interval names."
+          },
+          "seconds": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Seconds the step waited for this target, summed over every interval."
+          }
+        }
       },
       "NodeDepletion": {
         "type": "object",

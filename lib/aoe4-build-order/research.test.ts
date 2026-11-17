@@ -412,7 +412,7 @@ describe('resources never go negative and waits are reported', () => {
                 result = run([{ action: 'research', tech: 'wheelbarrow' }], { game })
             },
         )
-        expect(outcomes[0]).toEqual({ started: false, waitingOn: 'resources', reserve: { food, wood, gold, stone } })
+        expect(outcomes[0]).toEqual({ started: false, waitingOn: 'resources', detail: { kind: 'resources', short: { gold: 1 } }, reserve: { food, wood, gold, stone } })
         expect(result.steps[0].status).toBe('waiting')
     })
 
@@ -587,7 +587,7 @@ describe('multi-tier research', () => {
         it('waits with no reserve while every entry is above the age, then pays the entry of the age reached', () => {
             const { result, outcomes, state } = recorded([abbey, { action: 'research', tech: 'horticulture' }])
             const reachedAt = result.ages[1].reachedAt
-            expect(outcomes[0]).toEqual({ started: false, waitingOn: 'prerequisite' })
+            expect(outcomes[0]).toEqual({ started: false, waitingOn: 'prerequisite', detail: { kind: 'age', age: 2, landmark: { baseId: 'abbey-of-kings', name: 'Abbey of Kings' } } })
             expect(outcomes.filter((o) => o.started === false).every((o) => !('reserve' in o))).toBe(true)
             expect(result.steps[1]).toMatchObject({ armedAt: 0, startedAt: reachedAt, status: 'completed' })
             expect(paid(result)).toEqual({ wood: 50, gold: 100 })

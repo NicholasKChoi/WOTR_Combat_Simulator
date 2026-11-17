@@ -87,7 +87,7 @@ describe('reserve returned by a registered handler', () => {
     it('holds a scout payment until food stays at or above the reserve afterwards', () => {
         withHandler(
             'build',
-            () => ({ started: false, waitingOn: 'resources', reserve: { ...NO_RESERVE, food: 200 } }),
+            () => ({ started: false, waitingOn: 'resources', detail: null, reserve: { ...NO_RESERVE, food: 200 } }),
             () => {
                 const result = run([
                     { action: 'produce', producer: 'capital-town-center', unit: 'scout' },
@@ -105,7 +105,7 @@ describe('reserve returned by a registered handler', () => {
     it('pays a villager through the reserve', () => {
         withHandler(
             'build',
-            () => ({ started: false, waitingOn: 'resources', reserve: { ...NO_RESERVE, food: 200 } }),
+            () => ({ started: false, waitingOn: 'resources', detail: null, reserve: { ...NO_RESERVE, food: 200 } }),
             () => {
                 const result = run([{ action: 'build', building: 'house', from: 'sheep' }])
                 expect(countAt(result, 'villager', 20)).toBe(1)
@@ -118,7 +118,7 @@ describe('reserve returned by a registered handler', () => {
     it('reserves nothing when the handler reports no reserve', () => {
         withHandler(
             'build',
-            () => ({ started: false, waitingOn: 'prerequisite' }),
+            () => ({ started: false, waitingOn: 'prerequisite', detail: null }),
             () => {
                 const result = run([{ action: 'build', building: 'house', from: 'sheep' }])
                 expect(countAt(result, 'villager', 20)).toBe(1)
