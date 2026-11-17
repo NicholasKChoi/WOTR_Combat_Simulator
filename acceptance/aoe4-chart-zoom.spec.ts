@@ -72,6 +72,21 @@ function expectNear(actual: number, expected: number, within: number) {
   expect(Math.abs(actual - expected)).toBeLessThanOrEqual(within)
 }
 
+// The plot box once the chart has been scrolled into view and has stopped moving.
+async function steadyBox(page: Page, id: string) {
+  await plotPoint(page, id, 0.5)
+  let previous: Awaited<ReturnType<typeof gridBox>> | undefined
+  await expect
+    .poll(async () => {
+      const box = await gridBox(page, id)
+      const steady = previous?.top === box.top && previous?.left === box.left
+      previous = box
+      return steady
+    })
+    .toBe(true)
+  return previous!
+}
+
 async function press(page: Page, id: string, fraction: number) {
   const point = await plotPoint(page, id, fraction)
   await page.mouse.move(point.x, point.y)
@@ -125,7 +140,7 @@ test.describe('AoE4 chart zoom select', () => {
   test('a drag that is short, spans the full game, starts outside the plot box, uses another button or is under 4 px leaves the chart unzoomed', async ({ page }) => {
     await setupKnightLongbow(page)
     await expect(chart(page, RATES)).not.toHaveAttribute('data-label-rows', '0')
-    const box = await gridBox(page, RATES)
+    const box = await steadyBox(page, RATES)
     const middle = box.top + box.height / 2
     const attempts: [string, () => Promise<void>][] = [
       ['under 30 s', () => select(page, RATES, 0.5, 0.5 + (MIN_SPAN - 6) / END)],
@@ -306,28 +321,37 @@ test.describe('AoE4 chart zoom cancel and listeners', () => {
 test.describe('AoE4 chart zoom shown range', () => {
   test('the x axis spans the window with m:ss ticks and nothing is drawn outside the plot box', async ({ page }) => {
     await setupKnightLongbow(page)
-    await select(page, GATHERED, 0.3, 0.6)
+    await select(page, GATHERED, 0.3033, 0.5967)
     const shown = await zoomed(page, GATHERED)
+    expect(shown.from % 5 !== 0 && shown.to % 5 !== 0, 'rows at 5 s steps fall outside the window on both sides').toBe(true)
     const seconds = (label: string) => Number(label.split(':')[0]) * 60 + Number(label.split(':')[1])
+    await expect(async () => {
+      const { grid, clips, markers } = await chart(page, GATHERED).evaluate((el) => {
+        const g = el.querySelector('.recharts-cartesian-grid')!.getBoundingClientRect()
+        const clipRect = (path: Element) => {
+          const rect = document.getElementById(/url\(#(.+)\)/.exec(path.getAttribute('clip-path') ?? '')?.[1] ?? '')?.querySelector('rect')
+          return rect ? { x: Number(rect.getAttribute('x')), width: Number(rect.getAttribute('width')) } : null
+        }
+        const clips = [...el.querySelectorAll('path.recharts-line-curve')].map(clipRect)
+        const lines = [...el.querySelectorAll('[data-testid="chart-marker"]')].map((m) => ({ at: Number(m.getAttribute('data-at')), x: m.getBoundingClientRect().left }))
+        return { grid: { left: g.left, width: g.width, svgLeft: el.querySelector('svg.recharts-surface')!.getBoundingClientRect().left }, clips, markers: lines }
+      })
+      expect(clips.length).toBeGreaterThan(0)
+      expect(markers.length, 'a marker is inside the window').toBeGreaterThan(0)
+      // The lines run past the window to the rows around it, so what keeps them off the page is a clip as wide as the plot box and aligned with it.
+      for (const clip of clips) {
+        expect(clip).not.toBeNull()
+        expect(Math.abs(clip!.width - grid.width)).toBeLessThanOrEqual(1)
+        expect(Math.abs(clip!.x - (grid.left - grid.svgLeft))).toBeLessThanOrEqual(1)
+      }
+      // A marker sits where an axis spanning exactly the window puts it, so a domain widened to the rows outside it moves it.
+      for (const marker of markers) expect(Math.abs(marker.x - (grid.left + ((marker.at - shown.from) / (shown.to - shown.from)) * grid.width))).toBeLessThan(1.5)
+    }).toPass()
     await expect.poll(async () => (await xTickLabels(page, GATHERED)).length).toBeGreaterThan(1)
     const labels = await xTickLabels(page, GATHERED)
     for (const label of labels) expect(label).toMatch(/^\d+:\d{2}$/)
     expect(Math.min(...labels.map(seconds))).toBeGreaterThanOrEqual(shown.from)
     expect(Math.max(...labels.map(seconds))).toBeLessThanOrEqual(shown.to)
-    await expect(async () => {
-      const { grid, paths } = await chart(page, GATHERED).evaluate((el) => {
-        const g = el.querySelector('.recharts-cartesian-grid')!.getBoundingClientRect()
-        const found = [...el.querySelectorAll('path.recharts-line-curve')].map((p) => p.getBoundingClientRect())
-        return { grid: { left: g.left, right: g.right, top: g.top, bottom: g.bottom }, paths: found.map((r) => ({ left: r.left, right: r.right, top: r.top, bottom: r.bottom })) }
-      })
-      expect(paths.length).toBeGreaterThan(0)
-      for (const path of paths) {
-        expect(path.left).toBeGreaterThanOrEqual(grid.left - 1)
-        expect(path.right).toBeLessThanOrEqual(grid.right + 1)
-        expect(path.top).toBeGreaterThanOrEqual(grid.top - 1)
-        expect(path.bottom).toBeLessThanOrEqual(grid.bottom + 1)
-      }
-    }).toPass()
   })
 
   test('the Buildings y axis is fitted to the rows the window returns, including the edge row after it', async ({ page }) => {
@@ -382,6 +406,28 @@ test.describe('AoE4 chart zoom markers, pinned age-ups and the step band', () =>
       })
       .toEqual([result.markers.filter((m) => inside(m.at)).map((m) => m.at).sort((a, b) => a - b), ageUps.filter((m) => inside(m.at)).map((m) => m.at).sort((a, b) => a - b), false, true])
     await expect(chart(page, RATES).getByTestId('chart-pinned-legend')).toHaveCount(1)
+  })
+
+  test('with every line hidden, the pinned legend shows only while a pinned age-up is inside the window', async ({ page }) => {
+    const result = await setupKnightLongbow(page)
+    await page.getByTestId('pin-run').click()
+    const items = chart(page, UNITS).getByTestId('chart-series-legend-item')
+    for (let i = 0; i < (await items.count()); i++) await items.nth(i).click()
+    const legend = chart(page, UNITS).getByTestId('chart-pinned-legend')
+    await expect(legend, 'the pinned age-ups drawn over the full game keep the legend').toHaveCount(1)
+
+    const ageUps = result.markers.filter((m) => m.kind === 'age-up').map((m) => m.at)
+    await select(page, UNITS, 0.3, 0.55)
+    const empty = await zoomed(page, UNITS)
+    expect(ageUps.some((at) => at >= empty.from && at <= empty.to), 'no age-up is inside the window').toBe(false)
+    expect(ageUps.length).toBeGreaterThan(0)
+    await expect(legend).toHaveCount(0)
+
+    await chart(page, UNITS).getByTestId('chart-zoom-reset').click()
+    await select(page, UNITS, 0.2, 0.8)
+    const wide = await zoomed(page, UNITS)
+    expect(ageUps.some((at) => at >= wide.from && at <= wide.to), 'an age-up is inside the window').toBe(true)
+    await expect(legend).toHaveCount(1)
   })
 
   test('a step band is shown for a step inside the window with its own times and absent for a step wholly outside it', async ({ page }) => {
