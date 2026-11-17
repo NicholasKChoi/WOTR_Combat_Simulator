@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { CHART_LAYOUT_STORAGE_KEY, type ChartId } from '../components/apps/aoe4-build-order/chart-layout'
-import { markerLabel } from '../components/apps/aoe4-build-order/chart-rows'
+import { markerLabel } from '../components/apps/aoe4-build-order/chart-markers'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, openPage, showView, waitForRun } from './helpers'
 
@@ -163,7 +163,12 @@ test.describe('AoE4 chart collapse and reorder', () => {
     test(`${key} on the ${id === UNITS ? 'first' : 'last'} chart changes nothing, keeps focus and does not scroll the page`, async ({ page }) => {
       await openResults(page)
       const handle = control(page, id, 'chart-drag-handle')
-      await handle.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
+      await handle.evaluate((el) => {
+        el.scrollIntoView({ block: 'center', behavior: 'instant' })
+        const column = document.querySelector('[data-testid="results-column"]')!
+        column.scrollTop = Math.min(column.scrollTop, column.scrollHeight - column.clientHeight - 40)
+      })
+      await expect(handle).toBeInViewport()
       await handle.focus()
       const readScroll = () => page.getByTestId('results-column').evaluate((el) => ({
         top: el.scrollTop,

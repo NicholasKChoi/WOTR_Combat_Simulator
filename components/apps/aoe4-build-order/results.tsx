@@ -1,11 +1,14 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import cn from 'classnames'
 
-import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
+import type { ChartMarkerKind, SimulationResult } from '../../../lib/aoe4-build-order/model'
 import { resultMessages } from './messages'
 import { InfoMessages, WarningMessages } from './message-lists'
 import { stepSpan } from './step-annotations'
 import { SeriesChart } from './line-chart'
+import { MarkerControl } from './chart-legend'
+import { type MarkerView, labelKindOf, liveMarkerKind } from './chart-markers'
+import { toggleHidden } from './chart-rows'
 import { useChartDrag } from './use-chart-drag'
 import type { ChartId } from './chart-layout'
 import type { ChartLayoutControls } from './use-chart-layout'
@@ -44,6 +47,15 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
     const reorderHelpId = useId()
     const focusAfterMove = useRef<ChartId | null>(null)
     const [orderStatus, setOrderStatus] = useState('')
+    const [hiddenKinds, setHiddenKinds] = useState<ReadonlySet<ChartMarkerKind>>(new Set())
+    const [hoverKind, setHoverKind] = useState<ChartMarkerKind | null>(null)
+    const [focusKind, setFocusKind] = useState<ChartMarkerKind | null>(null)
+    const liveHover = liveMarkerKind(result.markers, hoverKind)
+    const liveFocus = liveMarkerKind(result.markers, focusKind)
+    if (liveHover !== hoverKind) setHoverKind(liveHover)
+    if (liveFocus !== focusKind) setFocusKind(liveFocus)
+    const labelKind = labelKindOf(result.markers, hiddenKinds, liveHover, liveFocus)
+    const markerView: MarkerView = { hidden: hiddenKinds, labelKind }
 
     useEffect(() => {
         const id = focusAfterMove.current
@@ -92,6 +104,14 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
             <p data-testid="chart-order-status" role="status" className="visually-hidden">
                 {orderStatus}
             </p>
+            <MarkerControl
+                markers={result.markers}
+                hidden={hiddenKinds}
+                active={labelKind}
+                onToggle={(kind) => setHiddenKinds((h) => toggleHidden(h, kind))}
+                onHover={setHoverKind}
+                onFocusKind={setFocusKind}
+            />
             <table data-testid="chart-table" aria-label="Results charts" className={resultStyles.chartTable}>
                 <colgroup>
                     <col className={resultStyles.handleColumn} />
@@ -110,6 +130,7 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
                             times={result.times}
                             highlight={highlight}
                             markers={result.markers}
+                            markerView={markerView}
                             series={chart.series(result)}
                             pinnedMarkers={pinned?.markers}
                             pinned={pinned ? { times: pinned.times, series: chart.series(pinned) } : undefined}

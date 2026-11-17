@@ -169,7 +169,7 @@ test.describe('AoE4 workbench headings', () => {
       return {
         build: size(document.querySelector('[data-testid="build-order-heading"]') ?? document.body),
         results: size(document.querySelector('[data-testid="results-heading"]')!),
-        charts: [...new Set([...document.querySelectorAll('h3')].map(size))],
+        charts: [...new Set([...document.querySelectorAll('[data-testid="chart-table"] h3')].map(size))],
       }
     })
     expect(sizes.build).toBe(sizes.results)

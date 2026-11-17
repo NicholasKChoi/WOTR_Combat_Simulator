@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
-import { MARKER_COLORS, markerLabel } from '../components/apps/aoe4-build-order/chart-rows'
+import { MARKER_COLORS, markerLabel } from '../components/apps/aoe4-build-order/chart-markers'
 import { CHART_IDS, openPage, plotPoint, waitForRun } from './helpers'
 
 const BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
