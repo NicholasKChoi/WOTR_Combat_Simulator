@@ -35,14 +35,3 @@ Two optional state migrations (007 upgrade-auto, 008 rescan-issues) are pending;
 - Run /code-factory:upgrade in a Claude Code session in the code repo (not blocking anything).
 
 ### Answer
-
-## Q136: Merge PR #210 (aria-pressed legend fix)?
-kind: handoff
-blocks: SGS-201 (Series legend aria-pressed means shown)
-options: A) Done: merged | B) Not now
-recommendation: A: low risk, all gates passed
-thread: 1572359786450788402
-
-PR #210 (SGS-201, series legend aria-pressed fix, merge risk low) passed every gate but was not auto-merged: REPO.md has babysit false, so checks-evidence.sh finds no logged GREEN and never qualifies a PR. Merge it from GitHub once the Vercel preview is green, or set babysit: true.
-
-### Answer
