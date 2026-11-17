@@ -59,6 +59,10 @@ Rules: [Model rules](../../docs/aoe4-build-order.md#model-rules).
 - `effects.ts`: the overlay effect interpreter (`modifiedValue`) and `classifyTech`, which sorts a technology
   into supported and ignored effects. Rules: [Technologies](../../docs/aoe4-build-order.md#technologies).
 - `research.ts`: the `research` step handler, unit upgrade conversion and the research notes.
+- `wait-detail.ts`: what a waiting step waits for: the builders a handler calls to describe a failed check
+  (`ageWait`, `buildingWait`, `busyWait`, `resourceWait`, `villagerWait`, `populationWait`), the key and
+  breakdown reason of a detail, and its words (`waitDetailText`). Browser-safe: its only value imports are
+  `model.ts`, `engine-common.ts` and `landmarks.ts`.
 - `civ-rules.ts`: the `CivRules` hook interface and `civRules`, the per-civilization lookup. Rules:
   [CivRules seams](../../docs/aoe4-build-order.md#civrules-seams).
 - `landmarks.ts`: the class-name rule that identifies a landmark.
@@ -151,7 +155,8 @@ The model doc's [Extension points](../../docs/aoe4-build-order.md#extension-poin
 each kind of addition, and [CivRules seams](../../docs/aoe4-build-order.md#civrules-seams) covers the hooks.
 In terms of files:
 
-- A new step action: its type in `schema.ts` and an entry in `stepHandlers` in `simulate.ts`.
+- A new step action: its type in `schema.ts` and an entry in `stepHandlers` in `simulate.ts`; each of the
+  handler's `started: false` returns names a `detail` built with the `wait-detail.ts` builders.
 - A new civilization rule: a hook in `civ-rules.ts`, called from the engine.
 - A new data field: its type in `data.ts` and schema in `data-schema.ts`, then the data file under
   `data/aoe4-build-order/`.

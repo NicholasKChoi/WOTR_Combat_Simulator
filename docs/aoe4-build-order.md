@@ -160,7 +160,12 @@ holding while the banked amount of one resource is at least `atLeast`; it reads 
 changes it). A non-reaction step arms when its trigger holds and every earlier non-reaction step has
 started; a step without a trigger arms as soon as those steps have started. Once armed, it waits while any check in the wait
 reasons table ([Outputs](aoe4-build-order-format.md#outputs)) fails, then starts. `waitSeconds = startedAt - armedAt`. At the horizon, a
-step that never armed is `not-reached`, and a step that armed but never started is `waiting`.
+step that never armed is `not-reached`, and a step that armed but never started is `waiting`. Each offer
+runs the checks of the step's action in order (an age, then a missing building, then villagers or population, then resources,
+then a busy building) and reports the first that fails: its reason as `waitingOn` and what it waits for
+as `waitingFor`, such as the age, the building, the villagers at a node or the resources short. Each
+interval of waiting adds its seconds to `waitBreakdown` under the reason and to `waitDetails` under the
+target ([Wait details](aoe4-build-order-format.md#wait-details)). Recording them changes no timing.
 
 A step marked `reaction` (only a `depleted` step may be one) arms when its trigger holds, without waiting
 for earlier steps, and never delays a later step. Because run-outs apply first in the instant, its

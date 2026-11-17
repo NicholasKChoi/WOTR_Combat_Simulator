@@ -1,10 +1,11 @@
 import type { GameData, SnapshotEntry } from './data';
 import { classifyTech } from './effects';
 import type { EffectState } from './effects';
-import { canAffordHeld, costOf, instanceFree, markCompleted, payCost, recordUnits } from './engine-common';
+import { canAffordHeld, costOf, heldNeed, instanceFree, markCompleted, payCost, recordUnits } from './engine-common';
 import { researchMarker } from './markers';
 import type { BuildOrder, BuildOrderNote } from './model';
 import type { BuildingInstance, EngineState, PaidItem, StepHandler } from './simulate';
+import { ageWait, buildingWait, busyWait, resourceWait } from './wait-detail';
 
 // Every instance of the candidate buildings, in candidate order, then instance number.
 function candidateInstances(state: EngineState, candidates: readonly string[]): BuildingInstance[] {
@@ -35,23 +36,32 @@ export function researchEntry(baseId: string, state: EffectState): SnapshotEntry
   return picked;
 }
 
+// The lowest age among a tech's technology and upgrade entries; undefined when it has none.
+function lowestResearchAge(baseId: string, state: EffectState): number | undefined {
+  const ages = (state.data.byBaseId.get(baseId) ?? []).filter((entry) => entry.type === 'technology' || entry.type === 'upgrade').map((entry) => entry.age);
+  return ages.length === 0 ? undefined : Math.min(...ages);
+}
+
 /** The step handler for `research`: pays for the tech on the first free candidate instance, or reports what the step waits on (Model rules). */
 export const researchHandler: StepHandler<'research'> = (step, index, state) => {
   const entry = researchEntry(step.tech, state);
   if (!entry) {
-    return { started: false, waitingOn: 'prerequisite' };
+    const age = lowestResearchAge(step.tech, state);
+    return { started: false, waitingOn: 'prerequisite', detail: age === undefined ? null : ageWait(state, age) };
   }
-  const instances = candidateInstances(state, step.at === undefined ? entry.producedBy : [step.at]);
+  const candidates = step.at === undefined ? entry.producedBy : [step.at];
+  const instances = candidateInstances(state, candidates);
   if (instances.length === 0) {
-    return { started: false, waitingOn: 'prerequisite' };
+    return { started: false, waitingOn: 'prerequisite', detail: buildingWait(state, candidates, null) };
   }
   const cost = costOf(entry, 1);
   if (!canAffordHeld(state, cost)) {
-    return { started: false, waitingOn: 'resources', reserve: cost };
+    return { started: false, waitingOn: 'resources', detail: resourceWait(state, heldNeed(cost, [state.houseHold])), reserve: cost };
   }
   const target = instances.find((instance) => instanceFree(state, instance, index));
   if (!target) {
-    return { started: false, waitingOn: 'prerequisite', reserve: cost };
+    const built = candidates.filter((baseId) => (state.instances.get(baseId)?.length ?? 0) > 0);
+    return { started: false, waitingOn: 'prerequisite', detail: busyWait(state, built, null, false), reserve: cost };
   }
   payCost(state, cost, 'research');
   target.paid.push(researchItem(entry, index));

@@ -16,6 +16,8 @@ function timing(step: number, overrides: Partial<StepTiming> = {}): StepTiming {
         waitSeconds: 0,
         waitingOn: null,
         waitBreakdown: {},
+        waitingFor: null,
+        waitDetails: [],
         ...overrides,
     }
 }

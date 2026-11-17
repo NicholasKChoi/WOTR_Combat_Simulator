@@ -16,9 +16,10 @@ import { isLandmark } from './landmarks';
 import { ageMarker, compareMarkers } from './markers';
 import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
 import { productionBuildingSeries } from './production-buildings';
-import type { BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, Trigger, UnitSeries } from './model';
+import type { BreakdownReason, BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, StepWaitDetail, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 import { unitLineName } from './unit-lines';
+import { ageWait, buildingWait, busyWait, populationWait, resourceWait, villagerWait, waitTargetKey } from './wait-detail';
 
 /** Seconds between the samples of the result series: output resolution, not a game number (Outputs). */
 export const SAMPLE_SECONDS = 5;
@@ -116,14 +117,16 @@ export interface EngineState extends EffectState {
   houseHold: Readonly<Resources> | undefined;
   // Free targets the waiting cursor step keeps idle until all its targets are free; set only by offerSteps.
   held: { step: number; instances: ReadonlySet<BuildingInstance> } | null;
+  // Buildings under construction, explicit or auto.
+  readonly constructing: { baseId: string; completesAt: number }[];
   // Events run in (time, insertion) order.
   schedule(time: number, apply: (state: EngineState) => void): void;
 }
 
-/** What a step handler reports: it started, or what it waits on and the resources it reserves (Model rules). */
+/** What a step handler reports: it started, or what it waits on, what for, and the resources it reserves (Model rules). */
 export type StepStart =
   | { started: true }
-  | { started: false; waitingOn: StepWait; reserve?: Readonly<Record<ResourceKind, number>>; hold?: readonly BuildingInstance[] };
+  | { started: false; waitingOn: StepWait; detail: StepWaitDetail | null; reserve?: Readonly<Record<ResourceKind, number>>; hold?: readonly BuildingInstance[] };
 
 /** Tries to start one step of an action against the engine state (Model rules). */
 export type StepHandler<A extends BuildStep['action'] = BuildStep['action']> = (
@@ -152,8 +155,6 @@ interface Engine extends EngineState {
   reactionNeeds: { step: number; cost: Readonly<Resources> }[];
   // Order payments and auto-houses short of resources at the latest instant.
   needs: Resources[];
-  // Buildings under construction, explicit or auto.
-  readonly constructing: { baseId: string; completesAt: number }[];
   readonly ages: SimulationResult['ages'];
   // Run refs that ran out this instant, recorded once the instant ends.
   readonly runOuts: FiniteNodeRef[];
@@ -396,19 +397,27 @@ function payUnit(state: EngineState, instance: BuildingInstance, entry: Snapshot
 const produce: StepHandler<'produce'> = (step, index, state) => {
   const targets = targetInstances(state, step.producer, step.instance);
   const entry = resolveUnitEntry(step.unit, state);
-  if (targets.length === 0 || !entry || entry.age > state.age) {
-    return { started: false, waitingOn: 'prerequisite' };
+  if (!entry) {
+    return { started: false, waitingOn: 'prerequisite', detail: null };
   }
-  if (state.population + targets.length * entry.costs.popcap > state.supply) {
-    return { started: false, waitingOn: 'population' };
+  if (entry.age > state.age) {
+    return { started: false, waitingOn: 'prerequisite', detail: ageWait(state, entry.age) };
+  }
+  if (targets.length === 0) {
+    return { started: false, waitingOn: 'prerequisite', detail: buildingWait(state, [step.producer], step.instance ?? null) };
+  }
+  const popcap = targets.length * entry.costs.popcap;
+  if (state.population + popcap > state.supply) {
+    return { started: false, waitingOn: 'population', detail: populationWait(state, popcap) };
   }
   const total = costOf(entry, targets.length);
   if (!canAffordHeld(state, total)) {
-    return { started: false, waitingOn: 'resources', reserve: total };
+    return { started: false, waitingOn: 'resources', detail: resourceWait(state, heldNeed(total, [state.houseHold])), reserve: total };
   }
   const free = targets.filter((target) => instanceFree(state, target, index));
   if (free.length < targets.length) {
-    return { started: false, waitingOn: 'prerequisite', reserve: total, hold: free };
+    const detail = busyWait(state, [step.producer], step.instance ?? null, step.instance === undefined && targets.length > 1);
+    return { started: false, waitingOn: 'prerequisite', detail, reserve: total, hold: free };
   }
   const replaced = targets.map((target) => target.order?.step ?? null);
   for (const target of targets) {
@@ -454,12 +463,13 @@ function startConstruction(state: EngineState, job: Construction): void {
   payCost(state, costOf(job.entry, 1), 'buildings');
   sendWalking(state, job.from, job.builders);
   const done = state.time + villagerWalkSeconds(state, job.walkSeconds ?? state.inputs.walkSeconds) + constructionSeconds(job.entry.costs.time, job.builders, state.data);
-  (state as Engine).constructing.push({ baseId: job.entry.baseId, completesAt: done });
+  state.constructing.push({ baseId: job.entry.baseId, completesAt: done });
   state.schedule(done, (s) => completeConstruction(s, job, done));
 }
 
 function completeConstruction(state: EngineState, job: Construction, completesAt: number): void {
-  const { constructing, ages } = state as Engine;
+  const { constructing } = state;
+  const { ages } = state as Engine;
   const { entry } = job;
   constructing.splice(constructing.findIndex((item) => item.baseId === entry.baseId && item.completesAt === completesAt), 1);
   const built = addBuildingInstance(state, entry.baseId);
@@ -493,15 +503,20 @@ function isHouseBuild(step: BuildStep): boolean {
 const build: StepHandler<'build'> = (step, index, state) => {
   const entry = state.data.byBaseId.get(step.building)?.[0];
   const builders = step.builders ?? 1;
-  if (!entry || entry.age > state.age) {
-    return { started: false, waitingOn: 'prerequisite' };
+  if (!entry) {
+    return { started: false, waitingOn: 'prerequisite', detail: null };
   }
-  if (availableAt(state, step.from) < builders) {
-    return { started: false, waitingOn: 'villagers' };
+  if (entry.age > state.age) {
+    return { started: false, waitingOn: 'prerequisite', detail: ageWait(state, entry.age) };
+  }
+  const available = availableAt(state, step.from);
+  if (available < builders) {
+    return { started: false, waitingOn: 'villagers', detail: villagerWait(step.from, builders, available) };
   }
   const cost = costOf(entry, 1);
-  if (!(isHouseBuild(step) ? canAfford(state.resources, cost) : canAffordHeld(state, cost))) {
-    return { started: false, waitingOn: 'resources', reserve: cost };
+  const need = isHouseBuild(step) ? cost : heldNeed(cost, [state.houseHold]);
+  if (!canAfford(state.resources, need)) {
+    return { started: false, waitingOn: 'resources', detail: resourceWait(state, need), reserve: cost };
   }
   startConstruction(state, { entry, builders, from: step.from, then: step.then ?? step.from, walkSeconds: step.walkSeconds, step: index });
   return { started: true };
@@ -511,7 +526,7 @@ const move: StepHandler<'move'> = (step, index, state) => {
   const available = availableAt(state, step.from);
   const count = step.count === 'all' ? available : step.count;
   if (available < count) {
-    return { started: false, waitingOn: 'villagers' };
+    return { started: false, waitingOn: 'villagers', detail: villagerWait(step.from, count, available) };
   }
   if (count === 0) {
     markCompleted(state, index);
@@ -540,12 +555,14 @@ function offerStep(engine: Engine, index: number): StepStart | null {
     timing.armedAt = engine.time;
   }
   const handler = stepHandlers[step.action] as StepHandler | undefined;
-  const outcome: StepStart = handler ? handler(step, index, engine) : { started: false, waitingOn: 'prerequisite' };
+  const outcome: StepStart = handler ? handler(step, index, engine) : { started: false, waitingOn: 'prerequisite', detail: null };
   if (outcome.started === false) {
     timing.waitingOn = outcome.waitingOn;
+    timing.waitingFor = outcome.detail;
     return outcome;
   }
   timing.waitingOn = null;
+  timing.waitingFor = null;
   timing.startedAt = engine.time;
   timing.waitSeconds = timing.startedAt - timing.armedAt;
   return outcome;
@@ -895,7 +912,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     walking: 0,
     population: 0,
     supply: 0,
-    steps: order.steps.map((_, step) => ({ step, status: 'not-reached', armedAt: null, startedAt: null, completedAt: null, waitSeconds: 0, waitingOn: null, waitBreakdown: {} })),
+    steps: order.steps.map((_, step) => ({ step, status: 'not-reached', armedAt: null, startedAt: null, completedAt: null, waitSeconds: 0, waitingOn: null, waitBreakdown: {}, waitingFor: null, waitDetails: [] })),
     spent: { villagers: 0, military: 0, buildings: 0, research: 0 },
     spawnedPopulation: 0,
     populationCapReachedAt: null,
@@ -930,14 +947,34 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
 
 const BREAKDOWN_REASONS: readonly StepWait[] = ['resources', 'villagers', 'population', 'prerequisite'];
 
-/** Adds seconds to the wait breakdown of each given step under what it waits on, for the four countable reasons. */
+// One entry per target key, keeping the numbers of the interval that created it; an age entry takes a landmark a
+// later interval names, and a later null landmark never clears it.
+function accrueDetail(timing: StepTiming, seconds: number): void {
+  const detail = timing.waitingFor;
+  if (detail === null) {
+    return;
+  }
+  const key = waitTargetKey(detail);
+  const entry = timing.waitDetails.find((item) => waitTargetKey(item.detail) === key);
+  if (!entry) {
+    timing.waitDetails.push({ detail, seconds });
+    return;
+  }
+  entry.seconds += seconds;
+  if (detail.kind === 'age' && detail.landmark !== null) {
+    entry.detail = detail;
+  }
+}
+
+/** Adds seconds to the wait breakdown and the wait details of each given step under what it waits on, for the four countable reasons. */
 export function accrueWait(engine: Pick<Engine, 'steps'>, stepIndexes: readonly number[], seconds: number): void {
   for (const index of stepIndexes) {
     const timing = engine.steps[index];
     const reason = timing.waitingOn;
     if (reason !== null && BREAKDOWN_REASONS.includes(reason) && seconds > 0) {
-      const key = reason as keyof StepTiming['waitBreakdown'];
+      const key = reason as BreakdownReason;
       timing.waitBreakdown[key] = (timing.waitBreakdown[key] ?? 0) + seconds;
+      accrueDetail(timing, seconds);
     }
   }
 }

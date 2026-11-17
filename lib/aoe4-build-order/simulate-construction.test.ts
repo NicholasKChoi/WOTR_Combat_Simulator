@@ -408,7 +408,7 @@ describe('auto-houses', () => {
     it('ignore a waiting step reserve', () => {
         withHandler(
             'research',
-            () => ({ started: false, waitingOn: 'resources', reserve: { food: 0, wood: 1e9, gold: 0, stone: 0 } }),
+            () => ({ started: false, waitingOn: 'resources', detail: null, reserve: { food: 0, wood: 1e9, gold: 0, stone: 0 } }),
             () => {
                 const result = run([{ action: 'research', tech: 'wheelbarrow' }], { start: { villagers: { sheep: 9 }, rally: 'sheep' } })
                 expect(result.floating.wood[0]).toBe(150)

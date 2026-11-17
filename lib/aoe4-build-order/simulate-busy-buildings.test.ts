@@ -247,10 +247,10 @@ describe('a step with no target instance is unchanged', () => {
     const game = startingWith(3, ['capital-town-center', 'barracks', 'barracks', ...houses], plenty)
 
     it.each([
-        ['produce', produce('man-at-arms', { instance: 3, count: 1 })],
-        ['research', { action: 'research', tech: 'steeled-arrow' } as BuildStep],
-    ] as const)('a %s waits on prerequisite with nothing held or reserved', (action, step) => {
-        expect(outcomeOf(action, step, game)).toEqual({ started: false, waitingOn: 'prerequisite' })
+        ['produce', produce('man-at-arms', { instance: 3, count: 1 }), { kind: 'building', buildings: [{ baseId: 'barracks', name: 'Barracks' }], instance: 3 }],
+        ['research', { action: 'research', tech: 'steeled-arrow' } as BuildStep, { kind: 'building', buildings: [{ baseId: 'blacksmith', name: 'Blacksmith' }], instance: null }],
+    ] as const)('a %s waits on prerequisite with nothing held or reserved', (action, step, detail) => {
+        expect(outcomeOf(action, step, game)).toEqual({ started: false, waitingOn: 'prerequisite', detail })
     })
 })
 

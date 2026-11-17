@@ -17,6 +17,8 @@ import type {
   SpendCategory,
   StepTiming,
   StepWait,
+  StepWaitDetail,
+  StepWaitEntry,
   UnitSeries,
 } from '../lib/aoe4-build-order/model'
 
@@ -41,8 +43,8 @@ function objectVariants(schema: Schema): Schema[] {
 }
 
 const REQUEST_SCHEMAS = ['SimulateRequest', 'BuildOrder', 'BuildStart', 'BuildStep', 'Trigger', 'SimInputOverrides', 'TripInputOverrides']
-const RESPONSE_SCHEMAS = ['SimulateError', 'SimulationResult', 'UnitSeries', 'BuildingSeries', 'StepTiming', 'BuildOrderIssue', 'BuildOrderNote', 'NodeDepletion', 'ChartMarker']
-const SHARED_SCHEMAS = ['GatherNodeId', 'ResourceKind', 'SpendCategory', 'CivId', 'FiniteGatherNodeId', 'DepositRef', 'NodeRef', 'FiniteNodeRef', 'Severity', 'StepWait', 'SimWarning', 'ChartMarkerKind']
+const RESPONSE_SCHEMAS = ['SimulateError', 'SimulationResult', 'UnitSeries', 'BuildingSeries', 'StepTiming', 'BuildOrderIssue', 'BuildOrderNote', 'NodeDepletion', 'ChartMarker', 'StepWaitEntry']
+const SHARED_SCHEMAS = ['GatherNodeId', 'ResourceKind', 'SpendCategory', 'CivId', 'FiniteGatherNodeId', 'DepositRef', 'NodeRef', 'FiniteNodeRef', 'Severity', 'StepWait', 'SimWarning', 'StepWaitDetail', 'ChartMarkerKind']
 
 const PRODUCE = { action: 'produce', producer: 'capital-town-center', unit: 'villager' }
 const START = { villagers: { sheep: 6 }, rally: 'sheep' }
@@ -114,8 +116,17 @@ test.describe('spec structure', () => {
     }
   })
 
+  test('every StepWaitDetail variant is closed, requires every property and is tagged by a kind const', () => {
+    const variants: Schema[] = schemas.StepWaitDetail.oneOf
+    expect(variants.map((v) => (v.properties!.kind as { const?: string }).const)).toEqual(['age', 'building', 'building-busy', 'villagers', 'population', 'resources'])
+    for (const variant of variants) {
+      expect(variant.additionalProperties).toBe(false)
+      expect([...variant.required!].sort()).toEqual(keys(variant.properties!))
+    }
+  })
+
   test('every AoE4 schema property and every oneOf variant has a description', () => {
-    for (const name of [...REQUEST_SCHEMAS, ...RESPONSE_SCHEMAS, 'SimWarning']) {
+    for (const name of [...REQUEST_SCHEMAS, ...RESPONSE_SCHEMAS, 'SimWarning', 'StepWaitDetail']) {
       for (const variant of objectVariants(schemas[name])) {
         for (const [property, value] of Object.entries(variant.properties ?? {})) {
           expect(value.description, `${name}.${property}`).toBeTruthy()
@@ -506,7 +517,24 @@ test.describe('exported types match the spec', () => {
   ]
   const unitSeries: Record<keyof UnitSeries, true> = { unitId: true, baseId: true, name: true, lineName: true, tier: true, counts: true }
   const buildingSeries: Record<keyof BuildingSeries, true> = { baseId: true, name: true, counts: true }
-  const stepTiming: Record<keyof StepTiming, true> = { step: true, status: true, armedAt: true, startedAt: true, completedAt: true, waitSeconds: true, waitingOn: true, waitBreakdown: true }
+  const stepTiming: Record<keyof StepTiming, true> = { step: true, status: true, armedAt: true, startedAt: true, completedAt: true, waitSeconds: true, waitingOn: true, waitBreakdown: true, waitingFor: true, waitDetails: true }
+  const stepWaitEntry: Record<keyof StepWaitEntry, true> = { detail: true, seconds: true }
+  type DetailKeys<K extends StepWaitDetail['kind']> = Record<keyof Extract<StepWaitDetail, { kind: K }>, true>
+  const stepWaitDetailVariants: [
+    DetailKeys<'age'>,
+    DetailKeys<'building'>,
+    DetailKeys<'building-busy'>,
+    DetailKeys<'villagers'>,
+    DetailKeys<'population'>,
+    DetailKeys<'resources'>,
+  ] = [
+    { kind: true, age: true, landmark: true },
+    { kind: true, buildings: true, instance: true },
+    { kind: true, buildings: true, instance: true, every: true },
+    { kind: true, node: true, needed: true, available: true },
+    { kind: true, needed: true, used: true, supply: true },
+    { kind: true, short: true },
+  ]
   const buildOrderIssue: Record<keyof BuildOrderIssue, true> = { code: true, message: true, step: true, line: true, suggestion: true }
   const buildOrderNote: Record<keyof BuildOrderNote, true> = { code: true, severity: true, message: true, step: true, tech: true, properties: true }
 
@@ -525,6 +553,7 @@ test.describe('exported types match the spec', () => {
     BuildOrderNote: buildOrderNote,
     NodeDepletion: nodeDepletion,
     ChartMarker: chartMarker,
+    StepWaitEntry: stepWaitEntry,
   }
 
   for (const [name, literal] of Object.entries(typeKeys)) {
@@ -536,6 +565,12 @@ test.describe('exported types match the spec', () => {
   test('SimWarning variant keys match the schema variants', () => {
     simWarningVariants.forEach((literal, i) => {
       expect(keys(literal)).toEqual(keys(schemas.SimWarning.oneOf[i].properties))
+    })
+  })
+
+  test('StepWaitDetail variant keys match the schema variants', () => {
+    stepWaitDetailVariants.forEach((literal, i) => {
+      expect(keys(literal)).toEqual(keys(schemas.StepWaitDetail.oneOf[i].properties))
     })
   })
 })

@@ -390,14 +390,17 @@ A `SimulationResult` holds:
 - `populationCapReachedAt`: the instant `spawnedPopulation` first reaches the population cap (`0` when the
   start already does), or `null`. It is a spawn instant, not rounded to a sample time.
 - `steps`: one `StepTiming` per step with `status`, `armedAt`, `startedAt`, `completedAt`,
-  `waitSeconds`, `waitingOn` and `waitBreakdown`. `status` is one of `completed`, `in-progress`, `waiting` or
+  `waitSeconds`, `waitingOn`, `waitBreakdown`, `waitingFor` and `waitDetails`. `status` is one of `completed`, `in-progress`, `waiting` or
   `not-reached`. `waitingOn` is why the step has not started: `null` once it has started, the reason of its
   last failed check while `waiting`, `trigger` for a `not-reached` step whose own trigger never held (every
   unarmed reaction, and the first unstarted non-reaction step), and `earlier-step` for a `not-reached`
   non-reaction step behind an unstarted non-reaction step; a reaction is never `earlier-step`. `waitBreakdown` is the seconds from
   `armedAt` spent on each of `resources`, `villagers`, `population` and `prerequisite`; the values sum to
   `waitSeconds` for a started step and to the time from `armedAt` to the horizon for a `waiting` one, and a
-  reason with 0 seconds is absent.
+  reason with 0 seconds is absent. `waitingFor` is what the last failed check waits for, a `StepWaitDetail`
+  (below): it is set at each offer the step fails, `null` once the step starts, so at the horizon a `waiting`
+  step has the detail of its last failed offer and every other step has `null`. `waitDetails` lists the
+  seconds waited per target ([Wait details](#wait-details)).
 - `ages`: each age reached and its `reachedAt` time.
 - `markers`: `ChartMarker`s (`kind`, `label`, `at`, and `unit` when set) for the charts: one `age-up` marker per age reached after
   the start age (label `Feudal`, `Castle` or `Imperial`, `at` its `reachedAt`) and one per completed research
@@ -466,21 +469,48 @@ while the building instances it needs are busy ([Queues](aoe4-build-order.md#mod
 building's entry is above the current age or while fewer than `builders` villagers are at `from`, gathering
 or idle; a `move` step with a number `count` waits while fewer than `count` are. A reaction waits for the same
 reasons from its run-out instant on, without waiting for earlier steps or holding back later ones. Each reason is reported: `waitingOn`
-holds the current one and `waitBreakdown` the seconds spent on each. A handler checks in a fixed order
-and reports the first check that fails:
+holds the current one, `waitingFor` what that check waits for, `waitBreakdown` the seconds spent on each
+reason and `waitDetails` the seconds spent on each target. A handler checks in a fixed order and reports
+the first check that fails, with the detail of that check:
 
-| `waitingOn` | produced when |
-|---|---|
-| `prerequisite` | `produce`: no targeted instance exists, or the unit's entry is above the current age, or a targeted instance is not free. `build`: the building's entry is above the current age. `research`: no producing instance exists, or every tier of the tech is above the current age, or no candidate instance is free. An action with no handler always reports it |
-| `villagers` | `build`: fewer than `builders` villagers gather at `from` or idle there. `move` with a number `count`: fewer than `count` do. `move` with `count: all` never waits and never reports it |
-| `population` | `produce`: the population after paying would pass supply |
-| `resources` | every earlier check passes but the bank is short of the step's cost, plus a due auto-house's hold on the resources it spends, except for an explicit `build house` step ([Houses and supply](aoe4-build-order.md#model-rules)) |
+| `waitingOn` | produced when | `waitingFor` kind |
+|---|---|---|
+| `prerequisite` | `produce`: the unit's entry is above the current age, or no targeted instance exists, or a targeted instance is not free. `build`: the building's entry is above the current age. `research`: every tier of the tech is above the current age, or no producing instance exists, or no candidate instance is free. An action with no handler always reports it, with a `null` detail; every `BuildStep` action has a handler, so every second in `waitBreakdown` has a detail | `age`, `building` (a missing building) or `building-busy` (a busy one) |
+| `villagers` | `build`: fewer than `builders` villagers gather at `from` or idle there. `move` with a number `count`: fewer than `count` do. `move` with `count: all` never waits and never reports it | `villagers` |
+| `population` | `produce`: the population after paying would pass supply | `population` |
+| `resources` | every earlier check passes but the bank is short of the step's cost, plus a due auto-house's hold on the resources it spends, except for an explicit `build house` step ([Houses and supply](aoe4-build-order.md#model-rules)) | `resources` |
 
-The order is a missing building or an age (`prerequisite`), then `villagers` or `population`, then
-`resources`, then, for `produce` and `research`, a busy building (`prerequisite`). A non-reaction step
+The order is an age, then a missing building (both `prerequisite`; a `produce` whose unit is above the age
+and whose producer is not built reports the age), then `villagers` or `population`, then `resources`, then,
+for `produce` and `research`, a busy building (`prerequisite`). A non-reaction step
 waiting on `resources` or on a busy building reserves its cost; no other wait reserves. `rally` and `pause`
 never wait. A `trigger` or `earlier-step` reason is only reported for a step that never armed. A `produce` step completes when no
 instance carries its order any more: a counted one at the spawn of its last unit on the last instance, a
 continuous one (or a counted one replaced early) when a later `produce` or `pause` on that producer
 starts. `rally` and `pause` complete the instant they start; `build` completes when the building does,
 `move` when its villagers arrive, and `research` when its research time ends.
+
+### Wait details
+
+A `StepWaitDetail` is tagged by `kind`; building names come from the snapshot (the `baseId` when it has
+none), and every count is a whole number:
+
+| `kind` | fields | given when |
+|---|---|---|
+| `age` | `age` (2 to 4), `landmark` (`{ baseId, name }` or `null`) | the entry is above the current age. `produce` and `build` name the entry's age; `research` names the lowest age among the tech's entries. `landmark` is set only when `age` is the next age: the landmark of the current age under construction that completes first (ties by `baseId`) |
+| `building` | `buildings` (at least one `{ baseId, name }`), `instance` (number or `null`) | no targeted instance exists. `produce` names its producer and its `instance`; `research` names `at`, else every `producedBy` building in snapshot order, with `instance: null` |
+| `building-busy` | `buildings`, `instance`, `every` (boolean) | a targeted instance is not free. `produce` names its producer and its `instance`; `every` is `true` only for a `produce` with no `instance` on two or more instances, which waits for all of them. `research` names the candidate buildings that have an instance, in candidate order, with `instance: null` and `every: false` |
+| `villagers` | `node`, `needed`, `available` | the villagers the step needs at `node` and those gathering or idle there |
+| `population` | `needed`, `used`, `supply` | the population of one unit per target, the population used and the supply at the offer |
+| `resources` | `short` (at least one resource) | the amount missing of each resource short of the need the check used (the cost plus the auto-house hold where it applies), rounded up; a covered resource is absent |
+
+`waitDetails` holds one `StepWaitEntry` (`detail`, `seconds`) per target, in the order each was first
+waited for. Each interval the step waits under a `waitBreakdown` reason adds its seconds to the entry whose
+target matches `waitingFor`, or appends an entry. Targets match by kind and, for `age`, the age; for
+`building` and `building-busy`, the buildings and instance (so a missing Barracks and a busy one are two
+entries); `resources`, `villagers` and `population` each have one target. An entry keeps the numbers of
+the interval that created it, except that an `age` entry takes the landmark a later interval names, and a
+later `null` landmark does not clear it. A target never waited on for any time has no entry. `age`,
+`building` and `building-busy` entries count under `prerequisite`, the others under the reason of the same
+name, so for each reason the seconds of its entries add up to `waitBreakdown`. `waitDetails` is `[]` for a
+step that never waited.

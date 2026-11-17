@@ -134,7 +134,38 @@ export interface StepTiming {
   completedAt: number | null;
   waitSeconds: number;
   waitingOn: StepWait | null;
-  waitBreakdown: Partial<Record<'resources' | 'villagers' | 'population' | 'prerequisite', number>>;
+  waitBreakdown: Partial<Record<BreakdownReason, number>>;
+  // The detail of the last failed offer while the step waits; null once it starts and on a step never offered.
+  waitingFor: StepWaitDetail | null;
+  // Seconds waited per distinct target, in first-accrued order.
+  waitDetails: StepWaitEntry[];
+}
+
+/** The wait reasons whose seconds a step's waitBreakdown counts (Outputs). */
+export type BreakdownReason = 'resources' | 'villagers' | 'population' | 'prerequisite';
+
+interface WaitBuilding {
+  baseId: string;
+  name: string;
+}
+
+/**
+ * What a waiting step waits for (Outputs). `buildings` has at least one item; `short` has at least one key, each a
+ * whole number of at least 1. `building-busy.every` is true only for a produce with no instance on two or more
+ * instances, and then `instance` is null and `buildings` has one item.
+ */
+export type StepWaitDetail =
+  | { kind: 'age'; age: 2 | 3 | 4; landmark: WaitBuilding | null }
+  | { kind: 'building'; buildings: WaitBuilding[]; instance: number | null }
+  | { kind: 'building-busy'; buildings: WaitBuilding[]; instance: number | null; every: boolean }
+  | { kind: 'villagers'; node: NodeRef; needed: number; available: number }
+  | { kind: 'population'; needed: number; used: number; supply: number }
+  | { kind: 'resources'; short: Partial<Record<ResourceKind, number>> };
+
+/** Seconds a step waited for one target (Outputs). */
+export interface StepWaitEntry {
+  detail: StepWaitDetail;
+  seconds: number;
 }
 
 /** The kinds of chart marker (Outputs). */
