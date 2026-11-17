@@ -5,30 +5,17 @@ import type { GameData, SnapshotEntry } from './data'
 import { modifiedValue } from './effects'
 import type { EffectState } from './effects'
 import { effectiveGatherRate } from './gather'
-import type { BuildStart, BuildStep, GatherNodeId, ResourceKind, SimInputs, SimulationResult } from './model'
+import type { BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult } from './model'
 import { researchEntry, researchHandler, researchNotes, resolveUnitEntry } from './research'
 import type { BuildingInstance, EngineState } from './simulate'
-import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, noAutoVillagers, researchedOf, run, sampleIndex, series, withHandler } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, buildOrder, editGameData, effectStateOf, inputsFor, noAutoVillagers, researchedOf, run, sampleIndex, series, startingWith, tierCountAt, withHandler } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const data = ENGLISH
 
-function startingWith(age: number, buildings: string[], resources: Record<ResourceKind, number>, edit: (parts: Parts) => void = () => {}): GameData {
-    return editGameData((parts) => {
-        parts.civData.startingState.age.value = age
-        parts.civData.startingState.buildings.value = buildings
-        parts.civData.startingState.resources.value = resources
-        edit(parts)
-    })
-}
-
 function entriesOf(parts: Parts, baseId: string): SnapshotEntry[] {
     const all = [...parts.snapshot.units, ...parts.snapshot.technologies, ...parts.snapshot.upgrades]
     return all.filter((e) => e.baseId === baseId)
-}
-
-function tierCountAt(result: SimulationResult, unitId: string, t: number): number {
-    return result.unitsProduced.find((u) => u.unitId === unitId)?.counts[sampleIndex(result, t)] ?? 0
 }
 
 interface Taken {
@@ -78,7 +65,7 @@ describe('an upgrade delays production and changes the tier', () => {
 
     it('runs the research after the spearman already paid, for its 60 s', () => {
         expect(tierCountAt(result, 'spearman-2', 15)).toBe(1)
-        expect(result.steps[1]).toMatchObject({ status: 'completed', startedAt: 5, completedAt: 75 })
+        expect(result.steps[1]).toMatchObject({ status: 'completed', startedAt: 15, completedAt: 75, waitBreakdown: { prerequisite: 10 } })
         expect(taken.map((t) => [t.baseId, t.instance])).toEqual([['barracks', 1]])
     })
 
@@ -105,7 +92,8 @@ describe('an upgrade delays production and changes the tier', () => {
 })
 
 describe('a unit spawns at the highest researched tier, with the cost and time of the tier it was paid at', () => {
-    const game = startingWith(3, ['barracks', 'barracks', ...houses], plenty, (parts) => {
+    // The research runs on barracks 1, so the third step produces at an idle barracks 3.
+    const game = startingWith(3, ['barracks', 'barracks', 'barracks', ...houses], plenty, (parts) => {
         entriesOf(parts, 'spearman').forEach((e) => {
             e.costs.time = 100
         })
@@ -116,7 +104,7 @@ describe('a unit spawns at the highest researched tier, with the cost and time o
     const steps = (trigger: BuildStep['trigger']): BuildStep[] => [
         { action: 'produce', producer: 'barracks', instance: 2, unit: 'spearman', count: 1 },
         { action: 'research', tech: 'veteran-spearmen', at: 'barracks' },
-        { action: 'produce', producer: 'barracks', instance: 1, unit: 'spearman', count: 1, trigger },
+        { action: 'produce', producer: 'barracks', instance: 3, unit: 'spearman', count: 1, trigger },
     ]
     const timed = run(steps(at(70)), { game })
     const untimed = run(steps(undefined), { game })
@@ -252,9 +240,10 @@ describe('veterancy converts units already spawned', () => {
     })
 
     it('leaves the units at the highest tier when two upgrades complete at one instant, listing no series for the tier passed through', () => {
-        const game = gameWith((parts) => {
-            entriesOf(parts, 'elite-spearmen').forEach((e) => {
-                e.costs.time = 0
+        // Barracks 1 and 3 are idle, so both upgrades run at once and complete at 50.
+        const game = startingWith(4, ['barracks', 'barracks', 'barracks', ...houses], plenty, (parts) => {
+            ;[...entriesOf(parts, 'veteran-spearmen'), ...entriesOf(parts, 'elite-spearmen')].forEach((e) => {
+                e.costs.time = 50
             })
         })
         const result = run([produce(3), research('veteran-spearmen'), research('elite-spearmen')], { game })
@@ -271,10 +260,10 @@ describe('veterancy converts units already spawned', () => {
             })
         })
         const result = run([produce(3), research('elite-spearmen'), research('veteran-spearmen')], { game })
-        expect(result.steps.slice(1).map((s) => s.completedAt)).toEqual([20, 70])
+        expect(result.steps.slice(1).map((s) => s.completedAt)).toEqual([20, 65])
         expect(tiersAt(result, 15)).toEqual([1, 0, 0])
         expect(tiersAt(result, 20)).toEqual([0, 0, 1])
-        expect(tiersAt(result, 70)).toEqual([0, 0, 3])
+        expect(tiersAt(result, 70)).toEqual([0, 0, 1])
         expect(spearmen(result)).toEqual(['spearman-2', 'spearman-4'])
     })
 
@@ -333,7 +322,7 @@ describe('resolveUnitEntry', () => {
             ],
             { game, inputs: { nodeAmounts: INFINITE_NODES } },
         )
-        expect(tierCountAt(result, 'spearman-3', 400)).toBe(66)
+        expect(tierCountAt(result, 'spearman-3', 400)).toBe(68)
     })
 })
 
@@ -346,12 +335,12 @@ describe('research target', () => {
         expect(where(recordTargets(() => run([textiles], { game })))).toEqual([['capital-town-center', 1]])
     })
 
-    it('takes instance 1 of the named building without looking at queue length', () => {
+    it('takes the first free instance of the named building, passing one with a unit paid', () => {
         const game = noAutoVillagers(startingWith(2, ['capital-town-center', 'town-center', 'town-center'], plenty))
         const taken = recordTargets(() => {
             run([{ action: 'produce', producer: 'town-center', instance: 1, unit: 'villager' }, { ...textiles, at: 'town-center', trigger: at(30) }], { game })
         })
-        expect(where(taken)).toEqual([['town-center', 1]])
+        expect(where(taken)).toEqual([['town-center', 2]])
         expect(taken[0].queues.filter(([baseId]) => baseId === 'town-center')).toEqual([
             ['town-center', 1, 1, true],
             ['town-center', 2, 0, true],
@@ -374,16 +363,18 @@ describe('resources never go negative and waits are reported', () => {
         const start: BuildStart = { rally: 'sheep', villagers: { gold: 6 } }
         const result = run([{ action: 'research', tech: 'textiles' }], { game, start })
         const plain = run([], { game, start })
+        // The town center trains no villager, so the research never waits for it.
+        const idle = run([{ action: 'research', tech: 'textiles' }], { game: noAutoVillagers(game), start })
 
         it('starts when six gold miners have gathered its 100 gold', () => {
-            expect(result.steps[0].armedAt).toBe(0)
-            expect(result.steps[0].startedAt).toBeCloseTo(100 / (6 * goldRate(game, simInputs)), 6)
-            expect(result.steps[0].waitSeconds).toBeCloseTo(result.steps[0].startedAt!, 9)
+            expect(idle.steps[0].armedAt).toBe(0)
+            expect(idle.steps[0].startedAt).toBeCloseTo(100 / (6 * goldRate(game, simInputs)), 6)
+            expect(idle.steps[0].waitSeconds).toBeCloseTo(idle.steps[0].startedAt!, 9)
         })
 
         it('reports every waiting second as resources', () => {
-            expect(Object.keys(result.steps[0].waitBreakdown)).toEqual(['resources'])
-            expect(result.steps[0].waitBreakdown.resources).toBeCloseTo(result.steps[0].waitSeconds, 9)
+            expect(Object.keys(idle.steps[0].waitBreakdown)).toEqual(['resources'])
+            expect(idle.steps[0].waitBreakdown.resources).toBeCloseTo(idle.steps[0].waitSeconds, 9)
         })
 
         it('keeps every floating value at or above zero', () => {
@@ -402,7 +393,7 @@ describe('resources never go negative and waits are reported', () => {
     it('starts at the instant the gold arrives, despite rounding in the gathered amount', () => {
         const game = startingWith(2, ['capital-town-center', ...houses], { food: 120, wood: 0, gold: 3, stone: 0 })
         const simInputs = inputsFor(game)
-        const result = run([{ action: 'research', tech: 'textiles' }], { game, start: { rally: 'sheep', villagers: { gold: 9 } } })
+        const result = run([{ action: 'research', tech: 'textiles' }], { game: noAutoVillagers(game), start: { rally: 'sheep', villagers: { gold: 9 } } })
         expect(result.steps[0].startedAt).toBeCloseTo(97 / (9 * goldRate(game, simInputs)), 6)
     })
 
@@ -514,7 +505,7 @@ describe('research shares the queue with production', () => {
     })
 
     it('holds the villager order until the research ends, then resumes it', () => {
-        expect(result.steps[0]).toMatchObject({ startedAt: 5, completedAt: 40 })
+        expect(result.steps[0]).toMatchObject({ startedAt: 20, completedAt: 40, waitBreakdown: { prerequisite: 15 } })
         expect(tierCountAt(plain, 'villager-1', 40)).toBe(2)
         expect(tierCountAt(result, 'villager-1', 55)).toBe(1)
         expect(tierCountAt(result, 'villager-1', 60)).toBe(2)

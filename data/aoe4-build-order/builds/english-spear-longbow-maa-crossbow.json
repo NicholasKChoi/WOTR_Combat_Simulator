@@ -512,22 +512,6 @@
       "tech": "iron-undermesh"
     },
     {
-      "action": "research",
-      "tech": "wedge-rivets"
-    },
-    {
-      "action": "research",
-      "tech": "balanced-projectiles"
-    },
-    {
-      "action": "research",
-      "tech": "decarbonization"
-    },
-    {
-      "action": "research",
-      "tech": "insulated-helm"
-    },
-    {
       "trigger": {
         "kind": "time",
         "seconds": 1000

@@ -389,7 +389,9 @@ describe('rally scope', () => {
         const { state, result } = probe([{ action: 'produce', producer: 'capital-town-center', unit: 'villager', rally: 'wood', trigger: at(10) }, look], data)
         expect(rallies(state, 'capital-town-center')).toEqual(['wood'])
         expect(state.rallyDefaults.get('capital-town-center')?.node).toBe('wood')
-        expect(result.gatherRates.wood[sampleIndex(result, 25)]).toBeCloseTo(woodRate * 60, 9)
+        // The step waits for the villager paid at 0 (spawning at 20), so the first villager sent to wood spawns at 40.
+        expect(result.gatherRates.wood[sampleIndex(result, 25)]).toBe(0)
+        expect(result.gatherRates.wood[sampleIndex(result, 45)]).toBeCloseTo(woodRate * 60, 9)
     })
 
     it('completes a rally step the instant it arms', () => {
@@ -415,14 +417,14 @@ describe('rally scope', () => {
 })
 
 describe('switch and pause', () => {
-    it('lets the villager in production finish and keeps the scout cost when switching', () => {
+    it('waits for the villager in production, charges nothing before it starts, then trains the scout and resumes villagers at its spawn', () => {
         const result = run([{ action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(10) }])
-        expect(result.floating.food[sampleIndex(result, 10)]).toBeCloseTo(150 + 6 * r * 10 - 65, 9)
+        expect(result.floating.food[sampleIndex(result, 10)]).toBeCloseTo(150 + 6 * r * 10, 9)
         expect(countAt(result, 'villager', 20)).toBe(1)
         expect(countAt(result, 'scout', 40)).toBe(0)
         expect(countAt(result, 'scout', 45)).toBe(1)
         expect(result.unitsProduced.map((u) => u.baseId)).toEqual(['villager', 'scout'])
-        expect(result.steps[0]).toMatchObject({ status: 'completed', startedAt: 10, completedAt: 43 })
+        expect(result.steps[0]).toMatchObject({ status: 'completed', startedAt: 20, completedAt: 43 })
         // Villagers resume when the scout spawns at 43: 63, 83 and 103.
         expect(countAt(result, 'villager', 120)).toBe(4)
     })
@@ -487,7 +489,7 @@ describe('completion', () => {
             { action: 'produce', producer: 'capital-town-center', unit: 'villager' },
             { action: 'produce', producer: 'capital-town-center', unit: 'scout', count: 1, trigger: at(30) },
         ])
-        expect(result.steps[0]).toMatchObject({ status: 'completed', completedAt: 30 })
+        expect(result.steps[0]).toMatchObject({ status: 'completed', completedAt: 40 })
         expect(result.steps[1]).toMatchObject({ status: 'completed', completedAt: 63 })
     })
 })

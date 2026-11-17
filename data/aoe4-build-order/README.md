@@ -89,9 +89,11 @@ engine or the build is tuned, and the page shows them for any run.
   simulator (no guide). Feudal through the Council Hall, spearmen and longbowmen from barracks and archery
   ranges, Castle through the King's Palace, then men-at-arms and crossbowmen. Villager production is
   continuous from the Town Center and, once built, the King's Palace, up to the simulator's 100-villager
-  target. A blacksmith at 950 s researches the Feudal and Castle attack and armor upgrades, and at 1000 s
-  both villager producers rally to gold so the income past the 200 population cap goes into upgrades.
-  Nothing is omitted.
+  target. A blacksmith at 950 s researches the four Feudal attack and armor upgrades, one after the other,
+  and at 1000 s both villager producers rally to gold so the income past the 200 population cap goes into
+  upgrades. Omitted: the Castle blacksmith upgrades `wedge-rivets`, `balanced-projectiles`,
+  `decarbonization` and `insulated-helm`. A research waits for a free blacksmith and holds back every later
+  step while it waits, so four more 60 s researches would leave the last steps unstarted at 1200 s.
 
   Transcription choices: the `man-at-arms` step carries a `time` trigger of 681 s, the whole second after the
   King's Palace completes, because men-at-arms are a Feudal unit and would otherwise start before Castle;

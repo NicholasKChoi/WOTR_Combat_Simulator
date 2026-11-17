@@ -3,7 +3,7 @@ import { modifiedValue } from './effects';
 import type { EffectState } from './effects';
 import { RESOURCE_KINDS } from './model';
 import type { ResourceKind, SpendCategory } from './model';
-import type { EngineState } from './simulate';
+import type { BuildingInstance, EngineState } from './simulate';
 
 /**
  * Slack allowed when comparing a bank to a cost: income credited up to the computed affordability time can land a
@@ -67,6 +67,11 @@ export function villagerWalkSeconds(state: EffectState, walkSeconds: number): nu
   const villager = state.data.byBaseId.get(VILLAGER_ID)?.[0];
   const moveSpeedMultiplier = modifiedValue(1, 'moveSpeed', { baseId: VILLAGER_ID, classes: villager?.classes ?? [] }, state);
   return walkSeconds / moveSpeedMultiplier;
+}
+
+/** Whether an instance can take step `step`: nothing is paid in its queue and it is not held for another step (Model rules). */
+export function instanceFree(state: EngineState, instance: BuildingInstance, step: number): boolean {
+  return instance.paid.length === 0 && !(state.held !== null && state.held.step !== step && state.held.instances.has(instance));
 }
 
 /** Marks a step completed at the current time. */

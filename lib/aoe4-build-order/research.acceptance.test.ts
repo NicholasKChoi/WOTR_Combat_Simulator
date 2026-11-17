@@ -69,11 +69,12 @@ describe('research delays the queue and upgrades the tier of later units', () =>
     const result = run([produce, { action: 'research', tech: 'veteran-spearmen', trigger: at(5) }], game)
     const plain = run([produce], game)
 
-    it('pays the research at its step start and queues it behind the spearman already paid', () => {
-        expect(result.steps[1]).toMatchObject({ status: 'completed', armedAt: 5, startedAt: 5, completedAt: 75 })
+    it('waits for the spearman already paid, then pays the research and runs it for its 60 s', () => {
+        expect(result.steps[1]).toMatchObject({ status: 'completed', armedAt: 5, startedAt: 15, completedAt: 75, waitBreakdown: { prerequisite: 10 } })
         const i = result.times.indexOf(10)
-        expect(plain.floating.food[i] - result.floating.food[i]).toBeCloseTo(100, 6)
-        expect(plain.floating.gold[i] - result.floating.gold[i]).toBeCloseTo(250, 6)
+        expect(plain.floating.food[i] - result.floating.food[i]).toBeCloseTo(0, 6)
+        expect(plain.floating.gold[i] - result.floating.gold[i]).toBeCloseTo(0, 6)
+        expect(result.spent.research[result.times.indexOf(15)]).toBe(350)
         expect(count(result, 'spearman-2', 15)).toBe(1)
     })
 
@@ -224,11 +225,13 @@ describe('a research that cannot start', () => {
         const start: BuildStart = { rally: 'sheep', villagers: { gold: 5 } }
         const result = run([{ action: 'research', tech: 'textiles' }], game, start)
         const goldRate = effectiveGatherRate('gold', { data: game, age: 2, buildings: new Map([['capital-town-center', 1]]), researched: new Set<string>(), researchedIds: new Set<string>(), coverage: inputsFor(game).influenceCoverage }, inputsFor(game))
+        // The town center trains no villager, so the research never waits for it.
+        const idle = run([{ action: 'research', tech: 'textiles' }], gameWith(2, buildings, base, (parts) => void (parts.base.villagerTarget.value = 0)), start)
 
         it('starts at the instant five gold miners reach 100 gold', () => {
-            expect(result.steps[0].status).toBe('completed')
-            expect(result.steps[0].startedAt).toBeCloseTo(100 / (5 * goldRate), 6)
-            expect(result.steps[0].waitSeconds).toBeCloseTo(100 / (5 * goldRate), 6)
+            expect(idle.steps[0].status).toBe('completed')
+            expect(idle.steps[0].startedAt).toBeCloseTo(100 / (5 * goldRate), 6)
+            expect(idle.steps[0].waitSeconds).toBeCloseTo(100 / (5 * goldRate), 6)
         })
 
         it('never lets a floating resource go below zero', () => {
@@ -311,7 +314,7 @@ describe('research shares the building queue with the default villager order', (
     const result = run([{ action: 'research', tech: 'textiles', at: 'capital-town-center', trigger: at(5) }], game)
 
     it('lets the villager paid at 0 spawn at 20, pays nothing during the 20 s research, and resumes the order at 40', () => {
-        expect(result.steps[0]).toMatchObject({ startedAt: 5, completedAt: 40 })
+        expect(result.steps[0]).toMatchObject({ startedAt: 20, completedAt: 40, waitBreakdown: { prerequisite: 15 } })
         expect(count(result, 'villager-1', 20)).toBe(1)
         expect(count(result, 'villager-1', 55)).toBe(1)
         expect(count(result, 'villager-1', 60)).toBe(2)

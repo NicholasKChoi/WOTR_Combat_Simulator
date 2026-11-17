@@ -232,14 +232,15 @@ describe('ages', () => {
         ])
     })
 
-    it('keeps paid items and offers next-age units at the age-up instant', () => {
+    it('keeps the unit paid before the age-up, then starts the next-age unit when that unit completes', () => {
         const result = run(
             [abbey, { action: 'produce', producer: 'barracks', unit: 'man-at-arms' }, { action: 'produce', producer: 'barracks', unit: 'spearman' }],
             { ...options, inputs: { ...noHouses, durationSeconds: 120 } },
         )
-        expect(result.steps.map((s) => s.startedAt)).toEqual([0, 0, 100])
-        expect(result.steps[2]).toMatchObject({ armedAt: 0, waitSeconds: 100 })
-        expect(result.steps[1].completedAt).toBe(100)
+        // The spearman step waits for the man-at-arms paid before the age-up, which spawns at 102.55.
+        expect(result.steps.map((s) => s.startedAt)).toEqual([0, 0, 102.55000000000001])
+        expect(result.steps[2]).toMatchObject({ armedAt: 0, waitSeconds: 102.55000000000001 })
+        expect(result.steps[1].completedAt).toBe(102.55000000000001)
         const unit = (id: string) => result.unitsProduced.find((u) => u.unitId === id)!
         expect(unit('man-at-arms-1')).toMatchObject({ tier: 1 })
         expect(unit('man-at-arms-1').counts[sampleIndex(result, 100)]).toBe(6)

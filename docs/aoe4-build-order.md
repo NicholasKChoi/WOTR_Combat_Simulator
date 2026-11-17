@@ -174,18 +174,24 @@ At one instant, steps start (reactions first, then the rest in list order) befor
 trigger) starts at that instant, after the spawn. So `@T rally` routes the villager spawning at T, and
 `at N vils rally` routes villager N+1 onward.
 
-**Priority.** At most one non-reaction step is armed and not started at a time. While it waits on resources
-only, it reserves its cost; a reaction never reserves. A producer's order skips paying its next unit if
+**Priority.** At most one non-reaction step is armed and not started at a time. A step waiting on
+resources reserves its cost; a reaction never reserves. A producer's order skips paying its next unit if
 that would drop any resource the unit costs below the reserving step's cost of that resource. Villager
 payments ignore the reserve, so villager production never stops for a waiting step; the step's start is
 pushed back by the food the villagers spend instead. A step waiting on supply, on an age or on a building
-instance that does not exist reserves nothing. At one instant, steps start before orders pay, so a step
-wins a tie with an order payment. A due auto-house also holds its cost back from steps and non-villager
-orders (Houses and supply).
+instance that does not exist reserves nothing; a step waiting for a busy building reserves its cost, and
+an instance it holds (Queues) pays nothing for its order. At one instant, steps start before orders pay,
+so a step wins a tie with an order payment: an instance whose unit or research ends at that instant is
+free for a waiting step before its order pays its next unit. A due auto-house also holds its cost back
+from steps and non-villager orders (Houses and supply).
 
-**Queues.** Each building instance has one queue, shared by production and research. A `produce` step on
-a busy producer replaces its order (a switch); `pause` clears the order. A step names a building by
-`baseId`, which applies to every instance, or by `instance` (1-based) for one.
+**Queues.** Each building instance has one queue, which holds its paid units and its running research. An
+instance is free for a step when nothing is paid in its queue and it is not held for another step; an
+instance whose order cannot pay right now is free. A `produce` or `research` step starts only on free
+instances; until then it waits on `prerequisite`, and a target that never frees leaves it `waiting` at the
+horizon with the `step-stuck` warning. `pause`, `rally`, `build` and `move` never wait for a building.
+`pause` clears the order. A step names a building by `baseId`, which applies to every instance, or by
+`instance` (1-based) for one.
 
 Every villager producer instance starts with a continuous villager order, which a `produce` or `pause`
 step replaces. A villager producer instance with no order, after a `pause` or after a counted `produce`
@@ -196,20 +202,31 @@ therefore holds it only once that many villagers exist. On any other producer, a
 spawns its last unit leaves the order empty. Only a research resumes the instance's own order. A unit is paid before it is queued: its resource cost and its population are taken
 together, and only when every resource covers its cost and supply has room for it. Each instance runs its
 paid units first in, first out, one at a time. An order pays its next unit only when its instance has no
-paid unit left.
+paid unit or research left and is not held.
 
-A `produce` step pays its first unit on every targeted instance that exists when it starts, so it waits
-while it cannot pay all of them. It waits while no targeted instance exists, and it does not cover
-instances built after it starts. A switch or a pause lets the unit in production and every paid unit
-finish: nothing is cancelled and there is no refund. The old order's unpaid units are dropped. `pause`
+A `produce` step targets every instance of its producer that exists when it is offered, or only instance
+`instance` when that is given. It checks, in order: the unit is known and at or below the current age, a
+targeted instance exists, supply has room for one unit per target, resources cover one unit per target,
+and every target is free. It starts only when every target is free at one offer; it then pays its first
+unit on every target and replaces each target's order. With `instance: k` it waits only for instance k.
+While the step that blocks later steps waits for busy targets, it holds the targets that are already free:
+their orders pay nothing, so they stay free until the others free up. The hold is worked out again at
+each offer, so it ends when the step starts, when it fails an earlier check, or when another step blocks
+later steps instead. A reaction `produce` or `research` treats held instances as busy and never holds one.
+A `produce` does not cover instances built after it starts. Because it starts only on idle instances, the
+units the old order paid have all finished: nothing is cancelled and there is no refund. The old order's
+unpaid units are dropped. A `pause` lets the unit in production and every paid unit finish. `pause`
 costs nothing, completes the instant it arms, and is a no-op for an instance that does not exist (it is
 not held for one built later).
 
-A `research` step goes to `at` if given, else to the first building in the tech's `producedBy` (snapshot
-order) that has an instance, and within that building to its lowest-numbered instance (instance 1 first).
-Queue length is not consulted, `research` has no `instance` field, and a tech with no producing building
-and no `at` never starts. With a capital town center and two town centers, `research textiles` goes to
-the capital town center and `research textiles at town-center` to town center 1.
+A `research` step's candidate buildings are `at` if given, else the tech's `producedBy` (snapshot order).
+It checks, in order: an entry of the tech is at or below the current age, a candidate building has an
+instance, resources cover its cost, and a candidate instance is free. It takes the first free instance in
+candidate order, then instance number, so while every candidate is busy it waits and takes whichever
+frees first. It never holds an instance. `research` has no `instance` field, and a tech with no producing
+building and no `at` never starts. With an idle capital town center and two idle town centers, `research
+textiles` goes to the capital town center and `research textiles at town-center` to town center 1; with
+town center 1 busy and town center 2 idle, `research textiles at town-center` goes to town center 2.
 
 A tech can have one entry per age. Each time a `research` step is offered it researches the tech's
 highest-age entry at or below the current age; that entry gives its producing buildings, cost, research
@@ -217,16 +234,20 @@ time and effects. A step that waited for an age-up therefore researches the entr
 A completed research records that entry's `id` (and the tech's `baseId`), and only the effects of
 researched entries apply, not those of other entries of the same tech.
 
-A `research` step pays its cost when it starts and is appended to its instance's paid units, behind any
-unit already paid. It never replaces the instance's order, which resumes (pays its next unit) when the
-research ends. A completed research adds a marker to the result's `markers`. It waits while no target instance exists or while no entry of the tech is at or below the
-current age, and it reserves resources only when it is short of resources alone.
+A `research` step pays its cost when it starts, on an instance with nothing paid, so it starts running at
+once and an instance runs at most one research. While it runs, the instance's order pays nothing, and a
+`produce` or `research` step waiting for that instance keeps waiting. It never replaces the instance's
+order: when the research ends, a step waiting for that instance takes it first, else the order pays its
+next unit. Two researches at one instance therefore run one after the other with no gap, each paid when it
+starts. A completed research adds a marker to the result's `markers`. It waits, reserving nothing, while
+no target instance exists or while no entry of the tech is at or below the current age; it waits,
+reserving its cost, while it is short of resources or no candidate instance is free.
 
 **Tiers.** A unit's tier is the entry for the highest tier whose upgrade has been researched, else the
 lowest-age entry for its `baseId`. `upgradeTargets` maps an upgrade `baseId` to the unit `baseId` it
 upgrades, because aoe4world's `unlocks` is empty; the target tier is the unit entry whose `age` equals the
 `age` of the upgrade entry that was researched, not of any other entry of that upgrade. A veterancy
-upgrade occupies its building's queue for its research time. When it completes, every spawned unit of its
+upgrade occupies its building for its research time, during which the building trains nothing. When it completes, every spawned unit of its
 target below its tier becomes that tier, at that instant. A unit takes its cost, production time and
 population from the tier when it is paid, and spawns at the tier researched when it spawns, never below
 the tier it was paid at. An upgrade with no unit entry at its age changes no tier and converts nothing,
