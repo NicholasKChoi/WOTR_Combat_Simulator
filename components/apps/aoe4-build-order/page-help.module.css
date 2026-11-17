@@ -1,0 +1,33 @@
+.dialog {
+    width: min(48rem, calc(100vw - 2rem));
+    max-height: 80dvh;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.dialog[open] {
+    display: flex;
+}
+
+.close {
+    align-self: flex-end;
+    flex: none;
+}
+
+.content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.section {
+    margin-bottom: 1rem;
+}
+
+.swatch {
+    display: inline-block;
+    width: 1.5rem;
+    height: 1rem;
+    vertical-align: middle;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+}

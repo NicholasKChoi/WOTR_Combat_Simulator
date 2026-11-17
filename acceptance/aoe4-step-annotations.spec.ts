@@ -5,7 +5,7 @@ import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { waitDetailText } from '../lib/aoe4-build-order/wait-detail'
 import { formatBuildOrderText, parseBuildOrderText } from '../lib/aoe4-build-order/parse-text'
 import { STEP_KINDS, formatStepTime } from '../components/apps/aoe4-build-order/step-annotations'
-import { MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, buildOrderFrom, expectNoRun, holdNextSimulate, openPage, showView, simulateOk, waitForRun } from './helpers'
+import { MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, buildOrderFrom, expectNoRun, holdNextSimulate, legendOutsideHelp, openHelp, openPage, showView, simulateOk, waitForRun } from './helpers'
 
 const LONG_WAIT_SECONDS = 60
 const EN_DASH = '–'
@@ -32,10 +32,13 @@ async function openTable(page: Page, text?: string) {
 }
 
 async function legendColors(page: Page) {
+  await openHelp(page)
   const legend = await page
+    .getByTestId('help-modal')
     .getByTestId('step-kind-legend')
     .locator('[data-kind]')
     .evaluateAll((els) => els.map((el) => [el.getAttribute('data-kind'), getComputedStyle(el).borderLeftColor]))
+  await page.keyboard.press('Escape')
   return new Map(legend as [string, string][])
 }
 
@@ -57,7 +60,7 @@ async function expectDescribedByStatus(page: Page, message: string) {
 }
 
 test.describe('AoE4 step run cells', () => {
-  test('every row carries its kind and the run timing the API reports, under one legend', async ({ page, request }) => {
+  test('every row carries its kind and the run timing the API reports, with the legend only in the help modal', async ({ page, request }) => {
     await openTable(page)
     const result = await simulateOk<SimulationResult>(request, buildOrderFrom(DEFAULT_TEXT), DURATION)
     await expect(rows(page)).toHaveCount(result.steps.length)
@@ -67,7 +70,9 @@ test.describe('AoE4 step run cells', () => {
       await expect(row.getByTestId('step-started')).toHaveText(formatStepTime(timing.startedAt))
       await expect(row.getByTestId('step-finished')).toHaveText(timing.status === 'in-progress' ? 'ongoing' : formatStepTime(timing.completedAt))
     }
-    const legend = page.getByTestId('step-kind-legend')
+    await expect(legendOutsideHelp(page)).toHaveCount(0)
+    await openHelp(page)
+    const legend = page.getByTestId('help-modal').getByTestId('step-kind-legend')
     await expect(legend).toHaveCount(1)
     await expect(legend).toBeVisible()
     expect(await legend.locator('[data-kind]').evaluateAll((els) => els.map((e) => e.getAttribute('data-kind')))).toEqual(LEGEND_KINDS)

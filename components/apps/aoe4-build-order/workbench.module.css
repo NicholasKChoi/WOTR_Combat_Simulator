@@ -15,6 +15,17 @@
     min-width: calc(1140px - var(--bs-gutter-x, 1.5rem));
 }
 
+.headingRow {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.headingRow h1 {
+    margin-bottom: 0;
+}
+
 .workbenchSplit {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

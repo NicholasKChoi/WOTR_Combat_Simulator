@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { BuildOrder, BuildStep, Trigger } from '../../../lib/aoe4-build-order/model'
 import { OPTIONAL_STEP_FIELDS, type BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
 import type { StepOptions } from '../../../lib/aoe4-build-order/step-options'
-import { StepKindLegend, StepRunCell } from './step-annotation'
+import { StepRunCell } from './step-annotation'
 import type { BuildAnnotations } from './step-annotations'
 import styles from './step-table.module.css'
 import {
@@ -310,7 +310,6 @@ export function StepTable({ order, catalog, onChange, openRows, onOpenRowsChange
 
     return (
         <fieldset data-testid="step-table" disabled={disabled} aria-busy={disabled ? 'true' : undefined} className={cn('mb-3', styles.fieldset)}>
-            {annotations !== null && steps.length > 0 ? <StepKindLegend /> : null}
             <div data-testid="step-table-scroll" className={styles.scroll}>
                 <table className={cn(styles.table, 'table table-sm align-middle')}>
                     <tbody>

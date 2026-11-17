@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { CHART_IDS, SPLIT_VIEWPORT, WIDE_VIEWPORT, openPage, waitForRun } from './helpers'
+import { CHART_IDS, SPLIT_VIEWPORT, WIDE_VIEWPORT, legendOutsideHelp, openPage, waitForRun } from './helpers'
 
 const REMOVED_TIMELINE_IDS = ['step-timeline', 'step-timeline-scroll', 'step-timeline-legend', 'results-split'] as const
 const CHARTS_FILL_RATIO = 0.95
@@ -52,7 +52,7 @@ test.describe('AoE4 results take the full width', () => {
     await page.getByTestId('editor-view-table').click()
     await expect(page.getByTestId('chart-units-produced')).toBeVisible()
     await expect(page.getByTestId('step-row')).toHaveCount(0)
-    await expect(page.getByTestId('step-kind-legend')).toHaveCount(0)
+    await expect(legendOutsideHelp(page)).toHaveCount(0)
     for (const id of REMOVED_TIMELINE_IDS) await expect(page.getByTestId(id)).toHaveCount(0)
   })
 })

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import knightLongbow from '../data/aoe4-build-order/builds/english-knight-longbow.json'
-import { openPage, postSimulate, showView, waitForRun } from './helpers'
+import { openHelp, openPage, postSimulate, showView, waitForRun } from './helpers'
 
 const BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
 const REACTION_COUNT = 6
@@ -29,7 +29,9 @@ test.describe('the knight/longbow build on the page', () => {
     expect(research).toBeGreaterThanOrEqual(0)
     await expect(page.locator(`[data-testid="step-row"][data-step="${palace}"]`)).toHaveAttribute('data-kind', 'age-up')
     await expect(page.locator(`[data-testid="step-row"][data-step="${research}"]`)).toHaveAttribute('data-kind', 'research')
+    await openHelp(page)
     await expect(page.getByTestId('step-kind-legend')).toBeVisible()
+    await page.keyboard.press('Escape')
 
     const warnings = page.locator('[data-testid="simulation-message"][data-severity="warning"]')
     await expect(warnings.filter({ hasText: /idle/i })).toHaveCount(0)

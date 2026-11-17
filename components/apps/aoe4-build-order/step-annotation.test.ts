@@ -151,11 +151,10 @@ describe('StepTable run cells', () => {
         renderToStaticMarkup(createElement(StepTable, { order: parsed.order, catalog, onChange: () => {}, openRows: [], onOpenRowsChange: () => {}, ...props }))
     const rows = (html: string) => html.split('data-testid="step-row"').slice(1)
 
-    it('renders no run cell, legend or kind without annotations', () => {
+    it('renders no run cell or kind without annotations', () => {
         expect(parsed.order.steps.length).toBeGreaterThan(1)
         const html = render({ annotations: null })
         expect(html).not.toContain('step-run')
-        expect(html).not.toContain('step-kind-legend')
         expect(html).not.toContain('data-kind')
     })
 
@@ -172,12 +171,13 @@ describe('StepTable run cells', () => {
         expect(third).not.toContain('data-long-wait')
     })
 
-    it('keeps the start row cell empty and shows the legend', () => {
+    it('keeps the start row cell empty and renders no legend with annotations', () => {
         const html = render({ annotations })
         const start = html.slice(html.indexOf('step-start-row'), html.indexOf('step-row'))
         expect(start).not.toContain('step-run')
         expect(/^step-start-row"><td><\/td>/.test(start)).toBe(true)
-        expect(html).toContain('data-testid="step-kind-legend"')
+        expect(html).toContain('step-run')
+        expect(html).not.toContain('step-kind-legend')
     })
 
     it.each<[string, number | null, (string | null)[]]>([

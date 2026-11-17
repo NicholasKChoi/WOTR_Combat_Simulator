@@ -189,6 +189,13 @@ export const MIN_SUPPORTED_VIEWPORT = { width: 1200, height: 800 }
 export const SPLIT_VIEWPORT = { width: 1280, height: 800 }
 export const WIDE_VIEWPORT = { width: 1800, height: 900 }
 
+export const legendOutsideHelp = (page: Page) => page.locator('[data-testid="step-kind-legend"]:not([data-testid="help-modal"] *)')
+
+export async function openHelp(page: Page) {
+  await page.getByTestId('help-open').click()
+  await expect(page.getByTestId('help-modal')).toBeVisible()
+}
+
 export async function showView(page: Page, view: 'text' | 'table') {
   await page.getByTestId(`editor-view-${view}`).click()
 }

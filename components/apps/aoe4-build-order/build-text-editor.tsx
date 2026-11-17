@@ -3,7 +3,7 @@ import { useEffect, useRef, type SyntheticEvent } from 'react'
 
 import type { BuildOrderLines } from '../../../lib/aoe4-build-order/model'
 import annotationStyles from './step-annotation.module.css'
-import { KIND_CLASS, StepKindLegend, StepTimes, annotationToneClass } from './step-annotation'
+import { KIND_CLASS, StepTimes, annotationToneClass } from './step-annotation'
 import { AnnotationPopover } from './annotation-popover'
 import { annotationDetailText, annotationsByLine, type BuildAnnotations, type StepAnnotation } from './step-annotations'
 import { lineCount } from './text-lines'
@@ -67,7 +67,6 @@ export function BuildTextEditor({ text, onChange, errorLines, annotations, lines
     }
     return (
         <div className="mb-3">
-            {annotations !== null && lines.steps.length > 0 ? <StepKindLegend /> : null}
             <div data-testid="build-order-editor" className={styles.editor}>
                 <ol data-testid="build-order-gutter" aria-hidden="true" className={styles.gutter}>
                     {Array.from({ length: rowCount }, (_, i) => (

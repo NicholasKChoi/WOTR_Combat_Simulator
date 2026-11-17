@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import type { SimulationResult, StepTiming } from '../lib/aoe4-build-order/model'
 import { parseBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { CHART_IDS, SPLIT_VIEWPORT, holdNextSimulate, openPage, readLayout, showView, waitForRun } from './helpers'
+import { CHART_IDS, SPLIT_VIEWPORT, holdNextSimulate, legendOutsideHelp, openPage, showView, waitForRun } from './helpers'
 
 const EN_DASH = '–'
 const VILLAGER = 'produce villager from capital-town-center'
@@ -34,7 +34,6 @@ const LINE_OF = { instant: 4, spanning: 5, waiting: 6, notReached: 10, blank: 8 
 
 const gutter = (page: Page, line: number) => page.locator(`[data-testid="build-order-line-annotation"][data-line="${line}"]`)
 const annotations = (page: Page) => page.getByTestId('build-order-annotations')
-const legend = (page: Page) => page.getByTestId('step-kind-legend')
 const textarea = (page: Page) => page.getByTestId('build-order-text')
 
 async function clickLine(page: Page, line: number) {
@@ -97,9 +96,9 @@ test.describe('AoE4 compact view in the Text tab', () => {
     expect(otherLines).toHaveLength(MIXED_BUILD.split('\n').length - STEP_LINES.length)
     for (const other of otherLines) expect(other).toEqual({ kind: null, started: false })
 
-    await expect(legend(page)).toHaveCount(1)
+    await expect(legendOutsideHelp(page)).toHaveCount(0)
     await showView(page, 'table')
-    await expect(legend(page)).toHaveCount(1)
+    await expect(legendOutsideHelp(page)).toHaveCount(0)
     const rows = page.getByTestId('step-row')
     await expect(rows).toHaveCount(result.steps.length)
     for (const [i, view] of textView.entries()) {
@@ -151,35 +150,29 @@ test.describe('AoE4 compact view in the Text tab', () => {
       .toEqual({ sameCount: true, aligned: true, panelFits: true, textareaInside: true })
   })
 
-  test('the annotation column and the legend are absent before a result and the legend follows the parsed steps', async ({ page }) => {
+  test('the annotation column is absent before a result and no view renders the legend outside the help modal', async ({ page }) => {
     const release = await holdNextSimulate(page)
     try {
       await page.goto('/apps/aoe4-build-order')
       await showView(page, 'text')
       await expect(textarea(page)).toBeVisible()
       await expect(annotations(page)).toHaveCount(0)
-      await expect(legend(page)).toHaveCount(0)
+      await expect(legendOutsideHelp(page)).toHaveCount(0)
     } finally {
       release()
     }
     await expect(annotations(page)).toBeVisible()
-    await expect(legend(page)).toBeVisible()
-    await expect(legend(page)).toHaveCount(1)
-    const { legend: legendRects, textarea: textareaRects } = await readLayout(page.locator('body'), { legend: '[data-testid="step-kind-legend"]', textarea: '[data-testid="build-order-text"]' })
-    expect(legendRects[0].y + legendRects[0].height).toBeLessThanOrEqual(textareaRects[0].y)
+    await expect(legendOutsideHelp(page)).toHaveCount(0)
     await showView(page, 'table')
-    await expect(legend(page)).toHaveCount(1)
+    await expect(legendOutsideHelp(page)).toHaveCount(0)
     await showView(page, 'text')
 
     await waitForRun(page, () => textarea(page).fill(START_ONLY_BUILD))
     await expect(annotations(page)).toBeVisible()
-    await expect(legend(page)).toHaveCount(0)
-
     await waitForRun(page, () => textarea(page).fill(MIXED_BUILD))
-    await expect(legend(page)).toHaveCount(1)
     await textarea(page).fill(MIXED_BUILD.replace(`${VILLAGER} x2`, 'frobnicate'))
     await expect(page.getByTestId('build-order-issue').first()).toBeVisible()
-    await expect(legend(page)).toBeVisible()
+    await expect(legendOutsideHelp(page)).toHaveCount(0)
   })
 
   test('a changed step loses its times and the others dim until the held result lands', async ({ page }) => {
