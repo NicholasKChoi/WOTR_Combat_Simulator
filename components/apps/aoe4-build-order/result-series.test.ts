@@ -36,16 +36,16 @@ describe('unitLineSeries', () => {
     const lines = (): SimulationResult => ({
         ...result(),
         unitsProduced: [
+            { unitId: 'spearman-3', baseId: 'spearman', name: 'Veteran Spearman', lineName: 'Spearman', tier: 3, counts: [0, 1, 2] },
             { unitId: 'longbowman-2', baseId: 'longbowman', name: 'Longbowman', lineName: 'Longbowman', tier: 2, counts: [0, 3, 3] },
-            { unitId: 'spearman-2', baseId: 'spearman', name: 'Spearman', lineName: 'Spearman', tier: 2, counts: [0, 1, 2] },
             { unitId: 'longbowman-3', baseId: 'longbowman', name: 'Veteran Longbowman', lineName: 'Longbowman', tier: 3, counts: [0, 0, 5] },
         ],
     })
 
     it('draws one series per baseId in order of first appearance, named by lineName, with the tiers summed per sample', () => {
         expect(unitLineSeries(lines())).toEqual([
-            { key: 'longbowman', name: 'Longbowman', values: [0, 3, 8] },
             { key: 'spearman', name: 'Spearman', values: [0, 1, 2] },
+            { key: 'longbowman', name: 'Longbowman', values: [0, 3, 8] },
         ])
     })
 
