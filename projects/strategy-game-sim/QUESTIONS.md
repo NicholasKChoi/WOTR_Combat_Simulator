@@ -22,7 +22,7 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q136
+next: Q137
 
 ## Q134: Run /code-factory:upgrade (optional migrations 007, 008)?
 kind: handoff
@@ -36,13 +36,12 @@ Two optional state migrations (007 upgrade-auto, 008 rescan-issues) are pending;
 
 ### Answer
 
-## Q135: How to handle the inverted aria-pressed on the series legend vs the marker control?
-kind: decision
-blocks: none
-options: A) standalone bug: fix the series legend to aria-pressed=shown | B) standalone chore | C) debug | D) milestone | E) docs | F) drop
-recommendation: A: behavior assistive tech users hear is wrong and the cause is plain; Priority low
-thread: 1572356372539121795
+## Q136: Merge PR #210 (aria-pressed legend fix)?
+kind: handoff
+blocks: SGS-201 (Series legend aria-pressed means shown)
+options: A) Done: merged | B) Not now
+recommendation: A: low risk, all gates passed
 
-SGS-200's docs work found that the AoE4 results page's series legend buttons set aria-pressed=true when a series is HIDDEN, while the new marker control sets aria-pressed=true when a kind is SHOWN. Screen-reader users get opposite meanings from two similar controls (components/apps/aoe4-build-order/chart-legend.tsx). Not a doc defect; no visible sighted-user change.
+PR #210 (SGS-201, series legend aria-pressed fix, merge risk low) passed every gate but was not auto-merged: REPO.md has babysit false, so checks-evidence.sh finds no logged GREEN and never qualifies a PR. Merge it from GitHub once the Vercel preview is green, or set babysit: true.
 
 ### Answer
