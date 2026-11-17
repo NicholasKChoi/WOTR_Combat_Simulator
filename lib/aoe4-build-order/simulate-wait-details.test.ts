@@ -6,6 +6,7 @@ import type { BreakdownReason, BuildStart, BuildStep, SimulationResult, StepTimi
 import { accrueWait, simulateBuildOrder, stepHandlers } from './simulate'
 import type { StepHandler, StepStart } from './simulate'
 import { ENGLISH, at, editGameData, inputsFor, noAutoVillagers, run, startingWith, withHandler } from './test-helpers'
+import type { Parts } from './test-helpers'
 import { waitReasonOf, waitTargetKey } from './wait-detail'
 
 const plenty = { food: 5000, wood: 5000, gold: 5000, stone: 0 }
@@ -156,12 +157,21 @@ describe('research details', () => {
         expect(result.steps[0].waitingFor).toEqual({ kind: 'age', age: 3, landmark: null })
     })
 
+    const unsortedProducers = ['council-hall', 'archery-range']
+    const unsortedLongbowmen = (parts: Parts) => {
+        parts.snapshot.upgrades.find((entry) => entry.baseId === 'veteran-longbowmen')!.producedBy = [...unsortedProducers]
+    }
+    const unsortedGame = (buildings: string[]) => startingWith(3, ['capital-town-center', ...buildings, ...houses], plenty, unsortedLongbowmen)
+
     it.each<[string, BuildStep, string[]]>([
-        ['every producing building in snapshot order', { action: 'research', tech: 'veteran-longbowmen' }, ENGLISH.byBaseId.get('veteran-longbowmen')![0].producedBy],
+        ['every producing building in snapshot order', { action: 'research', tech: 'veteran-longbowmen' }, unsortedProducers],
         ['the at building', { action: 'research', tech: 'veteran-longbowmen', at: 'council-hall' }, ['council-hall']],
     ])('a missing building names %s', (_, step, baseIds) => {
-        expect(ENGLISH.byBaseId.get('veteran-longbowmen')![0].producedBy.length).toBeGreaterThan(1)
-        const result = run([step], { game: startingWith(3, ['capital-town-center', ...houses], plenty), inputs: { durationSeconds: 60 } })
+        const game = unsortedGame([])
+        const producedBy = game.byBaseId.get('veteran-longbowmen')![0].producedBy
+        expect(producedBy).toEqual(unsortedProducers)
+        expect(producedBy).not.toEqual([...producedBy].sort())
+        const result = run([step], { game, inputs: { durationSeconds: 60 } })
         expect(result.steps[0].waitingFor).toEqual({ kind: 'building', buildings: baseIds.map(named), instance: null })
     })
 
@@ -178,6 +188,19 @@ describe('research details', () => {
         const steps: BuildStep[] = [{ action: 'produce', producer: 'archery-range', unit: 'longbowman', count: 3 }, { action: 'research', tech: 'veteran-longbowmen', trigger: at(1) }]
         const result = run(steps, { game, inputs: { durationSeconds: 150 } })
         expect(onlyEntry(result.steps[1]).detail).toEqual({ kind: 'building-busy', buildings: [named('archery-range')], instance: null, every: false })
+    })
+
+    it('lists the busy candidates in candidate order', () => {
+        const game = noAutoVillagers(unsortedGame(['archery-range', 'council-hall']))
+        const steps: BuildStep[] = [
+            { action: 'produce', producer: 'archery-range', unit: 'longbowman', count: 3 },
+            { action: 'produce', producer: 'council-hall', unit: 'longbowman', count: 3 },
+            { action: 'research', tech: 'veteran-longbowmen', trigger: at(1) },
+        ]
+        const result = run(steps, { game, inputs: { durationSeconds: 150 } })
+        expect(result.steps.slice(0, 2).map((step) => step.startedAt)).toEqual([0, 0])
+        expect(result.steps[2].waitBreakdown.prerequisite).toBeGreaterThan(0)
+        expect(onlyEntry(result.steps[2]).detail).toEqual({ kind: 'building-busy', buildings: unsortedProducers.map(named), instance: null, every: false })
     })
 })
 
