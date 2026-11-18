@@ -22,4 +22,13 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q137
+next: Q138
+
+## Q137: Restart the question bot service
+kind: handoff
+options: A) Done | B) Not now
+thread: 1572474324223524988
+
+The question bot's service could not be restarted from the Claude session, so it may be running older bot code. Run in a normal shell: systemctl --user restart code-factory-bot.service. Nothing is blocked; the bot keeps serving the board meanwhile.
+
+### Answer
