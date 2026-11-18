@@ -25,7 +25,8 @@ import { ChartZoomBar } from './chart-zoom-bar'
 import { type TimeWindow, rowsInWindow } from './chart-zoom'
 import { type PlotBox, useChartZoom } from './use-chart-zoom'
 import type { StepSpan } from './step-annotations'
-import { type UpgradeDot, visibleUpgradeDots } from './result-series'
+import { type UpgradeDot, upgradeTierName, visibleUpgradeDots } from './result-series'
+import { UpgradeTierText } from './upgrade-tier-text'
 import styles from './results.module.css'
 
 const LABEL_LINE_HEIGHT = 14
@@ -40,6 +41,7 @@ const BAND_COLOR = '#0d6efd'
 
 const DOT_RADIUS = 4
 const PINNED_DOT_RADIUS = 5
+const PINNED_TIER_TEXT_OPACITY = 0.6
 // Recharts orders same-layer reference dots by registration, which put the current dots first in the DOM; explicit layers keep the filled dot above the pinned ring.
 const PINNED_DOT_Z_INDEX = 600
 const DOT_Z_INDEX = 601
@@ -111,6 +113,10 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const pinnedAgeUps = ageUpHidden ? [] : drawn(ageUpMarkers(pinnedMarkers))
     const currentDots = visibleUpgradeDots(upgradeDots, { times, series }, shown, hidden)
     const pinnedDots = pinned ? visibleUpgradeDots(pinnedUpgradeDots, pinned, shown, hidden) : []
+    const tierTexts = [
+        ...pinnedDots.map((dot) => ({ dot, r: PINNED_DOT_RADIUS })),
+        ...currentDots.map((dot) => ({ dot, r: DOT_RADIUS })),
+    ].map(({ dot, r }) => ({ at: dot.at, value: dot.value, r, text: upgradeTierName(dot.label, dot.key) }))
     const labelKey = labelled.map(markerLabel).join('\n')
 
     useEffect(() => {
@@ -279,6 +285,18 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                                     data-series={pinnedKey(dot.key)}
                                                     data-label={dot.label}
                                                     data-at={dot.at}
+                                                    label={
+                                                        <UpgradeTierText
+                                                            texts={tierTexts}
+                                                            index={i}
+                                                            color={pinnedColor(series, dot.key, pinned?.series.findIndex((s) => s.key === dot.key) ?? 0)}
+                                                            fontSize={LABEL_FONT_SIZE}
+                                                            opacity={PINNED_TIER_TEXT_OPACITY}
+                                                            testId="chart-pinned-upgrade-tier"
+                                                            series={pinnedKey(dot.key)}
+                                                            label={dot.label}
+                                                        />
+                                                    }
                                                 >
                                                     <title>{`${dot.label} (pinned) ${formatMinSec(dot.at)}`}</title>
                                                 </ReferenceDot>
@@ -296,6 +314,18 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                                     data-series={dot.key}
                                                     data-label={dot.label}
                                                     data-at={dot.at}
+                                                    label={
+                                                        <UpgradeTierText
+                                                            texts={tierTexts}
+                                                            index={pinnedDots.length + i}
+                                                            color={seriesColor(series.findIndex((s) => s.key === dot.key))}
+                                                            fontSize={LABEL_FONT_SIZE}
+                                                            opacity={1}
+                                                            testId="chart-upgrade-tier"
+                                                            series={dot.key}
+                                                            label={dot.label}
+                                                        />
+                                                    }
                                                 >
                                                     <title>{`${dot.label} ${formatMinSec(dot.at)}`}</title>
                                                 </ReferenceDot>

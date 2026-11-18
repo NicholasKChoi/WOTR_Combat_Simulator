@@ -3,7 +3,8 @@ import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
 import { type PinnedSeries, toChartRows } from './chart-rows'
 import type { TimeWindow } from './chart-zoom'
-import { buildingSeries, gatherRatesSeries, resourceSeries, unitLineSeries, unitUpgradeDots, unitsProducedSeries, visibleUpgradeDots, type UpgradeDot } from './result-series'
+import { loadGameData } from '../../../lib/aoe4-build-order/data'
+import { type TierTextBounds, type TierTextDot, type TierTextSlot, boxesIntersect, buildingSeries, gatherRatesSeries, placeTierText, resourceSeries, tierTextBox, tierTextSlots, unitLineSeries, unitUpgradeDots, unitsProducedSeries, upgradeTierName, visibleUpgradeDots, type UpgradeDot } from './result-series'
 
 function result(): SimulationResult {
     return {
@@ -156,6 +157,101 @@ describe('visibleUpgradeDots', () => {
         const [placed] = visibleUpgradeDots([dot('spearman', 6)], drawn, whole, none)
         expect(placed.value).toBe(4)
         expect(drawn.series[0].values).not.toContain(4)
+    })
+})
+
+describe('upgradeTierName', () => {
+    const { upgradeTargets } = loadGameData('english')
+
+    it.each([...upgradeTargets].map(([id, target]) => [id, target.value]))('names %s on the %s line from the ids alone', (id, unit) => {
+        const name = upgradeTierName(id, unit)
+        if (id.split('-').length > unit.split('-').length) {
+            expect(name).not.toContain('-')
+            expect(name).toMatch(/^[A-Z]/)
+            expect(name.toLowerCase()).toBe(id.split('-')[0])
+            expect(name.length).toBeLessThan(id.length)
+        } else {
+            expect(name).toBe('Upgrade')
+        }
+    })
+
+    it('tells a veteran id from an elite id', () => {
+        expect(upgradeTierName('veteran-longbowmen', 'longbowman')).toBe('Veteran')
+        expect(upgradeTierName('elite-longbowmen', 'longbowman')).toBe('Elite')
+    })
+
+    it.each([
+        ['early-men-at-arms', 'Early'],
+        ['men-at-arms', 'Upgrade'],
+        ['elite-men-at-arms', 'Elite'],
+    ])('names %s on the man-at-arms line %s', (id, expected) => {
+        expect(upgradeTierName(id, 'man-at-arms')).toBe(expected)
+    })
+
+    it('works for an id and unit no data lists', () => {
+        expect(upgradeTierName('mighty-widgets', 'widget')).toBe('Mighty')
+    })
+})
+
+const TIER_BOUNDS: TierTextBounds = { left: 100, top: 20, right: 500, bottom: 380 }
+const TIER_HEIGHT = 14
+const tierDot = (cx: number, cy: number, width = 56, r = 4): TierTextDot => ({ cx, cy, r, width })
+const alone = (dot: TierTextDot): TierTextSlot => ({ slot: 0, slots: 1, centre: dot.cy })
+
+const tierBox = (dot: TierTextDot, slot: TierTextSlot) => tierTextBox(dot, slot, TIER_HEIGHT, TIER_BOUNDS)
+
+describe('tierTextSlots', () => {
+    it.each([
+        ['two dots a few pixels apart', [tierDot(300, 200, 40), tierDot(306, 196)]],
+        ['a ring and a dot at one point', [tierDot(300, 200, 56, 5), tierDot(300, 200)]],
+        ['three texts where moving the first two apart pushes one into the third', [tierDot(300, 200), tierDot(302, 200), tierDot(304, 214)]],
+        ['two close dots near the right edge', [tierDot(480, 200), tierDot(484, 203)]],
+        ['two close dots near the top edge', [tierDot(300, 22), tierDot(303, 24)]],
+        ['two close dots near the bottom edge', [tierDot(300, 378), tierDot(303, 376)]],
+    ])('places the texts of %s inside the plot, clear of each other and of their own dots', (_name, dots) => {
+        expect(boxesIntersect(tierBox(dots[0], alone(dots[0])), tierBox(dots[1], alone(dots[1]))), 'the first two texts would cover each other if placed alone').toBe(true)
+        const boxes = tierTextSlots(dots, TIER_HEIGHT, TIER_BOUNDS).map((slot, i) => tierBox(dots[i], slot))
+        boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b) => expect(boxesIntersect(a, b)).toBe(false)))
+        for (const b of boxes) expect(b.left >= TIER_BOUNDS.left && b.right <= TIER_BOUNDS.right && b.top >= TIER_BOUNDS.top && b.bottom <= TIER_BOUNDS.bottom).toBe(true)
+        dots.forEach((d, i) => expect(d.cx >= boxes[i].left && d.cx <= boxes[i].right && d.cy >= boxes[i].top && d.cy <= boxes[i].bottom).toBe(false))
+    })
+
+    it('leaves texts that would not touch alone beside their own dots', () => {
+        const dots = [tierDot(300, 200), tierDot(300, 260), tierDot(420, 200)]
+        expect(tierTextSlots(dots, TIER_HEIGHT, TIER_BOUNDS)).toEqual(dots.map(alone))
+    })
+
+    it('stacks a group with the higher dot text on top, around the dots mean height', () => {
+        const dots = [tierDot(306, 204), tierDot(300, 196)]
+        expect(tierTextSlots(dots, TIER_HEIGHT, TIER_BOUNDS)).toEqual([
+            { slot: 1, slots: 2, centre: 200 },
+            { slot: 0, slots: 2, centre: 200 },
+        ])
+    })
+})
+
+describe('placeTierText', () => {
+    it('puts a lone text to the right of its dot, centred on the dot, clear of the dot', () => {
+        const dot = tierDot(300, 200)
+        expect(placeTierText(dot, alone(dot), TIER_HEIGHT, TIER_BOUNDS)).toEqual({ x: 300 + 4 + 3, y: 200, anchor: 'start' })
+    })
+
+    it('flips a text that would cross the right edge to the dot left', () => {
+        const dot = tierDot(480, 200)
+        expect(placeTierText(dot, alone(dot), TIER_HEIGHT, TIER_BOUNDS)).toEqual({ x: 480 - 4 - 3, y: 200, anchor: 'end' })
+    })
+
+    it('stacks the rows of a group around its centre', () => {
+        const dot = tierDot(300, 200)
+        expect([0, 1].map((slot) => placeTierText(dot, { slot, slots: 2, centre: 200 }, TIER_HEIGHT, TIER_BOUNDS).y)).toEqual([193, 207])
+    })
+
+    it.each([
+        ['top', 22, 2, TIER_BOUNDS.top + 7],
+        ['bottom', 378, 2, TIER_BOUNDS.bottom - 21],
+    ])('moves a stack near the %s edge inside it as a whole', (_edge, centre, slots, firstY) => {
+        const dot = tierDot(300, centre)
+        expect(placeTierText(dot, { slot: 0, slots, centre }, TIER_HEIGHT, TIER_BOUNDS).y).toBe(firstY)
     })
 })
 
