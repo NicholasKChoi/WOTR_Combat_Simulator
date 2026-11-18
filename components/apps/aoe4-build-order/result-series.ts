@@ -49,22 +49,18 @@ export function upgradeTierName(upgradeId: string, unitId: string): string {
     return first.charAt(0).toUpperCase() + first.slice(1)
 }
 
+export interface TierTextDot {
+    cx: number
+    cy: number
+    r: number
+    width: number
+}
+
+// A text's row in its group's stack, and the pixel height the stack is centred on.
 export interface TierTextSlot {
     slot: number
     slots: number
-}
-
-// Dots drawn at one point (the same time and value, current or pinned) take consecutive slots in input order.
-export function tierTextSlots(points: readonly { at: number; value: number }[]): TierTextSlot[] {
-    const counts = new Map<string, number>()
-    const keys = points.map((p) => `${p.at}:${p.value}`)
-    for (const key of keys) counts.set(key, (counts.get(key) ?? 0) + 1)
-    const taken = new Map<string, number>()
-    return keys.map((key) => {
-        const slot = taken.get(key) ?? 0
-        taken.set(key, slot + 1)
-        return { slot, slots: counts.get(key) ?? 1 }
-    })
+    centre: number
 }
 
 export interface TierTextBounds {
@@ -80,25 +76,49 @@ export interface TierTextPlacement {
     anchor: 'start' | 'end'
 }
 
-export interface TierTextInput extends TierTextSlot {
-    cx: number
-    cy: number
-    r: number
-    width: number
-    height: number
-}
-
 // x is the text's anchored edge and y its vertical centre. The text sits right of the dot and left of it when it would cross the right edge;
-// the slots of one point stack around the dot's height, and the stack moves down or up as a whole to stay inside the top and bottom edges.
-export function placeTierText({ cx, cy, r, slot, slots, width, height }: TierTextInput, bounds: TierTextBounds): TierTextPlacement {
+// a group's texts stack in rows of `height` around its centre, and the stack moves down or up as a whole to stay inside the top and bottom edges.
+export function placeTierText({ cx, r, width }: TierTextDot, { slot, slots, centre }: TierTextSlot, height: number, bounds: TierTextBounds): TierTextPlacement {
     const gap = r + TIER_TEXT_GAP
     const fitsRight = cx + gap + width <= bounds.right
-    const stackTop = cy - (slots * height) / 2
+    const stackTop = centre - (slots * height) / 2
     const shift = Math.max(0, bounds.top - stackTop) - Math.max(0, stackTop + slots * height - bounds.bottom)
     return {
         x: fitsRight ? cx + gap : cx - gap,
         y: stackTop + shift + (slot + 0.5) * height,
         anchor: fitsRight ? 'start' : 'end',
+    }
+}
+
+function tierTextBox(dot: TierTextDot, slot: TierTextSlot, height: number, bounds: TierTextBounds): TierTextBounds {
+    const { x, y, anchor } = placeTierText(dot, slot, height, bounds)
+    const left = anchor === 'start' ? x : x - dot.width
+    return { left, right: left + dot.width, top: y - height / 2, bottom: y + height / 2 }
+}
+
+const boxesIntersect = (a: TierTextBounds, b: TierTextBounds) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+
+// One stack per group, centred on its dots' mean height, with the topmost dot's text in the top row.
+function groupSlots(dots: readonly TierTextDot[], groupOf: readonly number[]): TierTextSlot[] {
+    const slots: TierTextSlot[] = dots.map((dot) => ({ slot: 0, slots: 1, centre: dot.cy }))
+    for (const group of new Set(groupOf)) {
+        const members = dots.flatMap((_, i) => (groupOf[i] === group ? [i] : [])).sort((a, b) => dots[a].cy - dots[b].cy || a - b)
+        const centre = members.reduce((sum, i) => sum + dots[i].cy, 0) / members.length
+        members.forEach((i, slot) => (slots[i] = { slot, slots: members.length, centre }))
+    }
+    return slots
+}
+
+// Texts start alone beside their dots; any two in different groups whose boxes intersect merge their groups, until no two boxes intersect.
+export function tierTextSlots(dots: readonly TierTextDot[], height: number, bounds: TierTextBounds): TierTextSlot[] {
+    const groupOf = dots.map((_, i) => i)
+    for (;;) {
+        const slots = groupSlots(dots, groupOf)
+        const boxes = dots.map((dot, i) => tierTextBox(dot, slots[i], height, bounds))
+        const clash = boxes.flatMap((a, i) => boxes.flatMap((b, j) => (j > i && groupOf[i] !== groupOf[j] && boxesIntersect(a, b) ? [[i, j]] : [])))[0]
+        if (!clash) return slots
+        const [from, to] = [groupOf[clash[1]], groupOf[clash[0]]]
+        groupOf.forEach((g, i) => (groupOf[i] = g === from ? to : g))
     }
 }
 

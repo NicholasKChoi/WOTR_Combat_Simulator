@@ -25,7 +25,7 @@ import { ChartZoomBar } from './chart-zoom-bar'
 import { type TimeWindow, rowsInWindow } from './chart-zoom'
 import { type PlotBox, useChartZoom } from './use-chart-zoom'
 import type { StepSpan } from './step-annotations'
-import { type UpgradeDot, tierTextSlots, upgradeTierName, visibleUpgradeDots } from './result-series'
+import { type UpgradeDot, upgradeTierName, visibleUpgradeDots } from './result-series'
 import { UpgradeTierText } from './upgrade-tier-text'
 import styles from './results.module.css'
 
@@ -113,7 +113,10 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const pinnedAgeUps = ageUpHidden ? [] : drawn(ageUpMarkers(pinnedMarkers))
     const currentDots = visibleUpgradeDots(upgradeDots, { times, series }, shown, hidden)
     const pinnedDots = pinned ? visibleUpgradeDots(pinnedUpgradeDots, pinned, shown, hidden) : []
-    const dotSlots = tierTextSlots([...pinnedDots, ...currentDots])
+    const tierTexts = [
+        ...pinnedDots.map((dot) => ({ at: dot.at, value: dot.value, r: PINNED_DOT_RADIUS, text: upgradeTierName(dot.label, dot.key) })),
+        ...currentDots.map((dot) => ({ at: dot.at, value: dot.value, r: DOT_RADIUS, text: upgradeTierName(dot.label, dot.key) })),
+    ]
     const labelKey = labelled.map(markerLabel).join('\n')
 
     useEffect(() => {
@@ -284,15 +287,14 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                                     data-at={dot.at}
                                                     label={
                                                         <UpgradeTierText
-                                                            {...dotSlots[i]}
-                                                            text={upgradeTierName(dot.label, dot.key)}
+                                                            texts={tierTexts}
+                                                            index={i}
                                                             color={pinnedColor(series, dot.key, pinned?.series.findIndex((s) => s.key === dot.key) ?? 0)}
                                                             fontSize={LABEL_FONT_SIZE}
                                                             opacity={PINNED_TIER_TEXT_OPACITY}
                                                             testId="chart-pinned-upgrade-tier"
                                                             series={pinnedKey(dot.key)}
                                                             label={dot.label}
-                                                            at={dot.at}
                                                         />
                                                     }
                                                 >
@@ -314,15 +316,14 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                                     data-at={dot.at}
                                                     label={
                                                         <UpgradeTierText
-                                                            {...dotSlots[pinnedDots.length + i]}
-                                                            text={upgradeTierName(dot.label, dot.key)}
+                                                            texts={tierTexts}
+                                                            index={pinnedDots.length + i}
                                                             color={seriesColor(series.findIndex((s) => s.key === dot.key))}
                                                             fontSize={LABEL_FONT_SIZE}
                                                             opacity={1}
                                                             testId="chart-upgrade-tier"
                                                             series={dot.key}
                                                             label={dot.label}
-                                                            at={dot.at}
                                                         />
                                                     }
                                                 >

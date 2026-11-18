@@ -4,7 +4,7 @@ import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
 import { type PinnedSeries, toChartRows } from './chart-rows'
 import type { TimeWindow } from './chart-zoom'
 import { loadGameData } from '../../../lib/aoe4-build-order/data'
-import { type TierTextBounds, type TierTextInput, buildingSeries, gatherRatesSeries, placeTierText, resourceSeries, tierTextSlots, unitLineSeries, unitUpgradeDots, unitsProducedSeries, upgradeTierName, visibleUpgradeDots, type UpgradeDot } from './result-series'
+import { type TierTextBounds, type TierTextDot, type TierTextSlot, buildingSeries, gatherRatesSeries, placeTierText, resourceSeries, tierTextSlots, unitLineSeries, unitUpgradeDots, unitsProducedSeries, upgradeTierName, visibleUpgradeDots, type UpgradeDot } from './result-series'
 
 function result(): SimulationResult {
     return {
@@ -193,53 +193,71 @@ describe('upgradeTierName', () => {
     })
 })
 
+const TIER_BOUNDS: TierTextBounds = { left: 100, top: 20, right: 500, bottom: 380 }
+const TIER_HEIGHT = 14
+const tierDot = (cx: number, cy: number, width = 56, r = 4): TierTextDot => ({ cx, cy, r, width })
+const alone = (dot: TierTextDot): TierTextSlot => ({ slot: 0, slots: 1, centre: dot.cy })
+
+function tierBox(dot: TierTextDot, slot: TierTextSlot): TierTextBounds {
+    const { x, y, anchor } = placeTierText(dot, slot, TIER_HEIGHT, TIER_BOUNDS)
+    const left = anchor === 'start' ? x : x - dot.width
+    return { left, right: left + dot.width, top: y - TIER_HEIGHT / 2, bottom: y + TIER_HEIGHT / 2 }
+}
+
+const intersect = (a: TierTextBounds, b: TierTextBounds) => Math.min(a.right, b.right) > Math.max(a.left, b.left) && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
+
 describe('tierTextSlots', () => {
-    it('gives dots at one time and value consecutive slots and a lone dot one slot', () => {
-        expect(tierTextSlots([{ at: 4, value: 2 }, { at: 9, value: 2 }, { at: 4, value: 2 }, { at: 4, value: 3 }])).toEqual([
-            { slot: 0, slots: 2 },
-            { slot: 0, slots: 1 },
-            { slot: 1, slots: 2 },
-            { slot: 0, slots: 1 },
+    it.each([
+        ['two dots a few pixels apart', [tierDot(300, 200, 40), tierDot(306, 196)]],
+        ['a ring and a dot at one point', [tierDot(300, 200, 56, 5), tierDot(300, 200)]],
+        ['three texts where moving the first two apart pushes one into the third', [tierDot(300, 200), tierDot(302, 200), tierDot(304, 214)]],
+        ['two close dots near the right edge', [tierDot(480, 200), tierDot(484, 203)]],
+        ['two close dots near the top edge', [tierDot(300, 22), tierDot(303, 24)]],
+        ['two close dots near the bottom edge', [tierDot(300, 378), tierDot(303, 376)]],
+    ])('places the texts of %s inside the plot, clear of each other and of their own dots', (_name, dots) => {
+        expect(intersect(tierBox(dots[0], alone(dots[0])), tierBox(dots[1], alone(dots[1]))), 'the first two texts would cover each other if placed alone').toBe(true)
+        const boxes = tierTextSlots(dots, TIER_HEIGHT, TIER_BOUNDS).map((slot, i) => tierBox(dots[i], slot))
+        boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b) => expect(intersect(a, b)).toBe(false)))
+        for (const b of boxes) expect(b.left >= TIER_BOUNDS.left && b.right <= TIER_BOUNDS.right && b.top >= TIER_BOUNDS.top && b.bottom <= TIER_BOUNDS.bottom).toBe(true)
+        dots.forEach((d, i) => expect(d.cx >= boxes[i].left && d.cx <= boxes[i].right && d.cy >= boxes[i].top && d.cy <= boxes[i].bottom).toBe(false))
+    })
+
+    it('leaves texts that would not touch alone beside their own dots', () => {
+        const dots = [tierDot(300, 200), tierDot(300, 260), tierDot(420, 200)]
+        expect(tierTextSlots(dots, TIER_HEIGHT, TIER_BOUNDS)).toEqual(dots.map(alone))
+    })
+
+    it('stacks a group with the higher dot text on top, around the dots mean height', () => {
+        const dots = [tierDot(306, 204), tierDot(300, 196)]
+        expect(tierTextSlots(dots, TIER_HEIGHT, TIER_BOUNDS)).toEqual([
+            { slot: 1, slots: 2, centre: 200 },
+            { slot: 0, slots: 2, centre: 200 },
         ])
     })
 })
 
 describe('placeTierText', () => {
-    const bounds: TierTextBounds = { left: 100, top: 20, right: 500, bottom: 380 }
-    const input = (over: Partial<TierTextInput> = {}): TierTextInput => ({ cx: 300, cy: 200, r: 4, slot: 0, slots: 1, width: 56, height: 14, ...over })
-
     it('puts a lone text to the right of its dot, centred on the dot, clear of the dot', () => {
-        const placed = placeTierText(input(), bounds)
-        expect(placed.anchor).toBe('start')
-        expect(placed.x).toBeGreaterThan(300 + 4)
-        expect(placed.y).toBe(200)
-    })
-
-    it('gives the dots of one point different positions', () => {
-        const [a, b] = tierTextSlots([{ at: 4, value: 2 }, { at: 4, value: 2 }])
-        const first = placeTierText(input(a), bounds)
-        const second = placeTierText(input(b), bounds)
-        expect(first.y).not.toBe(second.y)
-        expect(Math.abs(first.y - second.y)).toBeGreaterThanOrEqual(14)
+        const dot = tierDot(300, 200)
+        expect(placeTierText(dot, alone(dot), TIER_HEIGHT, TIER_BOUNDS)).toEqual({ x: 300 + 4 + 3, y: 200, anchor: 'start' })
     })
 
     it('flips a text that would cross the right edge to the dot left', () => {
-        const placed = placeTierText(input({ cx: 480 }), bounds)
-        expect(placed.anchor).toBe('end')
-        expect(placed.x).toBeLessThan(480 - 4)
+        const dot = tierDot(480, 200)
+        expect(placeTierText(dot, alone(dot), TIER_HEIGHT, TIER_BOUNDS)).toEqual({ x: 480 - 4 - 3, y: 200, anchor: 'end' })
     })
 
-    it('keeps a text near the top edge inside it, and a stack of two inside it as a whole', () => {
-        const lone = placeTierText(input({ cy: 22 }), bounds)
-        expect(lone.y - 7).toBeGreaterThanOrEqual(bounds.top)
-        const stack = [0, 1].map((slot) => placeTierText(input({ cy: 22, slot, slots: 2 }), bounds))
-        expect(stack[0].y - 7).toBeGreaterThanOrEqual(bounds.top)
-        expect(stack[1].y).toBeGreaterThan(stack[0].y)
+    it('stacks the rows of a group around its centre', () => {
+        const dot = tierDot(300, 200)
+        expect([0, 1].map((slot) => placeTierText(dot, { slot, slots: 2, centre: 200 }, TIER_HEIGHT, TIER_BOUNDS).y)).toEqual([193, 207])
     })
 
-    it('keeps a text near the bottom edge inside it', () => {
-        const placed = placeTierText(input({ cy: 378 }), bounds)
-        expect(placed.y + 7).toBeLessThanOrEqual(bounds.bottom)
+    it.each([
+        ['top', 22, 2, TIER_BOUNDS.top + 7],
+        ['bottom', 378, 2, TIER_BOUNDS.bottom - 21],
+    ])('moves a stack near the %s edge inside it as a whole', (_edge, centre, slots, firstY) => {
+        const dot = tierDot(300, centre)
+        expect(placeTierText(dot, { slot: 0, slots, centre }, TIER_HEIGHT, TIER_BOUNDS).y).toBe(firstY)
     })
 })
 

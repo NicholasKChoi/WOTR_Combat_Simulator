@@ -1,28 +1,36 @@
-import { usePlotArea } from 'recharts'
+import { usePlotArea, useXAxisScale, useYAxisScale } from 'recharts'
 import { estimateLabelWidth } from './chart-markers'
-import { type TierTextSlot, placeTierText } from './result-series'
+import { placeTierText, tierTextSlots } from './result-series'
 
-interface UpgradeTierTextProps extends TierTextSlot {
+export interface TierTextSpec {
+    at: number
+    value: number
+    r: number
     text: string
+}
+
+interface UpgradeTierTextProps {
+    texts: readonly TierTextSpec[]
+    index: number
     color: string
     fontSize: number
     opacity: number
     testId: string
     series: string
     label: string
-    at: number
-    viewBox?: { x?: number; y?: number; width?: number; height?: number }
 }
 
-// Rendered through a ReferenceDot's label prop, which hands the dot's own bounding box as viewBox.
-export function UpgradeTierText({ text, color, fontSize, opacity, testId, series, label, at, slot, slots, viewBox }: UpgradeTierTextProps) {
+// Rendered through a ReferenceDot's label prop. Every text on the chart is laid out together, from the axis scales the dots are drawn with, so each text clears the others.
+export function UpgradeTierText({ texts, index, color, fontSize, opacity, testId, series, label }: UpgradeTierTextProps) {
     const plot = usePlotArea()
-    const { x = 0, y = 0, width = 0, height = 0 } = viewBox ?? {}
-    if (!plot || width === 0) return null
-    const placement = placeTierText(
-        { cx: x + width / 2, cy: y + height / 2, r: width / 2, slot, slots, width: estimateLabelWidth(text), height: fontSize + 2 },
-        { left: plot.x, top: plot.y, right: plot.x + plot.width, bottom: plot.y + plot.height },
-    )
+    const xScale = useXAxisScale()
+    const yScale = useYAxisScale()
+    if (!plot || !xScale || !yScale) return null
+    const height = fontSize + 2
+    const bounds = { left: plot.x, top: plot.y, right: plot.x + plot.width, bottom: plot.y + plot.height }
+    const dots = texts.map((t) => ({ cx: xScale(t.at) ?? 0, cy: yScale(t.value) ?? 0, r: t.r, width: estimateLabelWidth(t.text) }))
+    const placement = placeTierText(dots[index], tierTextSlots(dots, height, bounds)[index], height, bounds)
+    const { at, text } = texts[index]
     return (
         <text
             x={placement.x}

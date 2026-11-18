@@ -456,8 +456,6 @@ const hasArea = (r: Rect) => r.right - r.left > 0 && r.bottom - r.top > 0
 const insidePlot = (r: Rect, plot: Rect) =>
   r.left >= plot.left - BOX_TOLERANCE_PX && r.right <= plot.right + BOX_TOLERANCE_PX && r.top >= plot.top - BOX_TOLERANCE_PX && r.bottom <= plot.bottom + BOX_TOLERANCE_PX
 const overlap = (a: Rect, b: Rect) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0
-const sameBox = (a: Rect, b: Rect) =>
-  Math.abs(a.left - b.left) <= BOX_TOLERANCE_PX && Math.abs(a.top - b.top) <= BOX_TOLERANCE_PX && Math.abs(a.right - b.right) <= BOX_TOLERANCE_PX && Math.abs(a.bottom - b.bottom) <= BOX_TOLERANCE_PX
 
 const tiersOf = (page: Page, selector: string) => chart(page).locator(selector)
 
@@ -509,10 +507,16 @@ test.describe('AoE4 Units chart upgrade dot tier texts', () => {
     const upgrades = result.markers.filter((m) => m.unit === MAA_LINE)
     expect(upgrades.map((m) => m.label)).toEqual(['early-men-at-arms', 'men-at-arms'])
 
-    const snapshot = await expectTiers(page, TIER, DOT, dotMarkers(result).length)
-    const line = snapshot.texts.filter((t) => t.series === MAA_LINE)
-    expect(line.map((t) => t.text)).toEqual(['Early', 'Upgrade'])
-    expect(sameBox(line[0].rect, line[1].rect), 'the two texts do not cover each other').toBe(false)
+    const count = dotMarkers(result).length
+    const snapshot = await expectTiers(page, TIER, DOT, count)
+    expect(snapshot.texts.filter((t) => t.series === MAA_LINE).map((t) => t.text)).toEqual(['Early', 'Upgrade'])
+    await expect
+      .poll(async () => {
+        const now = await readTiers(chart(page), TIER, DOT)
+        const line = now.texts.filter((t) => t.series === MAA_LINE)
+        return tiersMatchDots(now, count) && line.length === 2 && !overlap(line[0].rect, line[1].rect)
+      }, { message: 'the two texts do not cover each other' })
+      .toBe(true)
   })
 
   test('with a pin, each ring shows a fainter tier text, and a ring and a dot at one point show texts that do not overlap', async ({ page }) => {
@@ -530,10 +534,11 @@ test.describe('AoE4 Units chart upgrade dot tier texts', () => {
     const count = upgradesOf(full).length
     await expect
       .poll(async () => {
-        const rings = await readTiers(chart(page), PINNED_TIER, PINNED_DOT)
-        const dots = await readTiers(chart(page), `${TIER}[data-series="${LINE}"]`, DOT)
-        const sharing = rings.dots.length === count && dots.dots.length === count && rings.dots.every((r, i) => Math.hypot(r.cx - dots.dots[i].cx, r.cy - dots.dots[i].cy) < BOX_TOLERANCE_PX)
-        return sharing && rings.texts.length === count && dots.texts.length === count && rings.texts.every((t, i) => !overlap(t.rect, dots.texts[i].rect))
+        const both = await readTiers(chart(page), `${PINNED_TIER}, ${TIER}[data-series="${LINE}"]`, `${PINNED_DOT}, ${DOT}[data-series="${LINE}"]`)
+        const pinnedOf = <T extends { series: string | null }>(list: T[], pinned: boolean) => list.filter((x) => (x.series?.startsWith('pinned:') ?? false) === pinned)
+        const [ringDots, lineDots, ringTexts, lineTexts] = [pinnedOf(both.dots, true), pinnedOf(both.dots, false), pinnedOf(both.texts, true), pinnedOf(both.texts, false)]
+        const sharing = ringDots.length === count && lineDots.length === count && ringDots.every((r, i) => Math.hypot(r.cx - lineDots[i].cx, r.cy - lineDots[i].cy) < BOX_TOLERANCE_PX)
+        return sharing && ringTexts.length === count && lineTexts.length === count && ringTexts.every((t, i) => !overlap(t.rect, lineTexts[i].rect))
       })
       .toBe(true)
   })
