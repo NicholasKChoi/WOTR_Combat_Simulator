@@ -22,7 +22,7 @@ function wrapTab(event: KeyboardEvent<HTMLDialogElement>) {
 function HelpSection({ id, title, children }: { id: string; title: string; children: ReactNode }) {
     return (
         <section data-testid="help-section" aria-labelledby={id} className={styles.section}>
-            <h3 id={id} className="h6">
+            <h3 id={id} className="h5">
                 {title}
             </h3>
             {children}
