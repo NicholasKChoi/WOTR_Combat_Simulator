@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { ChartMarker, SimulationResult } from '../lib/aoe4-build-order/model'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { markerLabel } from '../components/apps/aoe4-build-order/chart-markers'
+import { upgradeTierName } from '../components/apps/aoe4-build-order/result-series'
 import { CHART_IDS, WIDE_VIEWPORT, openPage, plotPoint, waitForRun } from './helpers'
 
 const BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
@@ -11,6 +12,15 @@ const LINE = 'longbowman'
 const PINNED_LINE = `pinned:${LINE}`
 const DOT = '[data-testid="chart-upgrade-dot"]'
 const PINNED_DOT = '[data-testid="chart-pinned-upgrade-dot"]'
+const TIER = '[data-testid="chart-upgrade-tier"]'
+const PINNED_TIER = '[data-testid="chart-pinned-upgrade-tier"]'
+const BOX_TOLERANCE_PX = 0.5
+// Closer to the plot's right edge than the "Veteran" text is wide, so the text cannot sit to the dot's right.
+const NEAR_RIGHT_EDGE_PX = 40
+// The Spear/Longbow build researches no man-at-arms upgrade; these two land two tiers on the Man-at-arms line (the elite upgrades need Imperial, which no run here reaches).
+const MAA_LINE = 'man-at-arms'
+const MAA_ANCHOR = 'research steeled-arrow'
+const MAA_TIER_STEPS = 'research early-men-at-arms\nresearch men-at-arms'
 // The Knight/Longbow build runs 1200 s with its only longbowman upgrade near 838 s.
 const FULL_DURATION = 1200
 const SHORT_DURATION = 900
@@ -383,5 +393,192 @@ test.describe('AoE4 Units chart unit lines and upgrade dots', () => {
       expect(pinned.order, 'the pinned dot precedes the current dot in the document').toBeLessThan(current.order)
       expect(pinned.r).toBeGreaterThan(current.r)
     })
+  })
+})
+
+interface Rect {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+interface TierReading {
+  series: string | null
+  label: string | null
+  at: string | null
+  text: string
+  opacity: number
+  hasLabelClass: boolean
+  rect: Rect
+}
+
+interface TierSnapshot {
+  plot: Rect | null
+  texts: TierReading[]
+  dots: { series: string | null; label: string | null; at: string | null; cx: number; cy: number }[]
+}
+
+// The texts, the dots and the plot are read in one evaluate so a redraw cannot split them.
+function readTiers(root: Locator, textSelector: string, dotSelector: string): Promise<TierSnapshot> {
+  return root.evaluate(
+    (el, found) => {
+      const box = (node: Element): Rect => {
+        const r = node.getBoundingClientRect()
+        return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
+      }
+      const grid = el.querySelector('.recharts-cartesian-grid')
+      return {
+        plot: grid ? box(grid) : null,
+        texts: [...el.querySelectorAll(found.textSelector)].map((t) => {
+          const style = getComputedStyle(t)
+          return {
+            series: t.getAttribute('data-series'),
+            label: t.getAttribute('data-label'),
+            at: t.getAttribute('data-at'),
+            text: t.textContent ?? '',
+            opacity: Number(style.opacity) * Number(style.fillOpacity),
+            hasLabelClass: t.classList.contains('recharts-label'),
+            rect: box(t),
+          }
+        }),
+        dots: [...el.querySelectorAll(found.dotSelector)].map((d) => {
+          const r = d.getBoundingClientRect()
+          return { series: d.getAttribute('data-series'), label: d.getAttribute('data-label'), at: d.getAttribute('data-at'), cx: (r.left + r.right) / 2, cy: (r.top + r.bottom) / 2 }
+        }),
+      }
+    },
+    { textSelector, dotSelector },
+  )
+}
+
+const hasArea = (r: Rect) => r.right - r.left > 0 && r.bottom - r.top > 0
+const insidePlot = (r: Rect, plot: Rect) =>
+  r.left >= plot.left - BOX_TOLERANCE_PX && r.right <= plot.right + BOX_TOLERANCE_PX && r.top >= plot.top - BOX_TOLERANCE_PX && r.bottom <= plot.bottom + BOX_TOLERANCE_PX
+const overlap = (a: Rect, b: Rect) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0
+const sameBox = (a: Rect, b: Rect) =>
+  Math.abs(a.left - b.left) <= BOX_TOLERANCE_PX && Math.abs(a.top - b.top) <= BOX_TOLERANCE_PX && Math.abs(a.right - b.right) <= BOX_TOLERANCE_PX && Math.abs(a.bottom - b.bottom) <= BOX_TOLERANCE_PX
+
+const tiersOf = (page: Page, selector: string) => chart(page).locator(selector)
+
+// Each text names the tier of the dot with the same series, label and time, sits inside the plot, and does not cover its dot's centre.
+function tiersMatchDots(snapshot: TierSnapshot, count: number): boolean {
+  const { plot, texts, dots } = snapshot
+  if (!plot || texts.length !== count || dots.length < count) return false
+  return texts.every((t) => {
+    const dot = dots.find((d) => d.series === t.series && d.label === t.label && d.at === t.at)
+    const covers = dot !== undefined && dot.cx >= t.rect.left && dot.cx <= t.rect.right && dot.cy >= t.rect.top && dot.cy <= t.rect.bottom
+    return dot !== undefined && !covers && hasArea(t.rect) && insidePlot(t.rect, plot) && !t.hasLabelClass && t.text === upgradeTierName(t.label ?? '', (t.series ?? '').replace('pinned:', ''))
+  })
+}
+
+async function expectTiers(page: Page, textSelector: string, dotSelector: string, count: number): Promise<TierSnapshot> {
+  let snapshot!: TierSnapshot
+  await expect
+    .poll(async () => {
+      snapshot = await readTiers(chart(page), textSelector, dotSelector)
+      return tiersMatchDots(snapshot, count)
+    })
+    .toBe(true)
+  return snapshot
+}
+
+async function expectNoTiers(page: Page) {
+  await expect(tiersOf(page, TIER)).toHaveCount(0)
+  await expect(tiersOf(page, PINNED_TIER)).toHaveCount(0)
+}
+
+test.describe('AoE4 Units chart upgrade dot tier texts', () => {
+  test('each current upgrade dot shows its tier name beside it, inside the plot, with the dot data attributes', async ({ page }) => {
+    const result = await load(page)
+    const dots = dotMarkers(result)
+    const snapshot = await expectTiers(page, TIER, DOT, dots.length)
+    expect(snapshot.texts.map((t) => t.opacity)).toEqual(dots.map(() => 1))
+    const longbow = snapshot.texts.filter((t) => t.series === LINE)
+    expect(longbow.map((t) => t.text)).toEqual(upgradesOf(result).map((m) => upgradeTierName(m.label, LINE)))
+    expect(longbow.map((t) => t.text)).toContain('Veteran')
+  })
+
+  test('two tiers researched on one line show two different tier texts', async ({ page }) => {
+    await openPage(page)
+    await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ label: PREFIXED_BUILD_LABEL }))
+    const text = await page.getByTestId('build-order-text').inputValue()
+    expect(text).toContain(MAA_ANCHOR)
+    const response = await waitForRun(page, () => page.getByTestId('build-order-text').fill(text.replace(MAA_ANCHOR, `${MAA_TIER_STEPS}\n${MAA_ANCHOR}`)))
+    const result = (await response.json()) as SimulationResult
+    const upgrades = result.markers.filter((m) => m.unit === MAA_LINE)
+    expect(upgrades.map((m) => m.label)).toEqual(['early-men-at-arms', 'men-at-arms'])
+
+    const snapshot = await expectTiers(page, TIER, DOT, dotMarkers(result).length)
+    const line = snapshot.texts.filter((t) => t.series === MAA_LINE)
+    expect(line.map((t) => t.text)).toEqual(['Early', 'Upgrade'])
+    expect(sameBox(line[0].rect, line[1].rect), 'the two texts do not cover each other').toBe(false)
+  })
+
+  test('with a pin, each ring shows a fainter tier text, and a ring and a dot at one point show texts that do not overlap', async ({ page }) => {
+    const { full } = await loadPinned(page)
+    const pinnedSnapshot = await expectTiers(page, PINNED_TIER, PINNED_DOT, upgradesOf(full).length)
+    const current = await readTiers(chart(page), TIER, DOT)
+    expect(current.texts.length).toBeGreaterThan(0)
+    for (const t of pinnedSnapshot.texts) {
+      expect(t.series).toBe(PINNED_LINE)
+      for (const c of current.texts) expect(t.opacity).toBeLessThan(c.opacity)
+    }
+    expect(current.texts.every((t) => t.opacity === 1)).toBe(true)
+
+    await rerun(page, NEAR_FULL_DURATION)
+    const count = upgradesOf(full).length
+    await expect
+      .poll(async () => {
+        const rings = await readTiers(chart(page), PINNED_TIER, PINNED_DOT)
+        const dots = await readTiers(chart(page), `${TIER}[data-series="${LINE}"]`, DOT)
+        const sharing = rings.dots.length === count && dots.dots.length === count && rings.dots.every((r, i) => Math.hypot(r.cx - dots.dots[i].cx, r.cy - dots.dots[i].cy) < BOX_TOLERANCE_PX)
+        return sharing && rings.texts.length === count && dots.texts.length === count && rings.texts.every((t, i) => !overlap(t.rect, dots.texts[i].rect))
+      })
+      .toBe(true)
+  })
+
+  test('hiding the line, zooming past the upgrade, and the Buildings view remove the tier texts, and showing them again brings them back', async ({ page }) => {
+    const { full, short } = await loadPinned(page)
+    const current = dotMarkers(short).length
+    const pinned = upgradesOf(full).length
+    await expectTiers(page, TIER, DOT, current)
+    await expectTiers(page, PINNED_TIER, PINNED_DOT, pinned)
+    await expectNoDotsElsewhere(page)
+    for (const id of CHART_IDS.filter((c) => c !== UNITS)) await expect(chart(page, id).locator(`${TIER}, ${PINNED_TIER}`)).toHaveCount(0)
+
+    await legendItem(page, LINE).click()
+    await expect(tiersOf(page, `${TIER}[data-series="${LINE}"]`)).toHaveCount(0)
+    await expect(tiersOf(page, PINNED_TIER)).toHaveCount(0)
+    await expect(tiersOf(page, TIER)).toHaveCount(current - upgradesOf(short).length)
+    await legendItem(page, LINE).click()
+    await expectTiers(page, TIER, DOT, current)
+    await expectTiers(page, PINNED_TIER, PINNED_DOT, pinned)
+
+    await dragZoom(page, 0.1, 0.4)
+    await expect.poll(() => zoomWindow(page)).not.toBeNull()
+    await expectNoDots(page)
+    await expectNoTiers(page)
+    await page.getByTestId('chart-zoom-reset').click()
+    await expect.poll(() => zoomWindow(page)).toBeNull()
+    await expectTiers(page, TIER, DOT, current)
+
+    await viewOption(page, 'buildings').click()
+    await expect(yLabel(page)).toHaveText('Buildings')
+    await expectNoTiers(page)
+    await viewOption(page, 'units').click()
+    await expectTiers(page, TIER, DOT, current)
+  })
+
+  test('a dot just inside the right edge of a zoom window has its tier text inside the plot', async ({ page }) => {
+    const result = await load(page)
+    const at = upgradesOf(result).at(0)!.at
+    await dragZoom(page, 0.5, at / FULL_DURATION + 0.005)
+    await expect.poll(() => zoomWindow(page)).not.toBeNull()
+    const window = (await zoomWindow(page))!
+    expect(at, 'the upgrade lies inside the window').toBeGreaterThanOrEqual(window.from)
+    const snapshot = await expectTiers(page, TIER, DOT, dotMarkers(result).filter((m) => m.at >= window.from && m.at <= window.to).length)
+    const dot = snapshot.dots.find((d) => d.series === LINE)!
+    expect(snapshot.plot!.right - dot.cx, 'the dot lies near the right edge').toBeLessThan(NEAR_RIGHT_EDGE_PX)
   })
 })

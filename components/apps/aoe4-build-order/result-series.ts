@@ -3,6 +3,8 @@ import { type ChartSeries, type PinnedSeries, isLineHidden, valueAt } from './ch
 import type { TimeWindow } from './chart-zoom'
 import type { GatherRatesView, UnitsProducedView } from './chart-view-toggle'
 
+const TIER_TEXT_GAP = 3
+
 export function unitLineSeries(run: SimulationResult): ChartSeries[] {
     const lines = new Map<string, ChartSeries>()
     for (const u of run.unitsProduced) {
@@ -39,6 +41,65 @@ export function visibleUpgradeDots(
         if (!line || isLineHidden(hidden, dot.key) || dot.at < shown.from || dot.at > shown.to) return []
         return [{ ...dot, value: valueAt(run.times, line.values, dot.at) }]
     })
+}
+
+export function upgradeTierName(upgradeId: string, unitId: string): string {
+    const [first, ...rest] = upgradeId.split('-')
+    if (rest.length + 1 <= unitId.split('-').length) return 'Upgrade'
+    return first.charAt(0).toUpperCase() + first.slice(1)
+}
+
+export interface TierTextSlot {
+    slot: number
+    slots: number
+}
+
+// Dots drawn at one point (the same time and value, current or pinned) take consecutive slots in input order.
+export function tierTextSlots(points: readonly { at: number; value: number }[]): TierTextSlot[] {
+    const counts = new Map<string, number>()
+    const keys = points.map((p) => `${p.at}:${p.value}`)
+    for (const key of keys) counts.set(key, (counts.get(key) ?? 0) + 1)
+    const taken = new Map<string, number>()
+    return keys.map((key) => {
+        const slot = taken.get(key) ?? 0
+        taken.set(key, slot + 1)
+        return { slot, slots: counts.get(key) ?? 1 }
+    })
+}
+
+export interface TierTextBounds {
+    left: number
+    top: number
+    right: number
+    bottom: number
+}
+
+export interface TierTextPlacement {
+    x: number
+    y: number
+    anchor: 'start' | 'end'
+}
+
+export interface TierTextInput extends TierTextSlot {
+    cx: number
+    cy: number
+    r: number
+    width: number
+    height: number
+}
+
+// x is the text's anchored edge and y its vertical centre. The text sits right of the dot and left of it when it would cross the right edge;
+// the slots of one point stack around the dot's height, and the stack moves down or up as a whole to stay inside the top and bottom edges.
+export function placeTierText({ cx, cy, r, slot, slots, width, height }: TierTextInput, bounds: TierTextBounds): TierTextPlacement {
+    const gap = r + TIER_TEXT_GAP
+    const fitsRight = cx + gap + width <= bounds.right
+    const stackTop = cy - (slots * height) / 2
+    const shift = Math.max(0, bounds.top - stackTop) - Math.max(0, stackTop + slots * height - bounds.bottom)
+    return {
+        x: fitsRight ? cx + gap : cx - gap,
+        y: stackTop + shift + (slot + 0.5) * height,
+        anchor: fitsRight ? 'start' : 'end',
+    }
 }
 
 export function resourceSeries(byResource: Record<ResourceKind, number[]>): ChartSeries[] {

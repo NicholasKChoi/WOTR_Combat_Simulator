@@ -98,8 +98,8 @@ export function PageHelp() {
                             each kind of marker on and off for every chart at once.
                         </p>
                         <p>
-                            The Units chart draws one unit line for each kind of unit. An upgrade dot on a unit line marks when an upgrade lands: a filled upgrade
-                            dot belongs to the current run and a dashed ring belongs to the pinned run.
+                            The Units chart draws one unit line for each kind of unit. An upgrade dot on a unit line marks when an upgrade lands and names its tier beside
+                            it: a filled upgrade dot belongs to the current run and a dashed ring belongs to the pinned run.
                         </p>
                         <p>
                             Drag across a chart to zoom to that stretch of the game, and Shift and drag to pan. While a chart is zoomed, Show earlier and Show later

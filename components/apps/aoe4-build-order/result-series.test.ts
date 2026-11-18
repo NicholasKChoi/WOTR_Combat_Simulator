@@ -3,7 +3,8 @@ import type { SimulationResult } from '../../../lib/aoe4-build-order/model'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
 import { type PinnedSeries, toChartRows } from './chart-rows'
 import type { TimeWindow } from './chart-zoom'
-import { buildingSeries, gatherRatesSeries, resourceSeries, unitLineSeries, unitUpgradeDots, unitsProducedSeries, visibleUpgradeDots, type UpgradeDot } from './result-series'
+import { loadGameData } from '../../../lib/aoe4-build-order/data'
+import { type TierTextBounds, type TierTextInput, buildingSeries, gatherRatesSeries, placeTierText, resourceSeries, tierTextSlots, unitLineSeries, unitUpgradeDots, unitsProducedSeries, upgradeTierName, visibleUpgradeDots, type UpgradeDot } from './result-series'
 
 function result(): SimulationResult {
     return {
@@ -156,6 +157,89 @@ describe('visibleUpgradeDots', () => {
         const [placed] = visibleUpgradeDots([dot('spearman', 6)], drawn, whole, none)
         expect(placed.value).toBe(4)
         expect(drawn.series[0].values).not.toContain(4)
+    })
+})
+
+describe('upgradeTierName', () => {
+    const { upgradeTargets } = loadGameData('english')
+
+    it.each([...upgradeTargets].map(([id, target]) => [id, target.value]))('names %s on the %s line from the ids alone', (id, unit) => {
+        const name = upgradeTierName(id, unit)
+        if (id.split('-').length > unit.split('-').length) {
+            expect(name).not.toContain('-')
+            expect(name).toMatch(/^[A-Z]/)
+            expect(name.toLowerCase()).toBe(id.split('-')[0])
+            expect(name.length).toBeLessThan(id.length)
+        } else {
+            expect(name).toBe('Upgrade')
+        }
+    })
+
+    it('tells a veteran id from an elite id', () => {
+        expect(upgradeTierName('veteran-longbowmen', 'longbowman')).toBe('Veteran')
+        expect(upgradeTierName('elite-longbowmen', 'longbowman')).toBe('Elite')
+    })
+
+    it.each([
+        ['early-men-at-arms', 'Early'],
+        ['men-at-arms', 'Upgrade'],
+        ['elite-men-at-arms', 'Elite'],
+    ])('names %s on the man-at-arms line %s', (id, expected) => {
+        expect(upgradeTierName(id, 'man-at-arms')).toBe(expected)
+    })
+
+    it('works for an id and unit no data lists', () => {
+        expect(upgradeTierName('mighty-widgets', 'widget')).toBe('Mighty')
+    })
+})
+
+describe('tierTextSlots', () => {
+    it('gives dots at one time and value consecutive slots and a lone dot one slot', () => {
+        expect(tierTextSlots([{ at: 4, value: 2 }, { at: 9, value: 2 }, { at: 4, value: 2 }, { at: 4, value: 3 }])).toEqual([
+            { slot: 0, slots: 2 },
+            { slot: 0, slots: 1 },
+            { slot: 1, slots: 2 },
+            { slot: 0, slots: 1 },
+        ])
+    })
+})
+
+describe('placeTierText', () => {
+    const bounds: TierTextBounds = { left: 100, top: 20, right: 500, bottom: 380 }
+    const input = (over: Partial<TierTextInput> = {}): TierTextInput => ({ cx: 300, cy: 200, r: 4, slot: 0, slots: 1, width: 56, height: 14, ...over })
+
+    it('puts a lone text to the right of its dot, centred on the dot, clear of the dot', () => {
+        const placed = placeTierText(input(), bounds)
+        expect(placed.anchor).toBe('start')
+        expect(placed.x).toBeGreaterThan(300 + 4)
+        expect(placed.y).toBe(200)
+    })
+
+    it('gives the dots of one point different positions', () => {
+        const [a, b] = tierTextSlots([{ at: 4, value: 2 }, { at: 4, value: 2 }])
+        const first = placeTierText(input(a), bounds)
+        const second = placeTierText(input(b), bounds)
+        expect(first.y).not.toBe(second.y)
+        expect(Math.abs(first.y - second.y)).toBeGreaterThanOrEqual(14)
+    })
+
+    it('flips a text that would cross the right edge to the dot left', () => {
+        const placed = placeTierText(input({ cx: 480 }), bounds)
+        expect(placed.anchor).toBe('end')
+        expect(placed.x).toBeLessThan(480 - 4)
+    })
+
+    it('keeps a text near the top edge inside it, and a stack of two inside it as a whole', () => {
+        const lone = placeTierText(input({ cy: 22 }), bounds)
+        expect(lone.y - 7).toBeGreaterThanOrEqual(bounds.top)
+        const stack = [0, 1].map((slot) => placeTierText(input({ cy: 22, slot, slots: 2 }), bounds))
+        expect(stack[0].y - 7).toBeGreaterThanOrEqual(bounds.top)
+        expect(stack[1].y).toBeGreaterThan(stack[0].y)
+    })
+
+    it('keeps a text near the bottom edge inside it', () => {
+        const placed = placeTierText(input({ cy: 378 }), bounds)
+        expect(placed.y + 7).toBeLessThanOrEqual(bounds.bottom)
     })
 })
 
