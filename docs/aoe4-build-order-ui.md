@@ -134,7 +134,7 @@ text label `<label> <m:ss>` (for example `Castle 13:24`) above the plot, stacked
 readable. A marker without a text label stays a line and shows `<label> <m:ss>` as a hover title. Tooltip values are shown rounded to
 at most 1 decimal place. Charts have no marker legend of their own; the marker control below is the only one.
 
-Marker control: one control titled "Markers" sits above the chart table, shared by all the charts, inside `results-last-good` so it dims with them. It lists one
+Marker control: one control titled "Markers" sits above the chart table, shared by all the charts, inside `results-last-good` so it dims with them. It stays at the top of the Results column's view while that column scrolls, drawn over the charts beneath it, so it works against every chart and not only the first; only this control sticks, and each chart's own legends and zoom bar scroll with their chart. Tabbing to or scrolling to a chart control keeps it clear of the stuck control, and a run with no markers draws no control and leaves no space for one. It lists one
 entry per marker kind present in the shown run's markers, in the order `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
 and `Other` (`#6b6bd6`), each a button named `<kind> markers`; a run with no markers draws neither lines nor the control. Clicking an entry, or
 pressing Enter or Space on it, hides that kind's vertical lines and their labels on every chart at once and clicking again restores them; focus stays on the entry.
