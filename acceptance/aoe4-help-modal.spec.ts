@@ -263,6 +263,36 @@ test.describe('AoE4 page help modal', () => {
     for (const [kind, , color] of compared) expect(color, `${kind}`).toBe(cellColorOf.get(kind as string))
   })
 
+  test('every section heading is larger than the body text, smaller than the dialog title, and as large as a chart title', async ({ page }) => {
+    await openPage(page)
+    await expect(page.getByTestId('chart-table')).toBeVisible()
+    const chartTitle = page.getByTestId(RATES).locator('h3').first()
+    await expect(chartTitle).toBeVisible()
+    await openHelp(page)
+    await expect(sections(page)).toHaveCount(SECTION_COUNT)
+    const sizes = await page.evaluate(
+      ({ chartTitleSelector }) => {
+        const px = (el: Element) => parseFloat(getComputedStyle(el).fontSize)
+        const dialog = document.querySelector('[data-testid="help-modal"]')!
+        const sectionEls = [...dialog.querySelectorAll('[data-testid="help-section"]')]
+        return {
+          paragraphs: sectionEls.map((el) => px(el.querySelector('p')!)),
+          headings: sectionEls.map((el) => px(document.getElementById(el.getAttribute('aria-labelledby') ?? '')!)),
+          title: px(dialog.querySelector('#help-title')!),
+          chartTitle: px(document.querySelector(chartTitleSelector)!),
+        }
+      },
+      { chartTitleSelector: `[data-testid="${RATES}"] h3` },
+    )
+    expect(sizes.headings).toHaveLength(SECTION_COUNT)
+    const body = Math.max(...sizes.paragraphs)
+    for (const heading of sizes.headings) {
+      expect(heading, 'larger than the body text').toBeGreaterThan(body)
+      expect(sizes.title, 'smaller than the dialog title').toBeGreaterThan(heading)
+      expect(heading, 'the chart title size').toBe(sizes.chartTitle)
+    }
+  })
+
   test('the warn swatch matches a still-waiting run cell and the fourth section names the wait forms', async ({ page, request }) => {
     const result = await simulateOk<SimulationResult>(request, buildOrderFrom(WAITING_TEXT), 1200)
     const waitingStep = result.steps.findIndex((timing) => timing.status === 'waiting')
