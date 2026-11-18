@@ -55,7 +55,7 @@ None.
 
 ## Decisions
 
-None.
+- A backlog item the owner tags `(standalone chore)` stays a Chore even when it adds small visible UI text (owner 2026-11-18, Q138); the spec-gate and review do not bounce it for changing visible behavior.
 
 ## Out of scope
 

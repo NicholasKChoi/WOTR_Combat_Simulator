@@ -25,7 +25,7 @@ this list only names the surfaces.
 - Routes: `/`, `/apps/combat-simulator`, `/apps/starcraft-helper`, `/apps/aoe4-build-order`.
 - AoE4 build library list merges (SGS-124, beside design/M8.md C6): `withMyBuilds(list, mine)` and `withLoadedEntry(list, entry)` in `components/apps/aoe4-build-order/build-library.ts`; acceptance helper `acceptBeforeUnload(page)` in `acceptance/helpers.ts`.
 - AoE4 chart view selection (SGS-137, design/M9.md C7): `gatherRatesSeries(view, run)` and `unitsProducedSeries(view, run)` in `components/apps/aoe4-build-order/result-series.ts`.
-- AoE4 Units chart upgrade dots (SGS-198, beside design/M11.md C13, C16): `visibleUpgradeDots(dots, run, shown, hidden)` in `components/apps/aoe4-build-order/result-series.ts`, the rule for which upgrade dots a chart draws and at what value.
+- AoE4 Units chart upgrade dots (SGS-198, beside design/M11.md C13, C16): `visibleUpgradeDots(dots, run, shown, hidden)` in `components/apps/aoe4-build-order/result-series.ts`, the rule for which upgrade dots a chart draws and at what value. Beside it in the same file: `upgradeTierName` (the tier name shown for an upgrade dot), `tierTextSlots` (groups tier texts that would overlap) and `placeTierText` (placement of one tier text).
 - AoE4 M11 surfaces (SGS-200, beside design/M11.md): `waitDetailText` in `lib/aoe4-build-order/wait-detail.ts` (the wait reason text); `unitLineSeries` and `unitUpgradeDots` in `components/apps/aoe4-build-order/result-series.ts`; `MarkerControl` in `components/apps/aoe4-build-order/chart-legend.tsx` and `chart-markers.ts` (the one marker control for every chart).
 
 ## Design docs
