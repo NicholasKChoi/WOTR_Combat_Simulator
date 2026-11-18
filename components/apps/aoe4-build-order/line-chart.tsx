@@ -114,9 +114,9 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
     const currentDots = visibleUpgradeDots(upgradeDots, { times, series }, shown, hidden)
     const pinnedDots = pinned ? visibleUpgradeDots(pinnedUpgradeDots, pinned, shown, hidden) : []
     const tierTexts = [
-        ...pinnedDots.map((dot) => ({ at: dot.at, value: dot.value, r: PINNED_DOT_RADIUS, text: upgradeTierName(dot.label, dot.key) })),
-        ...currentDots.map((dot) => ({ at: dot.at, value: dot.value, r: DOT_RADIUS, text: upgradeTierName(dot.label, dot.key) })),
-    ]
+        ...pinnedDots.map((dot) => ({ dot, r: PINNED_DOT_RADIUS })),
+        ...currentDots.map((dot) => ({ dot, r: DOT_RADIUS })),
+    ].map(({ dot, r }) => ({ at: dot.at, value: dot.value, r, text: upgradeTierName(dot.label, dot.key) }))
     const labelKey = labelled.map(markerLabel).join('\n')
 
     useEffect(() => {

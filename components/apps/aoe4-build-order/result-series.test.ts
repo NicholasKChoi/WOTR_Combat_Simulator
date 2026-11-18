@@ -4,7 +4,7 @@ import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
 import { type PinnedSeries, toChartRows } from './chart-rows'
 import type { TimeWindow } from './chart-zoom'
 import { loadGameData } from '../../../lib/aoe4-build-order/data'
-import { type TierTextBounds, type TierTextDot, type TierTextSlot, buildingSeries, gatherRatesSeries, placeTierText, resourceSeries, tierTextSlots, unitLineSeries, unitUpgradeDots, unitsProducedSeries, upgradeTierName, visibleUpgradeDots, type UpgradeDot } from './result-series'
+import { type TierTextBounds, type TierTextDot, type TierTextSlot, boxesIntersect, buildingSeries, gatherRatesSeries, placeTierText, resourceSeries, tierTextBox, tierTextSlots, unitLineSeries, unitUpgradeDots, unitsProducedSeries, upgradeTierName, visibleUpgradeDots, type UpgradeDot } from './result-series'
 
 function result(): SimulationResult {
     return {
@@ -198,13 +198,7 @@ const TIER_HEIGHT = 14
 const tierDot = (cx: number, cy: number, width = 56, r = 4): TierTextDot => ({ cx, cy, r, width })
 const alone = (dot: TierTextDot): TierTextSlot => ({ slot: 0, slots: 1, centre: dot.cy })
 
-function tierBox(dot: TierTextDot, slot: TierTextSlot): TierTextBounds {
-    const { x, y, anchor } = placeTierText(dot, slot, TIER_HEIGHT, TIER_BOUNDS)
-    const left = anchor === 'start' ? x : x - dot.width
-    return { left, right: left + dot.width, top: y - TIER_HEIGHT / 2, bottom: y + TIER_HEIGHT / 2 }
-}
-
-const intersect = (a: TierTextBounds, b: TierTextBounds) => Math.min(a.right, b.right) > Math.max(a.left, b.left) && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
+const tierBox = (dot: TierTextDot, slot: TierTextSlot) => tierTextBox(dot, slot, TIER_HEIGHT, TIER_BOUNDS)
 
 describe('tierTextSlots', () => {
     it.each([
@@ -215,9 +209,9 @@ describe('tierTextSlots', () => {
         ['two close dots near the top edge', [tierDot(300, 22), tierDot(303, 24)]],
         ['two close dots near the bottom edge', [tierDot(300, 378), tierDot(303, 376)]],
     ])('places the texts of %s inside the plot, clear of each other and of their own dots', (_name, dots) => {
-        expect(intersect(tierBox(dots[0], alone(dots[0])), tierBox(dots[1], alone(dots[1]))), 'the first two texts would cover each other if placed alone').toBe(true)
+        expect(boxesIntersect(tierBox(dots[0], alone(dots[0])), tierBox(dots[1], alone(dots[1]))), 'the first two texts would cover each other if placed alone').toBe(true)
         const boxes = tierTextSlots(dots, TIER_HEIGHT, TIER_BOUNDS).map((slot, i) => tierBox(dots[i], slot))
-        boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b) => expect(intersect(a, b)).toBe(false)))
+        boxes.forEach((a, i) => boxes.slice(i + 1).forEach((b) => expect(boxesIntersect(a, b)).toBe(false)))
         for (const b of boxes) expect(b.left >= TIER_BOUNDS.left && b.right <= TIER_BOUNDS.right && b.top >= TIER_BOUNDS.top && b.bottom <= TIER_BOUNDS.bottom).toBe(true)
         dots.forEach((d, i) => expect(d.cx >= boxes[i].left && d.cx <= boxes[i].right && d.cy >= boxes[i].top && d.cy <= boxes[i].bottom).toBe(false))
     })

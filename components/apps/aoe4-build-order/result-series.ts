@@ -90,13 +90,13 @@ export function placeTierText({ cx, r, width }: TierTextDot, { slot, slots, cent
     }
 }
 
-function tierTextBox(dot: TierTextDot, slot: TierTextSlot, height: number, bounds: TierTextBounds): TierTextBounds {
+export function tierTextBox(dot: TierTextDot, slot: TierTextSlot, height: number, bounds: TierTextBounds): TierTextBounds {
     const { x, y, anchor } = placeTierText(dot, slot, height, bounds)
     const left = anchor === 'start' ? x : x - dot.width
     return { left, right: left + dot.width, top: y - height / 2, bottom: y + height / 2 }
 }
 
-const boxesIntersect = (a: TierTextBounds, b: TierTextBounds) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+export const boxesIntersect = (a: TierTextBounds, b: TierTextBounds) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
 
 // One stack per group, centred on its dots' mean height, with the topmost dot's text in the top row.
 function groupSlots(dots: readonly TierTextDot[], groupOf: readonly number[]): TierTextSlot[] {
