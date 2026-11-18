@@ -39,6 +39,14 @@ describe('MarkerControl markup', () => {
             active: m[0].includes('data-active="true"'),
         }))
 
+    it('gives the control the sticky class in place of the bottom margin utility, and no series legend gets it', () => {
+        const root = (markup: string) => markup.match(/<div class="([^"]*)"/)?.[1].split(' ')
+        expect(root(html())).toContain('markerControl')
+        expect(root(html())).not.toContain('mb-3')
+        const series = renderToStaticMarkup(createElement(SeriesLegend, { series: [{ key: 'a', name: 'a', values: [1] }], hidden: new Set<string>(), onToggle: () => {} }))
+        expect(root(series)).not.toContain('markerControl')
+    })
+
     it('lists one item per kind present, in kind order, named for the kind', () => {
         expect(items(html()).map((i) => [i.kind, i.name])).toEqual([
             ['age-up', 'Age-up markers'],

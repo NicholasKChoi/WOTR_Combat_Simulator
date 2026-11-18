@@ -41,6 +41,10 @@
     overscroll-behavior: contain;
 }
 
+.resultsColumn {
+    scroll-padding-top: var(--aoe4-marker-control-height, 0px);
+}
+
 .editor {
     display: flex;
     align-items: flex-start;

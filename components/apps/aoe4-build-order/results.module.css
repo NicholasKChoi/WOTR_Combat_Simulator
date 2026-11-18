@@ -30,6 +30,14 @@
     overflow-wrap: anywhere;
 }
 
+.markerControl {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bs-body-bg, #fff);
+    padding-bottom: 1rem;
+}
+
 .messages {
     overflow-wrap: anywhere;
 }

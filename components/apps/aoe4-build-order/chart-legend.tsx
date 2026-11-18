@@ -1,9 +1,11 @@
 import cn from 'classnames'
+import { useRef } from 'react'
 
 import { CHART_MARKER_KINDS, type ChartMarker, type ChartMarkerKind } from '../../../lib/aoe4-build-order/model'
 import { type ChartSeries, type PinnedSeries, isLineHidden, legendItems } from './chart-rows'
 import { MARKER_COLORS, MARKER_KIND_LABELS } from './chart-markers'
 import styles from './results.module.css'
+import { useMarkerControlHeight } from './use-marker-control-height'
 
 interface SeriesLegendProps {
     series: readonly ChartSeries[]
@@ -69,9 +71,11 @@ interface MarkerControlProps {
 
 export function MarkerControl({ markers, hidden, active, onToggle, onHover, onFocusKind }: MarkerControlProps) {
     const kinds = CHART_MARKER_KINDS.filter((kind) => markers.some((m) => m.kind === kind))
+    const root = useRef<HTMLDivElement>(null)
+    useMarkerControlHeight(root, kinds.length > 0)
     if (kinds.length === 0) return null
     return (
-        <div className={cn(styles.legend, 'small mb-3')} data-testid="chart-marker-legend">
+        <div ref={root} className={cn(styles.legend, styles.markerControl, 'small')} data-testid="chart-marker-legend">
             <h3 className="h6 mb-1">Markers</h3>
             <ul className="list-inline mb-0">
                 {kinds.map((kind) => (
