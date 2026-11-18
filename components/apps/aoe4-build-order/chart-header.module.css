@@ -1,3 +1,17 @@
+.headerRow :global(.btn-outline-secondary) {
+    --bs-btn-bg: var(--bs-body-bg);
+}
+
+@media (hover: hover) {
+    .headerRow:not([data-dragging='true']):hover {
+        background-color: var(--bs-secondary-bg);
+    }
+}
+
+.headerRow:not([data-dragging='true']):has(:focus-visible) {
+    background-color: var(--bs-secondary-bg);
+}
+
 .cell {
     padding: 0.25rem 0.25rem 0.25rem 0;
     vertical-align: middle;

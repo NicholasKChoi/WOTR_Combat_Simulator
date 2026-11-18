@@ -27,7 +27,7 @@ interface ChartHeaderProps {
 
 export function ChartHeaderRow({ title, bodyId, layout, controls }: ChartHeaderProps) {
     return (
-        <tr data-testid="chart-header-row">
+        <tr data-testid="chart-header-row" data-dragging={layout?.dragging ? 'true' : undefined} className={styles.headerRow}>
             <td className={styles.cell}>
                 {layout ? (
                     <button
