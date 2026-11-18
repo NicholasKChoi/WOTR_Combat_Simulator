@@ -1,6 +1,8 @@
 import { type PointerEvent, useEffect, useRef, useState } from 'react'
-import { DRAG_THRESHOLD_PX, dropIndexAt } from './chart-drag'
+import { DRAG_THRESHOLD_PX, type DropSlot, dropSlotAt } from './chart-drag'
 import type { ChartId } from './chart-layout'
+
+const INDICATOR_HEIGHT_PX = 2
 
 export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, toIndex: number) => void) {
     const [dragging, setDragging] = useState<ChartId | null>(null)
@@ -11,12 +13,20 @@ export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, to
 
     useEffect(() => () => session.current?.(), [])
 
-    const targetIndex = (id: ChartId, pointerY: number): number => {
-        const midpoints = latest.current.order.flatMap((other) => {
+    const wrapper = useRef<HTMLElement | null>(null)
+    const indicator = useRef<HTMLElement | null>(null)
+    const indicatorTop = useRef<number | null>(null)
+
+    const slotAt = (id: ChartId, pointerY: number): DropSlot => {
+        const rects = latest.current.order.flatMap((other) => {
             const rect = other === id ? null : sections.current.get(other)?.getBoundingClientRect()
-            return rect ? [rect.top + rect.height / 2] : []
+            return rect ? [{ top: rect.top, bottom: rect.bottom }] : []
         })
-        return dropIndexAt(midpoints, pointerY)
+        return dropSlotAt(rects, pointerY)
+    }
+
+    const placeIndicator = () => {
+        if (indicator.current && indicatorTop.current !== null) indicator.current.style.top = `${indicatorTop.current}px`
     }
 
     const start = (id: ChartId, event: PointerEvent<HTMLButtonElement>) => {
@@ -39,6 +49,9 @@ export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, to
             document.removeEventListener('keydown', onKey, true)
             if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId)
             session.current = null
+            const group = sections.current.get(id)
+            if (group) group.style.transform = ''
+            indicatorTop.current = null
             setDragging(null)
         }
         const onMove = (move: globalThis.PointerEvent) => {
@@ -46,9 +59,16 @@ export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, to
                 active = true
                 setDragging(id)
             }
+            if (!active) return
+            const group = sections.current.get(id)
+            if (group) group.style.transform = `translateY(${move.clientY - startY}px)`
+            const { boundaryY } = slotAt(id, move.clientY)
+            const wrapperTop = wrapper.current?.getBoundingClientRect().top
+            indicatorTop.current = boundaryY === null || wrapperTop === undefined ? null : boundaryY - wrapperTop - INDICATOR_HEIGHT_PX / 2
+            placeIndicator()
         }
         const onUp = (up: globalThis.PointerEvent) => {
-            const target = active ? targetIndex(id, up.clientY) : startIndex
+            const target = active ? slotAt(id, up.clientY).index : startIndex
             finish()
             if (target !== startIndex) latest.current.onDrop(id, target)
         }
@@ -69,5 +89,13 @@ export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, to
         else sections.current.delete(id)
     }
 
-    return { dragging, start, sectionRef, sessionActive: () => session.current !== null }
+    const wrapperRef = (element: HTMLElement | null) => {
+        wrapper.current = element
+    }
+    const indicatorRef = (element: HTMLElement | null) => {
+        indicator.current = element
+        placeIndicator()
+    }
+
+    return { dragging, start, sectionRef, wrapperRef, indicatorRef, sessionActive: () => session.current !== null }
 }

@@ -160,7 +160,7 @@ Chart table: Results draws the charts as one table (`chart-table`, labelled `Res
 no header row of its own. Each chart is a row group (its chart id as `data-testid`) of a header row (`chart-header-row`) and a body row (`chart-body-row`), the
 title is the row group's header cell, and the four columns are fixed: the drag handle, the title, the collapse caret and the view toggle. Every chart's handle,
 title, caret and toggle therefore line up in their columns, whatever mix of charts is collapsed or expanded, at 1200 px and wider. The table never makes the Results
-column scroll sideways, and each plot fills the width of its body row. The key results panel is outside the table.
+column scroll sideways, and each plot fills the width of its body row. The key results panel is outside the table. A chart's header row (not its body row) takes a light grey background while the pointer is over it, on devices that hover, and while an element in it shows the keyboard focus ring; a mouse click on a button in it leaves no tint, and the dragged chart's header row has none during a drag.
 
 Chart controls: each chart's header row holds, in order, a drag handle (`chart-drag-handle`, a grip button labelled
 "Reorder <title> chart"), the title, a collapse caret (`chart-collapse`) and, on Gather rates and Units produced, the view toggle.
@@ -169,8 +169,9 @@ title, the caret and the view toggle stay visible and usable. The hidden series,
 pinned run survive a collapse and a move, and a collapsed chart draws no step band, markers or pinned lines while the others keep
 theirs. The caret flips between "Collapse <title> chart" and "Expand <title> chart", is toggled by click, Enter or Space, and
 keeps focus. A chart is reordered by dragging its handle with the primary mouse button, or with ArrowUp and ArrowDown while the
-handle is focused; other keys do nothing, and the arrow keys do nothing while a pointer drag is in progress (from pointer down until it ends). A drag starts after the pointer has moved 4px, dims the moved chart's rows, leaves the order unchanged until the
-drop, and drops the chart where the pointer's height places it among the other charts. Escape or a cancelled pointer ends the
+handle is focused; other keys do nothing, and the arrow keys do nothing while a pointer drag is in progress (from pointer down until it ends). A drag starts after the pointer has moved 4px; from then the moved chart's rows are dimmed and follow the pointer vertically, a horizontal
+line (`chart-drop-indicator`) marks the slot the chart will land in (also its own slot, when nothing would change), and the order stays unchanged until the
+drop, which places the chart where the pointer's height puts it among the other charts. Escape or a cancelled pointer ends the
 drag with no change, and a touch drag that starts on the handle does not scroll the page. A collapsed chart reorders like an expanded one. After a
 move that changes the order, the moved chart's handle has focus and a visually hidden status (`chart-order-status`) names the chart
 and its new position out of four; ArrowUp on the first chart and ArrowDown on the last change nothing and announce nothing. A

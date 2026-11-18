@@ -113,46 +113,49 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
                 onHover={setHoverKind}
                 onFocusKind={setFocusKind}
             />
-            <table data-testid="chart-table" aria-label="Results charts" className={resultStyles.chartTable}>
-                <colgroup>
-                    <col className={resultStyles.handleColumn} />
-                    <col />
-                    <col className={resultStyles.caretColumn} />
-                    <col className={resultStyles.controlsColumn} />
-                </colgroup>
-                {layout.order.map((id) => {
-                    const chart = charts[id]
-                    const unitDots = id === 'chart-units-produced' && unitsProducedView === 'units' ? upgradeDots : undefined
-                    return (
-                        <SeriesChart
-                            key={id}
-                            testId={id}
-                            title={chart.title}
-                            yLabel={chart.yLabel}
-                            times={result.times}
-                            highlight={highlight}
-                            markers={result.markers}
-                            markerView={markerView}
-                            series={chart.series(result)}
-                            pinnedMarkers={pinned?.markers}
-                            pinned={pinned ? { times: pinned.times, series: chart.series(pinned) } : undefined}
-                            upgradeDots={unitDots?.current}
-                            pinnedUpgradeDots={unitDots?.pinned}
-                            headerControls={chart.headerControls}
-                            offsetLines={id === 'chart-units-produced' && unitsProducedView === 'buildings'}
-                            sectionRef={drag.sectionRef(id)}
-                            layout={{
-                                collapsed: layout.collapsed.includes(id),
-                                dragging: drag.dragging === id,
-                                reorderHelpId,
-                                onToggle: () => toggle(id),
-                                onMoveKey: (direction) => moveByKey(id, direction),
-                                onHandlePointerDown: (event) => drag.start(id, event),
-                            }}
-                        />
-                    )
-                })}
-            </table>
+            <div ref={drag.wrapperRef} className={resultStyles.chartTableWrapper}>
+                <table data-testid="chart-table" aria-label="Results charts" className={resultStyles.chartTable}>
+                    <colgroup>
+                        <col className={resultStyles.handleColumn} />
+                        <col />
+                        <col className={resultStyles.caretColumn} />
+                        <col className={resultStyles.controlsColumn} />
+                    </colgroup>
+                    {layout.order.map((id) => {
+                        const chart = charts[id]
+                        const unitDots = id === 'chart-units-produced' && unitsProducedView === 'units' ? upgradeDots : undefined
+                        return (
+                            <SeriesChart
+                                key={id}
+                                testId={id}
+                                title={chart.title}
+                                yLabel={chart.yLabel}
+                                times={result.times}
+                                highlight={highlight}
+                                markers={result.markers}
+                                markerView={markerView}
+                                series={chart.series(result)}
+                                pinnedMarkers={pinned?.markers}
+                                pinned={pinned ? { times: pinned.times, series: chart.series(pinned) } : undefined}
+                                upgradeDots={unitDots?.current}
+                                pinnedUpgradeDots={unitDots?.pinned}
+                                headerControls={chart.headerControls}
+                                offsetLines={id === 'chart-units-produced' && unitsProducedView === 'buildings'}
+                                sectionRef={drag.sectionRef(id)}
+                                layout={{
+                                    collapsed: layout.collapsed.includes(id),
+                                    dragging: drag.dragging === id,
+                                    reorderHelpId,
+                                    onToggle: () => toggle(id),
+                                    onMoveKey: (direction) => moveByKey(id, direction),
+                                    onHandlePointerDown: (event) => drag.start(id, event),
+                                }}
+                            />
+                        )
+                    })}
+                </table>
+                {drag.dragging === null ? null : <div ref={drag.indicatorRef} data-testid="chart-drop-indicator" className={resultStyles.dropIndicator} aria-hidden="true" />}
+            </div>
         </div>
     )
 }
