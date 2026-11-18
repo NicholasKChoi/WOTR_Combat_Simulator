@@ -17,6 +17,9 @@ reworkCap: 3
 respecThreshold: 2
 questionBoard: true               # unattended modes file owner questions on QUESTIONS.md (Discord bot)
 driveOnAnswer: true               # an owner answer starts scripts/drive-loop.sh
+maxOpenQuestions: 5               # board items open at once; board.py queues the rest (handoffs and repros
+                                  #   always post), and stages size their questions to the free slots;
+                                  #   none or 0: no cap
 
 strongModelTriggers:                # docs, data snapshots, dependency/config upgrades, dead-code deletion, UI styling, test-only: not triggers alone
   - changes combat or simulation rules, dice, casualties, RNG, or battle/series loop behavior (what a run computes)
