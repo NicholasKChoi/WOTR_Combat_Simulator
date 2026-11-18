@@ -27,6 +27,7 @@ next: Q141
 ## Q140: Run the M11 retro (milestone close)
 kind: handoff
 options: A) Done | B) Not now
+thread: 1572497638283022356
 
 M11 is closed (all criteria done, M11.8 verified in production). Retros run only in an interactive session. Run /code-factory:manage strategy-game-sim retro in a terminal in the code repo. Nothing else is queued; the next milestone (backlog has (milestone) items) starts after the retro.
 
