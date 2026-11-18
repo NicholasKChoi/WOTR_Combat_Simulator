@@ -40,10 +40,11 @@ interface Stuck {
   controlHeight: number
   onTop: boolean
   opaque: boolean
+  targetTop: number | null
 }
 
-const readStuck = (page: Page): Promise<Stuck> =>
-  page.evaluate(() => {
+const readStuck = (page: Page, targetSelector?: string): Promise<Stuck> =>
+  page.evaluate((target) => {
     const column = document.querySelector('[data-testid="results-column"]')!.getBoundingClientRect()
     const control = document.querySelector('[data-testid="chart-marker-legend"]')!
     const rect = control.getBoundingClientRect()
@@ -56,8 +57,9 @@ const readStuck = (page: Page): Promise<Stuck> =>
       controlHeight: rect.height,
       onTop: hit !== null && control.contains(hit),
       opaque: /^rgb\(/.test(getComputedStyle(control).backgroundColor),
+      targetTop: target ? (document.querySelector(target)?.getBoundingClientRect().top ?? null) : null,
     }
-  })
+  }, targetSelector)
 
 const relativeTop = (page: Page, chart: string, part: string) =>
   page.evaluate(
@@ -86,9 +88,8 @@ test.describe('AoE4 marker control stays in view', () => {
     await scrollColumn(page, 'top')
     await expect
       .poll(async () => {
-        const s = await readStuck(page)
-        const header = await page.evaluate((id) => document.querySelector(`[data-testid="${id}"] [data-testid="chart-header-row"]`)!.getBoundingClientRect().top, FIRST)
-        return header >= s.controlBottom - EPS
+        const s = await readStuck(page, `[data-testid="${FIRST}"] [data-testid="chart-header-row"]`)
+        return s.targetTop! >= s.controlBottom - EPS
       })
       .toBe(true)
   })
@@ -124,22 +125,24 @@ test.describe('AoE4 marker control stays in view', () => {
   test('a drag handle scrolled into view and focused below the control lands at or below the control, also after the control wraps taller', async ({ page }) => {
     await setup(page)
     const focusClearance = async (id: string) => {
+      const handle = `[data-testid="${id}"] [data-testid="chart-drag-handle"]`
       await scrollColumn(page, 'top')
       const handleTop = await relativeTop(page, id, 'chart-drag-handle')
       await scrollColumn(page, Math.round(handleTop + 300))
+      const before = await readStuck(page, handle)
+      expect(before.targetTop!, 'the handle starts above the column top').toBeLessThan(before.columnTop)
       await page.getByTestId(id).getByTestId('chart-drag-handle').evaluate((el) => {
         el.scrollIntoView({ block: 'nearest', behavior: 'instant' })
         el.focus()
       })
       await expect
         .poll(async () => {
-          const s = await readStuck(page)
-          const top = await page.getByTestId(id).getByTestId('chart-drag-handle').evaluate((el) => el.getBoundingClientRect().top)
-          return top - s.controlBottom
+          const s = await readStuck(page, handle)
+          return s.targetTop! - s.controlBottom
         })
         .toBeGreaterThanOrEqual(-EPS)
     }
-    await focusClearance(LAST)
+    await focusClearance(CHART_IDS[1])
 
     const oneLine = (await readStuck(page)).controlHeight
     await page.addStyleTag({ content: '[data-testid="chart-marker-legend"] { width: 7rem; }' })
@@ -153,9 +156,8 @@ test.describe('AoE4 marker control stays in view', () => {
     await scrollColumn(page, Math.round(bodyTop + 40))
     await expect
       .poll(async () => {
-        const s = await readStuck(page)
-        const plotTop = await page.getByTestId(FIRST).getByTestId('chart-body-row').evaluate((el) => el.getBoundingClientRect().top)
-        return [plotTop < s.controlBottom, s.onTop, s.opaque]
+        const s = await readStuck(page, `[data-testid="${FIRST}"] [data-testid="chart-body-row"]`)
+        return [s.targetTop! < s.controlBottom, s.onTop, s.opaque]
       })
       .toEqual([true, true, true])
   })
