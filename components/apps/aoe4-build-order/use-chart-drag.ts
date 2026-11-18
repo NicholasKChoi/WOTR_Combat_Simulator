@@ -2,8 +2,6 @@ import { type PointerEvent, useEffect, useRef, useState } from 'react'
 import { DRAG_THRESHOLD_PX, type DropSlot, dropSlotAt } from './chart-drag'
 import type { ChartId } from './chart-layout'
 
-const INDICATOR_HEIGHT_PX = 2
-
 export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, toIndex: number) => void) {
     const [dragging, setDragging] = useState<ChartId | null>(null)
     const sections = useRef(new Map<ChartId, HTMLElement>())
@@ -64,7 +62,7 @@ export function useChartDrag(order: readonly ChartId[], onDrop: (id: ChartId, to
             if (group) group.style.transform = `translateY(${move.clientY - startY}px)`
             const { boundaryY } = slotAt(id, move.clientY)
             const wrapperTop = wrapper.current?.getBoundingClientRect().top
-            indicatorTop.current = boundaryY === null || wrapperTop === undefined ? null : boundaryY - wrapperTop - INDICATOR_HEIGHT_PX / 2
+            indicatorTop.current = boundaryY === null || wrapperTop === undefined ? null : boundaryY - wrapperTop
             placeIndicator()
         }
         const onUp = (up: globalThis.PointerEvent) => {
