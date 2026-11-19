@@ -78,6 +78,7 @@ test.describe('shown and disabled', () => {
     await expect(renameButton(page)).toBeEnabled()
 
     await textarea(page).fill(UNCONVERTIBLE_TEXT)
+    await expect(byId(page, 'auto-run-status')).toHaveAttribute('data-status', 'invalid')
     await expect(byId(page, 'save-build-copy')).toBeDisabled()
     await expect(renameButton(page)).toBeEnabled()
     await renameButton(page).click()
@@ -260,6 +261,7 @@ test.describe('a successful rename', () => {
     await renameName(page).fill('Late after')
     await renameSubmit(page).click()
     await expect(renameForm(page)).toHaveCount(0)
+    await expect(renameButton(page)).toBeDisabled()
 
     await waitForRun(page, () => textarea(page).fill(EDIT_TEXT))
     const responded = page.waitForResponse((r) => isNamedPatch(r.request()))

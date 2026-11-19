@@ -273,6 +273,7 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
                         data-testid="rename-build"
                         className={cn('btn btn-outline-primary', styles.saveButton)}
                         disabled={!canRename}
+                        aria-busy={busy ? 'true' : undefined}
                         onClick={() => openForm('rename')}
                     >
                         Rename

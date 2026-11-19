@@ -18,6 +18,7 @@ const mine = savedMineEntry('mine-id', 'My build', input, 2)
 const shared: LibraryEntry = { ...savedMineEntry('shared-id', 'Shared build', input, 3), kind: 'shared' }
 const link: LibraryEntry = { key: entryKey.link('link-id'), kind: 'link', name: 'Linked build', id: 'link-id', loaded: { ...input, revision: null } }
 const unrevised: LibraryEntry = { ...mine, loaded: { ...input, revision: null } }
+const unconvertible = textToBuildOrder('start -> sheep\nat 8 vils fly capital-town-center', buildOrderCatalog(ENGLISH))
 const SECRET = 'secret'
 
 interface Panel {
@@ -26,14 +27,15 @@ interface Panel {
     status?: AutoRunStatus
     busy?: boolean
     edited?: boolean
+    conversion?: typeof conversion
 }
 
 function render(panel: Panel): string {
-    const { editSecret = SECRET, status = 'current', busy = false, edited = true } = panel
+    const { editSecret = SECRET, status = 'current', busy = false, edited = true, conversion: converted = conversion } = panel
     const entry = 'entry' in panel ? panel.entry : mine
     const settled = { ...input, selected: entry?.key ?? '' }
     return renderToStaticMarkup(
-        createElement(SaveBuild, { status, settled, conversion, busy, entry, editSecret, edited, onCreated: () => {}, onUpdated: () => {}, onRenamed: () => {} }),
+        createElement(SaveBuild, { status, settled, conversion: converted, busy, entry, editSecret, edited, onCreated: () => {}, onUpdated: () => {}, onRenamed: () => {} }),
     )
 }
 
@@ -44,6 +46,7 @@ function button(html: string, testId: string): string | undefined {
 describe('SaveBuild', () => {
     it('converts its input, so a disabled button below comes from the panel state', () => {
         expect(conversion.ok).toBe(true)
+        expect(unconvertible.ok).toBe(false)
     })
 
     it.each<[string, LibraryEntry | undefined, string | null, boolean]>([
@@ -64,7 +67,7 @@ describe('SaveBuild', () => {
         { when: 'current and edited', panel: {}, enabled: true },
         { when: 'current and unedited', panel: { edited: false }, enabled: true },
         { when: 'the run is stale', panel: { status: 'updating' }, enabled: true },
-        { when: 'the text does not convert', panel: { status: 'invalid' }, enabled: true },
+        { when: 'the text does not convert', panel: { status: 'invalid', conversion: unconvertible }, enabled: true },
         { when: 'a saved build loads', panel: { busy: true }, enabled: false },
         { when: 'the entry has no loaded revision', panel: { entry: unrevised }, enabled: false },
     ])('when $when, Rename enabled is $enabled', ({ panel, enabled }) => {
@@ -94,8 +97,9 @@ describe('SaveBuild', () => {
         expect(button(html, 'save-build-copy')?.includes('disabled=""')).toBe(!copy)
     })
 
-    it('marks both buttons busy while a saved build loads', () => {
+    it('marks all three buttons busy while a saved build loads', () => {
         const html = render({ busy: true })
+        expect(button(html, 'rename-build')).toContain('aria-busy="true"')
         expect(button(html, 'save-build')).toContain('aria-busy="true"')
         expect(button(html, 'save-build-copy')).toContain('aria-busy="true"')
     })
