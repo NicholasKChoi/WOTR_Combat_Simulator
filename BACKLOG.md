@@ -16,11 +16,6 @@ pull from here; triage moves an item into a milestone or deletes it.
   techs are combat-only, so by the v1 coverage decision they cost resources and queue time but their effects are
   ignored. Decide whether a follow-up adds overlay rows for (2)-(3).
 
-- (milestone) **AoE4 build order: one step, many of the same action.** Let a step repeat its action a set number of times
-  (e.g. "build Farm from wood x9") instead of entering nine identical steps; the simulator runs each repetition
-  as that many copies of the step. (owner feature request, 2026-11-13)
-- (milestone) **AoE4 My builds: rename a saved build.** Let the owner rename a named build in the library without saving a
-  copy; the new name shows everywhere the build is listed and links to it keep working. (owner feature request, 2026-11-13)
 - (milestone) **AoE4 sim: measure accuracy against real games.** No M1-M9 criterion checks the simulator's timings against real
   play (e.g. age-up and unit-out times from pro-game replays or published builds). Wider than the existing
   provisional-gather-rates item above, which it would absorb. Recommended: milestone, priority high. (discovery

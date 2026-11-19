@@ -22,34 +22,20 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q146
+next: Q147
 
-## Q145: Approve the repeat-a-step and rename-a-build design with its 17 defaults? Yes: M12 planning starts
-kind: confirmation
-blocks: M12 (AoE4 build editing: repeat a step, rename a saved build)
-options: A) Approve design and defaults: M12 planning starts | B) Change something: planning waits, reply with which numbered default or part
-recommendation: A: the defaults are the smallest change and keep shipped results unchanged
-research: reports/M12-research-4.md
-priority: high
-thread: 1572841677545283664
+## Q146: When another tab refreshes My builds, keep this tab's newer build name? Yes: only take the stored name if it is not older
+kind: decision
+blocks: M12 outline E (rename UI)
+options: A) Keep the newer name: take the stored name only if its revision is not older than the one this tab loaded | B) Always take the stored name: simpler, but an unrelated write from another tab can put an old name back on the label
+recommendation: A: one small check prevents the wrong name showing, and no new data is needed
+research: reports/M12-research-6.md
+priority: low
+thread: 1572854041749360770
 
-Only you can accept these product choices; M12 cannot be planned until you do. Your earlier approval reply arrived empty, so it is asked again. Rename placement and copy display are decided (both A).
-- 1. Repeat works on build and move steps only. Produce already has a count; research, rally and pause are rejected.
-- 2. Every copy is exact, including its trigger, so "when wood >= 75 build farm x9" waits for 75 wood before each farm.
-- 3. In pasted text, "x9" must be the last word of a build or move line (build farm from wood x9).
-- 4. Repeat is 1 to 200, and x1 is valid and kept as typed.
-- 5. Total steps after repeats are capped at 200, the same cap as today.
-- 6. Each copy gets its own timing in the results, tagged with its step number and copy number.
-- 7. A repeated row is highlighted as a long wait when its summed wait reaches 60 s.
-- 8. Hovering a repeated row shades one span: first copy start to last copy end.
-- 9. Rename is a new request that sends only the name, and works even for builds the current game data would reject.
-- 10. Rename needs the edit secret and the current version, counts as a save, and a racing save or rename is refused as a conflict.
-- 11. The rename form closes as soon as you submit; a failure shows as an error message.
-- 12. After a rename the save row shows the same link with the status "Renamed".
-- 13. A pinned build keeps the name it was pinned with.
-- 14. Repeat is an optional table field under More options, like walk time.
-- 15. The built-in builds are not rewritten to use repeat, so their results are unchanged.
-- 16. The server trims spaces around a new name instead of rejecting it.
-- 17. Choosing one of My builds always shows the name stored on the server, which fixes stale labels.
+Only you can pick how much edge-case polish the rename box gets; the rename screen (outline E) waits on it. The rule matters only in two rare cases:
+- This tab renamed a build but saving the new name in the browser failed; then another tab of the same browser saves something unrelated. Always-take-stored (B) shows the old name again.
+- The build was renamed in another browser; this tab shows the server's newer name, but the browser's stored list still has the old one. A write from another tab again brings back the old name under B.
+A adds one revision comparison; B ships the design as written. Either way the saved build itself is never changed, only the label shown.
 
 ### Answer
