@@ -128,17 +128,25 @@ async function writeNextRevision(
   }
 }
 
+type WriteCredentials = { ok: true; secret: string; revision: number } | { ok: false; reply: RouteReply<BuildsError> };
+
+function checkWriteCredentials(req: { authorization: string | undefined; ifMatch: string | undefined }): WriteCredentials {
+  const secret = parseEditSecret(req.authorization);
+  if (secret === null) return { ok: false, reply: errorReply(401, 'an edit secret is required', { 'WWW-Authenticate': 'Bearer' }) };
+  const revision = parseIfMatchRevision(req.ifMatch);
+  if (revision === null) return { ok: false, reply: errorReply(428, 'If-Match with the current revision is required') };
+  return { ok: true, secret, revision };
+}
+
 async function updateNamedBuild(
   req: { id: string; body: unknown; authorization: string | undefined; ifMatch: string | undefined; clientKey: string },
   deps: { store: StoreGetter; catalog: BuildOrderCatalog; nowMs: number },
 ): Promise<RouteReply<UpdateNamedBuildResponse | BuildsError | SimulateError>> {
-  const secret = parseEditSecret(req.authorization);
-  if (secret === null) return errorReply(401, 'an edit secret is required', { 'WWW-Authenticate': 'Bearer' });
-  const revision = parseIfMatchRevision(req.ifMatch);
-  if (revision === null) return errorReply(428, 'If-Match with the current revision is required');
+  const credentials = checkWriteCredentials(req);
+  if (!credentials.ok) return credentials.reply;
   const checked = checkSaveBuildRequest(req.body, deps.catalog);
   if (!checked.ok) return { status: checked.status, body: checked.error };
-  return writeNextRevision({ id: req.id, secret, revision, clientKey: req.clientKey }, deps, () => checked.record);
+  return writeNextRevision({ id: req.id, secret: credentials.secret, revision: credentials.revision, clientKey: req.clientKey }, deps, () => checked.record);
 }
 
 type NameCheck = { ok: true; name: string } | { ok: false; error: SimulateError };
@@ -158,13 +166,11 @@ async function renameNamedBuild(
   req: { id: string; body: unknown; authorization: string | undefined; ifMatch: string | undefined; clientKey: string },
   deps: { store: StoreGetter; nowMs: number },
 ): Promise<RouteReply<UpdateNamedBuildResponse | BuildsError | SimulateError>> {
-  const secret = parseEditSecret(req.authorization);
-  if (secret === null) return errorReply(401, 'an edit secret is required', { 'WWW-Authenticate': 'Bearer' });
-  const revision = parseIfMatchRevision(req.ifMatch);
-  if (revision === null) return errorReply(428, 'If-Match with the current revision is required');
+  const credentials = checkWriteCredentials(req);
+  if (!credentials.ok) return credentials.reply;
   const checked = checkRenameRequest(req.body);
   if (!checked.ok) return { status: 400, body: checked.error };
-  return writeNextRevision({ id: req.id, secret, revision, clientKey: req.clientKey }, deps, (stored) => ({
+  return writeNextRevision({ id: req.id, secret: credentials.secret, revision: credentials.revision, clientKey: req.clientKey }, deps, (stored) => ({
     buildOrder: { ...stored.buildOrder, name: checked.name },
   }));
 }
