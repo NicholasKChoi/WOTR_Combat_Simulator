@@ -36,6 +36,12 @@ this list only names the surfaces.
 | StarCraft helper | `docs/starcraft-helper.md` | Player list, map pool source, strike limits, edge states |
 | AoE4 build order | `docs/aoe4-build-order.md` (model: rules, data source, timing outputs), `docs/aoe4-build-order-format.md` (input, routes, result), `docs/aoe4-build-order-ui.md` (page behavior) (on `main`, SGS-171) | Simulation model; build format and routes; page behavior |
 
+AoE4 behavior is also stated outside the design docs. A ticket's docs-made-untrue search covers these
+too: `README.md` (Apps table), `ARCHITECTURE.md` (module rows), `lib/aoe4-build-order/README.md`
+(module map and event loop), `data/aoe4-build-order/README.md` (each prebuilt build's notes, timings and
+omitted techs), `components/apps/aoe4-build-order/page-help.tsx` (the help dialog text), and
+`docs/api/openapi.json` (result fields).
+
 ## Out of scope
 
 Repo-wide: no project's tickets touch these.

@@ -5,7 +5,8 @@ Each invariant is scoped to the paths it covers. A reviewer applies it only when
 of those paths.
 
 ## Site-wide
-Paths: `utils/**`, `components/layout.*`, `styles/**`, `pages/_app.js`, `pages/index.js`, and any new app.
+Paths: utils/**, components/layout.*, styles/**, pages/_app.js, pages/index.js
+Also guards any new app's page (the glob list cannot name it ahead of time).
 
 ### S1. Apps are independent
 No app imports another app's code. Shared helpers live in `utils/` or `components/` (outside `components/apps/`).
@@ -20,7 +21,7 @@ Every numeric input and scenario count has a cap, enforced where the simulation 
 Likely break: a new input that's an unbounded number.
 
 ## WOTR Combat Simulator
-Paths: `pages/apps/combat-simulator.js`, `components/apps/combat-simulator/**`, `lib/combat-simulator/**`, `pages/api/fight.ts`.
+Paths: pages/apps/combat-simulator.js, components/apps/combat-simulator/**, lib/combat-simulator/**, pages/api/fight.ts
 
 ### W1. Combat follows the rules in docs/combat-simulator.md
 Dice, leader rerolls, casualties, and round order match the design doc.
@@ -31,7 +32,7 @@ Each simulated battle starts from the submitted armies, and one battle's state n
 Likely break: state shared between runs, such as reusing mutated army objects across iterations.
 
 ## StarCraft Helper
-Paths: `pages/apps/starcraft-helper.js`.
+Paths: pages/apps/starcraft-helper.js
 
 ### H1. A Randomize click never repeats the previous result
 Pairing and map picks differ from the previous result whenever another result is possible, and return
@@ -47,7 +48,7 @@ Every eligible player pairing and map has an equal chance.
 Likely break: a hand-written shuffle bug.
 
 ## AoE4 Build Order Simulator
-Paths: `pages/apps/aoe4-build-order.*`, `components/apps/aoe4-build-order/**`, `lib/aoe4-build-order/**`, `pages/api/aoe4-build-order/**`, `data/aoe4-build-order/**`.
+Paths: pages/apps/aoe4-build-order.*, components/apps/aoe4-build-order/**, lib/aoe4-build-order/**, pages/api/aoe4-build-order/**, data/aoe4-build-order/**
 
 ### A1. Game numbers come only from versioned data files
 Costs, build times, and gather rates are read from data files labeled with a game patch.
