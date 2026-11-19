@@ -21,6 +21,7 @@ import {
     withCreatedEntry,
     withLoadedEntry,
     withMyBuilds,
+    withRenamedEntry,
     type LibraryEntry,
 } from './build-library'
 import { MY_BUILDS_MAX, type MyBuildEntry } from './my-builds-storage'
@@ -153,20 +154,29 @@ describe('list merges', () => {
     const mine = mineEntries([stored(ID, 'A stored', '2026-11-10T10:00:00Z'), stored(B_ID, 'B stored', '2026-11-10T09:00:00Z')])
     const loadedB = namedEntry('mine', namedBuild(B_ID, 'B on the server', 3))
 
-    it('gives the same list whichever of the My builds read and a load result lands first', () => {
+    it('gives the loaded text and the server name when a load result lands after the My builds read', () => {
         expect(loadedB.name).not.toBe('B stored')
         const readFirst = withLoadedEntry(withMyBuilds(templates, mine), loadedB)
-        const loadFirst = withMyBuilds(withLoadedEntry(templates, loadedB), mine)
-        expect(readFirst).toEqual(loadFirst)
         const b = readFirst.find((entry) => entry.key === loadedB.key)
-        expect(b).toEqual({ key: `named:${B_ID}`, kind: 'mine', name: 'B stored', id: B_ID, loaded: loadedB.loaded })
+        expect(b).toEqual({ key: `named:${B_ID}`, kind: 'mine', name: 'B on the server', id: B_ID, loaded: loadedB.loaded })
+    })
+
+    it('gives the loaded text when a load result lands before the My builds read', () => {
+        const loadFirst = withMyBuilds(withLoadedEntry(templates, loadedB), mine)
+        expect(loadFirst.find((entry) => entry.key === loadedB.key)?.loaded).toEqual(loadedB.loaded)
     })
 
     it.each([
-        ['read first', () => withLoadedEntry(withMyBuilds(templates, mine), loadedB)],
-        ['load first', () => withMyBuilds(withLoadedEntry(templates, loadedB), mine)],
-    ])('keeps My builds in stored order (%s)', (_label, merge) => {
-        expect(merge().filter((entry) => entry.kind === 'mine').map((entry) => entry.name)).toEqual(['A stored', 'B stored'])
+        ['read first', () => withLoadedEntry(withMyBuilds(templates, mine), loadedB), ['A stored', 'B on the server']],
+        ['load first', () => withMyBuilds(withLoadedEntry(templates, loadedB), mine), ['A stored', 'B stored']],
+    ])('keeps My builds in stored order (%s)', (_label, merge, names) => {
+        expect(merge().filter((entry) => entry.kind === 'mine').map((entry) => entry.name)).toEqual(names)
+    })
+
+    it('takes the server name for a listed mine entry and leaves its id and key', () => {
+        const listed = mine[0]
+        const loaded = namedEntry('mine', namedBuild(ID, 'A on the server', 4))
+        expect(withLoadedEntry([listed], loaded)).toEqual([{ ...listed, name: 'A on the server', loaded: loaded.loaded }])
     })
 
     it('replaces a listed shared entry whole', () => {
@@ -185,6 +195,41 @@ describe('list merges', () => {
         const link = linkEntry(LINK_ID, { version: 1, buildOrder: firstOrder, durationSeconds: 600 })
         const shared = namedEntry('shared', namedBuild('c'.repeat(22), 'Shared', 1))
         expect(withMyBuilds([...templates, link, shared], mine)).toEqual([...templates, link, shared, ...mine])
+    })
+})
+
+describe('withRenamedEntry', () => {
+    const loaded = { text: 'start -> sheep', duration: '600', revision: 3 }
+    const first = libraryEntry({ key: entryKey.named(ID), kind: 'mine', name: 'First', id: ID, loaded })
+    const second = libraryEntry({ key: entryKey.named(B_ID), kind: 'mine', name: 'Second', id: B_ID, loaded: { ...loaded, revision: 7 } })
+    const template = libraryEntry({ key: entryKey.template('T1'), name: 'First' })
+
+    it('renames only the entry with the matching key, in place, and advances its revision', () => {
+        const list = [template, first, second]
+        const renamed = withRenamedEntry(list, ID, 'Renamed', 4)
+        expect(renamed).toEqual([template, { ...first, name: 'Renamed', loaded: { ...loaded, revision: 4 } }, second])
+        expect(renamed[0]).toBe(template)
+        expect(renamed[2]).toBe(second)
+    })
+
+    it('keeps the loaded text and duration of the renamed entry', () => {
+        expect(withRenamedEntry([first], ID, 'Renamed', 4)[0].loaded).toEqual({ text: 'start -> sheep', duration: '600', revision: 4 })
+    })
+
+    it('leaves a null loaded null', () => {
+        const unloaded = libraryEntry({ key: entryKey.named(ID), kind: 'mine', name: 'First', id: ID, loaded: null })
+        expect(withRenamedEntry([unloaded], ID, 'Renamed', 4)).toEqual([{ ...unloaded, name: 'Renamed' }])
+    })
+
+    it('returns the list unchanged when no entry has the key', () => {
+        const list = [template, first]
+        expect(withRenamedEntry(list, B_ID, 'Renamed', 4)).toEqual(list)
+    })
+
+    it('does not mutate the entry it renames', () => {
+        withRenamedEntry([first], ID, 'Renamed', 4)
+        expect(first.name).toBe('First')
+        expect(first.loaded?.revision).toBe(3)
     })
 })
 

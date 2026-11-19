@@ -10,7 +10,7 @@ behavior against the model doc. This doc is the reference for what the page does
 
 The page is `/apps/aoe4-build-order`, made for a desktop viewport and supported from 1200 px wide. A run bar stays at the top of the viewport while the page scrolls, and it never takes more than 40% of the viewport height: when its content is taller, the bar scrolls inside itself. The page section turns off the browser's scroll anchoring, so a bar that shrinks does not move the page. The page only scrolls above the columns, so the bar stays stuck only as far as the page still scrolls. It
 holds the build select (labelled Build, see below), the `durationSeconds` number input (default 1200), a text/table toggle,
-a save panel (`save-panel`) on its own row, with the save buttons, Save a new version and Save as copy, and the save status (see below), and the run status (`auto-run-status`), which comes last. There is no run button: the page re-runs the simulation on edit. Below the bar, Build and Results sit side by side in two equal columns, always both shown, with no tabs. The two columns fill the viewport below the run bar and each scrolls on its own, so the page does not scroll to reach either column's content. The Tab order follows the DOM order: the `How this page works` button (see Help dialog), the run bar's controls, then the Build column, then the Results column, with no positive `tabindex` anywhere and no arrow-key handling in the workbench; within the save row the order is the buttons, the status, the link, then Copy link. The Build column and the Results column carry the headings `Build order` and `Results` at the same size; the text editor's textarea takes its accessible name from the `Build order` heading. The Text and Table buttons are never disabled by the Results column. The step table wraps to fit the Build panel's column, a table that still cannot fit scrolls inside its own box (`step-table-scroll`), and the Build panel itself never scrolls sideways. Resizing the viewport across 1200 px changes nothing but the sideways scroll described below: no panel is remounted and no run starts, so editor focus and text, an uncommitted table cell and the chart state carry across it. The server render is the same two-column layout, so the first paint is the layout the page keeps.
+a save panel (`save-panel`) on its own row, with the save buttons, Save a new version, Rename and Save as copy, and the save status (see below), and the run status (`auto-run-status`), which comes last. There is no run button: the page re-runs the simulation on edit. Below the bar, Build and Results sit side by side in two equal columns, always both shown, with no tabs. The two columns fill the viewport below the run bar and each scrolls on its own, so the page does not scroll to reach either column's content. The Tab order follows the DOM order: the `How this page works` button (see Help dialog), the run bar's controls, then the Build column, then the Results column, with no positive `tabindex` anywhere and no arrow-key handling in the workbench; within the save row the order is the buttons (Save a new version, Rename, Save as copy), the status, the link, then Copy link. The Build column and the Results column carry the headings `Build order` and `Results` at the same size; the text editor's textarea takes its accessible name from the `Build order` heading. The Text and Table buttons are never disabled by the Results column. The step table wraps to fit the Build panel's column, a table that still cannot fit scrolls inside its own box (`step-table-scroll`), and the Build panel itself never scrolls sideways. Resizing the viewport across 1200 px changes nothing but the sideways scroll described below: no panel is remounted and no run starts, so editor focus and text, an uncommitted table cell and the chart state carry across it. The server render is the same two-column layout, so the first paint is the layout the page keeps.
 
 Below 1200 px, including a phone or a browser zoom that makes the CSS viewport less than 1200 px wide, the page section is as wide as it is at 1200 px and holds the same two columns, and the document scrolls sideways; vertical behavior is unchanged and no notice is shown. The `Layout` container stays centered at its own max-width, so the section starts inside the viewport and overflows to the right of the container rather than starting at the page edge, and the `Layout` header stays as wide as the viewport.
 
@@ -291,10 +291,11 @@ between opens. The server render includes the dialog closed.
 
 ## Saving a build and opening it by link
 
-The run bar has two save buttons. Save as copy (`save-build-copy`) is shown for every entry, templates and opened
-links included, and Save a new version (`save-build`) only for one of My builds whose edit secret this browser
-holds. Both are enabled only while the shown result matches the settled input (status `current`), the input
-converts, and no save and no build load is in flight; Save a new version also needs the build to be edited. A save
+The run bar has three save buttons. Save as copy (`save-build-copy`) is shown for every entry, templates and opened
+links included, and Save a new version (`save-build`) and Rename (`rename-build`) only for one of My builds whose
+edit secret this browser holds. Save as copy and Save a new version are enabled only while the shown result matches
+the settled input (status `current`), the input converts, and no save and no build load is in flight; Save a new
+version also needs the build to be edited. Rename is described below. A save
 stores the parsed build order, not the raw text, and the duration, so comments and blank lines are not kept when
 the build is opened elsewhere.
 
@@ -312,12 +313,32 @@ is no longer edited. A second tab or another browser that saved the build first 
 build changed somewhere else. Choose it again to get the latest version, or save a copy.`, and Save a new version
 stays disabled until the build is chosen again, which loads the latest version.
 
+Rename opens a small form (`rename-form`, group name `Rename`) with the name (`rename-name`, labelled `New name`)
+prefilled with the build's current name, focused with its text selected. The trimmed name must be 1 to 100
+characters, otherwise the field shows `Enter a name of 1 to 100 characters.` (`rename-name-error`). Save name
+(`rename-submit`) is disabled while the trimmed name is invalid or equals the current name, and it is never named
+`Rename`. Enter in the name or Save name renames when Save name is enabled; Escape or Cancel (`rename-cancel`)
+closes the form without a request and returns focus to Rename. Opening Rename closes the Save as copy form and the
+reverse, and choosing another entry closes either. Rename is enabled when no save and no build load is in flight,
+the build is not locked by a conflict, and the build has a loaded revision. A stale run, a text that does not
+convert and an edited build do not disable it, and a rename leaves an edited build edited. Save name is enabled
+under the same conditions, for a valid changed name.
+
+The form closes when the rename starts. The rename changes only the name: the id, the address and the stored edit
+key stay, and `?n=<id>` opens the build under its new name. On success the option, the run name, the compare
+labels and the stored My builds list show the new name, the status reads `Renamed` and the link shows; a later
+rename or Save a new version uses the revision the rename returned. A rename answered after the settled input
+changed still renames the list and the stored entry but shows no link, status or error. When another tab or
+browser changed the build first, the rename fails with the same conflict message as Save a new version and both
+stay disabled until the build is chosen again. Other failures show their message, change no name and leave Rename
+enabled. A pin keeps the name it was pinned with.
+
 The create response carries the build's edit secret once. The page keeps it only in this browser's My builds list,
 which holds the newest 50 builds: the 51st save evicts the oldest, which then opens read-only here, and its link
 still works. The secret is sent only as the update's `Authorization` header, never in the address. When the
 browser cannot store the list, the save still succeeds and the page says `This browser could not store the edit
 key, so you can edit this build only until you close the page.` (`my-builds-unavailable`). While the browser can store
-the list, a save in another tab, or another tab clearing the storage, updates this tab's My builds. After a save here, this tab's list also holds
+the list, a save in another tab, or another tab clearing the storage, updates this tab's My builds; the selected build keeps the text this tab loaded but takes the stored name, whichever name is newer. After a save here, this tab's list also holds
 at most 50 My builds: the new build goes first among them and the oldest in list order is dropped, never the
 selected one. A stored list the page cannot read, or one with an unreadable entry, is never deleted
 by reading it. Before the next save replaces it, the page copies the stored text to
@@ -328,16 +349,16 @@ The link is the page's origin plus `?n=<id>`. It is shown read-only (`saved-buil
 (`copy-saved-link`) in the save row, and focus moves to the link with its text selected. Copy reads `Copied` once
 the clipboard accepts the link; when the browser refuses it, the link stays selected and the page says `Could not
 copy. Select the link and copy it by hand.` Escape with focus on the link or on Copy link hides the link and returns focus to the button that
-saved, or to Save as copy when that button is disabled; Escape on a save button does nothing. The link, the save
+saved (Save a new version, Rename or Save as copy), or to Save as copy when that button is disabled; Escape on a save button does nothing. The link, the save
 status and any save error go away on the first settled change of the text, the duration or the selected build (not while the edit is still inside the pause). A save
 answered after the settled input changed shows no link and no error. Opening the link anywhere but the browser that
 made it opens the build read-only, as a shared build; Save as copy still works there.
 
-The save panel's first child is the save row (`save-row`). In order it holds Save a new version (when shown), Save as
-copy, the save status (`save-status`), and, while the link is shown, the link and Copy link. The Save as copy form, the
+The save panel's first child is the save row (`save-row`). In order it holds Save a new version and Rename (when shown), Save as
+copy, the save status (`save-status`), and, while the link is shown, the link and Copy link. The Save as copy and Rename forms, the
 Copy hint, the storage warning and the save error sit below the row, in the panel, not in it. The row never wraps, at any width, and the link field shrinks to fit. The status element is always present and is announced politely (`role="status"`). It
-reads `Saved` after Save as copy and `Saved version <revision>` after Save a new version, with the revision from the
-response, and is empty while a save is in flight, after a failed save, and whenever the link is not shown. It stays
+reads `Saved` after Save as copy, `Saved version <revision>` after Save a new version, with the revision from the
+response, and `Renamed` after a rename. It is empty while a save is in flight, after a failed save, and whenever the link is not shown. It stays
 for as long as the link does, with no timer, so a second save replaces its text. A failed save also hides the link.
 
 The page no longer creates `?b=` links. Links made by an earlier version of the page and by the `saveBuild` route
@@ -345,7 +366,7 @@ still open:
 
 Opening `/apps/aoe4-build-order?b=<id>` loads that build into the editor and runs it: the select gains an option
 `<name> (<id>)` under Opened links that is selected, the duration is the saved one, and the select, duration, text editor, step
-table and the save buttons are disabled while the build loads, with no run until it ends. A successful `?n=` or `?b=` load selects nothing and scrolls nothing. `?n=<id>` opens a named build the same way: one of My builds keeps its stored name, any other loads as `<name>
+table and the save buttons are disabled while the build loads, with no run until it ends. A successful `?n=` or `?b=` load selects nothing and scrolls nothing. `?n=<id>` opens a named build the same way: one of My builds takes the name the server returns (so a stale stored name is replaced), any other loads as `<name>
 (shared)` under Opened links. When both are present `n` wins and `b` is not fetched. The first `n` or `b` in the
 address is the only one read, and a later change of either (back or forward) loads nothing. After a load or a
 choice the address follows the selected entry: `n=<id>` for My builds and shared builds, `b=<id>` for an opened

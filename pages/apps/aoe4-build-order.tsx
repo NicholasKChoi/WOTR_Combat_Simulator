@@ -29,6 +29,7 @@ import {
     withCreatedEntry,
     withLoadedEntry,
     withMyBuilds,
+    withRenamedEntry,
     type LibraryEntry,
 } from '../../components/apps/aoe4-build-order/build-library'
 import { type InitialBuildQuery, initialBuildQuery, nextBuildQuery } from '../../components/apps/aoe4-build-order/build-query'
@@ -113,10 +114,11 @@ function secretsOf(stored: readonly MyBuildEntry[]): Record<string, string> {
 }
 
 // Another tab rewrote the stored list: its entries replace this tab's My builds, except the selected
-// one, which keeps the version this tab loaded so the edited marker and Save stay as they were.
+// one, which keeps the version this tab loaded so the edited marker and Save stay as they were, but
+// takes the re-read name whichever name is newer.
 function withRereadMyBuilds(list: readonly LibraryEntry[], mine: readonly LibraryEntry[], selectedKey: string): LibraryEntry[] {
     const selected = list.find((entry) => entry.kind === 'mine' && entry.key === selectedKey)
-    const fresh = mine.map((entry) => (entry.key === selected?.key ? selected : entry))
+    const fresh = mine.map((entry) => (entry.key === selected?.key ? { ...selected, name: entry.name } : entry))
     const kept = selected !== undefined && !mine.some((entry) => entry.key === selected.key) ? [selected] : []
     return [...list.filter((entry) => entry.kind !== 'mine'), ...kept, ...fresh]
 }
@@ -309,6 +311,11 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
         if (selectedRef.current === key) replaceBuildQuery({ kind: 'mine', id: response.id })
     }
 
+    function recordRenamed(response: UpdateNamedBuildResponse, name: string) {
+        setEntries((list) => withRenamedEntry(list, response.id, name, response.revision))
+        if (selectedRef.current === entryKey.named(response.id)) replaceBuildQuery({ kind: 'mine', id: response.id })
+    }
+
     const alreadyPinned = result !== null && run !== null && pin !== null && pin.text === run.text && pin.durationSeconds === run.durationSeconds
 
     function pinShownRun() {
@@ -353,6 +360,7 @@ export default function AoE4BuildOrder({ builds, catalog }: PageProps) {
                     editSecret={editSecret}
                     onCreated={recordCreated}
                     onUpdated={recordUpdated}
+                    onRenamed={recordRenamed}
                     hasResult={result !== null}
                     onSubmit={() => autoRun.flush()}
                     view={view}

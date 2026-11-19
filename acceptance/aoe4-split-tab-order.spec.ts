@@ -105,13 +105,13 @@ async function expectNoPositiveTabindex(page: Page) {
 test.describe('AoE4 split layout Tab order', () => {
   test.use({ viewport: SPLIT_VIEWPORT })
 
-  test('edited saved build: the save button is a stop between the editor view buttons and Save as copy', async ({ page }) => {
+  test('edited saved build: Save a new version and Rename are stops between the editor view buttons and Save as copy', async ({ page }) => {
     await editedCopy(page)
     await expect(byId(page, 'saved-build-link')).toHaveCount(0)
     await expect(byId(page, 'save-build')).toBeVisible()
     await expect(byId(page, 'save-build')).toBeEnabled()
     const stops = await walk(page)
-    expectInOrder(stops, ['duration-seconds', 'editor-view-text', 'save-build', 'save-build-copy', inBuildColumn, inResultsColumn])
+    expectInOrder(stops, ['duration-seconds', 'editor-view-text', 'save-build', 'rename-build', 'save-build-copy', inBuildColumn, inResultsColumn])
     await expectChartsRendered(page)
     await expectNoPositiveTabindex(page)
   })
@@ -122,7 +122,7 @@ test.describe('AoE4 split layout Tab order', () => {
     await expect(byId(page, 'saved-build-link')).toBeVisible()
     await expect(byId(page, 'save-build')).toBeDisabled()
     const stops = await walk(page)
-    expectInOrder(stops, ['duration-seconds', 'editor-view-text', 'save-build-copy', 'saved-build-link', 'copy-saved-link', inBuildColumn, inResultsColumn])
+    expectInOrder(stops, ['duration-seconds', 'editor-view-text', 'rename-build', 'save-build-copy', 'saved-build-link', 'copy-saved-link', inBuildColumn, inResultsColumn])
     expect(stops.map((stop) => stop.id)).not.toContain('save-build')
     expect(await positionOf(page, 'save-build')).toBeLessThan(await positionOf(page, 'save-build-copy'))
     await expectChartControlsOrder(page, stops)

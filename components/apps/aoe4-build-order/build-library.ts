@@ -100,8 +100,13 @@ export function withLoadedEntry(list: readonly LibraryEntry[], entry: LibraryEnt
     if (!list.some((listed) => listed.key === entry.key)) return [...list, entry]
     return list.map((listed) => {
         if (listed.key !== entry.key) return listed
-        return listed.kind === 'mine' ? { ...listed, loaded: entry.loaded } : entry
+        return listed.kind === 'mine' ? { ...listed, name: entry.name, loaded: entry.loaded } : entry
     })
+}
+
+export function withRenamedEntry(list: readonly LibraryEntry[], id: string, name: string, revision: number): LibraryEntry[] {
+    const key = entryKey.named(id)
+    return list.map((entry) => (entry.key !== key ? entry : { ...entry, name, loaded: entry.loaded === null ? null : { ...entry.loaded, revision } }))
 }
 
 export function entryLabel(entry: LibraryEntry, edited: boolean): string {

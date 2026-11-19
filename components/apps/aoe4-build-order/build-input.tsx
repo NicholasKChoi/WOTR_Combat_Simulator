@@ -28,6 +28,7 @@ interface BuildInputProps {
     editSecret: string | null
     onCreated: (response: CreateNamedBuildResponse, input: LiveInput, name: string) => void
     onUpdated: (response: UpdateNamedBuildResponse, input: LiveInput) => void
+    onRenamed: (response: UpdateNamedBuildResponse, name: string) => void
     onSubmit: () => void
     view: EditorView
     onViewChange: (view: EditorView) => void
@@ -39,7 +40,7 @@ const VIEWS: { view: EditorView; label: string }[] = [
     { view: 'table', label: 'Table' },
 ]
 
-export function BuildInput({ entries, selected, edited, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, entry, editSecret, onCreated, onUpdated, onSubmit, view, onViewChange, runBarRef }: BuildInputProps) {
+export function BuildInput({ entries, selected, edited, onBuildSelect, duration, onDurationChange, durationError, status, settled, conversion, hasResult, busy = false, entry, editSecret, onCreated, onUpdated, onRenamed, onSubmit, view, onViewChange, runBarRef }: BuildInputProps) {
     return (
         <form
             ref={runBarRef}
@@ -123,6 +124,7 @@ export function BuildInput({ entries, selected, edited, onBuildSelect, duration,
                 edited={edited}
                 onCreated={onCreated}
                 onUpdated={onUpdated}
+                onRenamed={onRenamed}
             />
             <p id="auto-run-status" data-testid="auto-run-status" role="status" data-status={status} className={styles.autoRunStatus}>
                 {autoRunStatusMessage(status, hasResult)}
