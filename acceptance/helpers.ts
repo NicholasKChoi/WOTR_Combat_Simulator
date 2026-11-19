@@ -57,6 +57,8 @@ export const WARM_UP_TIMEOUT_MS = 60_000
 export type Reason = BreakdownReason
 export type Timing = {
   step: number
+  source: number
+  copy: number
   status: 'completed' | 'in-progress' | 'waiting' | 'not-reached'
   armedAt: number | null
   startedAt: number | null

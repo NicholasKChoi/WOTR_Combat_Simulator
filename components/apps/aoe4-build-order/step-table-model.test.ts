@@ -288,7 +288,7 @@ describe('labels', () => {
     })
 
     it('has no label beyond those fields', () => {
-        expect(Object.keys(FIELD_LABELS)).toHaveLength(19)
+        expect(Object.keys(FIELD_LABELS)).toHaveLength(20)
     })
 
     it('labels every field a row can render', () => {

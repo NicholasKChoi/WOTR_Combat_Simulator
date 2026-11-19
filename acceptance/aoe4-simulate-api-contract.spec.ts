@@ -210,6 +210,7 @@ test.describe('bounds match SIM_INPUT_BOUNDS', () => {
     triggerCount: () => [trigger('villagers').properties.count],
     triggerAtLeast: () => [trigger('bank').properties.atLeast],
     count: () => [variant('produce').properties.count, variant('move').properties.count.oneOf[0]],
+    repeat: () => ['produce', 'rally', 'pause', 'build', 'research', 'move'].map((a) => variant(a).properties.repeat),
     builders: () => [variant('build').properties.builders],
     houseBuilders: () => [overrides.houseBuilders],
     instance: () => ['produce', 'rally', 'pause'].map((a) => variant(a).properties.instance),
@@ -517,7 +518,7 @@ test.describe('exported types match the spec', () => {
   ]
   const unitSeries: Record<keyof UnitSeries, true> = { unitId: true, baseId: true, name: true, lineName: true, tier: true, counts: true }
   const buildingSeries: Record<keyof BuildingSeries, true> = { baseId: true, name: true, counts: true }
-  const stepTiming: Record<keyof StepTiming, true> = { step: true, status: true, armedAt: true, startedAt: true, completedAt: true, waitSeconds: true, waitingOn: true, waitBreakdown: true, waitingFor: true, waitDetails: true }
+  const stepTiming: Record<keyof StepTiming, true> = { step: true, source: true, copy: true, status: true, armedAt: true, startedAt: true, completedAt: true, waitSeconds: true, waitingOn: true, waitBreakdown: true, waitingFor: true, waitDetails: true }
   const stepWaitEntry: Record<keyof StepWaitEntry, true> = { detail: true, seconds: true }
   type DetailKeys<K extends StepWaitDetail['kind']> = Record<keyof Extract<StepWaitDetail, { kind: K }>, true>
   const stepWaitDetailVariants: [

@@ -5,7 +5,7 @@ import englishRules from '../../data/aoe4-build-order/rules/english.json'
 import { listBuilds } from './builds'
 import { type BaseRules, type CivData, type Snapshot, buildGameData } from './data'
 import { FINITE_NODE_REFS, MAX_DEPOSITS, nodeKindOf } from './model'
-import type { BuildStep } from './model'
+import type { BuildOrderIssue, BuildStep } from './model'
 import {
     INPUT_DEFAULTS,
     OPTIONAL_STEP_FIELDS,
@@ -473,6 +473,88 @@ describe('checkBuildOrder step bounds', () => {
     })
 })
 
+describe('checkBuildOrder repeat', () => {
+    const house = (fields: object = {}) => ({ action: 'build', building: 'house', from: 'wood', ...fields })
+    const shift = (fields: object = {}) => ({ action: 'move', count: 1, from: 'sheep', to: 'wood', ...fields })
+    const research = (fields: object = {}) => ({ action: 'research', tech: 'wheelbarrow', ...fields })
+    const pauses = (count: number) => Array<object>(count).fill(pause)
+    const capMessage = (expanded: number) => `steps: ${expanded} steps after repeats, more than 200`
+
+    it.each([
+        ['absent', house()],
+        ['1', house({ repeat: 1 })],
+        ['200', house({ repeat: 200 })],
+        ['3 on a move', shift({ repeat: 3 })],
+        ['2 on a reaction move', shift({ count: 'all', trigger: { kind: 'depleted', node: 'sheep' }, reaction: true, repeat: 2 })],
+    ])('accepts repeat %s', (_, step) => {
+        expect(checkBuildOrder(order([step]), catalog)).toStrictEqual({ ok: true, order: order([step]) })
+    })
+
+    it.each<[unknown, BuildOrderIssue['code'], string]>([
+        ['3', 'syntax', 'steps[0]: repeat must be a number'],
+        [true, 'syntax', 'steps[0]: repeat must be a number'],
+        [null, 'syntax', 'steps[0]: repeat must be a number'],
+        [0, 'out-of-range', 'steps[0]: repeat: 0 is outside 1..200'],
+        [201, 'out-of-range', 'steps[0]: repeat: 201 is outside 1..200'],
+        [2.5, 'out-of-range', 'steps[0]: repeat: 2.5 is not an integer'],
+        [-1, 'out-of-range', 'steps[0]: repeat: -1 is outside 1..200'],
+    ])('reports repeat %j as one %s issue on the step', (repeat, code, message) => {
+        expect(onlyIssue(order([house({ repeat })]))).toStrictEqual({ code, message, step: 0 })
+    })
+
+    it.each([
+        ['produce', { action: 'produce', producer: TC, unit: 'villager' }],
+        ['research', research()],
+        ['rally', { action: 'rally', producer: TC, to: 'wood' }],
+        ['pause', pause],
+    ])('reports repeat on %s as one invalid issue naming the action', (action, step) => {
+        expect(checkBuildOrder(order([step]), catalog).ok).toBe(true)
+        expect(onlyIssue(order([{ ...step, repeat: 2 }]))).toStrictEqual({ code: 'invalid', message: `steps[0]: repeat on ${action}; only build and move steps repeat`, step: 0 })
+    })
+
+    it('leaves the invalid repeat rule out on a step with a field issue', () => {
+        expect(onlyIssue(order([research({ tech: 'wheelbarow', repeat: 2 })]))).toMatchObject({ code: 'unknown-id', message: 'steps[0]: unknown tech "wheelbarow" in tech' })
+    })
+
+    it('reports an issue on a repeated step at its submitted index and line', () => {
+        const value = order([house({ repeat: 3 }), house({ repeat: 0 })])
+        expect(onlyIssue(value)).toStrictEqual({ code: 'out-of-range', message: 'steps[1]: repeat: 0 is outside 1..200', step: 1 })
+        expect(checkBuildOrder(value, catalog, { steps: [4, 7] })).toStrictEqual({
+            ok: false,
+            issues: [{ code: 'out-of-range', message: 'line 7: repeat: 0 is outside 1..200', step: 1, line: 7 }],
+        })
+    })
+
+    it('accepts 200 written steps that expand to 200 and caps an expansion of 201', () => {
+        expect(checkBuildOrder(order([...pauses(199), house({ repeat: 1 })]), catalog).ok).toBe(true)
+        expect(checkBuildOrder(order([...pauses(100), house({ repeat: 100 })]), catalog).ok).toBe(true)
+        const over = order([...pauses(199), house({ repeat: 2 })])
+        expect(checkBuildOrder(over, catalog, { steps: Array.from({ length: 200 }, (_, i) => i + 1) })).toStrictEqual({
+            ok: false,
+            issues: [{ code: 'out-of-range', message: capMessage(201) }],
+        })
+    })
+
+    it('sorts the expanded cap where the step-count cap sorts, before every step issue', () => {
+        const value = { ...order([...pauses(198), research({ repeat: 2 }), house({ repeat: 2 })]), civ: 'french' }
+        expect(messages(value)).toEqual(['civ: unknown civ "french"', capMessage(202), 'steps[198]: repeat on research; only build and move steps repeat'])
+    })
+
+    it('still reports the expanded cap beside a start issue', () => {
+        const value = order([...pauses(199), house({ repeat: 2 })], { rally: 'sheep', villagers: { sheep: 5 } })
+        expect(messages(value)).toEqual([capMessage(201), 'start: start.villagers sums to 5, the civ starts with 6'])
+    })
+
+    it('skips the expanded cap when a step has a field issue, or when the whole-order rules are skipped', () => {
+        expect(messages(order([...pauses(198), { ...pause, producer: 'nowhere' }, house({ repeat: 2 })]))).toEqual(['steps[198]: unknown building "nowhere" in producer'])
+        expect(checkBuildOrder(order([...pauses(199), house({ repeat: 2 })]), catalog, undefined, true).ok).toBe(true)
+    })
+
+    it('reports only the written step count when more than 200 steps are written', () => {
+        expect(onlyIssue(order([...pauses(200), house({ repeat: 2 })]))).toStrictEqual({ code: 'out-of-range', message: 'steps: 201 steps, more than 200' })
+    })
+})
+
 describe('checkBuildOrder unknown ids', () => {
     it.each([
         [{ action: 'produce', producer: TC, unit: 'knight-x' }, 'knight-x'],
@@ -712,9 +794,9 @@ describe('OPTIONAL_STEP_FIELDS', () => {
         produce: { producer: TC, instance: 1, unit: 'villager', count: 1, rally: 'sheep', walkSeconds: 1 },
         rally: { producer: TC, instance: 1, to: 'wood', walkSeconds: 1 },
         pause: { producer: TC, instance: 1 },
-        build: { building: 'house', builders: 1, from: 'wood', then: 'wood', walkSeconds: 1 },
+        build: { building: 'house', builders: 1, from: 'wood', then: 'wood', walkSeconds: 1, repeat: 2 },
         research: { tech: 'wheelbarrow', at: 'mill' },
-        move: { count: 1, from: 'sheep', to: 'wood', walkSeconds: 1 },
+        move: { count: 1, from: 'sheep', to: 'wood', walkSeconds: 1, repeat: 2 },
     }
     const omissions = Object.entries(full).flatMap(([action, fields]) => Object.keys(fields).map((name) => [action, name] as const))
 
@@ -945,6 +1027,7 @@ describe('bounds and defaults', () => {
             'triggerCount 1 200 int',
             'triggerAtLeast 0 100000 int',
             'count 1 200 int',
+            'repeat 1 200 int',
             'builders 1 200 int',
             'houseBuilders 1 200 int',
             'instance 1 200 int',

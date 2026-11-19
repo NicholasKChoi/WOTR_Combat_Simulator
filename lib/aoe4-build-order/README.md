@@ -27,6 +27,8 @@ Rules: [Build order input](../../docs/aoe4-build-order-format.md#build-order-inp
 - `schema.ts`: the zod checks. `checkBuildOrder` and `checkSimInputs` validate a build order and the
   simulation inputs against a catalog; `buildOrderCatalog` derives that catalog from the game data. It also
   owns `SIM_INPUT_BOUNDS`, `INPUT_DEFAULTS` and the `BuildOrder`, `BuildStep`, `BuildStart` and `Trigger` types.
+- `repeat.ts`: `expandRepeats`, the one place copies of a repeated step are made, and `expandedStepCount`, the
+  step count after repeats that `schema.ts` caps. Browser-safe: it imports only types.
 - `english-catalog.ts`: `englishCatalog`, the English catalog built once and reused by the route handlers.
 - `step-options.ts`: `stepOptions`, the lists of actions, ids and triggers a step may use, which `schema.ts`
   builds its catalog on.
@@ -111,7 +113,8 @@ Rules: [Build order input](../../docs/aoe4-build-order-format.md#build-order-inp
    `BuildOrder` (with a line map).
 - Check: `checkBuildOrder` in `schema.ts` checks the `BuildOrder` against the catalog from `buildOrderCatalog`.
    `checkSimInputs` does the same for the simulation inputs.
-- Simulate: `simulateBuildOrder` runs the checked order over the game data and inputs.
+- Simulate: `simulateBuildOrder` writes out the checked order's repeats, then runs it over the game data and
+   inputs.
 - Result: a `SimulationResult`: the series sampled over time, the step timings, depletions, warnings and
    markers.
 
@@ -126,7 +129,9 @@ Call sites:
 
 ## The event loop
 
-`simulateBuildOrder` builds the engine, then repeats until the last sample time is reached.
+`simulateBuildOrder` first writes out each repeated step as consecutive copies (`expandRepeats` in `repeat.ts`)
+and runs only that expanded order, so every step index in the result is an index into it. It builds the engine,
+then repeats until the last sample time is reached.
 
 - `runInstant` settles everything that happens at the current time, in this order: collect run-outs, a house
    pass, `offerSteps`, `applyDueEvents`, a second house pass, a second `offerSteps` (events change population,

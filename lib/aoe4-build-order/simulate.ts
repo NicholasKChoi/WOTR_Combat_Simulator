@@ -16,6 +16,8 @@ import { isLandmark } from './landmarks';
 import { ageMarker, compareMarkers } from './markers';
 import { FINITE_NODE_REFS, NODE_REFS, RESOURCE_KINDS, nodeKindOf } from './model';
 import { productionBuildingSeries } from './production-buildings';
+import { expandRepeats } from './repeat';
+import type { ExpandedOrder } from './repeat';
 import type { BreakdownReason, BuildOrder, BuildStep, ChartMarker, FiniteNodeRef, GatherNodeId, NodeRef, ResourceKind, SimInputs, SimulationResult, SimWarning, SpendCategory, StepTiming, StepWait, StepWaitDetail, Trigger, UnitSeries } from './model';
 import { researchHandler, researchNotes, resolveUnitEntry } from './research';
 import { unitLineName } from './unit-lines';
@@ -878,7 +880,7 @@ function startUnitPopulation(data: GameData, units: Readonly<Record<string, numb
   return total;
 }
 
-function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rules: CivRules): Engine {
+function createEngine({ order, copies }: ExpandedOrder, data: GameData, inputs: SimInputs, rules: CivRules): Engine {
   const civStart = data.civData.startingState;
   const start = rules.startingState?.(civStart, { data, inputs, time: 0 }) ?? civStart;
   const gatherers = {} as Record<NodeRef, number>;
@@ -914,7 +916,7 @@ function createEngine(order: BuildOrder, data: GameData, inputs: SimInputs, rule
     walking: 0,
     population: 0,
     supply: 0,
-    steps: order.steps.map((_, step) => ({ step, status: 'not-reached', armedAt: null, startedAt: null, completedAt: null, waitSeconds: 0, waitingOn: null, waitBreakdown: {}, waitingFor: null, waitDetails: [] })),
+    steps: copies.map(({ source, copy }, step) => ({ step, source, copy, status: 'not-reached', armedAt: null, startedAt: null, completedAt: null, waitSeconds: 0, waitingOn: null, waitBreakdown: {}, waitingFor: null, waitDetails: [] })),
     spent: { villagers: 0, military: 0, buildings: 0, research: 0 },
     spawnedPopulation: 0,
     populationCapReachedAt: null,
@@ -989,10 +991,12 @@ function waitingSteps(engine: Engine): number[] {
 function stepStuckWarning(timing: StepTiming, engine: Engine): SimWarning {
   const { waitingOn, armedAt } = timing;
   const action = engine.order.steps[timing.step].action;
+  const copies = engine.steps.filter((other) => other.source === timing.source).length;
+  const label = copies > 1 ? `${action}, copy ${timing.copy} of ${copies}` : action;
   return {
     code: 'step-stuck',
     severity: 'warning',
-    message: `step ${timing.step + 1} (${action}) was still waiting on ${waitingOn} at ${formatMinSec(engine.inputs.durationSeconds)}, from ${formatMinSec(armedAt!)}.`,
+    message: `step ${timing.source + 1} (${label}) was still waiting on ${waitingOn} at ${formatMinSec(engine.inputs.durationSeconds)}, from ${formatMinSec(armedAt!)}.`,
     step: timing.step,
     waitingOn: waitingOn!,
     at: armedAt!,
@@ -1038,8 +1042,10 @@ function unitSeries(engine: Engine, times: number[]): UnitSeries[] {
 }
 
 /** Runs a validated build order on the data and inputs and returns the sampled result; the same input gives the same result (Determinism, bounds and resources). */
-export function simulateBuildOrder(order: BuildOrder, data: GameData, inputs: SimInputs, rules: CivRules = civRules(order.civ)): SimulationResult {
-  const engine = createEngine(order, data, inputs, rules);
+export function simulateBuildOrder(submitted: BuildOrder, data: GameData, inputs: SimInputs, rules: CivRules = civRules(submitted.civ)): SimulationResult {
+  const expanded = expandRepeats(submitted);
+  const { order } = expanded;
+  const engine = createEngine(expanded, data, inputs, rules);
   const times = sampleTimes(inputs.durationSeconds);
   const gatherRates = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;
   const gatherers = { food: [], wood: [], gold: [], stone: [] } as Record<ResourceKind, number[]>;

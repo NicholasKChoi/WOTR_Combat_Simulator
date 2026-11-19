@@ -15,6 +15,7 @@ import type {
   TripInputs,
 } from './model';
 import { isLandmark } from './landmarks';
+import { REPEATABLE_ACTIONS, expandedStepCount } from './repeat';
 import { stepOptions, type StepOptions } from './step-options';
 
 interface InputBound {
@@ -39,6 +40,7 @@ export const SIM_INPUT_BOUNDS = Object.freeze({
   triggerCount: bound(1, 200),
   triggerAtLeast: bound(0, 100000),
   count: bound(1, 200),
+  repeat: bound(1, 200),
   builders: bound(1, 200),
   houseBuilders: bound(1, 200),
   instance: bound(1, 200),
@@ -70,9 +72,9 @@ export const OPTIONAL_STEP_FIELDS: Readonly<Record<BuildStep['action'], readonly
   produce: ['instance', 'count', 'rally', 'walkSeconds'],
   rally: ['instance', 'walkSeconds'],
   pause: ['instance'],
-  build: ['builders', 'then', 'walkSeconds'],
+  build: ['builders', 'then', 'walkSeconds', 'repeat'],
   research: ['at'],
-  move: ['walkSeconds'],
+  move: ['walkSeconds', 'repeat'],
 };
 
 /** What an id in a step names: a building, unit, tech or node. */
@@ -381,6 +383,7 @@ function stepProblem(step: unknown): string {
 function crossFieldProblems(step: BuildStep, catalog: BuildOrderCatalog): string[] {
   const problems: string[] = [];
   if (step.reaction === true && step.trigger?.kind !== 'depleted') problems.push('only a step triggered by a node running out can be a reaction');
+  if (step.repeat !== undefined && !REPEATABLE_ACTIONS.includes(step.action)) problems.push(`repeat on ${step.action}; only build and move steps repeat`);
   if (step.action === 'produce') {
     const { producer, unit, rally } = step;
     if (!(Object.hasOwn(catalog.unitsByProducer, producer) && catalog.unitsByProducer[producer].includes(unit))) {
@@ -405,6 +408,7 @@ function stepUnion(catalog: BuildOrderCatalog | undefined) {
   const common = {
     trigger: triggerSchema.optional(),
     reaction: z.literal(true, { error: 'reaction must be true' }).optional(),
+    repeat: count('repeat').optional(),
   };
   return z.discriminatedUnion(
     'action',
@@ -570,6 +574,11 @@ function withCrossChecks(order: ReturnType<typeof orderObject>, catalog: BuildOr
         for (const [key, text] of startProblems(value.start, catalog)) report(payload, { code: 'invalid', text }, ['start', key]);
       }
       if (failed('steps') || !Array.isArray(value.steps)) return;
+      const expanded = expandedStepCount(value.steps);
+      const { max } = SIM_INPUT_BOUNDS.steps;
+      if (expanded > max) {
+        report(payload, { code: 'out-of-range', text: `${expanded} steps after repeats, more than ${max}` }, ['steps'], 'cross-step');
+      }
       for (const [index, problem] of crossStepProblems(value, value.steps, catalog)) {
         payload.issues.push({ code: 'custom', message: problem.text, input: value, path: ['steps', index], params: { code: problem.code, scope: 'cross-step', earlier: problem.earlier } });
       }

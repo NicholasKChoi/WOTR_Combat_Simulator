@@ -127,7 +127,12 @@ export interface BuildingSeries {
 
 /** When one step was armed, started and completed, and what it waited on (Outputs). */
 export interface StepTiming {
+  // Index into result.steps, the order with each repeat written out.
   step: number;
+  // Index of the submitted step this one copies.
+  source: number;
+  // 1-based copy number within the source; 1 for a step without repeat.
+  copy: number;
   status: 'completed' | 'in-progress' | 'waiting' | 'not-reached';
   armedAt: number | null;
   startedAt: number | null;
