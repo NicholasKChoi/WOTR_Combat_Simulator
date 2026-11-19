@@ -4,7 +4,7 @@ import cn from 'classnames'
 import type { ChartMarkerKind, SimulationResult } from '../../../lib/aoe4-build-order/model'
 import { resultMessages } from './messages'
 import { InfoMessages, WarningMessages } from './message-lists'
-import { stepSpan } from './step-annotations'
+import { sourceSpan } from './step-annotations'
 import { SeriesChart } from './line-chart'
 import { MarkerControl } from './chart-legend'
 import { type MarkerView, labelKindOf, liveMarkerKind } from './chart-markers'
@@ -39,7 +39,7 @@ interface ResultsProps {
 
 export function Results({ result, pinned, activeStep, dimmed, describedByStatus, infoExpanded, onInfoToggle, chartLayout }: ResultsProps) {
     const messages = resultMessages(result)
-    const highlight = activeStep === null ? null : stepSpan(result.steps[activeStep], result.durationSeconds)
+    const highlight = activeStep === null ? null : sourceSpan(result.steps, activeStep, result.durationSeconds)
     const [gatherRatesView, setGatherRatesView] = useState<GatherRatesView>('rate')
     const [unitsProducedView, setUnitsProducedView] = useState<UnitsProducedView>('units')
     const { layout, move, moveTo, toggle } = chartLayout

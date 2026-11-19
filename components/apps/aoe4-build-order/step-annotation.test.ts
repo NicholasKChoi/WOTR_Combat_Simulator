@@ -58,6 +58,40 @@ describe('annotationToneClass', () => {
     })
 })
 
+describe('StepRunCell copies', () => {
+    const two = [run({ runStep: 0, startedAt: 10, completedAt: 20 }), run({ runStep: 1, status: 'in-progress', startedAt: 30, completedAt: null, blockedBy: 'wood 0:05' })]
+    const repeated = (copies: StepRun[]): StepAnnotation => ({ kind: 'building', run: run({ status: 'in-progress', completedAt: null }), copies })
+    const count = (html: string, testId: string) => html.split(`data-testid="${testId}"`).length - 1
+
+    it.each<[string, StepRun[], string]>([
+        ['one of two completed', two, '1 of 2 done'],
+        ['both completed', [run(), run({ runStep: 1 })], '2 of 2 done'],
+    ])('reads %s', (_name, copies, expected) => {
+        expect(textOf(cell(repeated(copies)), 'step-copies')).toBe(expected)
+    })
+
+    it('has one closed details list with the summary and one item per copy', () => {
+        const html = cell(repeated(two))
+        expect(html).toMatch(/<details data-testid="step-copy-list"[^>]*>\s*<summary>Each copy<\/summary>/)
+        expect(html).not.toMatch(/<details[^>]* open/)
+        const items = [...html.matchAll(/data-testid="step-copy" data-copy="(\d+)" data-status="([a-z-]+)"/g)].map((m) => [m[1], m[2]])
+        expect(items).toEqual([['1', 'completed'], ['2', 'in-progress']])
+    })
+
+    it('shows each copy times and blocked-by without reusing the combined ids', () => {
+        const html = cell(repeated(two))
+        for (const id of ['step-started', 'step-finished', 'step-waited', 'step-blocked-by', 'step-run']) expect(count(html, id)).toBe(1)
+        expect(html).toContain('Copy 2: started 0:30, finished ongoing, waited 0:00')
+        expect(html).toContain('Blocked by: wood 0:05')
+    })
+
+    it('has no copy line or list for one copy', () => {
+        const html = cell(repeated([run()]))
+        expect(html).not.toContain('step-copies')
+        expect(html).not.toContain('step-copy-list')
+    })
+})
+
 describe('StepRunCell', () => {
     it.each<[string, StepRun, string, string, string]>([
         ['completed', run({ blockedBy: 'resources 0:05', waitSeconds: 5 }), '1:05', '2:05', 'resources 0:05'],
@@ -65,14 +99,14 @@ describe('StepRunCell', () => {
         ['waiting', run({ status: 'waiting', startedAt: null, completedAt: null, flagged: true, blockedBy: 'still waiting on resources' }), '–', '–', 'still waiting on resources'],
         ['not-reached', run({ status: 'not-reached', startedAt: null, completedAt: null, flagged: true, blockedBy: 'not reached (trigger)' }), '–', '–', 'not reached (trigger)'],
     ])('shows the %s run timing', (_name, input, started, finished, blockedBy) => {
-        const html = cell({ kind: 'villager', run: input })
+        const html = cell({ kind: 'villager', run: input, copies: [] })
         expect(textOf(html, 'step-started')).toBe(started)
         expect(textOf(html, 'step-finished')).toBe(finished)
         expect(textOf(html, 'step-blocked-by')).toBe(blockedBy)
     })
 
     it('shows the kind border and badge but no times when no run aligns', () => {
-        const html = cell({ kind: 'military', run: null })
+        const html = cell({ kind: 'military', run: null, copies: [] })
         expect(html).toContain('data-kind="military"')
         expect(html).not.toContain('step-started')
         expect(html).not.toContain('step-finished')
@@ -81,18 +115,18 @@ describe('StepRunCell', () => {
     })
 
     it('has no badge for the other kind', () => {
-        expect(cell({ kind: 'other', run: null })).not.toContain('step-kind-badge')
-        expect(cell({ kind: 'economy', run: null })).toContain('step-kind-badge')
+        expect(cell({ kind: 'other', run: null, copies: [] })).not.toContain('step-kind-badge')
+        expect(cell({ kind: 'economy', run: null, copies: [] })).toContain('step-kind-badge')
     })
 
     it('marks the cell stale only while stale', () => {
-        expect(has(cell({ kind: 'villager', run: run() }, true), 'data-stale="true"')).toBe(true)
-        expect(has(cell({ kind: 'villager', run: run() }, false), 'data-stale')).toBe(false)
+        expect(has(cell({ kind: 'villager', run: run(), copies: [] }, true), 'data-stale="true"')).toBe(true)
+        expect(has(cell({ kind: 'villager', run: run(), copies: [] }, false), 'data-stale')).toBe(false)
     })
 
     it('takes its tone classes from annotationToneClass', () => {
         const flagged = run({ flagged: true, status: 'waiting' })
-        const html = cell({ kind: 'villager', run: flagged }, true)
+        const html = cell({ kind: 'villager', run: flagged, copies: [] }, true)
         expect(html).toContain(annotationToneClass(flagged, true))
     })
 
@@ -103,7 +137,7 @@ describe('StepRunCell', () => {
         const times = renderToStaticMarkup(createElement(StepTimes, { run: input, labelled: true }))
         expect(textOf(times, 'step-started')).toBe(formatStepTime(input.startedAt))
         expect(textOf(times, 'step-finished')).toBe(finishedText(input))
-        expect(cell({ kind: 'villager', run: input })).toContain(times)
+        expect(cell({ kind: 'villager', run: input, copies: [] })).toContain(times)
     })
 
     it.each<[boolean, boolean]>([
@@ -118,7 +152,7 @@ describe('StepRunCell', () => {
     })
 
     it('labels the completed run cell and keeps the value spans bare', () => {
-        const html = cell({ kind: 'villager', run: run({ waitSeconds: 75 }) })
+        const html = cell({ kind: 'villager', run: run({ waitSeconds: 75 }), copies: [] })
         expect(html).toContain('Started')
         expect(html).toContain('Finished')
         expect(html).toContain('Waited')
@@ -129,7 +163,7 @@ describe('StepRunCell', () => {
         ['waiting', run({ status: 'waiting', startedAt: null, completedAt: null, waitSeconds: 75 })],
         ['not-reached', run({ status: 'not-reached', startedAt: null, completedAt: null, waitSeconds: 75 })],
     ])('reads still waiting without a Waited label for a %s run', (_name, input) => {
-        const html = cell({ kind: 'villager', run: input })
+        const html = cell({ kind: 'villager', run: input, copies: [] })
         expect(textOf(html, 'step-waited')).toBe('still waiting')
         expect(html).not.toContain('Waited')
     })
@@ -142,9 +176,9 @@ describe('StepTable run cells', () => {
     const annotations: BuildAnnotations = {
         stale: false,
         steps: [
-            { kind: 'villager', run: run({ runStep: 0, longWait: true, waitSeconds: 60 }) },
-            { kind: 'building', run: null },
-            { kind: 'building', run: run({ runStep: 1, waitSeconds: 59.9, longWait: false }) },
+            { kind: 'villager', run: run({ runStep: 0, longWait: true, waitSeconds: 60 }), copies: [] },
+            { kind: 'building', run: null, copies: [] },
+            { kind: 'building', run: run({ runStep: 1, waitSeconds: 59.9, longWait: false }), copies: [] },
         ],
     }
     const render = (props: { annotations?: BuildAnnotations | null; activeStep?: number | null }) =>

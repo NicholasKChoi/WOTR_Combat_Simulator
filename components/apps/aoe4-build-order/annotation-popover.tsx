@@ -24,6 +24,16 @@ function place(anchor: DOMRect, popover: DOMRect): Position {
     }
 }
 
+export function PopoverLines({ text }: { text: string }) {
+    return (
+        <>
+            {text.split('\n').map((line, i) => (
+                <div key={i}>{line}</div>
+            ))}
+        </>
+    )
+}
+
 // Rendered through a portal: the annotation column clips its children, and the editor's
 // inline-size container would become the containing block of a fixed child.
 export function AnnotationPopover({ anchor, text }: { anchor: RefObject<HTMLElement | null>; text: string }) {
@@ -50,7 +60,7 @@ export function AnnotationPopover({ anchor, text }: { anchor: RefObject<HTMLElem
             className={styles.annotationPopover}
             style={position === null ? { visibility: 'hidden' } : position}
         >
-            {text}
+            <PopoverLines text={text} />
         </div>,
         document.body,
     )
