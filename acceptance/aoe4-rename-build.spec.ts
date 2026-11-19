@@ -16,6 +16,7 @@ import {
   saveBody,
   saveCopy,
   stubNamed,
+  uniqueClient,
   waitForRun,
 } from './helpers'
 
@@ -68,6 +69,33 @@ test.describe('shown and disabled', () => {
     await saveCopy(page, 'Shown build')
     await expect(renameButton(page)).toBeVisible()
     await expect(renameButton(page)).toBeEnabled()
+  })
+
+  test('is not shown for a build opened from its n link in a browser without its secret', async ({ page, browser, baseURL }) => {
+    const created = await savedCopy(page, 'Made elsewhere')
+    await expect(renameButton(page)).toBeVisible()
+    const context = await browser.newContext({ baseURL, extraHTTPHeaders: { 'x-forwarded-for': uniqueClient('aoe4-rename-fresh') } })
+    try {
+      const fresh = await context.newPage()
+      await fresh.goto(`${AOE4_PAGE}?n=${created.id}`)
+      await expect(byId(fresh, 'auto-run-status')).toHaveAttribute('data-status', 'current')
+      await expect(checkedOption(fresh)).toHaveText('Made elsewhere (shared)')
+      await expect(renameButton(fresh)).toHaveCount(0)
+    } finally {
+      await context.close()
+    }
+  })
+
+  test('is disabled while another of My builds is loading, and enabled once it has loaded', async ({ page }) => {
+    const created = await savedCopy(page, 'Loading first')
+    await saveCopy(page, 'Loading second')
+    await expect(checkedOption(page)).toHaveText('Loading second')
+    const release = await holdRequests(page, `${NAMED_BUILDS_PATH}/${created.id}`, 'GET')
+    await byId(page, 'build-order-select').selectOption({ label: 'Loading first' })
+    await expect(renameButton(page)).toBeDisabled()
+    release()
+    await expect(renameButton(page)).toBeEnabled()
+    await expect(checkedOption(page)).toHaveText('Loading first')
   })
 
   test('stays enabled for a stale run, an unconvertible text and an edited build', async ({ page }) => {
