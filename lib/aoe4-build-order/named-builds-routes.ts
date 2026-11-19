@@ -23,7 +23,7 @@ import {
   type StoredNamedBuild,
   type UpdateNamedBuildResponse,
 } from './named-builds';
-import { checkSaveBuildRequest, SAVED_NAME_MAX_CHARS } from './saved-builds';
+import { checkSaveBuildRequest, nameLengthIssue } from './saved-builds';
 import type { BuildOrderCatalog } from './schema';
 
 type StoredRead = { ok: true; stored: StoredNamedBuild; etag: string } | { ok: false; reply: RouteReply<BuildsError> };
@@ -149,9 +149,8 @@ function checkRenameRequest(body: unknown): NameCheck {
   if (typeof name !== 'string') return { ok: false, error: issuesError([{ code: 'syntax', message: 'name: must be a string' }]) };
   const trimmed = name.trim();
   if (trimmed.length === 0) return { ok: false, error: issuesError([{ code: 'out-of-range', message: 'name: must not be empty' }]) };
-  if (trimmed.length > SAVED_NAME_MAX_CHARS) {
-    return { ok: false, error: issuesError([{ code: 'out-of-range', message: `name: ${trimmed.length} characters, more than ${SAVED_NAME_MAX_CHARS}` }]) };
-  }
+  const tooLong = nameLengthIssue(trimmed);
+  if (tooLong !== undefined) return { ok: false, error: issuesError([tooLong]) };
   return { ok: true, name: trimmed };
 }
 

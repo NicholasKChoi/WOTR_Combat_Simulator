@@ -276,6 +276,19 @@ describe('namedBuildReply, methods', () => {
         expect((await named(store, id, { env })).status).toBe(200)
     })
 
+    it.each([
+        ['POST', 'development', 'GET, PUT, PATCH, DELETE', 'GET or PUT or PATCH or DELETE'],
+        ['DELETE', 'production', 'GET, PUT, PATCH', 'GET or PUT or PATCH'],
+    ])('answers 405 for %s in %s on a malformed id before the id form is checked', async (method, env, allow, listed) => {
+        const getter = getterFor(createMemoryBuildStore())
+        expect(await named(getter, 'AbCdEfGhIjK', { method, env })).toStrictEqual({
+            status: 405,
+            headers: { Allow: allow },
+            body: { error: `method ${method} is not allowed; use ${listed}` },
+        })
+        expect(getter).not.toHaveBeenCalled()
+    })
+
     it('answers 405 for a missing method', async () => {
         expect((await named(createMemoryBuildStore(), ID, { method: undefined })).status).toBe(405)
     })
