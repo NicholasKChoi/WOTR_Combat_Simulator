@@ -57,6 +57,7 @@ SGS-212 (rename UI, merged as #220) noted that withMyBuilds in components/apps/a
 kind: handoff
 blocks: M12.4 (Owner checks the changes on the PR previews and then produc…)
 options: A) Done | B) Not now
+thread: 1572902464196186226
 
 M12.1 to M12.3 are done and merged (#218 to #221). M12.4 is yours: check the changes in production.
 - Repeat: enter a step with a trailing xN (e.g. 'build Farm from wood x9') in the paste text and the step table Repeat field; see the copies timed and annotated.
