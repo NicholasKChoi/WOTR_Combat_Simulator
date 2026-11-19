@@ -265,3 +265,31 @@ Drafted 2026-11-16 as M10 (Q108); the owner chose mobile removal first, so this 
 | M11.6 | Help modal: a help button on the AoE4 page opens one "How this page works" modal that explains the page, including the step-kind legend and what the yellow step tint means; the inline legends and hints it absorbs are removed from the page | code | SGS-199 | done |
 | M11.7 | `docs/aoe4-build-order*.md`, `ARCHITECTURE.md` and `docs/api/openapi.json` describe the changes; Playwright covers zoom and reset, unit-line series and upgrade markers, the shared marker control, the table layout with reorder/collapse, a specific wait reason, and the help modal | code | SGS-200 | done |
 | M11.8 | Owner checks the changes on the PR previews and then production | evidence | | done |
+
+## M12: AoE4 build editing: repeat a step, rename a saved build
+
+**Outcome:** Entering and managing builds takes fewer clicks: one step can repeat its action a set number
+of times instead of nine identical steps, and a saved build can be renamed in place without making a copy.
+
+### Exit criteria
+
+Drafted 2026-11-18 from the two owner feature requests of 2026-11-13 (BACKLOG); confirmed by the owner when M12 starts. Left for later milestones: sim accuracy and gather rates, patch tracking, English tech gaps, spread of outcomes.
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M12.1 | Repeat a step: a step can carry a repeat count (e.g. "build Farm from wood x9"); the build text format, the editor and the API accept it, and the simulator runs it as that many copies of the step, each timed and annotated like a separate step | code | | open |
+| M12.2 | Rename a saved build: the My builds library renames a named build in place (no copy); the new name shows everywhere the build is listed, existing links to it keep working, and a stale or conflicting save is reported, not lost | code | | open |
+| M12.3 | `docs/aoe4-build-order*.md`, `ARCHITECTURE.md` and `docs/api/openapi.json` describe the changes; Playwright covers entering a repeated step and its result, and renaming a saved build with its link still opening | code | | open |
+| M12.4 | Owner checks the changes on the PR previews and then production | evidence | | open |
+
+### Delivery sequence
+
+1. Repeat step: format and schema, simulator expansion, editor control.
+2. Rename saved build (independent of 1).
+3. Docs and acceptance specs.
+
+### Safety and contracts
+
+Repeat touches the build schema and the simulator's step offering (critical path `simulate.ts`): existing
+builds and saved links must keep parsing and simulating to the same result. Rename touches the Blob
+named-build seam (`named-builds-routes.ts`): keep the compare-and-swap save rules and edit-secret handling.
