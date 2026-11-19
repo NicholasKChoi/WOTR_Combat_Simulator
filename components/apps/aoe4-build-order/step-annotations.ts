@@ -61,8 +61,7 @@ const waitListText = (waits: StepRun['waits']): string[] => waits.map((w) => `${
 
 function blockedByText(timing: StepTiming, waits: StepRun['waits'], waitingForText: string | null): string {
     const cause = causeText(timing.status, timing.waitingOn, waitingForText)
-    if (timing.status === 'not-reached') return cause ?? ''
-    return [...waitListText(waits), ...(cause === null ? [] : [cause])].join(', ')
+    return [...(timing.status === 'not-reached' ? [] : waitListText(waits)), ...(cause === null ? [] : [cause])].join(', ')
 }
 
 function stepRun(timing: StepTiming): StepRun {
