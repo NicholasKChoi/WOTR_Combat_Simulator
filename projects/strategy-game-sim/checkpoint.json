@@ -9,9 +9,7 @@
     "id": "M12",
     "step": "1b design approval",
     "waiting": [
-      "Q142",
-      "Q143",
-      "Q144"
+      "Q145"
     ]
   }
 }
