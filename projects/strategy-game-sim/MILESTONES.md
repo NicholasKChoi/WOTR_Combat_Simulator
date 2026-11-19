@@ -277,9 +277,9 @@ Drafted 2026-11-18 from the two owner feature requests of 2026-11-13 (BACKLOG); 
 
 | id | criterion | kind | covered by | status |
 |----|-----------|------|------------|--------|
-| M12.1 | Repeat a step: a step can carry a repeat count (e.g. "build Farm from wood x9"); the build text format, the editor and the API accept it, and the simulator runs it as that many copies of the step, each timed and annotated like a separate step | code | | open |
-| M12.2 | Rename a saved build: the My builds library renames a named build in place (no copy); the new name shows everywhere the build is listed, existing links to it keep working, and a stale or conflicting save is reported, not lost | code | | open |
-| M12.3 | `docs/aoe4-build-order*.md`, `ARCHITECTURE.md` and `docs/api/openapi.json` describe the changes; Playwright covers entering a repeated step and its result, and renaming a saved build with its link still opening | code | | open |
+| M12.1 | Repeat a step: a step can carry a repeat count (e.g. "build Farm from wood x9"); the build text format, the editor and the API accept it, and the simulator runs it as that many copies of the step, each timed and annotated like a separate step | code | SGS-208, SGS-210, SGS-211 | done |
+| M12.2 | Rename a saved build: the My builds library renames a named build in place (no copy); the new name shows everywhere the build is listed, existing links to it keep working, and a stale or conflicting save is reported, not lost | code | SGS-209, SGS-212 | done |
+| M12.3 | `docs/aoe4-build-order*.md`, `ARCHITECTURE.md` and `docs/api/openapi.json` describe the changes; Playwright covers entering a repeated step and its result, and renaming a saved build with its link still opening | code | SGS-208, SGS-209, SGS-210, SGS-211, SGS-212 | done |
 | M12.4 | Owner checks the changes on the PR previews and then production | evidence | | open |
 
 ### Delivery sequence

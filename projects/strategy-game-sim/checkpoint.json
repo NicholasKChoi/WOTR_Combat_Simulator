@@ -1,14 +1,8 @@
 {
-  "lastBaseSha": "d80751bec267e9358dc9d45742272f5e5e5917c9",
+  "lastBaseSha": "5eac2142954b5a42351f433956297e4b921f77bc",
   "openPRs": {},
   "retro": {
     "lastRun": "2026-11-18",
     "stateSha": "66cf9a17"
-  },
-  "milestone": {
-    "id": "M12",
-    "step": "3 tickets",
-    "waiting": [],
-    "note": "Q146 answered B (always take the stored name, design as written); outline E (rename UI) ticket still to write"
   }
 }

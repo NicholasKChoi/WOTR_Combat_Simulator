@@ -191,3 +191,18 @@ none
   ending `not reached (earlier-step)` with no `still waiting`) and states that copy 2's recorded wood seconds appear in
   the merged waits, with a fixture whose copy 2 has non-empty `waitDetails`. Scope is unchanged.
 - No branch exists; nothing to keep.
+
+## Rework 1 - 2026-11-18 (review)
+
+Bounced by review (reports/SGS-210-review-8.md) at branch tip 0f454682185f4b4baaab5430e29344eef3ad5e67. No earlier gate had passed this tip (spec-gate passed the ticket; the implementer's own checks only).
+
+Findings:
+- `components/apps/aoe4-build-order/step-annotations.test.ts:550`: the test "gives a repeated source copies equal to its copy count and a run equal to the combined run" asserts neither claim; it still passes with `step-annotations.ts:231` changed to `copies[0]`.
+- `docs/aoe4-build-order-ui.md:106`: the run-cell sentence says Finished reads `ongoing` while any copy is in progress; the code shows an en dash whenever any copy is waiting or not reached.
+- `docs/aoe4-build-order-ui.md:211`: the hover sentence says a waiting or not-reached step shows no band; a repeated row with a started copy still shades its span.
+
+### Required fixes
+
+- [ ] In that test, use its own timings so the combined run differs from every single copy: `[copyTiming(0, 0, 1, { startedAt: 1, completedAt: 6 }), copyTiming(1, 0, 2, { startedAt: 11, completedAt: 15 }), copyTiming(2, 1, 1, { startedAt: 21, completedAt: 25 })]` as the second argument of `runInput`, with the identity-path `live`. Assert `first.copies` has length 2 and `first.run` matches `{ runStep: 0, startedAt: 1, completedAt: 15 }`. Check by mutation that `combineRuns(copies)` -> `copies[0]` (completedAt 6) and -> `copies[copies.length - 1]` (runStep 1, startedAt 11) both fail it, then undo.
+- [ ] `docs/aoe4-build-order-ui.md:106`: replace "Finished the last copy's finish (`ongoing` while any copy is in progress, an en dash while a copy has not finished)" with "Finished the last copy's finish once every copy has finished (`ongoing` while a copy is in progress and no copy is waiting or not reached, an en dash while any copy is waiting or not reached)". (text)
+- [ ] `docs/aoe4-build-order-ui.md:211`: replace "a copy that has not started adds nothing); an in-progress step's span runs to the end of the run, a step that starts and finishes in the same second shows as one vertical line, and a waiting or not-reached step, or a row with no run times, shows no band." with "a copy that has not started adds nothing, and the span shows once any copy has started, even while the row reads waiting or not reached); an in-progress step's span runs to the end of the run, a step that starts and finishes in the same second shows as one vertical line, and a waiting or not-reached step none of whose copies has started, or a row with no run times, shows no band." (text)
