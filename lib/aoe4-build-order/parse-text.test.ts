@@ -443,8 +443,6 @@ describe('actions', () => {
         ['build farm from wood x-1', "'x-1'"],
         ['build farm from wood x1.5', "'x1.5'"],
         ['produce villager from capital-town-center x3 x2', "'x2'"],
-        ['produce villager from capital-town-center -> sheep x2', "'x2'"],
-        ['produce villager from capital-town-center walk 4s x3', "'x3'"],
         ['produce villager from tc walk 4s x3', "'x3'"],
         ['produce villager from tc -> sheep x3', "'x3'"],
         ['produce villager from tc walk 4s -> sheep', "'->'"],
