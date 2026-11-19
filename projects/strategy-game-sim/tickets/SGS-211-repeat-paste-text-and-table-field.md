@@ -44,14 +44,18 @@ number field under More options, and the page spec that drives a repeated step e
   and a row whose step sets `repeat` starts open through the existing open-flag rule (`hasOptionalField`).
 - **`components/apps/aoe4-build-order/step-table-model.ts`**: `changeAction` keeps `repeat` when the new action is in
   `REPEATABLE_ACTIONS` (exported by the new `repeat.ts` from SGS-208) and drops it otherwise; trigger and reaction carry as
-  today. Do not add `FIELD_LABELS.repeat` (SGS-208 did). `setNumberField` already gives the input rules (empty removes the
+  today. The row's open flag follows the existing rule in `step-table.tsx` (an edit that changes a row's action closes
+  that row), so a build row changed to move keeps its Repeat value behind a closed More control; this ticket does not
+  change that rule. Do not add `FIELD_LABELS.repeat` (SGS-208 did). `setNumberField` already gives the input rules (empty removes the
   key, non-digits leave the step unchanged, `0` or `201` set the value and the inline issue list shows the
   `out-of-range` issue); confirm it needs no change.
 - **New `acceptance/aoe4-repeat-step.spec.ts`**, following the `acceptance/aoe4-build-order-step-band.spec.ts` exemplar
   (helpers from `acceptance/helpers.ts`, layout and DOM state read in one `evaluate` under `expect.poll` or `toPass`):
   type a repeated step in the text view and wait for the run; show the combined row and its copy list; set Repeat in
-  the table; hover the row and read the shading; open the copy list from the keyboard; check the copy-list test ids stay
-  distinct. The spec saves nothing. See the criteria for the cases.
+  the table and check which rows offer it and how it takes input; hover the row and its gutter line and read the
+  shading; open the copy list from the keyboard; check the copy-list test ids stay distinct. The spec saves nothing.
+  The step-table input rules (`actionFields` is not exported, and the inline issue list is rendered by the page's
+  `IssueList` in both views) are checked here, not in unit tests. See the criteria for the cases.
 - **Docs made untrue** (name the statement, the implementer writes the replacement):
   - `docs/aoe4-build-order-format.md`: the paste-format table (the `produce` row shows `[xN]` and the other rows list no
     trailing `xN`), the grammar bullet "On a `produce` line the suffixes are ordered `[xN]`, `[-> node]`, `[walk Ns]`", the
@@ -61,9 +65,11 @@ number field under More options, and the page spec that drives a repeated step e
     Add the repeat form to the grammar details; `repeat` on `research`, `pause` and `rally` parses and is `invalid` at
     validation.
   - `docs/aoe4-build-order-ui.md`: the step-table paragraph that lists the fields a step may omit (`instance`, `count`,
-    `rally`, `walkSeconds`, `builders`, `then`, `at`) behind More control; it must name `repeat` on build and move. The
-    table paragraph that says an edit sets `text` to `formatBuildOrderText(order)` needs no change. A statement that
-    changing a row's action carries only trigger and reaction, if one exists, is corrected (grep for it).
+    `rally`, `walkSeconds`, `builders`, `then`, `at`) behind More control; it must name `repeat` on build and move, and
+    say that changing a row's action between build and move keeps its Repeat value (the row still closes under the
+    open-flag rule "An edit that changes a row's action closes that row", which stays true and unchanged). The table
+    paragraph that says an edit sets `text` to `formatBuildOrderText(order)` needs no change. The base doc has no
+    statement on which fields an action change carries (searched), so nothing else there becomes untrue.
   - `components/apps/aoe4-build-order/page-help.tsx` lists no text forms and no step-table fields (checked at the base);
     change it only if the search finds a sentence this ticket makes untrue.
 - **Existing tests, by rule**: a test of the changed behavior gets the new expected value (examples the search found:
@@ -72,9 +78,9 @@ number field under More options, and the page spec that drives a repeated step e
   rows); any other test keeps its expected value. A test that asserts a trailing `xN` after a non-produce action is a
   `syntax` issue (the search found none at the base) changes with the grammar. The implementer lists every test it edits.
 - **New unit tests**: `parse-text.test.ts` rows for every C3 form below; `step-table-model.test.ts` rows for
-  `changeAction`; a row in the tests of `checkSaveBuildRequest` (`lib/aoe4-build-order/builds-routes.test.ts` and
-  `named-builds-routes.test.ts` style) that a build carrying `repeat` on a `build` and a `move` step is accepted by the
-  round-trip check.
+  `changeAction`; a row in `lib/aoe4-build-order/saved-builds.test.ts` (the `checkSaveBuildRequest` describe, next to
+  its paste round-trip cases; the round-trip rule lives in `lib/aoe4-build-order/saved-builds.ts`) that a build carrying
+  `repeat` on a `build` and a `move` step is accepted by the round-trip check.
 
 **Out of scope:** `schema.ts`, `repeat.ts`, `simulate.ts`, OpenAPI and the API (SGS-208); the annotation, row, popover and
 shading rendering (SGS-210); the rename API and UI; rewriting shipped builds to use `repeat` (design D15); a paste form
@@ -107,30 +113,37 @@ Single-component change outside the core control loop; no diagram required.
       when present, and before nothing else; `repeat: 1` prints `x1`; a step without `repeat` prints as before. Round trip: for build, move and
       research steps (plain, with walk, triggered, and a reaction), `parseBuildOrderText(formatBuildOrderText(order))` gives equal steps, and the
       `representable` round-trip table gains repeat rows. No row claims a round trip for `produce` with `repeat`.
-- [ ] Saved and named builds: `checkSaveBuildRequest` accepts a body whose build has `repeat` on a `build` step and on a `move` step
-      (the round-trip check no longer answers `reopening it as text would change the build`), and a test fails if the formatter drops
-      `repeat`.
-- [ ] Table field: a build row and a move row each offer `step-field-repeat` under More options; no other action row does. Typing `2`
-      into it sets `repeat: 2` and the text view's line ends `x2`; clearing it removes `repeat` and the `x2`; letters leave the step
-      unchanged; `0` sets `repeat: 0` and the inline issue list shows the `out-of-range` issue for that step. A row whose pasted line
-      has `xN` starts open. (Covered by the spec below for the page and by `step-table-model.test.ts` for the model rule.)
+- [ ] (respec 1) Saved and named builds (`lib/aoe4-build-order/saved-builds.test.ts`, `checkSaveBuildRequest`): a body whose build
+      has `repeat` on a `build` step and on a `move` step is accepted (the round-trip check no longer answers
+      `reopening it as text would change the build`), and a test fails if the formatter drops `repeat`.
+- [ ] (respec 1) Table field: a build row and a move row each offer `step-field-repeat` under More options; a produce, research, rally
+      and pause row, once its More control is opened, has none. Typing `2` into it sets `repeat: 2` and the text view's line ends `x2`;
+      clearing it removes `repeat` and the `x2`; typing letters leaves the step and its text line unchanged; `0` sets `repeat: 0` and
+      the page's issue list shows a `build-order-issue` with `data-code="out-of-range"` on that step's line. A row whose pasted line
+      has `xN` starts open (its `step-field-repeat` is visible without pressing `step-more`). Each of these is a case of the page spec
+      below; `step-table-model.test.ts` covers the model rule.
 - [ ] `changeAction` (`step-table-model.test.ts`): a build step with `repeat` changed to `move` keeps `repeat`; the same step changed to
       `produce`, `research`, `rally` and `pause` drops it, with trigger and reaction carried as today; a step without `repeat` gains no
       `repeat` key; the same action returns the same object. A test fails if `repeat` is kept for a non-repeatable action or dropped
       for build or move.
-- [ ] Page spec `acceptance/aoe4-repeat-step.spec.ts`:
-  - typing a build step with `x3` in the text view runs once; the row for that step has `step-copies` reading `<done> of 3 done`
-    and the closed copy list holds exactly three `step-copy` items with `data-copy` 1, 2 and 3 once opened; the number of `step-row`
-    elements is the number of steps written, not the expanded count.
+- [ ] (respec 1) Page spec `acceptance/aoe4-repeat-step.spec.ts`:
+  - typing a build step with `x3` in the text view runs once; the row for that step has `step-copies` reading `<done> of 3 done`,
+    and its copy list holds exactly three `step-copy` items with `data-copy` 1, 2 and 3, none of them visible until the list is
+    opened; the number of `step-row` elements is the number of steps written, not the expanded count.
   - the row's `step-started`, `step-finished`, `step-waited`, `step-blocked-by` and `step-run` each match exactly one element, before
     and after the copy list is opened (the copy items do not reuse the combined cell's test ids), and the copy items' own values
     (started, finished) are visible text only once the list is open.
-  - the copy list is closed on first render and after a reload; focusing its `<summary>` (`Each copy`) and pressing Enter opens
-    it, pressing Enter again closes it, and Space does the same; the items are visible only while it is open (a visibility check,
-    not only the `open` attribute). The summary is reachable by Tab from the row's controls.
+  - the copy list is closed on first render; focusing its `<summary>` (`Each copy`) and pressing Enter opens it, pressing Enter
+    again closes it, and Space does the same; the items are visible only while it is open (a visibility check, not only the
+    `open` attribute). The summary is reachable by Tab from the row's controls.
+  - the row of the pasted `x3` line starts open in Table view: its `step-field-repeat` is visible before `step-more` is pressed.
+  - a build row and a move row each show `step-field-repeat` once More options is open; a produce, research, rally and pause row
+    show none with More options open. A test fails if the field is offered on any of those four actions.
   - setting Repeat to 2 in the table (More options, then `step-field-repeat`) reformats the text line to end `x2`, runs again, and
-    the row's `step-copies` reads `<done> of 2 done` with two `step-copy` items; changing the step's action to a non-repeatable one
-    removes the `xN` from the line and the row shows no `step-copies`.
+    the row's `step-copies` reads `<done> of 2 done` with two `step-copy` items; clearing the field removes the `xN` from the line;
+    typing letters into it leaves the text view's line unchanged; typing `0` shows a `build-order-issue` with
+    `data-code="out-of-range"` and the step's `data-line`; changing the step's action to a non-repeatable one removes the `xN`
+    from the line and the row shows no `step-copies`.
   - hovering the repeated row shades exactly one span on every chart: its `data-from` equals the first copy's `startedAt` and its
     `data-to` the last started copy's end, taken from the response of the run (not from the page); the same span when the line's
     gutter annotation is hovered in the text view. A test fails if the span covers only one copy.
@@ -147,3 +160,15 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 none
+
+## Re-spec 1 - 2026-11-18
+
+- Underspecified (spec-gate 2): the page spec asked for the copy list to be closed "after a reload", which the page cannot
+  show (it does not persist the editor text); the table-field criterion claimed spec coverage for four cases the spec never
+  listed; the round-trip test row named the routes tests instead of `saved-builds.test.ts`, where the rule is tested.
+- Changed: dropped the reload case; added spec cases for the field on build and move rows only, letters leaving the line
+  unchanged, `0` giving an `out-of-range` issue in the page's issue list, and a pasted `xN` row starting open; named
+  `saved-builds.test.ts`; reworded the copy-list count to items present but not visible until opened; stated that an
+  action change between build and move keeps Repeat while the existing close-on-action-change rule stands, and reduced
+  the UI doc bullet to that.
+- No branch exists; nothing to keep.

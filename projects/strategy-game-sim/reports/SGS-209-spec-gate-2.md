@@ -1,0 +1,18 @@
+# SGS-209 spec gate 2
+
+Verdict: NEEDS_SPEC
+
+Read at origin/main (fetched). Depends on: none. ticket-lint produced no errors or warnings.
+
+## Gaps
+
+1. Testable criteria / existing tests (Scope "Existing tests", criterion "Existing tests keep their assertions except those that used `PATCH` as the disallowed method") - the rule is too narrow. At origin/main, `lib/aoe4-build-order/named-builds-routes.test.ts` ~lines 256-266 ("answers 405 for DELETE in %s and deletes nothing") asserts `Allow: 'GET, PUT'` and the message `use GET or PUT`. It never uses PATCH, but it breaks once `PATCH` joins the `disallowedMethod` list (it becomes `GET, PUT, PATCH`). The ticket's own acceptance criterion about DELETE-in-production says the new `Allow`, yet the "existing tests keep assertions" criterion forbids editing that test. An implementer must guess. Also `acceptance/aoe4-named-builds-api-contract.spec.ts` ~line 150-153 ("the 405 examples") calls `request.patch(...)` on the id route and reads the OpenAPI example key `patchOnId` from each operation; PATCH is now a real operation, so this fails (401/428), and the example key name is pinned by the test. Neither is named. Proposed fix: replace the rule with "an existing test keeps its assertions unless its expected value depends on the id route's `Allow` list or message, or on `PATCH` being a disallowed method on it; those change to the new values (disallowed-method probes use `POST`), and the implementer lists every test edited". Add the contract-spec 405 test (probe method and example key) to the examples, and say the 405 examples in `openapi.json` are renamed to match the probe (e.g. `postOnId`) so the contract spec and OpenAPI agree.
+
+2. Docs (Scope, format doc) - `docs/aoe4-build-order-format.md` "Named builds routes" also has the bullet "Creates, updates and `POST /builds` saves share one per-client write budget ... Reads and deletes cost nothing" (and the preceding paragraph "An update needs ... and may rename the build"). The rename takes a slot from this budget (criterion 79), so the bullet is stale unless it names renames. Scope names only three bullets and the intro. Proposed fix: add "the write-budget bullet" to the docs list and require the section to describe the rename's check order (it differs from the update's: no catalog validation, body check is the name rule).
+
+## Notes (non-blocking)
+
+- Scope "a unit test of `renameNamedBuild` if the client has a test file for `updateNamedBuild`": `components/apps/aoe4-build-order/named-build-client.test.ts` exists and imports `updateNamedBuild`, so make this unconditional.
+- OpenAPI `PATCH` replies: the live route also answers 413 for a body over the 128kb Next body limit, as for `PUT` (the `update` operation lists 413). Say whether `PATCH` documents 413 so the implementer does not guess; the contract spec pins each operation's exact status list.
+- `acceptance/helpers.ts` has `putNamedBuild`; `patchNamedBuild` beside it is grounded. `build-fetch.ts` `sendJson` method type is `'POST' | 'PUT'` as the ticket says. `[id].ts` already passes `req` fields and its response type already includes `UpdateNamedBuildResponse`, so no change beyond optional type tidy.
+- Grounding, check order against `updateNamedBuild`, helper names (`readStored`, `refusedSaveSlot`, `changed`, `storageUnavailable`), `notAnObjectError`, `SAVED_NAME_MAX_CHARS` = 100, the four specs pinning 2.6.0, the format-doc line 288 `Allow: GET, PUT`, and the README module-map line all match the base. Design C8/C9 agrees with the ticket. Risk standard is right (no criticalPaths symbol touched); input is one field so hand-checking is fine.

@@ -45,20 +45,37 @@ Follow design/M12.md C8 and C9 for every rule; this lists where the work lands.
 - `docs/api/openapi.json`: the `PATCH` operation on the id path (`operationId: renameNamedBuild`) with request schema
   `RenameNamedBuildRequest`, every reply it can give with examples that the live API returns (the contract specs check examples),
   and every 405 `Allow` header and example message on the id path (they list `GET, PUT, DELETE` and `GET or PUT or DELETE`
-  today) updated to include `PATCH`. Set `info.version` to 2.7.0 and move the specs that pin 2.6.0 (examples:
+  today) updated to include `PATCH`. (respec 1) The `PATCH` operation documents the same status set as `updateNamedBuild`,
+  413 included: the id route's `bodyParser` `sizeLimit` rejects an oversized body before `namedBuildReply` runs, whatever the
+  method. The route itself never answers 413 for a rename (the name is capped), so the `PATCH` 413 response describes only
+  the framework's plain-text reply and has no JSON content or example. It documents 405 like the other id-path operations.
+  The 429 descriptions that name the operations sharing the write budget (`saveBuild, createNamedBuild and updateNamedBuild`
+  today) name `renameNamedBuild` too, the new operation's included. The 405 examples on the id path (today keyed `patchOnId`, a `PATCH` probe)
+  become a probe with a method that stays disallowed (`POST`), renamed to match (for example `postOnId`), on every id-path
+  operation including the new one. Set `info.version` to 2.7.0 and move the specs that pin 2.6.0 (examples:
   `aoe4-gathered-resources`, `aoe4-simulate-api-issue-shape`, `aoe4-named-builds-api-contract`, `aoe4-builds-api-contract`) to match; the
   repeat-step ticket makes the identical bump, so whichever lands second rebases cleanly and this ticket does not depend on it.
-- Docs: `docs/aoe4-build-order-format.md` "Named builds routes" (names `GET`, `PUT` and `DELETE` only; the update check-order
-  bullet; the production-405 bullet saying `Allow: GET, PUT`); `lib/aoe4-build-order/README.md` module map line for
-  `named-builds-routes.ts` (lists create, read, update and delete); `ARCHITECTURE.md` only if its route-logic row names the
+- (respec 1) Docs: `docs/aoe4-build-order-format.md` "Named builds routes", each statement that becomes untrue: the intro names `GET`,
+  `PUT` and `DELETE` only and their three operation ids; the update bullet says an update "may rename the build" as if that
+  were the only way; the write-budget bullet names creates, updates and `POST /builds` saves as the budget's only spenders;
+  the production-405 bullet says `Allow: GET, PUT`. (respec 1) The section also gains the rename's own check order and
+  write, which differ from the update's: the body check is the name rule only (no catalog validation and no
+  saved-record size check), and the write changes only the name, revision and `updatedAt`. `lib/aoe4-build-order/README.md` module map line for
+  `named-builds-routes.ts` (lists create, read, update and delete). `ARCHITECTURE.md` only if its route-logic row names the
   methods (it does not today, check).
-- Existing tests that use `PATCH` as the disallowed method change to another method that stays disallowed (`POST`) and expect
-  the new `Allow`: examples `acceptance/aoe4-named-builds-api.spec.ts` ("PATCH gives 405") and the `PATCH` 405 table in
-  `lib/aoe4-build-order/named-builds-routes.test.ts`. Search for any other test or doc that treats `PATCH` on the named-builds id
-  route as disallowed (`aoe4-simulate-api-edges.spec.ts` is the simulate route and is unaffected).
+- (respec 1) Existing tests: a test keeps its assertions unless its expected value depends on the id route's `Allow` list or
+  405 message, or on `PATCH` being a disallowed method there. Those change to the new values, and a probe for a disallowed
+  method uses one that stays disallowed (`POST`). Examples the search found: the `PATCH` 405 table and the "answers 405 for
+  DELETE in %s" test (its `Allow` and message) in `lib/aoe4-build-order/named-builds-routes.test.ts`; "PATCH gives 405" in
+  `acceptance/aoe4-named-builds-api.spec.ts`; "the 405 examples" in `acceptance/aoe4-named-builds-api-contract.spec.ts`
+  (its `request.patch` probe and the `patchOnId` example key it reads, which follow the OpenAPI rename above). Search for any
+  other test or doc that pins the id route's `Allow` list or treats `PATCH` on it as disallowed
+  (`aoe4-simulate-api-edges.spec.ts` is the simulate route and is unaffected). Contract-spec assertions over the id-path
+  operations (operation ids, status sets, examples validate) may gain the rename operation; their assertions on the existing
+  operations stay.
 - New tests: `named-builds-routes.test.ts` table over the check order (below); new `acceptance/aoe4-named-builds-rename.spec.ts`
-  (API) following `aoe4-named-builds-api.spec.ts`; a unit test of `renameNamedBuild` if the client has a test file for
-  `updateNamedBuild` (follow it).
+  (API) following `aoe4-named-builds-api.spec.ts`; (respec 1) `renameNamedBuild` cases in
+  `components/apps/aoe4-build-order/named-build-client.test.ts`, following its `updateNamedBuild` tests.
 
 **Out of scope:** the Rename button, `NameForm`, library and My builds updates, storage (a later ticket); the repeat-step `StepTiming`
 and `BuildStep` OpenAPI changes; `smoke:preview`; renaming a saved (`?b=`) build, which is immutable.
@@ -78,13 +95,33 @@ Single-component change outside the core control loop; no diagram required.
 - [ ] Stored JSON failing `storedNamedBuildSchema` is 500 and nothing is written; an unknown id is 404 after the slot; storage failure is 503 as for `PUT`; over `SAVE_RATE_LIMIT` is 429 with `Retry-After` and nothing read.
 - [ ] A rename takes a slot from the same write budget as create and update.
 - [ ] `POST` on the id route, and `DELETE` in production or with `VERCEL` set and `VERCEL_ENV` unset, are 405 with `Allow` listing `GET, PUT, PATCH` (and `DELETE` outside production); the store is never asked.
-- [ ] `renameNamedBuild` sends `PATCH` with `Authorization: Bearer <secret>`, `If-Match` the quoted revision and body `{ name }`; a 200 with an update-shaped body is `ok`; 412 is kind `conflict`, 401 and 403 `forbidden`, 404 `not-found`, anything else `other` with the `saveFailureMessage` text; a 200 with a malformed body is a failure, not `ok`.
+- [ ] (respec 1) Tests in `named-build-client.test.ts` show that `renameNamedBuild` sends `PATCH` with `Authorization: Bearer <secret>`, `If-Match` the quoted revision and body `{ name }`; a 200 with an update-shaped body is `ok`; 412 is kind `conflict`, 401 and 403 `forbidden`, 404 `not-found`, anything else `other` with the `saveFailureMessage` text; a 200 with a malformed body is a failure, not `ok`.
 - [ ] Acceptance spec `aoe4-named-builds-rename.spec.ts`: create, rename gives 200 and `GET` shows the new name at revision 2; a stale `If-Match` gives 412; a wrong secret gives 403.
-- [ ] `docs/api/openapi.json` documents the `PATCH` operation, `RenameNamedBuildRequest`, `operationId: renameNamedBuild` and the updated 405 replies, and the existing contract specs that validate examples against the live API pass; `info.version` and every spec that pins it agree.
-- [ ] No doc under `docs/` or `lib/aoe4-build-order/README.md` still says the named-builds id route allows only `GET`, `PUT` and `DELETE`, or that production answers `Allow: GET, PUT`.
-- [ ] Existing tests keep their assertions except those that used `PATCH` as the disallowed method; the implementer lists every test edited.
+- [ ] (respec 1) `docs/api/openapi.json` documents the `PATCH` operation, `RenameNamedBuildRequest`, `operationId: renameNamedBuild` and the updated 405 replies; the `PATCH` operation declares the same statuses as `updateNamedBuild`, its 413 without JSON content; the contract spec's 405 probe uses a method that stays disallowed and every id-path operation's 405 example equals the live reply to that probe; the existing contract specs that validate examples against the live API pass; `info.version` and every spec that pins it agree.
+- [ ] (respec 1) No doc under `docs/` or `lib/aoe4-build-order/README.md` still says the named-builds id route allows only `GET`, `PUT` and `DELETE`, that production answers `Allow: GET, PUT`, or that only creates, updates and builds saves spend the write budget; the format doc's "Named builds routes" states the rename's check order and that it writes only the name, revision and `updatedAt`.
+- [ ] (respec 1) An existing test keeps its assertions unless its expected value depends on the id route's `Allow` list or 405 message, or on `PATCH` being disallowed there; those expect the new values and probe with a method that stays disallowed. The implementer lists every test edited.
 - [ ] No INVARIANTS.md regressions
 
 ## Open questions
 
 none
+
+## Re-spec 1 - 2026-11-18
+
+- Underspecified: the existing-tests rule covered only tests using `PATCH` as the disallowed method, missing tests that pin the id route's `Allow` list or message (the DELETE-in-production unit test, the contract spec's `patchOnId` 405 probe); the format doc's write-budget bullet, the OpenAPI 429 budget descriptions and the PATCH 413 reply were not addressed.
+- Changed: the existing-tests rule now keys on the `Allow` list, 405 message and `PATCH` being disallowed; the 405 examples move to a `POST` probe with a matching key; Scope lists the stale format-doc statements and asks for the rename's check order; the `PATCH` operation documents 413 as a framework-only reply; the `renameNamedBuild` unit test in `named-build-client.test.ts` is unconditional.
+- No branch exists yet, so no prior work is affected.
+
+## Rework 1 - 2026-11-18 (review)
+
+Gate: review (REQUEST CHANGES) at tip bce5d14; no other gate has passed it yet.
+
+Findings:
+- `lib/aoe4-build-order/named-builds-routes.ts:152-153` copies the over-cap name check and its message from `nameIssue` in `lib/aoe4-build-order/saved-builds.ts:96-99`.
+- `lib/aoe4-build-order/named-builds-routes.test.ts:250-264`: no test sends a disallowed method to a malformed id, so swapping the method check and the id-form check at `named-builds-routes.ts:177-179` passes all tests (criterion 2: each earlier check wins when two fail).
+- `lib/aoe4-build-order/save-rate-limit.ts:7`: the `SAVE_RATE_LIMIT` comment still lists only saves, creates and updates as spending the write budget.
+
+Required fixes:
+- [x] Export one `nameLengthIssue(name)` from `saved-builds.ts`; call it from both `nameIssue` and `checkRenameRequest`, leaving no copy of the check or its message.
+- [x] Add a unit test that sends `POST`, and `DELETE` in production, to `'AbCdEfGhIjK'`: expects 405 with the `Allow` header (`toStrictEqual`) and no store getter call.
+- [x] (text) Replace the `SAVE_RATE_LIMIT` comment in `save-rate-limit.ts:7` verbatim with: `/** The per-client write budget, maxSaves per windowSeconds, shared by saves, named-build creates, updates and renames (Named builds routes). */`

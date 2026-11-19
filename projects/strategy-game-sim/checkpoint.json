@@ -8,8 +8,7 @@
   "milestone": {
     "id": "M12",
     "step": "3 tickets",
-    "waiting": [
-      "Q146"
-    ]
+    "waiting": [],
+    "note": "Q146 answered B (always take the stored name, design as written); outline E (rename UI) ticket still to write"
   }
 }

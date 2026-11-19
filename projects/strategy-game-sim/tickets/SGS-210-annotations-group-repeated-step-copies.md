@@ -6,8 +6,8 @@
 - **Priority**: high
 - **Risk**: standard
 - **Invariants**: A3 (the page only reads timings; the combined run is a pure function of the result, same result and text give the same annotations)
-- **Unverified assumptions**: a native `<details>` with a `<summary>` is closed on first render and toggles on Enter or Space from the summary's Tab stop (no test in this ticket drives it in a browser, because the page cannot enter a repeat until the paste-and-table ticket lands; static markup tests check the element, not its toggling)
-- **LOC estimate**: 180 (`step-annotations.ts` ~110: `groupBySource`, `combineRuns`, `sourceSpan`, `copiesDetailText`, the two alignment paths and `buildAnnotations`; `step-annotation.tsx`, `build-text-editor.tsx`, `results.tsx` and CSS ~70; business logic only)
+- **Unverified assumptions**: a native `<details>` with a `<summary>` is closed on first render and toggles on Enter or Space from the summary's Tab stop; block elements stacked in the popover show as separate lines (no test in this ticket drives either in a browser, because the page cannot enter a repeat until SGS-211 lands; static markup tests check the elements, and SGS-211's page spec drives the copy list and the shading)
+- **LOC estimate**: 195 (`step-annotations.ts` ~120: `groupBySource`, `combineRuns`, `sourceSpan`, `copiesDetailText`, `gutterDetailText`, the two alignment paths and `buildAnnotations`; `step-annotation.tsx`, `annotation-popover.tsx`, `build-text-editor.tsx`, `results.tsx` and CSS ~75; business logic only)
 - **Depends on**: SGS-208
 - **On merge**: none
 - **Source**: design/M12.md (C5, C6, Behavior rules "Repeat: page"), criteria M12.1 and M12.3; reports/M12-planner-5.md outline B and Design questions rows 5, 6 and 7
@@ -41,14 +41,21 @@ All paths under `components/apps/aoe4-build-order/` unless noted. Names follow d
     status of `waiting` or `not-reached`. `blockedBy` is the merged waits as `<text> <m:ss>` joined with `, `, followed
     by that selected copy's trailing text (`still waiting for ...` or `still waiting on ...`, or `not reached (...)`)
     exactly as `blockedByText` words it for one copy (planner row 6: a combined `not-reached` row ends with the copy's
-    `not reached (...)` text after the merged waits; a single copy's `blockedBy` is unchanged). Factor the per-copy
-    text so one copy and a combination word it the same way.
+    `not reached (...)` text after the merged waits; a single copy's `blockedBy` is unchanged). This deliberately
+    departs from a literal reading of design C5 ("as `blockedByText` does today", which for one `not-reached` copy gives
+    only `not reached (...)` and drops its waits): a combined row keeps the waits earlier copies spent, per planner
+    report M12-planner-5 Design questions row 6, which settled it; a reviewer reading C5 alone should not bounce this.
+    Factor the per-copy text so one copy and a combination word it the same way.
   - `sourceSpan(steps, runStep, end)`: the copies with the same `source` as `steps[runStep]`; `from` is the minimum
     clamped start of the started ones, `to` the maximum of their `stepSpan` `to`; `null` when none started or `runStep`
     names no step. Equal to `stepSpan` for an unrepeated step.
   - `copiesDetailText(copies)`: `''` when `copies.length <= 1`; otherwise one line per copy giving the copy number,
     started, finished, and waited or still waiting (wording is the implementer's; reuse `formatStepTime`,
-    `finishedText`, `waitedText`).
+    `finishedText`, `waitedText`). Lines are separated by `\n`.
+  - `gutterDetailText(annotation)` (respec 1; a helper local to this ticket, not a design contract): the gutter popover's
+    text, `''` when `annotation.run` is `null`; otherwise `annotationDetailText(run)`, followed, when
+    `annotation.copies.length >= 2`, by a `\n` and `copiesDetailText(copies)`. For an unrepeated step it equals
+    `annotationDetailText(run)`.
   - `StepAnnotation` gains `copies: StepRun[]` (empty when the row has no run).
   - `buildAnnotations`: live step `i` aligned to source `j` gets `copies = groupBySource(result.steps)[j].map(<per-copy run>)`
     and `run = combineRuns(copies)`; an unaligned step, or a `j` with no group, gets `run: null`, `copies: []`.
@@ -65,12 +72,18 @@ All paths under `components/apps/aoe4-build-order/` unless noted. Names follow d
   still matches one element. `annotationToneClass` is applied to the combined run, stale dimming unchanged. An
   unrepeated step's cell is unchanged.
 - **`build-text-editor.tsx`** (`AnnotationLine`): the gutter shows the combined started and finished times; the popover
-  text is `annotationDetailText(run)` followed, when `copies.length >= 2`, by `copiesDetailText(copies)`.
-  `data-status`, `data-flagged`, `data-long-wait`, hover and caret activation use the combined run (`runStep` is copy 1's
-  index). `annotation-popover.tsx` renders its text as is, so `workbench.module.css` `.annotationPopover` needs to keep the
-  line breaks of the copy lines (how is the implementer's choice).
+  text is `gutterDetailText(annotation)`. `data-status`, `data-flagged`, `data-long-wait`, hover and caret activation use
+  the combined run (`runStep` is copy 1's index).
+- **`annotation-popover.tsx`** (respec 1): `AnnotationPopover` today renders its `text` as one text node inside a portal,
+  so a `\n` would not break the line. It renders the text through a new exported component (name is the implementer's)
+  that takes the text and renders one block element per `\n`-separated line, so the line breaks are structural, not a
+  CSS `white-space` rule. `AnnotationPopover` itself stays portaled and re-places itself when the text changes, as today.
+  A text without `\n` renders as one line, so an unrepeated step's popover reads as before.
 - **`results.tsx`**: the highlight is `sourceSpan(result.steps, activeStep, result.durationSeconds)` in place of
-  `stepSpan(result.steps[activeStep], ...)`; `stepSpan` stays exported for `sourceSpan`.
+  `stepSpan(result.steps[activeStep], ...)` (still `null` when `activeStep` is `null`); `stepSpan` stays exported for
+  `sourceSpan`. This wiring has no unit test here (`highlight` is a local passed several levels down to `SeriesChart`,
+  and `Results` has no test file); the `sourceSpan` table covers the rule, and SGS-211's page spec checks that hovering
+  a repeated row or its gutter line shades one span covering every started copy.
 - **`step-annotation.module.css`**: styles for the copy line and list (reusing existing classes is expected).
 - **`step-table.tsx`, `pages/apps/aoe4-build-order.tsx`**: expected unchanged (rows and `activeStep` already use `run.runStep`);
   confirm, and change only what the new `StepAnnotation` shape forces.
@@ -86,8 +99,10 @@ All paths under `components/apps/aoe4-build-order/` unless noted. Names follow d
   behavior (alignment length check, identity alignment, span) gets the new expected value; any other assertion keeps
   its expected value. The implementer lists every test it edits.
 - **New tests**: tables in `step-annotations.test.ts` for `combineRuns`, `sourceSpan`, `groupBySource`,
-  `copiesDetailText` and alignment with a repeated source; static-markup rows in `step-annotation.test.ts` for the
-  copy line and list (`renderToStaticMarkup`, as that file does).
+  `copiesDetailText`, `gutterDetailText` and alignment with a repeated source; static-markup rows in
+  `step-annotation.test.ts` for the copy line and list (`renderToStaticMarkup`, as that file does); a static-markup test
+  of the popover's line component (respec 1; a new `annotation-popover.test.ts` or rows in an existing file, the
+  implementer's choice).
 
 **Out of scope:** `parse-text.ts` (`xN`), the step table Repeat field and `changeAction`, any simulator, schema or
 OpenAPI change (SGS-208), a new acceptance spec (the repeated-row spec lands with the paste-and-table ticket, which can
@@ -106,9 +121,13 @@ Single-component change outside the core control loop; no diagram required.
       copy's `waitingOn`; waits with the same `text` in two copies merge into one entry with summed seconds in
       first-seen order; the summed wait reaching `LONG_WAIT_SECONDS` sets `longWait` although no single copy reached it.
       A test fails if the status takes the first or last copy instead of the least advanced.
-- [ ] Planner row 7: copy 2 `waiting` on wood and copy 3 `not-reached` with `earlier-step` combine to `not-reached` with
-      `waitingOn` `earlier-step`, and the wood wait stays in copy 2's own run (the copy list). A test fails if the combined
-      run takes the wood wait.
+- [ ] Planner row 7 (respec 2): copy 2 `waiting` on wood, with a non-empty `waitDetails` holding the wood seconds it has
+      accrued (as the simulator records for a waiting step), and copy 3 `not-reached` with `earlier-step` combine to
+      `not-reached` with `waitingOn` `earlier-step` and `waitingForText` `null`; the combined `blockedBy` ends with
+      `not reached (earlier-step)` and contains no `still waiting`. Copy 2's recorded wood seconds do appear in the merged
+      `waits` (and so in `blockedBy`'s wait list), as the merge rule says, and copy 2's own run in `copies` keeps its
+      `waiting` status and its still-waiting-for-wood text. A test fails if the combined row's selected cause is copy 2's
+      wood wait instead of copy 3's `earlier-step`.
 - [ ] Planner row 6: for a combined row whose status is `waiting`, `blockedBy` is the merged waits followed by the
       selected copy's `still waiting ...` text; for `not-reached`, the merged waits followed by `not reached (<cause>)`;
       for a combined row with all copies completed, only the merged waits. A single copy's `blockedBy` equals what it was.
@@ -134,11 +153,13 @@ Single-component change outside the core control loop; no diagram required.
       `data-testid="step-copy-list"` and a summary reading `Each copy`, and two `step-copy` items with `data-copy` 1 and 2 and the
       matching `data-status`; `step-started`, `step-finished`, `step-waited` and `step-blocked-by` each appear exactly once in the cell.
       A one-copy annotation has no `step-copies` and no `step-copy-list`.
-- [ ] Gutter: a repeated line's popover text is the combined `annotationDetailText` followed by the copy lines; an
-      unrepeated line's popover text is unchanged. The popover shows the copy lines on separate lines (a computed-style or
-      rendered-text check on the popover element, not only the text string).
-- [ ] Results highlight uses `sourceSpan`: pointing at a repeated row shades from the first copy's start to the last started
-      copy's end (the `Results` highlight prop is the `sourceSpan` value for a test result with a repeated source).
+- [ ] Gutter text (respec 1): for a repeated annotation the gutter popover text is the combined run's detail text
+      followed by one line per copy (the copy lines `copiesDetailText` gives); for an unrepeated annotation it equals the
+      combined detail text alone, with no line break; for an annotation with no run it is empty. A test fails if the copy
+      lines are missing or if an unrepeated annotation gains a line.
+- [ ] Popover lines (respec 1): a static render of the popover's line component gets one block element per line of a
+      multi-line text, each holding that line's text in order, and exactly one element for a text with no line break. A
+      test fails if the text is rendered as a single text node.
 - [ ] The existing `aoe4-step-annotations`, `aoe4-build-order-step-band` and `aoe4-editor-width` acceptance specs pass with
       their assertions unchanged (no visible change while every source has one copy).
 - [ ] The UI doc's annotation, run-cell and hover paragraphs describe the combined run, the copy list and the one shaded span, and
@@ -149,3 +170,24 @@ Single-component change outside the core control loop; no diagram required.
 ## Open questions
 
 none
+
+## Re-spec 1 - 2026-11-18
+
+- Underspecified (spec-gate 2): the gutter line-break criterion asked for a computed-style check on a portaled,
+  hover-mounted popover inside an unexported component with no acceptance spec allowed, and the `Results` highlight
+  criterion named a prop no test can reach; the draft did not check what a unit test can render or reach.
+- Changed: added `gutterDetailText` and a popover line component that renders one block element per line, with
+  criteria on each; dropped the `Results` wiring criterion (the `sourceSpan` table covers the rule, SGS-211's page spec
+  covers the shading); stated that `blockedBy` for a combined `not-reached` row follows planner row 6 over a literal
+  reading of design C5.
+- No branch exists; nothing to keep.
+
+## Re-spec 2 - 2026-11-18
+
+- Underspecified (spec-gate 4): the planner row 7 criterion said the combined run must not take copy 2's wood wait,
+  contradicting the Scope rule that merges waits by text across copies; a waiting copy's `waitDetails` already holds
+  its accrued seconds in the simulator, which the draft did not check.
+- Changed: the criterion now pins the selected cause (`waitingOn` `earlier-step`, `waitingForText` `null`, `blockedBy`
+  ending `not reached (earlier-step)` with no `still waiting`) and states that copy 2's recorded wood seconds appear in
+  the merged waits, with a fixture whose copy 2 has non-empty `waitDetails`. Scope is unchanged.
+- No branch exists; nothing to keep.

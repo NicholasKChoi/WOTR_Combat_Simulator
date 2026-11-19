@@ -26,3 +26,5 @@ pull from here; triage moves an item into a milestone or deletes it.
 - **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 
+- [follow-up SGS-209] The acceptance test "after 30 writes across the three routes" in acceptance/aoe4-named-builds-api.spec.ts does not include the rename route (renameNamedBuild); only a unit test in lib/aoe4-build-order/named-builds-routes.test.ts covers the shared write budget for it. (SGS-209 implementer report)
+- [follow-up SGS-209] acceptance/aoe4-named-builds-api-contract.spec.ts compares only example bodies, so a missing WWW-Authenticate header on the PATCH named-builds/{id} 401 is caught only by the unit test in named-builds-routes.test.ts. (SGS-209 implementer report)
