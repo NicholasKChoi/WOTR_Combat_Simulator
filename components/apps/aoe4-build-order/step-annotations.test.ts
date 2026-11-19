@@ -548,9 +548,14 @@ describe('alignment with a repeated source', () => {
     })
 
     it('gives a repeated source copies equal to its copy count and a run equal to the combined run', () => {
-        const out = buildAnnotations(input({ live: { text: shownText, duration: '600', selected: 'English 1 TC' } }))
+        const timings = [
+            copyTiming(0, 0, 1, { startedAt: 1, completedAt: 6 }),
+            copyTiming(1, 0, 2, { startedAt: 11, completedAt: 15 }),
+            copyTiming(2, 1, 1, { startedAt: 21, completedAt: 25 }),
+        ]
+        const out = buildAnnotations(runInput({ shown: { text: shownText, durationSeconds: 600, selected: 'English 1 TC' }, live: { text: shownText, duration: '600', selected: 'English 1 TC' }, liveSteps: stepsOf(A, B) }, timings))
         const first = out?.steps[0]
-        expect(first?.run).toEqual(combineRuns(first?.copies ?? []))
-        expect(first?.run?.completedAt).toBe(5)
+        expect(first?.copies).toHaveLength(2)
+        expect(first?.run).toMatchObject({ runStep: 0, startedAt: 1, completedAt: 15 })
     })
 })
