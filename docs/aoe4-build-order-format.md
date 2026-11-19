@@ -18,16 +18,20 @@ optional `trigger` and one `action`:
 |---|---|
 | `produce` | `producer`, `instance?`, `unit`, `count?` (absent = continuous), `rally?` (villager only; sets the producer's standing rally), `walkSeconds?` (only with `rally`) |
 | `pause` | `producer`, `instance?` |
-| `build` | `building`, `builders?` (default 1), `from`, `then?` (default `from`), `walkSeconds?` |
+| `build` | `building`, `builders?` (default 1), `from`, `then?` (default `from`), `walkSeconds?`, `repeat?` |
 | `research` | `tech`, `at?` (technologies and veterancy upgrades) |
-| `move` | `count` (a number or `"all"`), `from`, `to`, `walkSeconds?` |
+| `move` | `count` (a number or `"all"`), `from`, `to`, `walkSeconds?`, `repeat?` |
 | `rally` | `producer`, `instance?`, `to`, `walkSeconds?` |
+
+`repeat` (an integer 1..200; absent or 1 runs the step once) runs a `build` or `move` step that many times in a
+row; [Ordering and triggers](aoe4-build-order.md#model-rules) has the rule.
 
 A trigger is a tagged object of one of four kinds: `{ "kind": "time", "seconds": 90 }`,
 `{ "kind": "villagers", "count": 17 }`, `{ "kind": "depleted", "node": "gold" }` (`node` is a finite node
 ref: `wood`, `farm` and `gold#1` are `invalid`) or `{ "kind": "bank", "resource": "wood", "atLeast": 400 }`
 (`resource` is a `ResourceKind`). Any other `kind` is an `unknown-trigger-kind` issue. Every step also takes
-an optional `"reaction": true`, allowed only beside a `depleted` trigger (any other value is `syntax`). Gather nodes (`GatherNodeId`) are `sheep`, `berry`,
+an optional `"reaction": true`, allowed only beside a `depleted` trigger (any other value is `syntax`), and an
+optional `repeat`, valid only on `build` and `move`. Gather nodes (`GatherNodeId`) are `sheep`, `berry`,
 `deer`, `boar`, `farm`, `wood`, `gold` and `stone`. A node field takes a node ref (`NodeRef`): a gather
 node, or a numbered gold deposit `gold#2`..`gold#8` (see Node references). The paste format writes the same
 forms (see Paste format).
@@ -159,14 +163,16 @@ rules cover `start` and rally:
 - a `build` of a villager producer with no `start.rally` and no earlier `rally` or `produce` source for that
   `baseId` without `instance` (baseId-wide).
 
-These `invalid` rules cover producers and research:
+These `invalid` rules cover producers, research and repeats:
 
 - a `produce` whose `producer` is not a `producedBy` building of any entry of its `unit`
   (`produce villager from house`);
 - a `research` with `at` where `at` is not a `producedBy` building of the technology
   (`research wheelbarrow at house`); without `at` there is no check;
 - a `research` of a technology an earlier `research` step already names, with or without `at`; the issue is
-  on the later step and names the earlier one.
+  on the later step and names the earlier one;
+- `repeat` on a `produce`, `research`, `rally` or `pause` step (only `build` and `move` repeat):
+  `steps[N]: repeat on research; only build and move steps repeat`.
 
 Node refs have their own `invalid` cases (see Node references). The simulator assumes every rule above holds
 and has no runtime check for them.
@@ -175,17 +181,19 @@ Checks run in three tiers:
 
 - Field checks (type, presence, id, bound and node ref of each field) always run.
 - A step's cross-field rules (producer can produce the unit, `rally` on a non-villager, `rally` step on a
-  building with no villagers, `walkSeconds` without `rally`, research `at`) run only when that step's fields
-  passed.
-- The cross-step rules (repeated research, a villager producer built with no rally source) run only when
-  every step's fields passed.
+  building with no villagers, `walkSeconds` without `rally`, research `at`, `repeat` on an action other than
+  `build` and `move`) run only when that step's fields passed.
+- The cross-step rules (repeated research, a villager producer built with no rally source) and the expanded
+  step cap run only when every step's fields passed and the written order has at most 200 steps. The cap is
+  one `out-of-range` issue on `steps` (no `step`, no `line`) when the order has more than 200 steps after
+  repeats: `steps: 201 steps after repeats, more than 200`.
 - The `start` rules (villager sum, required `start.rally`) run only when `start`'s fields passed.
 
 So an `unknown-id` step gets no second issue, and the whole order gets one round of field issues before any
 rule issue. A step whose `action` is unknown gets only its `unknown action` issue: its other fields,
 `trigger` included, are not checked.
 
-Issues come in this order: `civ`, `name`, the step-count cap, `start` (fields, then its rules), then each
+Issues come in this order: `civ`, `name`, the step-count cap (written, or after repeats), `start` (fields, then its rules), then each
 step by index (its fields in field order with `trigger` first, then its cross-field issues), and last the
 cross-step issues by the later step's index. A cross-step issue therefore follows every step's own issues.
 
@@ -217,7 +225,7 @@ flowchart LR
 ## Route
 
 `POST /api/aoe4-build-order/simulate` (`operationId: simulateBuildOrder`) runs one simulation. The request
-is a `SimulateRequest` `{ buildOrder, inputs? }`: `buildOrder` (JSON, at most 200 steps) is required, and
+is a `SimulateRequest` `{ buildOrder, inputs? }`: `buildOrder` (JSON, at most 200 steps, written and after repeats) is required, and
 optional `inputs` is a `SimInputOverrides` whose absent fields take their defaults at any depth (`trips` per
 node, then per field; `influenceCoverage` and `nodeAmounts` per key). The paste-format `text` field was removed
 in API 2.0.0: a body with a `text` key (any value) is a 400 with one `syntax` issue
@@ -397,7 +405,9 @@ A `SimulationResult` holds:
   until it spawns, unlike the supply-check population, which counts it at payment.
 - `populationCapReachedAt`: the instant `spawnedPopulation` first reaches the population cap (`0` when the
   start already does), or `null`. It is a spawn instant, not rounded to a sample time.
-- `steps`: one `StepTiming` per step with `status`, `armedAt`, `startedAt`, `completedAt`,
+- `steps`: one `StepTiming` per step after repeats, in that order (a step with `repeat` n gives n consecutive
+  entries), with `step` (its index in this list), `source` (the index of the submitted step it copies in
+  `buildOrder.steps`), `copy` (1..n within that source; 1 for a step without `repeat`), `status`, `armedAt`, `startedAt`, `completedAt`,
   `waitSeconds`, `waitingOn`, `waitBreakdown`, `waitingFor` and `waitDetails`. `status` is one of `completed`, `in-progress`, `waiting` or
   `not-reached`. `waitingOn` is why the step has not started: `null` once it has started, the reason of its
   last failed check while `waiting`, `trigger` for a `not-reached` step whose own trigger never held (every
@@ -423,7 +433,8 @@ A `SimulationResult` holds:
   the same instant are all kept. There is no marker for the start age or for work that has not completed by
   the horizon, and markers do not affect the simulation.
 - `notes`: `BuildOrderNote`s, non-fatal, one per research step of a technology whose effects are not all
-  simulated, whether or not the step is reached, in step order: `tech-effect-ignored` (ignored combat
+  simulated, whether or not the step is reached, in step order; a note's `step` indexes `steps` (after
+  repeats): `tech-effect-ignored` (ignored combat
   properties listed) and `tech-effect-unmodeled` (empty `properties`). Every note has `severity: 'debug'`,
   and its message starts with the tech's `baseId`.
 - `depletions`: `NodeDepletion`s (`node`, `amount`, `depletedAt`), one per finite node ref the run uses, in
@@ -439,9 +450,12 @@ A `SimulationResult` holds:
   built farm, message `1 villager arrived at farm from 0:50 on with no free farm and waits idle until one is
   built.`, and one `step-stuck`
   warning (severity `warning`) for each step still `waiting` at the horizon, whose message reads `step 12
-  (build) was still waiting on prerequisite at 60:00, from 11:40.` (1-based step number; `at` is the step's
-  `armedAt`). They are sorted by `at`; at the same `at`, node warnings come first in node-ref order with
-  `node-depleted` before `idle-arrival` for one node, then `farm-idle`, then `step-stuck` by step index. See
+  (build) was still waiting on prerequisite at 60:00, from 11:40.` (the 1-based number of the submitted
+  step; `at` is the step's `armedAt`). A copy of a step with two or more copies reads `step 12 (build, copy 2
+  of 9) was still waiting on ...`; a step with one copy (no `repeat`, or `repeat: 1`) keeps the plain form.
+  The warning's `step` is the index in `steps` (after repeats). They are sorted by `at`; at the same `at`,
+  node warnings come first in node-ref order with `node-depleted` before `idle-arrival` for one node, then
+  `farm-idle`, then `step-stuck` by step index in `steps`. See
   [Severity](aoe4-build-order.md#severity).
 
 The page draws four graphs over time from it, with the chart markers (see the [page doc](aoe4-build-order-ui.md#page); the warnings are lists beside them): units produced (one

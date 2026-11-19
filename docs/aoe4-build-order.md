@@ -58,7 +58,8 @@ not a route bound.
 
 | field | type | min..max | default |
 |---|---|---|---|
-| paste text (page-side conversion) / steps | | 20,000 chars / 200 steps | |
+| paste text (page-side conversion) / steps | | 20,000 chars / 200 steps, written and after repeats | |
+| `repeat` (`build`, `move`) | int | 1..200 | once |
 | `durationSeconds` | int | 60..3600 | 1200 |
 | `Trigger.seconds` | int | 0..3600 (the largest `durationSeconds`) | |
 | `Trigger.count` (villagers) | int | 1..200 (the population cap) | |
@@ -76,8 +77,9 @@ not a route bound.
 Unknown extra properties on a build order, its `start`, its steps, their triggers and `inputs` are
 ignored. Every omitted `inputs` field takes its default at any depth: `trips` merges per node and then
 per field, and `influenceCoverage` and `nodeAmounts` per key, so `{ trips: { farm: { walkSecondsCamp: 3 } } }`
-changes only that one value and `{ nodeAmounts: { berry: 500 } }` leaves the other nodes at their defaults. A build order with more than 200 steps is one `out-of-range` issue, and its steps are not
-checked. A hole in a `steps` array (index `i` with no element) is the same `syntax` issue on step `i` as a step
+changes only that one value and `{ nodeAmounts: { berry: 500 } }` leaves the other nodes at their defaults. A build order with more than 200 written steps is one `out-of-range` issue, and its steps are not
+checked. When every step's fields pass, an order of at most 200 written steps that has more than 200 steps after
+repeats is also one `out-of-range` issue on `steps`. A hole in a `steps` array (index `i` with no element) is the same `syntax` issue on step `i` as a step
 that is not an object; only library callers can send one, since JSON cannot carry holes.
 
 The result is sampled every `sampleSeconds` = 5 seconds.
@@ -178,6 +180,13 @@ one ref each see the villagers the earlier ones left.
 At one instant, steps start (reactions first, then the rest in list order) before villagers spawn. A step armed by a spawn (a `villagers`
 trigger) starts at that instant, after the spawn. So `@T rally` routes the villager spawning at T, and
 `at N vils rally` routes villager N+1 onward.
+
+A `build` or `move` step with `repeat` N runs as N consecutive copies of the step in list order, before the
+next step. Each copy keeps the step's trigger and `reaction` and arms by the rules above, so a non-reaction
+copy re-checks its own trigger when it is reached, after the copy before it started. Copies of a `reaction`
+step all arm when their trigger holds (a `depleted` run-out arms them at that instant) and are offered in
+copy order, each seeing what the earlier copies left. The result is the same as the step written out N
+times, apart from each `steps` entry's `source` and `copy` and the `step-stuck` message.
 
 **Priority.** At most one non-reaction step is armed and not started at a time. A step waiting on
 resources reserves its cost; a reaction never reserves. A producer's order skips paying its next unit if
@@ -471,7 +480,7 @@ when infinite) and `depletedAt` (`null` when the ref is still stocked at the hor
 | `farm-idle` | `warning` | at most once per run, at the first instant a villager arrives, or starts, at `farm` with no free farm (0 for starting farmers); `idleVillagers` adds up every such villager, including those a farm takes later. Message: `3 villagers arrived at farm from 0:50 on with no free farm and wait idle until one is built.` |
 
 Warnings are sorted by `at`; at one instant node warnings come first in node-ref order, with `node-depleted`
-before `idle-arrival` for the same ref, then `farm-idle`, then `step-stuck` by step.
+before `idle-arrival` for the same ref, then `farm-idle`, then `step-stuck` by step index in the result's `steps` (after repeats).
 
 ## Severity
 

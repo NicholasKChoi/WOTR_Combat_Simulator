@@ -396,7 +396,7 @@ describe('rally scope', () => {
 
     it('completes a rally step the instant it arms', () => {
         const result = run([{ action: 'rally', producer: 'capital-town-center', to: 'wood', trigger: at(30) }])
-        expect(result.steps[0]).toEqual({ step: 0, status: 'completed', armedAt: 30, startedAt: 30, completedAt: 30, waitSeconds: 0, waitingOn: null, waitBreakdown: {}, waitingFor: null, waitDetails: [] })
+        expect(result.steps[0]).toEqual({ step: 0, source: 0, copy: 1, status: 'completed', armedAt: 30, startedAt: 30, completedAt: 30, waitSeconds: 0, waitingOn: null, waitBreakdown: {}, waitingFor: null, waitDetails: [] })
     })
 
     it('walks (walkSeconds ?? inputs.walkSeconds) / moveSpeedMultiplier', () => {
@@ -431,7 +431,7 @@ describe('switch and pause', () => {
 
     it('pauses at once, lets the paid villager spawn and pays no more', () => {
         const result = run([{ action: 'pause', producer: 'capital-town-center', trigger: at(10) }], { game: noAutoVillagers() })
-        expect(result.steps[0]).toEqual({ step: 0, status: 'completed', armedAt: 10, startedAt: 10, completedAt: 10, waitSeconds: 0, waitingOn: null, waitBreakdown: {}, waitingFor: null, waitDetails: [] })
+        expect(result.steps[0]).toEqual({ step: 0, source: 0, copy: 1, status: 'completed', armedAt: 10, startedAt: 10, completedAt: 10, waitSeconds: 0, waitingOn: null, waitBreakdown: {}, waitingFor: null, waitDetails: [] })
         expect(countAt(result, 'villager', 20)).toBe(0)
         expect(countAt(result, 'villager', 120)).toBe(0)
         const counted = run([{ action: 'produce', producer: 'capital-town-center', unit: 'villager' }, { action: 'pause', producer: 'capital-town-center', trigger: at(10) }], { game: noAutoVillagers() })

@@ -686,6 +686,8 @@
                       "steps": [
                         {
                           "step": 0,
+                          "source": 0,
+                          "copy": 1,
                           "status": "completed",
                           "armedAt": 0,
                           "startedAt": 0,
@@ -698,6 +700,8 @@
                         },
                         {
                           "step": 1,
+                          "source": 1,
+                          "copy": 1,
                           "status": "completed",
                           "armedAt": 30,
                           "startedAt": 30,
@@ -1723,6 +1727,8 @@
                       "steps": [
                         {
                           "step": 0,
+                          "source": 0,
+                          "copy": 1,
                           "status": "completed",
                           "armedAt": 0,
                           "startedAt": 0,
@@ -1735,6 +1741,8 @@
                         },
                         {
                           "step": 1,
+                          "source": 1,
+                          "copy": 1,
                           "status": "completed",
                           "armedAt": 0,
                           "startedAt": 25,
@@ -1763,6 +1771,8 @@
                         },
                         {
                           "step": 2,
+                          "source": 2,
+                          "copy": 1,
                           "status": "completed",
                           "armedAt": 37.42666666666666,
                           "startedAt": 37.42666666666666,
@@ -3921,7 +3931,7 @@
         "properties": {
           "buildOrder": {
             "$ref": "#/components/schemas/BuildOrder",
-            "description": "The build order as JSON, at most 200 steps. Issues on a step carry step and never line; issues on start carry neither."
+            "description": "The build order as JSON, at most 200 steps, counting the steps after repeats. Issues on a step carry step and never line; issues on start carry neither."
           },
           "inputs": {
             "$ref": "#/components/schemas/SimInputOverrides",
@@ -3960,7 +3970,7 @@
             "items": {
               "$ref": "#/components/schemas/BuildStep"
             },
-            "description": "The steps, at most 200. More is one out-of-range issue and no step is checked."
+            "description": "The steps, at most 200 written and at most 200 after repeats. More than 200 written is one out-of-range issue and no step is checked; more than 200 after repeats is one out-of-range issue on steps, checked only when every step's fields pass their own checks."
           }
         }
       },
@@ -4009,6 +4019,12 @@
               "reaction": {
                 "const": true,
                 "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
+              },
+              "repeat": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Run the step this many times in a row, 1..200; omitted or 1 runs it once. Only build and move steps repeat: on any other action it is an invalid issue. Each repeat is a separate copy in the result steps, and the 200-step cap counts the steps after repeats."
               },
               "producer": {
                 "type": "string",
@@ -4065,6 +4081,12 @@
                 "const": true,
                 "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
               },
+              "repeat": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Run the step this many times in a row, 1..200; omitted or 1 runs it once. Only build and move steps repeat: on any other action it is an invalid issue. Each repeat is a separate copy in the result steps, and the 200-step cap counts the steps after repeats."
+              },
               "producer": {
                 "type": "string",
                 "minLength": 1,
@@ -4108,6 +4130,12 @@
                 "const": true,
                 "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
               },
+              "repeat": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Run the step this many times in a row, 1..200; omitted or 1 runs it once. Only build and move steps repeat: on any other action it is an invalid issue. Each repeat is a separate copy in the result steps, and the 200-step cap counts the steps after repeats."
+              },
               "producer": {
                 "type": "string",
                 "minLength": 1,
@@ -4141,6 +4169,12 @@
               "reaction": {
                 "const": true,
                 "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
+              },
+              "repeat": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Run the step this many times in a row, 1..200; omitted or 1 runs it once. Only build and move steps repeat: on any other action it is an invalid issue. Each repeat is a separate copy in the result steps, and the 200-step cap counts the steps after repeats."
               },
               "building": {
                 "type": "string",
@@ -4189,6 +4223,12 @@
                 "const": true,
                 "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
               },
+              "repeat": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Run the step this many times in a row, 1..200; omitted or 1 runs it once. Only build and move steps repeat: on any other action it is an invalid issue. Each repeat is a separate copy in the result steps, and the 200-step cap counts the steps after repeats."
+              },
               "tech": {
                 "type": "string",
                 "minLength": 1,
@@ -4222,6 +4262,12 @@
               "reaction": {
                 "const": true,
                 "description": "Marks the step as a reaction: it arms as soon as its trigger holds, without waiting for earlier steps, and never delays later steps. Only a step with a depleted trigger can be a reaction; a schema cannot express that rule, so the server is authoritative and rejects any other reaction with an invalid issue."
+              },
+              "repeat": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 200,
+                "description": "Run the step this many times in a row, 1..200; omitted or 1 runs it once. Only build and move steps repeat: on any other action it is an invalid issue. Each repeat is a separate copy in the result steps, and the 200-step cap counts the steps after repeats."
               },
               "count": {
                 "oneOf": [
@@ -4812,7 +4858,7 @@
             "items": {
               "$ref": "#/components/schemas/StepTiming"
             },
-            "description": "One timing per build order step, in step order."
+            "description": "One timing per step after repeats are written out, in that order: a step with repeat n gives n consecutive entries with the same source and copy 1..n."
           },
           "ages": {
             "type": "array",
@@ -4858,7 +4904,7 @@
             "items": {
               "$ref": "#/components/schemas/SimWarning"
             },
-            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then farm-idle, then step-stuck by step. Holds node-depleted and idle-arrival warnings when a finite node runs out (see nodeAmounts), at most one farm-idle warning when villagers wait idle at farm with every built farm taken, and a step-stuck warning for each step still waiting at durationSeconds."
+            "description": "Non-fatal warnings sorted by at; at equal at, node warnings come first in node-ref order with node-depleted before idle-arrival for one ref, then farm-idle, then step-stuck by step (the index in the result steps). Holds node-depleted and idle-arrival warnings when a finite node runs out (see nodeAmounts), at most one farm-idle warning when villagers wait idle at farm with every built farm taken, and a step-stuck warning for each step still waiting at durationSeconds."
           },
           "markers": {
             "type": "array",
@@ -4946,6 +4992,8 @@
         "description": "Timing of one step at the horizon.",
         "required": [
           "step",
+          "source",
+          "copy",
           "status",
           "armedAt",
           "startedAt",
@@ -4961,7 +5009,17 @@
           "step": {
             "type": "integer",
             "minimum": 0,
-            "description": "0-based index into buildOrder.steps."
+            "description": "0-based index into the result steps, the build order with each repeat written out as consecutive copies."
+          },
+          "source": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0-based index into buildOrder.steps of the submitted step this entry is a copy of."
+          },
+          "copy": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based copy number within its source step; 1 for a step without repeat."
           },
           "status": {
             "type": "string",
@@ -5132,7 +5190,7 @@
           "step": {
             "type": "integer",
             "minimum": 0,
-            "description": "0-based index of the research step."
+            "description": "0-based index of the research step in the result steps (the order after repeats)."
           },
           "tech": {
             "type": "string",
@@ -5627,12 +5685,12 @@
               "message": {
                 "type": "string",
                 "minLength": 1,
-                "description": "Human-readable warning naming the step (1-based) and its action."
+                "description": "Human-readable warning naming the submitted step (1-based) and its action, plus \"copy k of n\" when the step has two or more copies."
               },
               "step": {
                 "type": "integer",
                 "minimum": 0,
-                "description": "0-based index of the waiting step."
+                "description": "0-based index of the waiting step in the result steps (the order after repeats)."
               },
               "waitingOn": {
                 "$ref": "#/components/schemas/StepWait",

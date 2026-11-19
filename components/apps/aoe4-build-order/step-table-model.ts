@@ -153,6 +153,7 @@ export const FIELD_LABELS: Readonly<Record<string, string>> = {
     resource: 'Resource',
     atLeast: 'At least',
     reaction: 'Every time',
+    repeat: 'Repeat',
 }
 
 export const TRIGGER_KIND_LABELS: Readonly<Record<'none' | TriggerKind, string>> = {

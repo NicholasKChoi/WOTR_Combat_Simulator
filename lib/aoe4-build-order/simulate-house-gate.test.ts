@@ -48,8 +48,8 @@ function digest(value: unknown): string {
 
 function digestTimeline(result: SimulationResult): string {
     const { spawnedPopulation, spent, populationCapReachedAt, depletions, markers } = result
-    // The wait details are left out, so the pins stay a digest of the timings alone.
-    const steps = result.steps.map(({ waitingFor, waitDetails, ...timing }) => timing)
+    // The wait details and the copy fields are left out, so the pins stay a digest of the timings alone.
+    const steps = result.steps.map(({ waitingFor, waitDetails, source, copy, ...timing }) => timing)
     return digest({ spawnedPopulation, spent, steps, populationCapReachedAt, depletions, markers })
 }
 

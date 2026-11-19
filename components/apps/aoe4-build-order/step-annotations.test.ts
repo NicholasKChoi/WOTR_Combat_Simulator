@@ -9,6 +9,8 @@ const LANDMARKS = ['kings-palace']
 function timing(step: number, overrides: Partial<StepTiming> = {}): StepTiming {
     return {
         step,
+        source: step,
+        copy: 1,
         status: 'completed',
         armedAt: 0,
         startedAt: 0,
