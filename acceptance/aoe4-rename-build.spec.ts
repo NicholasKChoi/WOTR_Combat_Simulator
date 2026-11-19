@@ -353,7 +353,7 @@ test.describe('library names', () => {
     await expect(byId(page, 'save-build')).toBeEnabled()
   })
 
-  test('choosing the build again shows the server name when the stored name is out of date', async ({ page, request, client }) => {
+  test('opening ?n= shows the server name when the stored name is out of date', async ({ page, request, client }) => {
     const created = await savedCopy(page, 'Stored name')
     const other = await request.patch(`${NAMED_BUILDS_PATH}/${created.id}`, {
       data: { name: 'Server name' },
