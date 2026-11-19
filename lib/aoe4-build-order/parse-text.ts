@@ -232,6 +232,10 @@ function parseAction(t: Tokens, { trigger, reaction }: ParsedTrigger): BuildStep
   }
   t.accept(word!);
   const step = parse(t);
+  const repeat = word === 'produce' ? null : t.optional(COUNT);
+  if (repeat) {
+    step.repeat = Number(repeat[1]);
+  }
   if (!trigger) {
     return step;
   }
@@ -318,6 +322,10 @@ export function parseBuildOrderText(text: string): ParseTextResult {
   return { ok: true, order, lines };
 }
 
+function repeatWord(step: BuildStep): string | undefined {
+  return step.repeat === undefined ? undefined : `x${step.repeat}`;
+}
+
 function words(...parts: (string | undefined)[]): string {
   return parts.filter((part) => part !== undefined).join(' ');
 }
@@ -368,7 +376,7 @@ function formatAction(step: BuildStep): string {
         walk(step.walkSeconds),
       );
     case 'pause':
-      return words('pause', ref(step.producer, step.instance));
+      return words('pause', ref(step.producer, step.instance), repeatWord(step));
     case 'build':
       return words(
         'build',
@@ -378,13 +386,14 @@ function formatAction(step: BuildStep): string {
         step.from,
         step.then === undefined ? undefined : `then ${step.then}`,
         walk(step.walkSeconds),
+        repeatWord(step),
       );
     case 'research':
-      return words('research', step.tech, step.at === undefined ? undefined : `at ${step.at}`);
+      return words('research', step.tech, step.at === undefined ? undefined : `at ${step.at}`, repeatWord(step));
     case 'move':
-      return words('move', String(step.count), step.from, 'to', step.to, walk(step.walkSeconds));
+      return words('move', String(step.count), step.from, 'to', step.to, walk(step.walkSeconds), repeatWord(step));
     case 'rally':
-      return words('rally', ref(step.producer, step.instance), '->', step.to, walk(step.walkSeconds));
+      return words('rally', ref(step.producer, step.instance), '->', step.to, walk(step.walkSeconds), repeatWord(step));
     default:
       return String((step as { action?: unknown }).action);
   }

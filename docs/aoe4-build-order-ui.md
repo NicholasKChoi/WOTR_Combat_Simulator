@@ -64,8 +64,9 @@ The page keeps one `text` state, and the step table is a view of it. The table r
 the fields of that action under readable labels (Building, Rally to, Walk time (s), ...), a reaction checkbox
 while the trigger is `depleted`, and icon buttons to move the row up or down or delete it, plus an add
 button that appends `produce villager from <first villager producer>`. A field the step may omit (`instance`,
-`count`, `rally`, `walkSeconds`, `builders`, `then`, `at`, depending on the action) sits behind a per-row More
-control. The page keeps one open flag per step row, so the flags outlive the table:
+`count`, `rally`, `walkSeconds`, `builders`, `then`, `at`, and `repeat` on build and move, depending on the
+action) sits behind a per-row More control. Changing a row's action to build or move keeps its Repeat
+value; changing it to another action drops it. The page keeps one open flag per step row, so the flags outlive the table:
 
 - A row with no flag yet starts open where the step sets one of those fields.
 - Moving a row swaps the two rows' flags.
