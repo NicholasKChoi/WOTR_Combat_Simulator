@@ -2,13 +2,13 @@ import cn from 'classnames'
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
 
 import type { CreateNamedBuildResponse, UpdateNamedBuildResponse } from '../../../lib/aoe4-build-order/named-builds'
-import { SAVED_NAME_MAX_CHARS } from '../../../lib/aoe4-build-order/saved-builds'
 import type { TextToBuildResult } from '../../../lib/aoe4-build-order/text-to-build'
 import { type AutoRunStatus, type LiveInput, sameInput } from './auto-run'
 import { browserStorage } from './browser-storage'
 import { copyName, entryKey, type LibraryEntry } from './build-library'
 import { type MyBuildEntry, myBuildsAvailable, upsertMyBuild } from './my-builds-storage'
-import { createNamedBuild, type NamedSaveFailure, updateNamedBuild } from './named-build-client'
+import { NameForm } from './name-form'
+import { createNamedBuild, type NamedSaveFailure, renameNamedBuild, updateNamedBuild } from './named-build-client'
 import styles from './workbench.module.css'
 
 interface SaveBuildProps {
@@ -21,12 +21,13 @@ interface SaveBuildProps {
     edited: boolean
     onCreated: (response: CreateNamedBuildResponse, input: LiveInput, name: string) => void
     onUpdated: (response: UpdateNamedBuildResponse, input: LiveInput) => void
+    onRenamed: (response: UpdateNamedBuildResponse, name: string) => void
 }
 
 type CopyState = 'idle' | 'copied' | 'failed'
 type SaveOutcome<R> = { ok: true; response: R } | NamedSaveFailure
 
-export type Saver = 'copy' | 'version'
+export type Saver = 'copy' | 'version' | 'rename'
 
 export interface SavedStatus {
     input: LiveInput
@@ -41,13 +42,7 @@ interface Lock {
     revision: number
 }
 
-const NAME_ERROR_ID = 'save-copy-name-error'
 const UNSTORED_TEXT = 'This browser could not store the edit key, so you can edit this build only until you close the page.'
-
-function validName(name: string): boolean {
-    const length = name.trim().length
-    return length >= 1 && length <= SAVED_NAME_MAX_CHARS
-}
 
 function remember(entry: MyBuildEntry): boolean {
     const storage = browserStorage()
@@ -56,12 +51,13 @@ function remember(entry: MyBuildEntry): boolean {
 
 export function saveStatusText(saved: SavedStatus | null, settled: LiveInput, saving: boolean): string {
     if (saving || saved === null || !sameInput(saved.input, settled)) return ''
+    if (saved.by === 'rename') return 'Renamed'
     return saved.by === 'version' ? `Saved version ${saved.revision}` : 'Saved'
 }
 
-export function SaveBuild({ status, settled, conversion, busy, entry, editSecret, edited, onCreated, onUpdated }: SaveBuildProps) {
+export function SaveBuild({ status, settled, conversion, busy, entry, editSecret, edited, onCreated, onUpdated, onRenamed }: SaveBuildProps) {
     const [saving, setSaving] = useState(false)
-    const [form, setForm] = useState<{ name: string; key: string | undefined } | null>(null)
+    const [form, setForm] = useState<{ kind: 'copy' | 'rename'; key: string | undefined } | null>(null)
     const [saved, setSaved] = useState<Saved | null>(null)
     const [error, setError] = useState<{ message: string; input: LiveInput } | null>(null)
     const [unstored, setUnstored] = useState<LiveInput | null>(null)
@@ -71,6 +67,7 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
     const mounted = useRef(true)
     const abort = useRef<AbortController | null>(null)
     const versionButton = useRef<HTMLButtonElement>(null)
+    const renameButton = useRef<HTMLButtonElement>(null)
     const copyButton = useRef<HTMLButtonElement>(null)
     const nameInput = useRef<HTMLInputElement>(null)
     const linkInput = useRef<HTMLInputElement>(null)
@@ -109,17 +106,11 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
         linkInput.current?.select()
     }, [saved])
 
-    useEffect(() => {
-        if (!formOpen) return
-        nameInput.current?.focus()
-        nameInput.current?.select()
-    }, [formOpen])
-
     const canSave = status === 'current' && conversion.ok && !busy && !saving
     const showVersion = entry?.kind === 'mine' && editSecret !== null
     const canSaveVersion = canSave && edited && !locked
-    const nameOk = form !== null && validName(form.name)
-    const canSubmit = canSave && nameOk
+    const renameRevision = entry?.loaded?.revision
+    const canRename = showVersion && !busy && !saving && !locked && typeof renameRevision === 'number'
 
     // Resolves to the outcome and whether the settled input is still the one sent, or null when the
     // request was aborted or the panel unmounted, in which case nothing may change.
@@ -154,9 +145,8 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
         setError({ message: failure.message, input })
     }
 
-    async function submitCopy() {
-        if (!canSubmit || !conversion.ok || form === null || abort.current !== null) return
-        const name = form.name.trim()
+    async function submitCopy(name: string) {
+        if (!canSave || !conversion.ok || abort.current !== null) return
         const input = settled
         const order = { ...conversion.order, name }
         setForm(null)
@@ -173,6 +163,29 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
         onCreated(response, input, name)
     }
 
+    // Sends a write to one of My builds and records its answer: a conflict locks the build, a failure
+    // shows its message, and a success stores the new revision. Resolves to the response only on success.
+    async function writeMine(
+        by: 'version' | 'rename',
+        target: { id: string; key: string; name: string; editSecret: string; revision: number },
+        request: (signal: AbortSignal) => Promise<SaveOutcome<UpdateNamedBuildResponse>>,
+    ): Promise<UpdateNamedBuildResponse | null> {
+        const { id, key, name, editSecret, revision } = target
+        const input = settled
+        const sent = await send(input, request)
+        if (sent === null) return null
+        const { outcome, current } = sent
+        if (!outcome.ok) {
+            if (outcome.kind === 'conflict') setLock({ key, revision })
+            showFailure(outcome, input, current)
+            return null
+        }
+        const { response } = outcome
+        const persisted = remember({ id, name, editSecret, revision: response.revision, updatedAt: response.updatedAt })
+        showSuccess(response.path, input, by, response.revision, persisted, current)
+        return response
+    }
+
     async function saveVersion() {
         if (!canSaveVersion || !conversion.ok || entry?.kind !== 'mine' || entry.id === null || editSecret === null || abort.current !== null) return
         const revision = entry.loaded?.revision
@@ -180,37 +193,34 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
         const { id, key, name } = entry
         const input = settled
         const order = { ...conversion.order, name }
-        const sent = await send(input, (signal) => updateNamedBuild(id, editSecret, revision, { buildOrder: order, durationSeconds: Number(input.duration) }, signal))
-        if (sent === null) return
-        const { outcome, current } = sent
-        if (!outcome.ok) {
-            if (outcome.kind === 'conflict') setLock({ key, revision })
-            showFailure(outcome, input, current)
-            return
-        }
-        const { response } = outcome
-        const persisted = remember({ id, name, editSecret, revision: response.revision, updatedAt: response.updatedAt })
-        showSuccess(response.path, input, 'version', response.revision, persisted, current)
-        onUpdated(response, input)
+        const body = { buildOrder: order, durationSeconds: Number(input.duration) }
+        const response = await writeMine('version', { id, key, name, editSecret, revision }, (signal) => updateNamedBuild(id, editSecret, revision, body, signal))
+        if (response !== null) onUpdated(response, input)
     }
 
-    function openForm() {
-        if (formOpen) {
+    async function submitRename(name: string) {
+        if (!canRename || entry?.kind !== 'mine' || entry.id === null || editSecret === null || abort.current !== null) return
+        const revision = entry.loaded?.revision
+        if (typeof revision !== 'number') return
+        const { id, key } = entry
+        setForm(null)
+        const response = await writeMine('rename', { id, key, name, editSecret, revision }, (signal) => renameNamedBuild(id, editSecret, revision, name, signal))
+        if (response !== null) onRenamed(response, name)
+    }
+
+    function openForm(kind: 'copy' | 'rename') {
+        if (form?.kind === kind && formOpen) {
             nameInput.current?.focus()
             return
         }
-        setForm({ name: copyName(entry?.name ?? 'Custom build'), key: entry?.key })
+        setForm({ kind, key: entry?.key })
     }
 
     function closeForm() {
+        const kind = form?.kind
         setForm(null)
-        copyButton.current?.focus()
-    }
-
-    function onNameKey(e: KeyboardEvent<HTMLInputElement>) {
-        if (e.key !== 'Enter') return
-        e.preventDefault()
-        void submitCopy()
+        if (kind === 'rename') renameButton.current?.focus()
+        else copyButton.current?.focus()
     }
 
     async function copyLink() {
@@ -229,7 +239,7 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
         const by = saved?.by
         setSaved(null)
         setCopy('idle')
-        const saver = by === 'version' ? versionButton.current : copyButton.current
+        const saver = by === 'rename' ? renameButton.current : by === 'version' ? versionButton.current : copyButton.current
         if (saver !== null && !saver.disabled) saver.focus()
         else copyButton.current?.focus()
     }
@@ -256,6 +266,18 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
                         Save a new version
                     </button>
                 ) : null}
+                {showVersion ? (
+                    <button
+                        ref={renameButton}
+                        type="button"
+                        data-testid="rename-build"
+                        className={cn('btn btn-outline-primary', styles.saveButton)}
+                        disabled={!canRename}
+                        onClick={() => openForm('rename')}
+                    >
+                        Rename
+                    </button>
+                ) : null}
                 <button
                     ref={copyButton}
                     type="button"
@@ -263,7 +285,7 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
                     className={cn('btn btn-outline-primary', styles.saveButton)}
                     disabled={!canSave}
                     aria-busy={busy ? 'true' : undefined}
-                    onClick={openForm}
+                    onClick={() => openForm('copy')}
                 >
                     Save as copy
                 </button>
@@ -288,44 +310,30 @@ export function SaveBuild({ status, settled, conversion, busy, entry, editSecret
                     </>
                 ) : null}
             </div>
-            {formOpen ? (
-                <div
-                    role="group"
-                    aria-label="Save as copy"
-                    data-testid="save-copy-form"
-                    className={styles.copyForm}
-                    onKeyDown={(e) => {
-                        if (e.key !== 'Escape') return
-                        e.preventDefault()
-                        closeForm()
-                    }}
-                >
-                    <div className={styles.copyNameField}>
-                        <input
-                            ref={nameInput}
-                            type="text"
-                            data-testid="save-copy-name"
-                            aria-label="Name of the copy"
-                            className={cn('form-control', !nameOk && 'is-invalid')}
-                            value={form.name}
-                            aria-invalid={nameOk ? undefined : 'true'}
-                            aria-describedby={nameOk ? undefined : NAME_ERROR_ID}
-                            onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            onKeyDown={onNameKey}
-                        />
-                        {nameOk ? null : (
-                            <div id={NAME_ERROR_ID} data-testid="save-copy-name-error" className="invalid-feedback">
-                                {`Enter a name of 1 to ${SAVED_NAME_MAX_CHARS} characters.`}
-                            </div>
-                        )}
-                    </div>
-                    <button type="button" data-testid="save-copy-submit" className="btn btn-primary" disabled={!canSubmit} onClick={submitCopy}>
-                        Save copy
-                    </button>
-                    <button type="button" data-testid="save-copy-cancel" className="btn btn-outline-secondary" onClick={closeForm}>
-                        Cancel
-                    </button>
-                </div>
+            {formOpen && form?.kind === 'copy' ? (
+                <NameForm
+                    testIdPrefix="save-copy"
+                    label="Name of the copy"
+                    submitText="Save copy"
+                    initialName={copyName(entry?.name ?? 'Custom build')}
+                    canSubmit={canSave}
+                    onSubmit={submitCopy}
+                    onCancel={closeForm}
+                    inputRef={nameInput}
+                />
+            ) : null}
+            {formOpen && form?.kind === 'rename' && showVersion ? (
+                <NameForm
+                    testIdPrefix="rename"
+                    label="New name"
+                    submitText="Save name"
+                    initialName={entry?.name ?? ''}
+                    unchangedName={entry?.name}
+                    canSubmit={canRename}
+                    onSubmit={submitRename}
+                    onCancel={closeForm}
+                    inputRef={nameInput}
+                />
             ) : null}
             {copy === 'failed' && linkVisible ? (
                 <p data-testid="copy-saved-link-hint" className={styles.linkHint}>

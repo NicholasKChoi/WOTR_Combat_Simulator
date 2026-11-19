@@ -18,7 +18,7 @@ const test = gatedTest('aoe4-save-status')
 
 const WIDE = { width: 1280, height: 800 }
 
-const LINK_ROW = ['save-build', 'save-build-copy', 'save-status', 'saved-build-link', 'copy-saved-link']
+const LINK_ROW = ['save-build', 'rename-build', 'save-build-copy', 'save-status', 'saved-build-link', 'copy-saved-link']
 
 const byId = (page: Page, id: string) => page.getByTestId(id)
 const textOf = (n: number) => ['start -> sheep', ...Array<string>(n).fill('produce spearman from barracks')].join('\n')
@@ -174,8 +174,8 @@ test.describe('layout', () => {
     await expect
       .poll(async () => {
         const { row, items, overflow } = await rects(page)
-        const [version, copy, status, link, copyLink] = items
-        const tops = [version, copy, link, copyLink].map((item) => item!.top)
+        const [version, rename, copy, status, link, copyLink] = items
+        const tops = [version, rename, copy, link, copyLink].map((item) => item!.top)
         return {
           aligned: Math.max(...tops) - Math.min(...tops) <= 2,
           statusOnLine: status!.top < copy!.bottom && status!.bottom > copy!.top,
@@ -192,7 +192,7 @@ test.describe('layout', () => {
     test('the empty status adds no height to the row before a save', async ({ page }) => {
       await openPage(page)
       const { row, items } = await rects(page)
-      expect(Math.abs(row!.height - items[1]!.height)).toBeLessThanOrEqual(2)
+      expect(Math.abs(row!.height - items[2]!.height)).toBeLessThanOrEqual(2)
     })
 
     test('the buttons, status, link and Copy link share one line', async ({ page }) => {

@@ -299,13 +299,13 @@ test.describe('opening ?n=', () => {
     expect(page.url()).toMatch(new RegExp(`\\?n=${SHARED_ID}$`))
   })
 
-  test('an id in My builds opens under My builds with its stored name', async ({ page }) => {
+  test('an id in My builds opens under My builds with the name the server returns', async ({ page }) => {
     await seedTwo(page)
     await page.route(isNamedUrl, (route) => fulfillJson(route, 200, namedBody(NEWER_ID, 'Name on the server')))
     await page.goto(`${AOE4_PAGE}?n=${NEWER_ID}`)
     await expect(status(page)).toHaveAttribute('data-status', 'current')
-    await expect(checkedOption(page)).toHaveText(NEWER.name)
-    await expect(groupOptions(page, 'My builds')).toHaveText([NEWER.name, OLDER.name])
+    await expect(checkedOption(page)).toHaveText('Name on the server')
+    await expect(groupOptions(page, 'My builds')).toHaveText(['Name on the server', OLDER.name])
     await expect(groupOptions(page, 'Opened links')).toHaveCount(0)
     await expect(textarea(page)).toHaveValue(REMOTE_FORMATTED)
   })
@@ -447,7 +447,7 @@ test.describe('choosing a My builds entry', () => {
 
     gate.open()
     await expect(textarea(page)).toHaveValue(REMOTE_FORMATTED)
-    await expect(checkedOption(page)).toHaveText(OLDER.name)
+    await expect(checkedOption(page)).toHaveText(CHOSEN_NAME)
     await expect(duration(page)).toHaveValue('900')
     await expect(select(page)).toBeEnabled()
     await expect(status(page)).toHaveAttribute('data-status', 'current')

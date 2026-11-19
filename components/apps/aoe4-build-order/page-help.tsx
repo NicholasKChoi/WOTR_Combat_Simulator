@@ -119,7 +119,7 @@ export function PageHelp() {
                     <HelpSection id="help-save" title="Save and links">
                         <p>
                             Save as copy stores the shown build under a name in My builds and gives a link you can copy and share. Save a new version replaces one
-                            of your own saved builds. Opening a link loads that build; choosing a template or one of My builds loads it in place.
+                            of your own saved builds, and Rename changes its name. Opening a link loads that build; choosing a template or one of My builds loads it in place.
                         </p>
                     </HelpSection>
                 </div>
