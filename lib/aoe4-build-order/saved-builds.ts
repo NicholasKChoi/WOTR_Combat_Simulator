@@ -93,9 +93,9 @@ function durationIssue(value: unknown): BuildOrderIssue | undefined {
   return problem === undefined ? undefined : { code: 'out-of-range', message: `durationSeconds: ${problem}` };
 }
 
-function nameIssue(order: BuildOrder): BuildOrderIssue | undefined {
-  if (order.name.length <= SAVED_NAME_MAX_CHARS) return undefined;
-  return { code: 'out-of-range', message: `name: ${order.name.length} characters, more than ${SAVED_NAME_MAX_CHARS}` };
+export function nameLengthIssue(name: string): BuildOrderIssue | undefined {
+  if (name.length <= SAVED_NAME_MAX_CHARS) return undefined;
+  return { code: 'out-of-range', message: `name: ${name.length} characters, more than ${SAVED_NAME_MAX_CHARS}` };
 }
 
 function sortedKeys(_key: string, value: unknown): unknown {
@@ -119,7 +119,7 @@ export function checkSaveBuildRequest(body: unknown, catalog: BuildOrderCatalog)
   const found = checked.ok ? [] : checked.issues;
   const duration = durationIssue(body.durationSeconds);
   if (duration !== undefined) found.push(duration);
-  const name = checked.ok ? nameIssue(checked.order) : undefined;
+  const name = checked.ok ? nameLengthIssue(checked.order.name) : undefined;
   if (name !== undefined) found.push(name);
   if (found.length > 0 || !checked.ok) return badRequest(found);
 

@@ -1,7 +1,7 @@
-// Create, read, update and delete for named (editable) builds. The order of the checks is the contract: the first
-// failing check answers, and an update takes its rate-limit slot before the edit secret is compared.
+// Create, read, update, rename and delete for named (editable) builds. The order of the checks is the contract: the first
+// failing check answers, and an update or rename takes its rate-limit slot before the edit secret is compared.
 import type { BuildsError, SimulateError } from './api';
-import { methodNotAllowed, type RouteReply } from './api-route';
+import { isPlainObject, issuesError, methodNotAllowed, notAnObjectError, type RouteReply } from './api-route';
 import type { BuildStore } from './build-store';
 import { disallowedMethod, errorReply, idFailure, refusedSaveSlot, storageUnavailable, type StoreGetter } from './builds-routes';
 import {
@@ -19,10 +19,11 @@ import {
   type CreateNamedBuildResponse,
   type NamedBuild,
   type RandomBytes,
+  type RenameNamedBuildRequest,
   type StoredNamedBuild,
   type UpdateNamedBuildResponse,
 } from './named-builds';
-import { checkSaveBuildRequest } from './saved-builds';
+import { checkSaveBuildRequest, nameLengthIssue } from './saved-builds';
 import type { BuildOrderCatalog } from './schema';
 
 type StoredRead = { ok: true; stored: StoredNamedBuild; etag: string } | { ok: false; reply: RouteReply<BuildsError> };
@@ -91,31 +92,28 @@ async function readNamedBuild(store: BuildStore, id: string): Promise<RouteReply
   };
 }
 
-async function updateNamedBuild(
-  req: { id: string; body: unknown; authorization: string | undefined; ifMatch: string | undefined; clientKey: string },
-  deps: { store: StoreGetter; catalog: BuildOrderCatalog; nowMs: number },
-): Promise<RouteReply<UpdateNamedBuildResponse | BuildsError | SimulateError>> {
-  const secret = parseEditSecret(req.authorization);
-  if (secret === null) return errorReply(401, 'an edit secret is required', { 'WWW-Authenticate': 'Bearer' });
-  const revision = parseIfMatchRevision(req.ifMatch);
-  if (revision === null) return errorReply(428, 'If-Match with the current revision is required');
-  const checked = checkSaveBuildRequest(req.body, deps.catalog);
-  if (!checked.ok) return { status: checked.status, body: checked.error };
+type WriteRequest = { id: string; secret: string; revision: number; clientKey: string };
 
+/** Writes the next revision for PUT and PATCH once their request checks pass: slot, read, secret, revision, then a compare-and-swap. */
+async function writeNextRevision(
+  req: WriteRequest,
+  deps: { store: StoreGetter; nowMs: number },
+  change: (stored: StoredNamedBuild) => Partial<StoredNamedBuild>,
+): Promise<RouteReply<UpdateNamedBuildResponse | BuildsError>> {
   try {
     const store = await deps.store();
     const refused = await refusedSaveSlot(store, req.clientKey, deps.nowMs);
     if (refused) return refused;
     const read = await readStored(store, req.id);
     if (!read.ok) return read.reply;
-    if (!sameSecretHash(await editSecretHash(secret), read.stored.secretHash)) return errorReply(403, 'the edit secret does not match');
-    if (revision !== read.stored.revision) {
-      console.error('builds: named build revision mismatch', { id: req.id, ifMatch: revision, stored: read.stored.revision });
+    if (!sameSecretHash(await editSecretHash(req.secret), read.stored.secretHash)) return errorReply(403, 'the edit secret does not match');
+    if (req.revision !== read.stored.revision) {
+      console.error('builds: named build revision mismatch', { id: req.id, ifMatch: req.revision, stored: read.stored.revision });
       return changed();
     }
 
     const updatedAt = new Date(deps.nowMs).toISOString();
-    const next: StoredNamedBuild = { ...read.stored, ...checked.record, revision: read.stored.revision + 1, updatedAt };
+    const next: StoredNamedBuild = { ...read.stored, ...change(read.stored), revision: read.stored.revision + 1, updatedAt };
     if ((await store.replaceNamed(req.id, JSON.stringify(next), read.etag)) === 'conflict') {
       console.error('builds: named build store etag conflict', { id: req.id, revision: read.stored.revision });
       return changed();
@@ -130,15 +128,63 @@ async function updateNamedBuild(
   }
 }
 
-/** Handles GET and PUT of /named-builds/{id}, and DELETE outside production (Named builds routes). */
+type WriteCredentials = { ok: true; secret: string; revision: number } | { ok: false; reply: RouteReply<BuildsError> };
+
+function checkWriteCredentials(req: { authorization: string | undefined; ifMatch: string | undefined }): WriteCredentials {
+  const secret = parseEditSecret(req.authorization);
+  if (secret === null) return { ok: false, reply: errorReply(401, 'an edit secret is required', { 'WWW-Authenticate': 'Bearer' }) };
+  const revision = parseIfMatchRevision(req.ifMatch);
+  if (revision === null) return { ok: false, reply: errorReply(428, 'If-Match with the current revision is required') };
+  return { ok: true, secret, revision };
+}
+
+async function updateNamedBuild(
+  req: { id: string; body: unknown; authorization: string | undefined; ifMatch: string | undefined; clientKey: string },
+  deps: { store: StoreGetter; catalog: BuildOrderCatalog; nowMs: number },
+): Promise<RouteReply<UpdateNamedBuildResponse | BuildsError | SimulateError>> {
+  const credentials = checkWriteCredentials(req);
+  if (!credentials.ok) return credentials.reply;
+  const checked = checkSaveBuildRequest(req.body, deps.catalog);
+  if (!checked.ok) return { status: checked.status, body: checked.error };
+  return writeNextRevision({ id: req.id, secret: credentials.secret, revision: credentials.revision, clientKey: req.clientKey }, deps, () => checked.record);
+}
+
+type NameCheck = { ok: true; name: string } | { ok: false; error: SimulateError };
+
+function checkRenameRequest(body: unknown): NameCheck {
+  if (!isPlainObject(body)) return { ok: false, error: notAnObjectError() };
+  const { name } = body as Partial<RenameNamedBuildRequest>;
+  if (typeof name !== 'string') return { ok: false, error: issuesError([{ code: 'syntax', message: 'name: must be a string' }]) };
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return { ok: false, error: issuesError([{ code: 'out-of-range', message: 'name: must not be empty' }]) };
+  const tooLong = nameLengthIssue(trimmed);
+  if (tooLong !== undefined) return { ok: false, error: issuesError([tooLong]) };
+  return { ok: true, name: trimmed };
+}
+
+async function renameNamedBuild(
+  req: { id: string; body: unknown; authorization: string | undefined; ifMatch: string | undefined; clientKey: string },
+  deps: { store: StoreGetter; nowMs: number },
+): Promise<RouteReply<UpdateNamedBuildResponse | BuildsError | SimulateError>> {
+  const credentials = checkWriteCredentials(req);
+  if (!credentials.ok) return credentials.reply;
+  const checked = checkRenameRequest(req.body);
+  if (!checked.ok) return { status: 400, body: checked.error };
+  return writeNextRevision({ id: req.id, secret: credentials.secret, revision: credentials.revision, clientKey: req.clientKey }, deps, (stored) => ({
+    buildOrder: { ...stored.buildOrder, name: checked.name },
+  }));
+}
+
+/** Handles GET, PUT and PATCH (rename) of /named-builds/{id}, and DELETE outside production (Named builds routes). */
 export async function namedBuildReply(
   req: { method: string | undefined; id: unknown; body: unknown; authorization: string | undefined; ifMatch: string | undefined; clientKey: string },
   deps: { store: StoreGetter; catalog: BuildOrderCatalog; env: string | null; nowMs: number },
 ): Promise<RouteReply<NamedBuild | UpdateNamedBuildResponse | BuildsError | SimulateError>> {
-  const disallowed = disallowedMethod(req.method, ['GET', 'PUT'], deps.env);
+  const disallowed = disallowedMethod(req.method, ['GET', 'PUT', 'PATCH'], deps.env);
   if (disallowed) return disallowed;
   if (!isNamedBuildId(req.id)) return notFound();
   if (req.method === 'PUT') return updateNamedBuild({ ...req, id: req.id }, deps);
+  if (req.method === 'PATCH') return renameNamedBuild({ ...req, id: req.id }, deps);
 
   try {
     const store = await deps.store();

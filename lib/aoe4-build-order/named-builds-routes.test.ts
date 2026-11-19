@@ -13,7 +13,7 @@ import {
 import { createNamedBuildReply, namedBuildReply } from './named-builds-routes'
 import { INVALID_SAVE_BODIES, getterFor, recordingTarget, rejectingGetter, withBroken } from './route-test-support'
 import { SAVE_RATE_LIMIT } from './save-rate-limit'
-import { checkSaveBuildRequest } from './saved-builds'
+import { checkSaveBuildRequest, SAVED_NAME_MAX_CHARS } from './saved-builds'
 import { buildOrderCatalog } from './schema'
 import { ENGLISH } from './test-helpers'
 
@@ -122,6 +122,16 @@ async function created(store: BuildStore, options: { clientKey?: string } = {}) 
 
 async function storedValue(store: BuildStore, id: string) {
     return (await store.getNamed(id))?.value as Record<string, unknown>
+}
+
+// A store where another write to the build lands between the route's read and its replace.
+async function racedStore(inner: BuildStore, id: string) {
+    const competitor = { ...(await storedValue(inner, id)), revision: 2, buildOrder: RENAMED.buildOrder }
+    const replaceNamed = vi.fn(async (key: string, json: string, etag: string) => {
+        await inner.replaceNamed(key, JSON.stringify(competitor), etag)
+        return inner.replaceNamed(key, json, etag)
+    })
+    return { store: withBroken(inner, { replaceNamed }), replaceNamed, competitor }
 }
 
 async function exhaust(store: BuildStore, clientKey = 'client') {
@@ -239,16 +249,16 @@ describe('createNamedBuildReply, created', () => {
 
 describe('namedBuildReply, methods', () => {
     it.each([
-        ['development', 'GET, PUT, DELETE', 'GET or PUT or DELETE'],
-        ['preview', 'GET, PUT, DELETE', 'GET or PUT or DELETE'],
-        ['production', 'GET, PUT', 'GET or PUT'],
-        [null, 'GET, PUT', 'GET or PUT'],
-    ])('answers 405 for PATCH in %s with Allow: %s and never asks for the store', async (env, allow, listed) => {
+        ['development', 'GET, PUT, PATCH, DELETE', 'GET or PUT or PATCH or DELETE'],
+        ['preview', 'GET, PUT, PATCH, DELETE', 'GET or PUT or PATCH or DELETE'],
+        ['production', 'GET, PUT, PATCH', 'GET or PUT or PATCH'],
+        [null, 'GET, PUT, PATCH', 'GET or PUT or PATCH'],
+    ])('answers 405 for POST in %s with Allow: %s and never asks for the store', async (env, allow, listed) => {
         const getter = getterFor(createMemoryBuildStore())
-        expect(await named(getter, ID, { method: 'PATCH', env })).toStrictEqual({
+        expect(await named(getter, ID, { method: 'POST', env })).toStrictEqual({
             status: 405,
             headers: { Allow: allow },
-            body: { error: `method PATCH is not allowed; use ${listed}` },
+            body: { error: `method POST is not allowed; use ${listed}` },
         })
         expect(getter).not.toHaveBeenCalled()
     })
@@ -259,11 +269,24 @@ describe('namedBuildReply, methods', () => {
         const deleteNamed = vi.spyOn(store, 'deleteNamed')
         expect(await named(store, id, { method: 'DELETE', env })).toStrictEqual({
             status: 405,
-            headers: { Allow: 'GET, PUT' },
-            body: { error: 'method DELETE is not allowed; use GET or PUT' },
+            headers: { Allow: 'GET, PUT, PATCH' },
+            body: { error: 'method DELETE is not allowed; use GET or PUT or PATCH' },
         })
         expect(deleteNamed).not.toHaveBeenCalled()
         expect((await named(store, id, { env })).status).toBe(200)
+    })
+
+    it.each([
+        ['POST', 'development', 'GET, PUT, PATCH, DELETE', 'GET or PUT or PATCH or DELETE'],
+        ['DELETE', 'production', 'GET, PUT, PATCH', 'GET or PUT or PATCH'],
+    ])('answers 405 for %s in %s on a malformed id before the id form is checked', async (method, env, allow, listed) => {
+        const getter = getterFor(createMemoryBuildStore())
+        expect(await named(getter, 'AbCdEfGhIjK', { method, env })).toStrictEqual({
+            status: 405,
+            headers: { Allow: allow },
+            body: { error: `method ${method} is not allowed; use ${listed}` },
+        })
+        expect(getter).not.toHaveBeenCalled()
     })
 
     it('answers 405 for a missing method', async () => {
@@ -271,7 +294,7 @@ describe('namedBuildReply, methods', () => {
     })
 })
 
-describe.each(['GET', 'PUT', 'DELETE'])('namedBuildReply, %s with an invalid id', (method) => {
+describe.each(['GET', 'PUT', 'PATCH', 'DELETE'])('namedBuildReply, %s with an invalid id', (method) => {
     it.each([
         ['a 21-character id', ID.slice(1)],
         ['a saved-build id', 'AbCdEfGhIjK'],
@@ -383,14 +406,10 @@ describe('namedBuildReply, PUT store rows', () => {
     it('answers 412 when another write lands between the read and the swap, and keeps that write', async () => {
         const inner = createMemoryBuildStore()
         const { id, editSecret } = await created(inner)
-        const competitor = JSON.stringify({ ...(await storedValue(inner, id)), revision: 2, buildOrder: RENAMED.buildOrder })
-        const replaceNamed = vi.fn(async (key: string, json: string, etag: string) => {
-            await inner.replaceNamed(key, competitor, etag)
-            return inner.replaceNamed(key, json, etag)
-        })
-        expect(await put(withBroken(inner, { replaceNamed }), id, editSecret)).toStrictEqual(CHANGED)
+        const { store, replaceNamed, competitor } = await racedStore(inner, id)
+        expect(await put(store, id, editSecret)).toStrictEqual(CHANGED)
         expect(replaceNamed).toHaveBeenCalledOnce()
-        expect(await storedValue(inner, id)).toStrictEqual(JSON.parse(competitor))
+        expect(await storedValue(inner, id)).toStrictEqual(competitor)
     })
 
     it.each(['getNamed', 'bumpCounter'] as const)('answers 503, not 412, and logs it when %s rejects a weak etag', async (method) => {
@@ -501,6 +520,189 @@ describe('namedBuildReply, PUT slot accounting', () => {
         expect((await put(counted_, id, editSecret, options)).status).toBe(status)
         expect(counter()).toBe(1)
         expect(counted_.bumpCounter).toHaveBeenCalledOnce()
+    })
+})
+
+function patch(store: StoreOrGetter, id: unknown, secret: string, options: NamedOptions = {}) {
+    return named(store, id, { authorization: bearer(secret), ifMatch: '"1"', nowMs: LATER, body: { name: 'New name' }, ...options, method: 'PATCH' })
+}
+
+const NAME_SYNTAX = {
+    error: 'name: must be a string',
+    issues: [{ code: 'syntax', message: 'name: must be a string' }],
+}
+
+describe('namedBuildReply, PATCH before any store call', () => {
+    it('answers 401 with WWW-Authenticate: Bearer for a malformed Authorization, before the body and any slot', async () => {
+        const { store } = countingStore()
+        const getter = getterFor(store)
+        expect(await named(getter, ID, { method: 'PATCH', authorization: `Basic ${WRONG_SECRET}`, ifMatch: 'junk', body: [] })).toStrictEqual({
+            status: 401,
+            headers: { 'WWW-Authenticate': 'Bearer' },
+            body: { error: 'an edit secret is required' },
+        })
+        expect(getter).not.toHaveBeenCalled()
+        expect(store.bumpCounter).not.toHaveBeenCalled()
+    })
+
+    it('answers 428 for a malformed If-Match, before the body and any slot', async () => {
+        const { store } = countingStore()
+        const getter = getterFor(store)
+        expect(await patch(getter, ID, WRONG_SECRET, { ifMatch: 'W/"1"', body: [] })).toStrictEqual({
+            status: 428,
+            body: { error: 'If-Match with the current revision is required' },
+        })
+        expect(getter).not.toHaveBeenCalled()
+        expect(store.bumpCounter).not.toHaveBeenCalled()
+    })
+
+    it.each([
+        ['not an object', 'a name', { status: 400, body: { error: 'request body: must be a JSON object', issues: [{ code: 'syntax', message: 'request body: must be a JSON object' }] } }],
+        ['an array', [], { status: 400, body: { error: 'request body: must be a JSON object', issues: [{ code: 'syntax', message: 'request body: must be a JSON object' }] } }],
+        ['missing name', {}, { status: 400, body: NAME_SYNTAX }],
+        ['a number name', { name: 5 }, { status: 400, body: NAME_SYNTAX }],
+        ['a blank name', { name: ' \t ' }, { status: 400, body: { error: 'name: must not be empty', issues: [{ code: 'out-of-range', message: 'name: must not be empty' }] } }],
+        ['a name over the cap', { name: 'n'.repeat(SAVED_NAME_MAX_CHARS + 1) }, {
+            status: 400,
+            body: {
+                error: `name: ${SAVED_NAME_MAX_CHARS + 1} characters, more than ${SAVED_NAME_MAX_CHARS}`,
+                issues: [{ code: 'out-of-range', message: `name: ${SAVED_NAME_MAX_CHARS + 1} characters, more than ${SAVED_NAME_MAX_CHARS}` }],
+            },
+        }],
+    ])('answers 400 for %s, touching neither the store nor the counter', async (_label, body, expected) => {
+        const { store } = countingStore()
+        const getter = getterFor(store)
+        expect(await patch(getter, ID, WRONG_SECRET, { body })).toStrictEqual(expected)
+        expect(getter).not.toHaveBeenCalled()
+        expect(store.bumpCounter).not.toHaveBeenCalled()
+    })
+})
+
+describe('namedBuildReply, PATCH store rows', () => {
+    it('answers 429 for an exhausted slot before reading the build, even with a wrong secret', async () => {
+        const { store, results } = countingStore()
+        const { id } = await created(store)
+        await exhaust(store)
+        const getNamed = vi.spyOn(store, 'getNamed')
+        expect(await patch(store, id, WRONG_SECRET, { nowMs: NOW })).toStrictEqual(TOO_MANY)
+        expect(getNamed).not.toHaveBeenCalled()
+        expect(results.at(-1)).toBe('refused')
+    })
+
+    it('answers 404 for an absent id only after taking a slot', async () => {
+        const { store, counter } = countingStore()
+        expect(await patch(store, ID, WRONG_SECRET)).toStrictEqual(NOT_FOUND)
+        expect(counter()).toBe(1)
+    })
+
+    it('answers 403 for a wrong secret with a stale If-Match, after taking a slot, writing nothing', async () => {
+        const { store, counter } = countingStore()
+        const { id } = await created(store)
+        const replaceNamed = vi.spyOn(store, 'replaceNamed')
+        expect(await patch(store, id, WRONG_SECRET, { ifMatch: '"7"' })).toStrictEqual(MISMATCH)
+        expect(replaceNamed).not.toHaveBeenCalled()
+        expect(counter()).toBe(2)
+    })
+
+    it('answers 412 for the right secret with a stale If-Match, writes nothing and logs a revision mismatch', async () => {
+        const error = silenceErrors()
+        const store = createMemoryBuildStore()
+        const { id, editSecret } = await created(store)
+        const before = await store.getNamed(id)
+        expect(await patch(store, id, editSecret, { ifMatch: '"2"' })).toStrictEqual(CHANGED)
+        expect(await store.getNamed(id)).toStrictEqual(before)
+        expect(error).toHaveBeenCalledExactlyOnceWith('builds: named build revision mismatch', { id, ifMatch: 2, stored: 1 })
+    })
+
+    it('answers 412 when another write lands between the read and the swap, keeps that write and logs an etag conflict', async () => {
+        const error = silenceErrors()
+        const inner = createMemoryBuildStore()
+        const { id, editSecret } = await created(inner)
+        const { store, competitor } = await racedStore(inner, id)
+        expect(await patch(store, id, editSecret)).toStrictEqual(CHANGED)
+        expect(await storedValue(inner, id)).toStrictEqual(competitor)
+        expect(error).toHaveBeenCalledExactlyOnceWith('builds: named build store etag conflict', { id, revision: 1 })
+    })
+
+    it('answers 500 for a stored value that fails the schema', async () => {
+        silenceErrors()
+        const store = createMemoryBuildStore()
+        await store.createNamed(ID, JSON.stringify({ ...VALID, version: 1, revision: 1 }))
+        expect(await patch(store, ID, WRONG_SECRET)).toStrictEqual(UNREADABLE)
+    })
+
+    it('answers 503 when the store getter rejects, and when replaceNamed throws', async () => {
+        silenceErrors()
+        expect(await patch(rejectingGetter(), ID, WRONG_SECRET)).toStrictEqual(STORAGE_DOWN)
+        const store = createMemoryBuildStore()
+        const { id, editSecret } = await created(store)
+        expect(await patch(withBroken(store, { replaceNamed: () => Promise.reject(new Error('swap down')) }), id, editSecret)).toStrictEqual(STORAGE_DOWN)
+    })
+
+    it('takes its slot from the budget that create and update spend', async () => {
+        const { store, counter } = countingStore()
+        const { id, editSecret } = await created(store)
+        await put(store, id, editSecret)
+        expect((await patch(store, id, editSecret, { ifMatch: '"2"' })).status).toBe(200)
+        expect(counter()).toBe(3)
+    })
+})
+
+describe('namedBuildReply, PATCH renamed', () => {
+    it('answers 200 with ETag "2" and changes only the name, revision and updatedAt', async () => {
+        const store = createMemoryBuildStore()
+        const { id, editSecret } = await created(store)
+        const before = await storedValue(store, id)
+        const updatedAt = new Date(LATER).toISOString()
+        expect(updatedAt).not.toBe(before.updatedAt)
+        expect(await patch(store, id, editSecret, { body: { name: '  Fresh name \n', extra: 'ignored', revision: 9 } })).toStrictEqual({
+            status: 200,
+            headers: { ETag: '"2"' },
+            body: { id, path: namedBuildPath(id), revision: 2, updatedAt },
+        })
+        expect(await storedValue(store, id)).toStrictEqual({
+            ...before,
+            buildOrder: { ...(before.buildOrder as object), name: 'Fresh name' },
+            revision: 2,
+            updatedAt,
+        })
+    })
+
+    it('accepts a name of exactly the cap length, whitespace around it not counted', async () => {
+        const store = createMemoryBuildStore()
+        const { id, editSecret } = await created(store)
+        const name = 'n'.repeat(SAVED_NAME_MAX_CHARS)
+        expect((await patch(store, id, editSecret, { body: { name: ` ${name} ` } })).status).toBe(200)
+        expect(((await storedValue(store, id)).buildOrder as { name: string }).name).toBe(name)
+    })
+
+    it('writes the next revision for the same name', async () => {
+        const store = createMemoryBuildStore()
+        const { id, editSecret } = await created(store)
+        const reply = await patch(store, id, editSecret, { body: { name: firstBuild.name } })
+        expect(reply.status).toBe(200)
+        expect(reply.headers).toStrictEqual({ ETag: '"2"' })
+        expect((await storedValue(store, id)).revision).toBe(2)
+    })
+
+    it('renames a build whose steps the catalog no longer accepts', async () => {
+        const store = createMemoryBuildStore()
+        const { id, editSecret } = await created(store)
+        const stored = await storedValue(store, id)
+        const buildOrder = stored.buildOrder as { steps: Record<string, unknown>[] }
+        const outdated = { ...stored, buildOrder: { ...buildOrder, steps: [{ ...buildOrder.steps[0], action: 'produce', unit: 'no-such-unit', count: 1 }] } }
+        const { etag } = (await store.getNamed(id)) as { etag: string }
+        await store.replaceNamed(id, JSON.stringify(outdated), etag)
+        expect(checkSaveBuildRequest({ buildOrder: outdated.buildOrder, durationSeconds: 600 }, catalog).ok).toBe(false)
+        expect((await patch(store, id, editSecret)).status).toBe(200)
+        expect(((await storedValue(store, id)).buildOrder as { name: string }).name).toBe('New name')
+    })
+
+    it('shows the new name to a following GET at the new revision', async () => {
+        const store = createMemoryBuildStore()
+        const { id, editSecret } = await created(store)
+        await patch(store, id, editSecret)
+        expect((await named(store, id)).body).toMatchObject({ revision: 2, buildOrder: { name: 'New name' } })
     })
 })
 

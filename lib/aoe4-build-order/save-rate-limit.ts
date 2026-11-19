@@ -4,7 +4,7 @@ import type { IncomingHttpHeaders } from 'node:http';
 import type { BuildStore } from './build-store';
 import { base64UrlSha256 } from './saved-builds';
 
-/** The per-client write budget, maxSaves per windowSeconds, shared by saves, named-build creates and updates (Named builds routes). */
+/** The per-client write budget, maxSaves per windowSeconds, shared by saves, named-build creates, updates and renames (Named builds routes). */
 export const SAVE_RATE_LIMIT = Object.freeze({ maxSaves: 30, windowSeconds: 3600 });
 
 const CLIENT_KEY_LENGTH = 16;

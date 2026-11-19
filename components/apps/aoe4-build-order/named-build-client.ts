@@ -6,6 +6,7 @@ import {
     storedNamedBuildSchema,
     type CreateNamedBuildResponse,
     type NamedBuild,
+    type RenameNamedBuildRequest,
     type UpdateNamedBuildResponse,
 } from '../../../lib/aoe4-build-order/named-builds'
 import type { SaveBuildRequest } from '../../../lib/aoe4-build-order/saved-builds'
@@ -69,6 +70,19 @@ export async function updateNamedBuild(
 ): Promise<{ ok: true; response: UpdateNamedBuildResponse } | NamedSaveFailure> {
     const headers = { Authorization: `Bearer ${editSecret}`, 'If-Match': revisionEtag(revision) }
     const reply = await sendJson(`${NAMED_BUILDS_PATH}/${id}`, { method: 'PUT', headers, body: request }, signal)
+    return reply.status === 200 && isUpdateResponse(reply.body) ? { ok: true, response: reply.body } : failureOf(reply)
+}
+
+export async function renameNamedBuild(
+    id: string,
+    editSecret: string,
+    revision: number,
+    name: string,
+    signal?: AbortSignal,
+): Promise<{ ok: true; response: UpdateNamedBuildResponse } | NamedSaveFailure> {
+    const headers = { Authorization: `Bearer ${editSecret}`, 'If-Match': revisionEtag(revision) }
+    const body: RenameNamedBuildRequest = { name }
+    const reply = await sendJson(`${NAMED_BUILDS_PATH}/${id}`, { method: 'PATCH', headers, body }, signal)
     return reply.status === 200 && isUpdateResponse(reply.body) ? { ok: true, response: reply.body } : failureOf(reply)
 }
 

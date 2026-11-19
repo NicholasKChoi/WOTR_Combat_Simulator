@@ -81,6 +81,11 @@ export interface UpdateNamedBuildResponse {
   updatedAt: string;
 }
 
+/** The body of a named-build rename: the new name, which the route trims (Named builds routes). */
+export interface RenameNamedBuildRequest {
+  name: string;
+}
+
 /** The storage key of a named build in a deployment env. */
 export const namedBuildKey = (env: string, id: string): string => `${env}/named-builds/${id}.json`;
 /** The page path that opens a named build. */

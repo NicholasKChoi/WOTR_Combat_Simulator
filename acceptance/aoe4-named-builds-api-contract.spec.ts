@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { test, expect } from '@playwright/test'
-import { NAMED_BUILDS_PATH, namedBuildUrl, postNamedBuild, putNamedBuild, uniqueClient } from './helpers'
+import { NAMED_BUILDS_PATH, namedBuildUrl, patchNamedBuild, postNamedBuild, putNamedBuild, uniqueClient } from './helpers'
 import { examples, expectBody, expectInvalid, expectValid, keys, referencedSchemaNames, schemas, spec } from './openapi-schemas'
 import { NAMED_BUILD_ID_PATTERN } from '../lib/aoe4-build-order/named-builds'
 
@@ -12,6 +12,7 @@ const BY_ID = `${NAMED_BUILDS_PATH}/{id}`
 const create = spec.paths[NAMED_BUILDS_PATH]?.post
 const read = spec.paths[BY_ID]?.get
 const update = spec.paths[BY_ID]?.put
+const rename = spec.paths[BY_ID]?.patch
 const remove = spec.paths[BY_ID]?.delete
 const NEW_SCHEMAS = ['CreateNamedBuildResponse', 'UpdateNamedBuildResponse', 'NamedBuild']
 
@@ -25,29 +26,36 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.describe('spec structure', () => {
-  test('is version 2.6.0, has both named-builds paths, and every operationId is non-empty and unique', () => {
-    expect(spec.info.version).toBe('2.6.0')
+  test('is version 2.7.0, has both named-builds paths, and every operationId is non-empty and unique', () => {
+    expect(spec.info.version).toBe('2.7.0')
     expect(spec.paths).toHaveProperty([NAMED_BUILDS_PATH])
     expect(spec.paths).toHaveProperty([BY_ID])
     const ids = Object.values<any>(spec.paths).flatMap((path) => Object.values<any>(path).map((operation) => operation.operationId).filter((id) => id !== undefined))
     for (const id of ids) expect(typeof id === 'string' && id.length > 0, String(id)).toBe(true)
     expect(new Set(ids).size).toBe(ids.length)
-    expect([create.operationId, read.operationId, update.operationId, remove.operationId]).toEqual(['createNamedBuild', 'getNamedBuild', 'updateNamedBuild', 'deleteNamedBuild'])
+    expect([create.operationId, read.operationId, update.operationId, rename.operationId, remove.operationId]).toEqual(['createNamedBuild', 'getNamedBuild', 'updateNamedBuild', 'renameNamedBuild', 'deleteNamedBuild'])
   })
 
   test('each operation declares exactly its statuses', () => {
     expect(keys(create.responses)).toEqual(['201', '400', '405', '413', '429', '500', '503'])
     expect(keys(read.responses)).toEqual(['200', '404', '405', '500', '503'])
     expect(keys(update.responses)).toEqual(['200', '400', '401', '403', '404', '405', '412', '413', '428', '429', '500', '503'])
+    expect(keys(rename.responses)).toEqual(keys(update.responses))
+    expect(rename.responses['413'].content).toBeUndefined()
     expect(keys(remove.responses)).toEqual(['204', '404', '405', '503'])
     expect(spec.paths[BY_ID].parameters[0].schema.pattern).toBe(NAMED_BUILD_ID_PATTERN.source)
     expect(read.responses['200'].headers['Cache-Control'].schema.const).toBe('no-store')
     expect(update.responses['401'].headers['WWW-Authenticate'].schema.const).toBe('Bearer')
+    expect(rename.responses['401'].headers['WWW-Authenticate'].schema.const).toBe('Bearer')
+    expect(rename.requestBody.content['application/json'].schema.$ref).toBe('#/components/schemas/RenameNamedBuildRequest')
+    expect(schemas.RenameNamedBuildRequest.required).toEqual(['name'])
   })
 
   test('the edit secret is an http bearer scheme that updateNamedBuild uses, with a required If-Match header', () => {
     expect(spec.components.securitySchemes.editSecret).toMatchObject({ type: 'http', scheme: 'bearer' })
     expect(update.security).toEqual([{ editSecret: [] }])
+    expect(rename.security).toEqual([{ editSecret: [] }])
+    expect(rename.parameters).toContainEqual(expect.objectContaining({ name: 'If-Match', in: 'header', required: true }))
     expect(update.parameters).toContainEqual(expect.objectContaining({ name: 'If-Match', in: 'header', required: true }))
   })
 
@@ -79,9 +87,9 @@ test.describe('spec structure', () => {
     for (const [label, value] of properties) expect(value.description, label).toBeTruthy()
   })
 
-  test('every JSON example of the four operations validates against its schema', () => {
+  test('every JSON example of the five operations validates against its schema', () => {
     let checked = 0
-    for (const operation of [create, read, update, remove]) {
+    for (const operation of [create, read, update, rename, remove]) {
       for (const response of Object.values<any>(operation.responses)) {
         const content = response.content?.['application/json']
         if (!content) continue
@@ -135,26 +143,32 @@ test.describe('the 4xx examples equal the real responses', () => {
   test('the 400 examples', async ({ request }) => {
     await expectBody(await postNamedBuild(request, [], client), 400, examples(create, '400').notAnObject)
     await expectBody(await putNamedBuild(request, unused, [], client, owner), 400, examples(update, '400').notAnObject)
+    await expectBody(await patchNamedBuild(request, unused, [], client, owner), 400, examples(rename, '400').notAnObject)
+    await expectBody(await patchNamedBuild(request, unused, {}, client, owner), 400, examples(rename, '400').nameNotString)
+    await expectBody(await patchNamedBuild(request, unused, { name: '  ' }, client, owner), 400, examples(rename, '400').nameEmpty)
   })
 
   test('the 401 example', async ({ request }) => {
     await expectBody(await putNamedBuild(request, unused, requestExample, client, { 'If-Match': '"1"' }), 401, examples(update, '401').secretRequired)
+    await expectBody(await patchNamedBuild(request, unused, { name: 'New' }, client, { 'If-Match': '"1"' }), 401, examples(rename, '401').secretRequired)
   })
 
   test('the 404 examples, for a malformed id', async ({ request }) => {
     await expectBody(await request.get(namedBuildUrl('abc'), { timeout: 10_000 }), 404, examples(read, '404').notFound)
     await expectBody(await putNamedBuild(request, 'abc', requestExample, client, owner), 404, examples(update, '404').notFound)
+    await expectBody(await patchNamedBuild(request, 'abc', { name: 'New' }, client, owner), 404, examples(rename, '404').notFound)
     await expectBody(await request.delete(namedBuildUrl('abc'), { timeout: 10_000 }), 404, examples(remove, '404').notFound)
   })
 
   test('the 405 examples', async ({ request }) => {
     await expectBody(await request.get(NAMED_BUILDS_PATH, { timeout: 10_000 }), 405, examples(create, '405').getOnCreate)
-    for (const operation of [read, update, remove]) {
-      await expectBody(await request.patch(namedBuildUrl(unused), { timeout: 10_000 }), 405, examples(operation, '405').patchOnId)
+    for (const operation of [read, update, rename, remove]) {
+      await expectBody(await request.post(namedBuildUrl(unused), { timeout: 10_000 }), 405, examples(operation, '405').postOnId)
     }
   })
 
   test('the 428 example', async ({ request }) => {
     await expectBody(await putNamedBuild(request, unused, requestExample, client, { Authorization: owner.Authorization }), 428, examples(update, '428').revisionRequired)
+    await expectBody(await patchNamedBuild(request, unused, { name: 'New' }, client, { Authorization: owner.Authorization }), 428, examples(rename, '428').revisionRequired)
   })
 })
