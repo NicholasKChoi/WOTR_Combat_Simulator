@@ -214,6 +214,15 @@ describe('checkSaveBuildRequest', () => {
             expect(checkSaveBuildRequest({ buildOrder: build, durationSeconds: 600 }, catalog).ok).toBe(true)
         })
 
+        it('accepts a repeat on a build step and on a move step', () => {
+            const steps: BuildOrder['steps'] = [
+                { action: 'build', building: 'farm', from: 'wood', repeat: 3 },
+                { action: 'move', count: 1, from: 'sheep', to: 'wood', walkSeconds: 2, repeat: 2 },
+            ]
+            expect(formatBuildOrderText({ ...firstBuild, steps })).toContain('x3')
+            expect(checkSaveBuildRequest(withOrder({ steps }), catalog).ok).toBe(true)
+        })
+
         it('returns the text length issue when the formatted text is too long', () => {
             vi.mocked(formatBuildOrderText).mockReturnValueOnce('x'.repeat(20_001))
             const message = 'text: 20001 characters, more than 20000'

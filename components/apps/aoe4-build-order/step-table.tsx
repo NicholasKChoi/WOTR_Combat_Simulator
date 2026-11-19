@@ -77,11 +77,12 @@ function actionFields(step: BuildStep, options: StepOptions): FieldDef[] {
                 pick('from', options.nodes),
                 pick('then', options.nodes),
                 num('walkSeconds'),
+                num('repeat'),
             ]
         case 'research':
             return [pick('tech', options.techs), pick('at', options.techSites[step.tech] ?? [])]
         case 'move':
-            return [num('count'), pick('from', options.nodes), pick('to', options.nodes), num('walkSeconds')]
+            return [num('count'), pick('from', options.nodes), pick('to', options.nodes), num('walkSeconds'), num('repeat')]
     }
 }
 

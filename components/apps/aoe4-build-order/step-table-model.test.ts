@@ -100,6 +100,20 @@ describe('changeAction', () => {
         expect(changeAction(step, 'build', options)).toEqual({ ...defaultStep('build', options), trigger: step.trigger, reaction: true })
     })
 
+    it('keeps repeat from build to move', () => {
+        const step: BuildStep = { ...build, repeat: 3, trigger: { kind: 'time', seconds: 30 } }
+        expect(changeAction(step, 'move', options)).toEqual({ ...defaultStep('move', options), repeat: 3, trigger: step.trigger })
+    })
+
+    it.each(['produce', 'research', 'rally', 'pause'] as const)('drops repeat from build to %s and keeps trigger and reaction', (action) => {
+        const step: BuildStep = { ...build, repeat: 3, trigger: { kind: 'depleted', node: 'gold' }, reaction: true }
+        expect(changeAction(step, action, options)).toEqual({ ...defaultStep(action, options), trigger: step.trigger, reaction: true })
+    })
+
+    it('adds no repeat key to a step without one', () => {
+        expect('repeat' in changeAction(build, 'move', options)).toBe(false)
+    })
+
     it('returns the same object for the same action', () => {
         expect(changeAction(produce, 'produce', options)).toBe(produce)
     })
@@ -255,6 +269,9 @@ describe('text round trip', () => {
         { action: 'research', tech: options.techs[0], trigger: { kind: 'bank', resource: 'wood', atLeast: 400 } },
         { action: 'move', count: 'all', from: 'gold', to: 'gold#2', trigger: { kind: 'depleted', node: 'gold' }, reaction: true },
         { action: 'move', count: 1, from: 'sheep', to: 'wood', trigger: { kind: 'depleted', node: 'sheep' } },
+        { ...build, repeat: 4, walkSeconds: 2 },
+        { action: 'move', count: 2, from: 'sheep', to: 'wood', repeat: 3, trigger: { kind: 'depleted', node: 'sheep' }, reaction: true },
+        { action: 'research', tech: options.techs[0], repeat: 2 },
     ]
 
     it('re-parses the full order and after every edit', () => {

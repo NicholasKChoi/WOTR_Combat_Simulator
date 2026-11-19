@@ -1,4 +1,5 @@
 import { HOUSE_ID, VILLAGER_ID } from '../../../lib/aoe4-build-order/engine-common'
+import { REPEATABLE_ACTIONS } from '../../../lib/aoe4-build-order/repeat'
 import type { BuildOrder, BuildStart, BuildStep, NodeRef, Trigger } from '../../../lib/aoe4-build-order/model'
 import { OPTIONAL_STEP_FIELDS, type BuildOrderCatalog } from '../../../lib/aoe4-build-order/schema'
 import type { StepOptions } from '../../../lib/aoe4-build-order/step-options'
@@ -70,6 +71,7 @@ export function changeAction(step: BuildStep, action: Action, options: StepOptio
     const next: BuildStep = defaultStep(action, options)
     if (step.trigger !== undefined) next.trigger = step.trigger
     if (step.reaction !== undefined) next.reaction = step.reaction
+    if (step.repeat !== undefined && REPEATABLE_ACTIONS.includes(action)) next.repeat = step.repeat
     return next
 }
 

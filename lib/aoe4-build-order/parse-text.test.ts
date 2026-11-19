@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { BuildOrder, BuildOrderIssue, BuildStep } from './model'
+import type { BuildOrder, BuildOrderIssue, BuildStep, NodeRef } from './model'
 import { formatBuildOrderText, formatBuildStep, parseBuildOrderText } from './parse-text'
 import { buildOrderCatalog, checkBuildOrder } from './schema'
 import { ENGLISH } from './test-helpers'
@@ -30,6 +30,9 @@ function step(text: string) {
     return parsed(text).order.steps[0]
 }
 
+// A node token that is not a catalog node: the grammar reads it, validation rejects it.
+const X9 = 'x9' as NodeRef
+
 function validationCode(text: string): string | undefined {
     const result = checkBuildOrder(parsed(`start -> sheep\n${text}`).order, buildOrderCatalog(ENGLISH))
     return result.ok === false ? result.issues[0].code : undefined
@@ -59,6 +62,12 @@ const representable: BuildOrder = {
         { action: 'produce', unit: 'villager', producer: 'capital-town-center', walkSeconds: 4 },
         { action: 'pause', producer: 'capital-town-center', instance: 1 },
         { action: 'pause', producer: 'capital-town-center' },
+        { action: 'build', building: 'farm', from: 'wood', repeat: 9 },
+        { action: 'build', building: 'farm', builders: 2, from: 'wood', then: 'farm', walkSeconds: 3, repeat: 1 },
+        { trigger: { kind: 'time', seconds: 90 }, action: 'build', building: 'farm', from: 'wood', repeat: 2 },
+        { trigger: { kind: 'depleted', node: 'gold' }, reaction: true, action: 'move', count: 'all', from: 'gold', to: 'gold#2', walkSeconds: 2, repeat: 3 },
+        { action: 'move', count: 1, from: 'sheep', to: 'berry', repeat: 3 },
+        { action: 'research', tech: 'wheelbarrow', at: 'mill', repeat: 2 },
         { action: 'rally', producer: 'capital-town-center', instance: 1, to: 'wood', walkSeconds: 3 },
         { trigger: { kind: 'villagers', count: 0 }, action: 'rally', producer: 'kings-palace', to: 'farm' },
     ],
@@ -337,6 +346,41 @@ describe('actions', () => {
         expect(step('research veteran-longbowmen')).toStrictEqual({ action: 'research', tech: 'veteran-longbowmen' })
     })
 
+    it.each<[string, BuildStep]>([
+        ['build farm from wood x9', { action: 'build', building: 'farm', from: 'wood', repeat: 9 }],
+        ['build farm from wood x09', { action: 'build', building: 'farm', from: 'wood', repeat: 9 }],
+        [
+            'build farm with 2 from wood then farm walk 3s x9',
+            { action: 'build', building: 'farm', builders: 2, from: 'wood', then: 'farm', walkSeconds: 3, repeat: 9 },
+        ],
+        ['move 1 sheep to berry x3', { action: 'move', count: 1, from: 'sheep', to: 'berry', repeat: 3 }],
+        ['research wheelbarrow x2', { action: 'research', tech: 'wheelbarrow', repeat: 2 }],
+        ['research wheelbarrow at mill x2', { action: 'research', tech: 'wheelbarrow', at: 'mill', repeat: 2 }],
+        ['pause capital-town-center x2', { action: 'pause', producer: 'capital-town-center', repeat: 2 }],
+        ['rally capital-town-center -> wood x2', { action: 'rally', producer: 'capital-town-center', to: 'wood', repeat: 2 }],
+        ['@1:30 build farm from wood x2', { trigger: { kind: 'time', seconds: 90 }, action: 'build', building: 'farm', from: 'wood', repeat: 2 }],
+        [
+            'whenever gold runs out move all gold to gold#2 x2',
+            { trigger: { kind: 'depleted', node: 'gold' }, reaction: true, action: 'move', count: 'all', from: 'gold', to: 'gold#2', repeat: 2 },
+        ],
+        ['move 3 sheep to x9', { action: 'move', count: 3, from: 'sheep', to: X9 }],
+        ['build farm from x9', { action: 'build', building: 'farm', from: X9 }],
+        ['build farm from wood then x9', { action: 'build', building: 'farm', from: 'wood', then: X9 }],
+        ['produce villager from capital-town-center x3', { action: 'produce', unit: 'villager', producer: 'capital-town-center', count: 3 }],
+    ])('parses %j with the trailing xN as a repeat only in last position', (text, expected) => {
+        expect(step(text)).toStrictEqual(expected)
+    })
+
+    it.each(['build farm from wood x0', 'build farm from wood x201'])('parses %j and validation reports out-of-range', (text) => {
+        expect(step(text).repeat).toBe(Number(text.split(' x')[1]))
+        expect(validationCode(text)).toBe('out-of-range')
+    })
+
+    it('reports a node x9 as unknown-id and a repeat on research as invalid at validation', () => {
+        expect(validationCode('move 3 sheep to x9')).toBe('unknown-id')
+        expect(validationCode('research wheelbarrow x2')).toBe('invalid')
+    })
+
     it('parses move, rally and pause', () => {
         expect(step('move 3 sheep to berry walk 5s')).toStrictEqual({ action: 'move', count: 3, from: 'sheep', to: 'berry', walkSeconds: 5 })
         expect(step('rally capital-town-center#1 -> wood walk 3s')).toStrictEqual({
@@ -390,6 +434,17 @@ describe('actions', () => {
     })
 
     it.each([
+        ['build farm x9 from wood', "'x9'"],
+        ['build farm from wood x9 then farm', "'then'"],
+        ['build farm from wood x9 walk 3s', "'walk'"],
+        ['build farm from wood x9 x2', "'x2'"],
+        ['build farm from wood X9', "'X9'"],
+        ['build farm from wood x 9', "'x'"],
+        ['build farm from wood x-1', "'x-1'"],
+        ['build farm from wood x1.5', "'x1.5'"],
+        ['produce villager from capital-town-center x3 x2', "'x2'"],
+        ['produce villager from capital-town-center -> sheep x2', "'x2'"],
+        ['produce villager from capital-town-center walk 4s x3', "'x3'"],
         ['produce villager from tc walk 4s x3', "'x3'"],
         ['produce villager from tc -> sheep x3', "'x3'"],
         ['produce villager from tc walk 4s -> sheep', "'->'"],
@@ -519,6 +574,13 @@ describe('formatBuildStep', () => {
         [{ trigger: { kind: 'time', seconds: 59.6 }, action: 'pause', producer: 'tc' }, '@1:00 pause tc'],
         [{ trigger: { kind: 'villagers', count: 9 }, action: 'pause', producer: 'tc' }, 'at 9 vils pause tc'],
         [{ action: 'move', count: 3, from: 'sheep', to: 'wood' }, 'move 3 sheep to wood'],
+        [{ action: 'build', building: 'farm', from: 'wood', walkSeconds: 3, repeat: 9 }, 'build farm from wood walk 3s x9'],
+        [{ action: 'build', building: 'farm', from: 'wood', repeat: 1 }, 'build farm from wood x1'],
+        [{ action: 'move', count: 2, from: 'sheep', to: 'wood', walkSeconds: 1, repeat: 4 }, 'move 2 sheep to wood walk 1s x4'],
+        [{ action: 'research', tech: 'wheelbarrow', at: 'mill', repeat: 2 }, 'research wheelbarrow at mill x2'],
+        [{ action: 'pause', producer: 'tc', repeat: 2 }, 'pause tc x2'],
+        [{ action: 'rally', producer: 'tc', to: 'wood', walkSeconds: 3, repeat: 2 }, 'rally tc -> wood walk 3s x2'],
+        [{ trigger: { kind: 'time', seconds: 90 }, action: 'build', building: 'farm', from: 'wood', repeat: 2 }, '@1:30 build farm from wood x2'],
     ])('prints %j as one line', (input, text) => {
         expect(formatBuildStep(input)).toBe(text)
         expect(formatBuildStep(input)).not.toContain('\n')

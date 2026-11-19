@@ -69,11 +69,11 @@ prefix comes first, then the action:
 | line prefix | trigger | action syntax |
 |---|---|---|
 | `@m:ss ` | time | `produce <unit> from <producer>[#k] [xN] [-> <node>] [walk Ns]` |
-| `at N vils ` | villagers | `pause <producer>[#k]` |
+| `at N vils ` | villagers | `pause <producer>[#k] [xN]` |
 | `when <node> runs out ` | depleted | |
 | `whenever <node> runs out ` | depleted, as a reaction | |
 | `when <resource> >= N ` | bank | |
-| (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns]`; `research <tech> [at <building>]`; `move <N or all> <node> to <node> [walk Ns]`; `rally <producer>[#k] -> <node> [walk Ns]` |
+| (no prefix) | no condition | `build <building> [with N] from <node> [then <node>] [walk Ns] [xN]`; `research <tech> [at <building>] [xN]`; `move <N or all> <node> to <node> [walk Ns] [xN]`; `rally <producer>[#k] -> <node> [walk Ns] [xN]` |
 
 One example per action; each line is a separate example:
 
@@ -85,6 +85,7 @@ produce villager from capital-town-center x3 -> sheep walk 4s
 at 9 vils build mill from sheep then berry
 research wheelbarrow at mill
 move 3 sheep to berry walk 5s
+build farm from wood walk 3s x4
 @6:00 build council-hall with 4 from wood then gold
 produce longbowman from archery-range#1 x5
 research veteran-longbowmen
@@ -99,10 +100,19 @@ Grammar details:
   is valid.
 - On a `produce` line the suffixes are ordered `[xN]`, `[-> node]`, `[walk Ns]`; any other order is a
   `syntax` issue.
-- `walk Ns` is always last on `produce`, `build`, `move` and `rally` lines: the keyword `walk`, a space, an
-  integer, and `s` with no space (`walk 6s`).
+- `walk Ns` is the keyword `walk`, a space, an integer, and `s` with no space (`walk 6s`). On a `produce`
+  line it is always last. On a `build`, `move` or `rally` line it is last except for a trailing `xN`.
 - A `produce` walk without `-> node` (in JSON, `walkSeconds` without `rally`) is an `invalid` issue.
 - Walk values in paste text are integers; JSON may use decimals.
+- A trailing `xN` after a `build`, `move`, `research`, `pause` or `rally` line sets `repeat` to N (`build farm
+  from wood x9`, `build farm from wood walk 3s x9`). It is the last token of the line, after `walk Ns` when
+  both are present; anything after it is a `syntax` issue (`build farm from wood x9 walk 3s`,
+  `build farm from wood x9 x2`). `repeat` on `research`, `pause` and `rally` parses and is then an `invalid`
+  issue at validation. `x0` and `x201` parse and fail validation as `out-of-range`; `x09` parses as 9 and
+  prints `x9`. `xN` is a repeat only in that last position: elsewhere it is a node or id (`move 3 sheep to x9`
+  names the node `x9`, an `unknown-id` at validation). On a `produce` line `xN` stays the count in its place,
+  and a second `xN`, or an `xN` after `-> node` or `walk Ns`, is a `syntax` issue; `produce` has no paste
+  form of `repeat`.
 - `xN` takes no space (`x5`), `#k` follows the producer with no space (`capital-town-center#1`), and `->` is
   delimited by whitespace.
 - Whitespace between tokens is any run of spaces, tabs, `\r`, U+00A0 (no-break space) and U+202F (narrow
