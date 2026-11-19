@@ -87,3 +87,15 @@ tbody > tr > td.warn {
 .stale {
     opacity: 0.5;
 }
+
+.copyList {
+    margin-top: 0.25rem;
+}
+
+.copyList summary {
+    cursor: pointer;
+}
+
+.copy {
+    margin-top: 0.25rem;
+}

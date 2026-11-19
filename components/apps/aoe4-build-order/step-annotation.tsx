@@ -1,7 +1,7 @@
 import cn from 'classnames'
 
 import styles from './step-annotation.module.css'
-import { STEP_KINDS, STILL_WAITING, finishedText, formatStepTime, waitedText, type StepAnnotation, type StepKind, type StepRun } from './step-annotations'
+import { STEP_KINDS, STILL_WAITING, copyLineText, finishedText, formatStepTime, waitedText, type StepAnnotation, type StepKind, type StepRun } from './step-annotations'
 
 export const KIND_CLASS: Record<StepKind, string> = {
     'age-up': styles.kindAgeUp,
@@ -65,8 +65,26 @@ export function StepTimes({ run, labelled }: { run: StepRun; labelled: boolean }
     )
 }
 
+function StepCopies({ copies }: { copies: readonly StepRun[] }) {
+    const done = copies.filter((c) => c.status === 'completed').length
+    return (
+        <>
+            <div data-testid="step-copies">{`${done} of ${copies.length} done`}</div>
+            <details data-testid="step-copy-list" className={styles.copyList}>
+                <summary>Each copy</summary>
+                {copies.map((copy, i) => (
+                    <div key={i} data-testid="step-copy" data-copy={i + 1} data-status={copy.status} className={styles.copy}>
+                        <div>{copyLineText(copy, i + 1)}</div>
+                        {copy.blockedBy === '' ? null : <div>Blocked by: {copy.blockedBy}</div>}
+                    </div>
+                ))}
+            </details>
+        </>
+    )
+}
+
 export function StepRunCell({ annotation, stale }: { annotation: StepAnnotation; stale: boolean }) {
-    const { kind, run } = annotation
+    const { kind, run, copies } = annotation
     const waited = run === null ? null : waitedText(run)
     return (
         <td
@@ -83,6 +101,7 @@ export function StepRunCell({ annotation, stale }: { annotation: StepAnnotation;
                         <span data-testid="step-waited">{waited}</span>
                     </div>
                     <div data-testid="step-blocked-by">{run.blockedBy}</div>
+                    {copies.length >= 2 ? <StepCopies copies={copies} /> : null}
                 </>
             )}
         </td>

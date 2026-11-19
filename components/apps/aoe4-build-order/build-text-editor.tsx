@@ -5,7 +5,7 @@ import type { BuildOrderLines } from '../../../lib/aoe4-build-order/model'
 import annotationStyles from './step-annotation.module.css'
 import { KIND_CLASS, StepTimes, annotationToneClass } from './step-annotation'
 import { AnnotationPopover } from './annotation-popover'
-import { annotationDetailText, annotationsByLine, type BuildAnnotations, type StepAnnotation } from './step-annotations'
+import { annotationsByLine, gutterDetailText, type BuildAnnotations, type StepAnnotation } from './step-annotations'
 import { lineCount } from './text-lines'
 import styles from './workbench.module.css'
 
@@ -48,7 +48,7 @@ function AnnotationLine({ line, annotation, stale, active, onActiveStepChange }:
             onPointerLeave={() => onActiveStepChange(null)}
         >
             {run === null ? null : <StepTimes run={run} labelled={false} />}
-            {run !== null && active ? <AnnotationPopover anchor={lineRef} text={annotationDetailText(run)} /> : null}
+            {annotation !== null && run !== null && active ? <AnnotationPopover anchor={lineRef} text={gutterDetailText(annotation)} /> : null}
         </li>
     )
 }

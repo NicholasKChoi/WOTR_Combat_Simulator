@@ -2,7 +2,27 @@ import { describe, expect, it } from 'vitest'
 import type { SimulateResponse } from '../../../lib/aoe4-build-order/api'
 import type { StepTiming, StepWaitDetail, StepWaitEntry } from '../../../lib/aoe4-build-order/model'
 import { parseBuildOrderText } from '../../../lib/aoe4-build-order/parse-text'
-import { annotationsByLine, buildAnnotations, alignSteps, annotationDetailText, finishedText, formatStepTime, stepKind, stepSpan, waitedText, type AnnotationInput, type StepAnnotation, type StepKind } from './step-annotations'
+import {
+    LONG_WAIT_SECONDS,
+    alignSteps,
+    annotationDetailText,
+    annotationsByLine,
+    buildAnnotations,
+    combineRuns,
+    copiesDetailText,
+    finishedText,
+    formatStepTime,
+    groupBySource,
+    gutterDetailText,
+    sourceSpan,
+    stepKind,
+    stepSpan,
+    waitedText,
+    type AnnotationInput,
+    type StepAnnotation,
+    type StepKind,
+    type StepRun,
+} from './step-annotations'
 
 const LANDMARKS = ['kings-palace']
 
@@ -253,7 +273,7 @@ describe('waitedText', () => {
 })
 
 describe('annotationsByLine', () => {
-    const a = (kind: StepKind): StepAnnotation => ({ kind, run: null })
+    const a = (kind: StepKind): StepAnnotation => ({ kind, run: null, copies: [] })
     const [a0, a1] = [a('villager'), a('building')]
     const annotations = { stale: false, steps: [a0, a1] }
 
@@ -276,5 +296,261 @@ describe('annotationDetailText', () => {
         ['not-reached', 0, 'not reached (house)', 'Still waiting. Blocked by: not reached (house)'],
     ])('%s with %i waited seconds reads %s', (status, waitSeconds, blockedBy, expected) => {
         expect(annotationDetailText({ status, waitSeconds, blockedBy })).toBe(expected)
+    })
+})
+
+function stepRunOf(overrides: Partial<StepRun> = {}): StepRun {
+    return {
+        runStep: 0,
+        status: 'completed',
+        startedAt: 10,
+        completedAt: 20,
+        waitSeconds: 0,
+        waits: [],
+        waitingForText: null,
+        waitingOn: null,
+        blockedBy: '',
+        longWait: false,
+        flagged: false,
+        ...overrides,
+    }
+}
+
+const copyTiming = (step: number, source: number, copy: number, overrides: Partial<StepTiming> = {}) => timing(step, { source, copy, ...overrides })
+
+describe('groupBySource', () => {
+    it('groups by source and orders each group by copy, whatever the position', () => {
+        const steps = [copyTiming(0, 0, 2), copyTiming(1, 1, 1), copyTiming(2, 0, 1), copyTiming(3, 0, 3)]
+        const groups = groupBySource(steps)
+        expect(groups.map((g) => g.map((t) => t.step))).toEqual([[2, 0, 3], [1]])
+    })
+
+    it('gives one single-copy group per step when nothing repeats', () => {
+        const groups = groupBySource([timing(0), timing(1), timing(2)])
+        expect(groups.map((g) => g.length)).toEqual([1, 1, 1])
+    })
+})
+
+describe('combineRuns', () => {
+    it('returns the same run for one copy', () => {
+        const only = stepRunOf({ status: 'waiting', blockedBy: 'still waiting on resources' })
+        expect(combineRuns([only])).toBe(only)
+    })
+
+    it('reports completed with the first start, the latest finish, summed waits and no cause', () => {
+        const combined = combineRuns([
+            stepRunOf({ runStep: 3, startedAt: 10, completedAt: 20, waitSeconds: 5, waits: [{ text: 'wood', seconds: 5 }] }),
+            stepRunOf({ runStep: 4, startedAt: 30, completedAt: 50, waitSeconds: 7, waits: [{ text: 'wood', seconds: 7 }] }),
+        ])
+        expect(combined).toMatchObject({
+            runStep: 3,
+            status: 'completed',
+            startedAt: 10,
+            completedAt: 50,
+            waitSeconds: 12,
+            waitingOn: null,
+            waitingForText: null,
+            blockedBy: 'wood 0:12',
+            flagged: false,
+        })
+    })
+
+    it('takes the earliest start even when a later copy comes first in the list', () => {
+        expect(combineRuns([stepRunOf({ startedAt: 40, completedAt: 60 }), stepRunOf({ startedAt: 5, completedAt: 9 })]).startedAt).toBe(5)
+    })
+
+    it('is in-progress with no finish when one copy is in progress and the rest completed', () => {
+        const combined = combineRuns([stepRunOf({ completedAt: 20 }), stepRunOf({ status: 'in-progress', startedAt: 30, completedAt: null, waitingOn: 'resources' })])
+        expect([combined.status, combined.completedAt, combined.startedAt, combined.waitingOn]).toEqual(['in-progress', null, 10, null])
+    })
+
+    it.each<[string, StepRun['status'][], StepRun['status'], boolean]>([
+        ['not-reached last', ['completed', 'in-progress', 'not-reached'], 'not-reached', true],
+        ['not-reached first', ['not-reached', 'completed', 'completed'], 'not-reached', true],
+        ['waiting below in-progress', ['in-progress', 'waiting', 'completed'], 'waiting', true],
+        ['not-reached below waiting', ['waiting', 'not-reached'], 'not-reached', true],
+        ['in-progress below completed', ['completed', 'in-progress', 'completed'], 'in-progress', false],
+    ])('takes the least advanced status, flagged only when waiting or not-reached: %s', (_name, statuses, expected, flagged) => {
+        const combined = combineRuns(statuses.map((status) => stepRunOf({ status })))
+        expect([combined.status, combined.flagged]).toEqual([expected, flagged])
+    })
+
+    it('flags a not-reached combination, keeps the start of started copies and takes that copy waitingOn', () => {
+        const combined = combineRuns([
+            stepRunOf(),
+            stepRunOf({ status: 'not-reached', startedAt: null, completedAt: null, waitingOn: 'earlier-step', blockedBy: 'not reached (earlier-step)', flagged: true }),
+        ])
+        expect([combined.status, combined.flagged, combined.waitingOn, combined.startedAt, combined.blockedBy]).toEqual(['not-reached', true, 'earlier-step', 10, 'not reached (earlier-step)'])
+    })
+
+    it('merges waits with the same text into one entry in first-seen order', () => {
+        const combined = combineRuns([
+            stepRunOf({ waits: [{ text: 'wood', seconds: 10 }, { text: 'gold', seconds: 4 }] }),
+            stepRunOf({ waits: [{ text: 'stone', seconds: 1 }, { text: 'wood', seconds: 5 }] }),
+        ])
+        expect(combined.waits).toEqual([
+            { text: 'wood', seconds: 15 },
+            { text: 'gold', seconds: 4 },
+            { text: 'stone', seconds: 1 },
+        ])
+    })
+
+    it('sets longWait from the summed wait although no single copy reached it', () => {
+        const half = stepRunOf({ waitSeconds: LONG_WAIT_SECONDS / 2 })
+        expect(half.longWait).toBe(false)
+        expect(combineRuns([half, half]).longWait).toBe(true)
+        expect(combineRuns([half, stepRunOf({ waitSeconds: LONG_WAIT_SECONDS / 2 - 1 })]).longWait).toBe(false)
+    })
+})
+
+describe('combined run built from timings', () => {
+    const WOOD: StepWaitDetail = { kind: 'resources', short: { wood: 50 } }
+    const annotate = (steps: StepTiming[]) => buildAnnotations(runInput({ liveSteps: stepsOf(A, B) }, steps))?.steps[0]
+    const waited = (seconds: number) => ({ waitDetails: [{ detail: WOOD, seconds }], waitSeconds: seconds })
+
+    it('selects the not-reached copy cause over an earlier waiting copy, keeping its wood seconds in the waits', () => {
+        const annotation = annotate([
+            copyTiming(0, 0, 1, waited(3)),
+            copyTiming(1, 0, 2, { status: 'waiting', startedAt: null, completedAt: null, waitingOn: 'resources', waitingFor: WOOD, ...waited(20) }),
+            copyTiming(2, 0, 3, { status: 'not-reached', startedAt: null, completedAt: null, waitingOn: 'earlier-step' }),
+            copyTiming(3, 1, 1),
+        ])
+        const run = annotation?.run
+        expect([run?.status, run?.waitingOn, run?.waitingForText]).toEqual(['not-reached', 'earlier-step', null])
+        expect(run?.waits).toEqual([{ text: '50 wood', seconds: 23 }])
+        expect(run?.blockedBy).toMatch(/not reached \(earlier-step\)$/)
+        expect(run?.blockedBy).toContain('50 wood 0:23')
+        expect(run?.blockedBy).not.toContain('still waiting')
+        expect(annotation?.copies[1]).toMatchObject({ status: 'waiting', blockedBy: '50 wood 0:20, still waiting for 50 wood' })
+    })
+
+    it.each<[string, Partial<StepTiming>, string, string | null]>([
+        ['waiting', { status: 'waiting', startedAt: null, completedAt: null, waitingOn: 'resources', waitingFor: WOOD }, '50 wood 0:16, still waiting for 50 wood', '50 wood'],
+        ['not-reached', { status: 'not-reached', startedAt: null, completedAt: null, waitingOn: 'trigger' }, '50 wood 0:16, not reached (trigger)', null],
+        ['completed', {}, '50 wood 0:16', null],
+    ])('words blockedBy of a %s combination as the merged waits then the selected cause', (status, second, expected, waitingForText) => {
+        const run = annotate([copyTiming(0, 0, 1, waited(7)), copyTiming(1, 0, 2, { ...waited(9), ...second }), copyTiming(2, 1, 1)])?.run
+        expect(run?.status).toBe(status)
+        expect(run?.blockedBy).toBe(expected)
+        expect(run?.waitingForText).toBe(waitingForText)
+    })
+
+    it('leaves a single copy blockedBy as it was', () => {
+        const only = annotate([copyTiming(0, 0, 1, { status: 'not-reached', startedAt: null, completedAt: null, waitingOn: 'trigger', ...waited(5) }), copyTiming(1, 1, 1)])
+        expect(only?.run?.blockedBy).toBe('not reached (trigger)')
+        expect(only?.copies).toHaveLength(1)
+    })
+})
+
+describe('sourceSpan', () => {
+    const END = 600
+    const repeated = (overrides: Partial<StepTiming>[]) => overrides.map((o, i) => copyTiming(i, 0, i + 1, o))
+
+    it('equals stepSpan for an unrepeated step', () => {
+        const steps = [timing(0, { startedAt: 5, completedAt: 9 }), timing(1, { startedAt: 40, completedAt: 90 })]
+        expect(sourceSpan(steps, 1, END)).toEqual(stepSpan(steps[1], END))
+        expect(sourceSpan(steps, 1, END)).toEqual({ from: 40, to: 90 })
+    })
+
+    it('spans from the first started copy to the last started copy whichever copy runStep names', () => {
+        const steps = repeated([{ startedAt: 10, completedAt: 20 }, { startedAt: 30, completedAt: 70 }, { startedAt: 80, completedAt: 100 }])
+        expect(sourceSpan(steps, 0, END)).toEqual({ from: 10, to: 100 })
+        expect(sourceSpan(steps, 1, END)).toEqual({ from: 10, to: 100 })
+    })
+
+    it('ends at the run end for a later in-progress copy', () => {
+        const steps = repeated([{ startedAt: 10, completedAt: 20 }, { status: 'in-progress', startedAt: 30, completedAt: null }])
+        expect(sourceSpan(steps, 0, END)).toEqual({ from: 10, to: END })
+    })
+
+    it('ignores an unstarted trailing copy and other sources', () => {
+        const steps = [
+            ...repeated([{ startedAt: 10, completedAt: 20 }, { status: 'waiting', startedAt: null, completedAt: null }]),
+            copyTiming(2, 1, 1, { startedAt: 300, completedAt: 400 }),
+        ]
+        expect(sourceSpan(steps, 0, END)).toEqual({ from: 10, to: 20 })
+    })
+
+    it('is null when no copy started or runStep names no step', () => {
+        const steps = repeated([{ status: 'waiting', startedAt: null, completedAt: null }, { status: 'not-reached', startedAt: null, completedAt: null }])
+        expect(sourceSpan(steps, 0, END)).toBeNull()
+        expect(sourceSpan([timing(0)], 5, END)).toBeNull()
+        expect(sourceSpan([timing(0)], -1, END)).toBeNull()
+    })
+})
+
+describe('copiesDetailText', () => {
+    it('is empty for zero or one copy', () => {
+        expect(copiesDetailText([])).toBe('')
+        expect(copiesDetailText([stepRunOf()])).toBe('')
+    })
+
+    it('gives one numbered line per copy, and says still waiting for a waiting or not-reached copy', () => {
+        const lines = copiesDetailText([
+            stepRunOf({ startedAt: 65, completedAt: 125, waitSeconds: 10, status: 'completed' }),
+            stepRunOf({ status: 'waiting', startedAt: null, completedAt: null, waitSeconds: 33 }),
+            stepRunOf({ status: 'not-reached', startedAt: null, completedAt: null, waitSeconds: 44 }),
+        ]).split('\n')
+        expect(lines).toEqual(['Copy 1: started 1:05, finished 2:05, waited 0:10', 'Copy 2: started –, finished –, still waiting', 'Copy 3: started –, finished –, still waiting'])
+    })
+})
+
+describe('gutterDetailText', () => {
+    const one = stepRunOf({ waitSeconds: 5, blockedBy: 'wood 0:05' })
+    const two = stepRunOf({ startedAt: 30, completedAt: 40 })
+
+    it('is empty without a run', () => {
+        expect(gutterDetailText({ kind: 'building', run: null, copies: [] })).toBe('')
+    })
+
+    it('equals the combined detail alone, with no line break, for an unrepeated annotation', () => {
+        expect(gutterDetailText({ kind: 'building', run: one, copies: [one] })).toBe(annotationDetailText(one))
+    })
+
+    it('follows the combined detail with one line per copy for a repeated annotation', () => {
+        const combined = combineRuns([one, two])
+        expect(gutterDetailText({ kind: 'building', run: combined, copies: [one, two] })).toBe(`${annotationDetailText(combined)}\n${copiesDetailText([one, two])}`)
+    })
+})
+
+describe('alignment with a repeated source', () => {
+    const steps = [copyTiming(0, 0, 1, { startedAt: 1 }), copyTiming(1, 0, 2, { startedAt: 11 }), copyTiming(2, 1, 1, { startedAt: 21 })]
+    const shownText = ['start -> sheep', A, B].join('\n')
+    const input = (overrides: Partial<AnnotationInput>) => ({
+        ...runInput({ shown: { text: shownText, durationSeconds: 600, selected: 'English 1 TC' }, live: { text: 'edit', duration: '600', selected: 'English 1 TC' }, liveSteps: stepsOf(A, B), ...overrides }, steps),
+    })
+
+    it('aligns both live steps to their sources through alignSteps and groups the copies', () => {
+        const out = buildAnnotations(input({}))
+        expect(out?.steps.map((s) => s.copies.length)).toEqual([2, 1])
+        expect(out?.steps.map((s) => s.run?.runStep)).toEqual([0, 2])
+        expect(out?.steps[0].run?.startedAt).toBe(1)
+    })
+
+    it('gives a step that does not align no run and no copies while the others keep theirs', () => {
+        const out = buildAnnotations(input({ liveSteps: stepsOf(A, X) }))
+        expect(out?.steps.map((s) => s.copies.length)).toEqual([2, 0])
+        expect(out?.steps[1].run).toBeNull()
+        expect(out?.steps[0].run?.runStep).toBe(0)
+    })
+
+    it('compares the shown step count with the source count, not result.steps.length', () => {
+        const three = ['start -> sheep', A, B, C].join('\n')
+        const out = buildAnnotations(input({ shown: { text: three, durationSeconds: 600, selected: 'English 1 TC' }, liveSteps: stepsOf(A, B, C) }))
+        expect(three.split('\n').length - 1).toBe(steps.length)
+        expect(out?.steps.map((s) => s.run)).toEqual([null, null, null])
+    })
+
+    it('gives live step 1 the run of source 1 on the identity path, not result.steps[1]', () => {
+        const out = buildAnnotations(input({ live: { text: shownText, duration: '600', selected: 'English 1 TC' } }))
+        expect(out?.steps.map((s) => s.run?.runStep)).toEqual([0, 2])
+        expect(out?.steps.map((s) => s.copies.length)).toEqual([2, 1])
+    })
+
+    it('gives a repeated source copies equal to its copy count and a run equal to the combined run', () => {
+        const out = buildAnnotations(input({ live: { text: shownText, duration: '600', selected: 'English 1 TC' } }))
+        const first = out?.steps[0]
+        expect(first?.run).toEqual(combineRuns(first?.copies ?? []))
+        expect(first?.run?.completedAt).toBe(5)
     })
 })
