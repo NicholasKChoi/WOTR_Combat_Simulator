@@ -87,10 +87,10 @@ test.describe.serial('create, read, update and delete', () => {
     expect(() => JSON.parse(text)).toThrow()
   })
 
-  test('PATCH gives 405 with Allow: GET, PUT, DELETE', async ({ request }) => {
-    const response = await request.patch(namedBuildUrl(id), { data: saveBody('Patch'), timeout: 10_000 })
+  test('POST gives 405 with Allow: GET, PUT, PATCH, DELETE', async ({ request }) => {
+    const response = await request.post(namedBuildUrl(id), { data: saveBody('Post'), timeout: 10_000 })
     expect(response.status()).toBe(405)
-    expect(response.headers().allow).toBe('GET, PUT, DELETE')
+    expect(response.headers().allow).toBe('GET, PUT, PATCH, DELETE')
   })
 
   test('DELETE gives 204 and a following GET gives 404', async ({ request }) => {

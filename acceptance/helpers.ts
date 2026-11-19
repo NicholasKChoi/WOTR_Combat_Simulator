@@ -82,6 +82,10 @@ export async function simulateOk<T>(request: APIRequestContext, buildOrder: unkn
   return response.json()
 }
 
+export function patchNamedBuild(request: APIRequestContext, id: string, data: unknown, client: string, headers: Record<string, string>, timeout = 10_000) {
+  return request.patch(namedBuildUrl(id), { data, headers: { 'Content-Type': 'application/json', ...headers, 'x-forwarded-for': client }, timeout })
+}
+
 // Playwright JSON-encodes a string `data`, so a raw body (a bare JSON value, malformed JSON) goes as a Buffer.
 export function postSimulateRaw(request: APIRequestContext, raw: string, timeout = 10_000) {
   return request.post(SIMULATE_PATH, {

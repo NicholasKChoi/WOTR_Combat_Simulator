@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { listBuilds } from '../../../lib/aoe4-build-order/builds'
 import type { NamedBuild } from '../../../lib/aoe4-build-order/named-builds'
-import { createNamedBuild, loadNamedBuild, updateNamedBuild } from './named-build-client'
+import { createNamedBuild, loadNamedBuild, renameNamedBuild, updateNamedBuild } from './named-build-client'
 import { lastCall, reply, stubFetch } from './fetch-test-helpers'
 
 const ID = 'AAAAAAAAAAAAAAAAAAAAAA'
@@ -78,16 +78,19 @@ describe('createNamedBuild', () => {
     })
 })
 
-describe('updateNamedBuild', () => {
-    it('puts with the bearer secret and the quoted revision', async () => {
+describe.each<[string, string, (signal?: AbortSignal) => ReturnType<typeof updateNamedBuild>, unknown]>([
+    ['updateNamedBuild', 'PUT', (signal) => updateNamedBuild(ID, SECRET, 2, request, signal), request],
+    ['renameNamedBuild', 'PATCH', (signal) => renameNamedBuild(ID, SECRET, 2, 'New name', signal), { name: 'New name' }],
+])('%s', (_label, method, send, body) => {
+    it(`sends ${method} with the bearer secret, the quoted revision and the body`, async () => {
         const fetch = stubFetch(reply(updated, 200))
         const signal = new AbortController().signal
-        expect(await updateNamedBuild(ID, SECRET, 2, request, signal)).toStrictEqual({ ok: true, response: updated })
+        expect(await send(signal)).toStrictEqual({ ok: true, response: updated })
         const [url, init] = lastCall(fetch)
         const headers = new Headers(init.headers)
         expect(url).toBe(`/api/aoe4-build-order/named-builds/${ID}`)
-        expect(init.method).toBe('PUT')
-        expect(init.body).toBe(JSON.stringify(request))
+        expect(init.method).toBe(method)
+        expect(init.body).toBe(JSON.stringify(body))
         expect(init.signal).toBe(signal)
         expect(headers.get('Authorization')).toBe(`Bearer ${SECRET}`)
         expect(headers.get('If-Match')).toBe('"2"')
@@ -96,13 +99,13 @@ describe('updateNamedBuild', () => {
     it.each<[string, unknown, number]>([
         ['a 201 with a valid body', updated, 201],
         ['a 200 without revision', { ...updated, revision: undefined }, 200],
-    ])('%s is a failure of kind other', async (_label, body, status) => {
-        stubFetch(reply(body, status))
-        expect(await updateNamedBuild(ID, SECRET, 2, request)).toStrictEqual({ ok: false, kind: 'other', message: GENERIC })
+    ])('%s is a failure of kind other', async (_case, replyBody, status) => {
+        stubFetch(reply(replyBody, status))
+        expect(await send()).toStrictEqual({ ok: false, kind: 'other', message: GENERIC })
     })
 })
 
-describe('failures of create and update', () => {
+describe('failures of create, update and rename', () => {
     const CONFLICT = 'This build changed somewhere else. Choose it again to get the latest version, or save a copy.'
     const FORBIDDEN = 'You cannot edit this build here. Save a copy instead.'
     const GONE = 'This build no longer exists. Save a copy instead.'
@@ -123,5 +126,6 @@ describe('failures of create and update', () => {
         stubFetch(respond)
         expect(await createNamedBuild(request)).toStrictEqual(expected)
         expect(await updateNamedBuild(ID, SECRET, 2, request)).toStrictEqual(expected)
+        expect(await renameNamedBuild(ID, SECRET, 2, 'New name')).toStrictEqual(expected)
     })
 })

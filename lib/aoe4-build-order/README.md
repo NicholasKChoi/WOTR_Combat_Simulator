@@ -85,7 +85,7 @@ Rules: [Route](../../docs/aoe4-build-order-format.md#route), with
   errors. Browser-safe.
 - `builds-routes.ts`: the save and read replies for saved builds, plus the error helpers the named-builds
   replies reuse.
-- `named-builds-routes.ts`: the create, read, update and delete replies for named builds.
+- `named-builds-routes.ts`: the create, read, update, rename and delete replies for named builds.
 - `saved-builds.ts`: the saved-build record, its content-addressed id, storage keys and the checks a save
   request must pass.
 - `named-builds.ts`: named-build ids, edit secrets, stored and public shapes, storage keys and header parsers.

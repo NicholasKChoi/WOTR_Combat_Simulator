@@ -22,7 +22,7 @@ export async function loadJson<T>(path: string, schema: z.ZodType<T>, signal: Ab
 
 export async function sendJson(
     path: string,
-    init: { method: 'POST' | 'PUT'; headers?: Record<string, string>; body: unknown },
+    init: { method: 'POST' | 'PUT' | 'PATCH'; headers?: Record<string, string>; body: unknown },
     signal?: AbortSignal,
 ): Promise<JsonReply> {
     let response: Response

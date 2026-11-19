@@ -265,8 +265,8 @@ request and response.
 #### Named builds routes
 
 A named build is a build that its creator can edit. `POST /api/aoe4-build-order/named-builds`
-(`createNamedBuild`) stores one, and `GET`, `PUT` and `DELETE` `/api/aoe4-build-order/named-builds/{id}`
-(`getNamedBuild`, `updateNamedBuild`, `deleteNamedBuild`) read, replace and remove it. Their logic is in
+(`createNamedBuild`) stores one, and `GET`, `PUT`, `PATCH` and `DELETE` `/api/aoe4-build-order/named-builds/{id}`
+(`getNamedBuild`, `updateNamedBuild`, `renameNamedBuild`, `deleteNamedBuild`) read, replace, rename and remove it. Their logic is in
 `lib/aoe4-build-order/named-builds-routes.ts`; the files under `pages/api/aoe4-build-order/named-builds/` only
 adapt the request and response.
 
@@ -277,15 +277,23 @@ adapt the request and response.
 - An update needs the edit secret as `Authorization: Bearer <secret>` and the current revision as `If-Match`.
   A revision that is not the stored one is 412, and so is a write that lands between the read and the replace;
   the other write is kept. A successful update stores the next revision even when the content is unchanged,
-  and may rename the build.
+  and may change the name along with the rest.
 - An update checks, in this order: the id (404), the secret's form (401), `If-Match` (428), the body (400 or
   413); then it takes a rate-limit slot (429), before it compares the secret, so guessing secrets is rate-limited;
   then whether the build exists (404), the secret (403) and the revision (412). The 404, 403 and 412 after the
   slot still cost it.
-- Creates, updates and `POST /builds` saves share one per-client write budget, `SAVE_RATE_LIMIT`. Reads and
-  deletes cost nothing.
+- A rename (`PATCH`) takes the same headers and the same `If-Match` rule as an update, with body `{ name }`; other
+  keys are ignored. It checks, in this order: the id (404), the secret's form (401), `If-Match` (428), the name
+  (400); then it takes a rate-limit slot (429), before it compares the secret; then whether the build exists
+  (404), the secret (403) and the revision (412), and a write that lands between the read and the replace is 412.
+  The name check is the only body check: the name is trimmed and must then be 1 to 100 characters, and the build
+  is neither checked against the catalog nor measured against the saved-build size limit. A success writes the
+  next revision, even for the same name, and changes only `buildOrder.name`, `revision` and `updatedAt`; the id,
+  so `?n=<id>` links, stays the same.
+- Creates, updates, renames and `POST /builds` saves share one per-client write budget, `SAVE_RATE_LIMIT`. Reads
+  and deletes cost nothing.
 - `DELETE` exists outside production only, as for saved builds: in production, and when `VERCEL` is set without
-  `VERCEL_ENV`, it is 405 with `Allow: GET, PUT`.
+  `VERCEL_ENV`, it is 405 with `Allow: GET, PUT, PATCH`.
 
 ## Storage
 
