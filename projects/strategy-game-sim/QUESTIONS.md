@@ -73,6 +73,7 @@ options: A) standalone bug | B) standalone chore | C) debug | D) milestone: adds
 recommendation: D: new behavior needing a design and a schema check
 research: discovery/milestone-20261120-1.md
 priority: low
+thread: 1573425739838001182
 
 Discovery found a new idea: let the AoE4 build-order page import and export builds in the community AoE4_Overlay / aoe4guides format, so users can run shared guides and take tuned builds back to the in-game overlay. The exact schema was not retrieved; the first ticket would fetch a real export. Report: discovery/milestone-20261120-1.md
 
