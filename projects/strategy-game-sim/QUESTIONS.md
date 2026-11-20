@@ -22,7 +22,7 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q150
+next: Q151
 
 ## Q147: SGS-209 follow-ups: 2 test-coverage nits
 kind: decision
@@ -63,5 +63,17 @@ M12.1 to M12.3 are done and merged (#218 to #221). M12.4 is yours: check the cha
 - Repeat: enter a step with a trailing xN (e.g. 'build Farm from wood x9') in the paste text and the step table Repeat field; see the copies timed and annotated.
 - Rename: rename one of My builds; the new name shows in the library and My builds, and an old link still opens.
 - Then run the retro (/code-factory:manage strategy-game-sim retro).
+
+### Answer
+
+## Q150: Triage: AoE4 import/export of the overlay/aoe4guides build format
+kind: decision
+blocks: none
+options: A) standalone bug | B) standalone chore | C) debug | D) milestone: adds behavior, needs a design | E) docs | F) drop
+recommendation: D: new behavior needing a design and a schema check
+research: discovery/milestone-20261120-1.md
+priority: low
+
+Discovery found a new idea: let the AoE4 build-order page import and export builds in the community AoE4_Overlay / aoe4guides format, so users can run shared guides and take tuned builds back to the in-game overlay. The exact schema was not retrieved; the first ticket would fetch a real export. Report: discovery/milestone-20261120-1.md
 
 ### Answer
