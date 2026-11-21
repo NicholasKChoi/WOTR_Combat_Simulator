@@ -26,4 +26,4 @@ pull from here; triage moves an item into a milestone or deletes it.
 - **AoE4: optional spread of outcomes (several runs with a seed).** (milestone) Defer until the accuracy item above shows where
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 
-- AoE4: import a build from, and export one to, the community overlay/guide format (AoE4_Overlay / aoe4guides JSON). Recommended: milestone, priority medium. The sim reads only its own JSON and paste format; first ticket should fetch a real RTS_Overlay export before designing the mapping. (discovery milestone 2026-11-20, standard; discovery/milestone-20261120-1.md)
+- (milestone) AoE4: import a build from, and export one to, the community overlay/guide format (AoE4_Overlay / aoe4guides JSON). Recommended: milestone, priority medium. The sim reads only its own JSON and paste format; first ticket should fetch a real RTS_Overlay export before designing the mapping. (discovery milestone 2026-11-20, standard; discovery/milestone-20261120-1.md)

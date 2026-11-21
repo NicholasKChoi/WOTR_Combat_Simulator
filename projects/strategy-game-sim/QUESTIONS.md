@@ -22,19 +22,15 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q151
+next: Q152
 
-## Q150: Triage: AoE4 import/export of the overlay/aoe4guides build format
-kind: decision
+## Q151: Run the M12 retro, then start M13 (AoE4 overlay import/export)
+kind: handoff
 blocks: none
-options: A) standalone bug | B) standalone chore | C) debug | D) milestone: adds behavior, needs a design | E) docs | F) drop
-recommendation: D: new behavior needing a design and a schema check
-research: discovery/milestone-20261120-1.md
-priority: low
-thread: 1573425739838001182
-answered: 2026-11-21T19:43Z discord
+options: A) Done | B) Not now
+recommendation: A: retro is interactive; run /code-factory:manage strategy-game-sim retro in a session, then drive starts M13 from the (milestone) backlog item
+thread: 1573786140819857599
 
-Discovery found a new idea: let the AoE4 build-order page import and export builds in the community AoE4_Overlay / aoe4guides format, so users can run shared guides and take tuned builds back to the in-game overlay. The exact schema was not retrieved; the first ticket would fetch a real export. Report: discovery/milestone-20261120-1.md
+M12 is complete (all criteria done). The retro never runs in a drive pass, and the next milestone waits on it. Run it from a terminal in the code repo.
 
 ### Answer
-D) milestone: adds behavior, needs a design
