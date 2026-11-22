@@ -42,6 +42,23 @@ too: `README.md` (Apps table), `ARCHITECTURE.md` (module rows), `lib/aoe4-build-
 omitted techs), `components/apps/aoe4-build-order/page-help.tsx` (the help dialog text), and
 `docs/api/openapi.json` (result fields).
 
+## Test layers
+
+What each test layer here can observe. A criterion names a layer that can see it; logic only a test
+can check moves into an exported pure function a unit test calls.
+
+- Unit (`npm test`, vitest): only `*.test.ts` under `utils/`, `lib/`, `components/`, in Node with no
+  DOM. Components are tested with `renderToStaticMarkup`: one static render, so no effects or layout
+  effects, no portals, no hover or focus, no state an event sets (an in-flight save, an open form), no
+  computed style or layout (CSS modules give class names only), and no recharts SVG. Unexported
+  functions and component locals are out of reach.
+- Acceptance (`npm run acceptance`, Playwright, Chromium, `acceptance/*.spec.ts`): the real page on
+  `next dev`. Computed styles, layout, hover and focus, held requests, and state after events. Text
+  edits settle after the auto-run pause: wait for `auto-run-status` `data-status` before asserting on
+  the converted build.
+- A reload does not keep the editor text: the page starts from the first build, or the build `?n=` or `?b=`
+  names, and restores only a pinned run from storage.
+
 ## Out of scope
 
 Repo-wide: no project's tickets touch these.
