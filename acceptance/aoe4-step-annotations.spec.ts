@@ -207,6 +207,16 @@ test.describe('AoE4 step annotations in the text view', () => {
       for (let i = 1; i < target; i++) await page.keyboard.press('ArrowDown')
     }
 
+    async function expectNoPopoverOnHoverAndCaret(page: Page, line: Locator) {
+      await line.hover()
+      await expect(line).toHaveAttribute('data-gutter-active', 'true')
+      await expect(popover(page)).toHaveCount(0)
+      await page.mouse.move(0, 0)
+      await caretTo(page, line)
+      await expect(line).toHaveAttribute('data-gutter-active', 'true')
+      await expect(popover(page)).toHaveCount(0)
+    }
+
     test('hovering a not-reached step shows the popover at once and leaving hides it; a completed no-wait step shows none on hover or caret', async ({ page, request }) => {
       const result = await simulateOk<SimulationResult>(request, buildOrderFrom(DEFAULT_TEXT), DURATION)
       const calm = result.steps.find((s) => s.status === 'completed' && s.waitSeconds === 0)!
@@ -216,13 +226,7 @@ test.describe('AoE4 step annotations in the text view', () => {
       await openText(page)
       const calmLine = await lineAt(page, calm.step)
       await expect(calmLine).toHaveAttribute('data-status', 'completed')
-      await calmLine.hover()
-      await expect(calmLine).toHaveAttribute('data-gutter-active', 'true')
-      await expect(popover(page)).toHaveCount(0)
-      await page.mouse.move(0, 0)
-      await caretTo(page, calmLine)
-      await expect(calmLine).toHaveAttribute('data-gutter-active', 'true')
-      await expect(popover(page)).toHaveCount(0)
+      await expectNoPopoverOnHoverAndCaret(page, calmLine)
       await page.getByTestId('build-order-text').blur()
       const line = await lineAt(page, unreached.step)
       await expect(line).toHaveAttribute('data-status', 'not-reached')
@@ -282,6 +286,24 @@ test.describe('AoE4 step annotations in the text view', () => {
       await expect(popover(page)).toHaveCount(1)
       await page.getByTestId('build-order-text').blur()
       await expect(popover(page)).toHaveCount(0)
+    })
+
+    test('a repeated step follows its combined run: no popover when every copy completed without waiting, one when a copy is still waiting', async ({ page, request }) => {
+      const calmText = ['start 6 sheep -> sheep', 'build house with 2 from sheep x2'].join('\n')
+      const waitText = ['start 6 sheep -> sheep', 'build barracks with 9 from sheep x2'].join('\n')
+      const calm = (await simulateOk<SimulationResult>(request, buildOrderFrom(calmText), DURATION)).steps
+      const waited = (await simulateOk<SimulationResult>(request, buildOrderFrom(waitText), DURATION)).steps
+      expect(calm.map((s) => [s.status, s.waitSeconds])).toEqual([['completed', 0], ['completed', 0]])
+      expect(waited.some((s) => s.status === 'waiting')).toBe(true)
+      await openText(page, waitText)
+      const waitedLine = await lineAt(page, 0)
+      await waitedLine.hover()
+      await expect(popover(page)).toBeVisible()
+      await page.mouse.move(0, 0)
+      await expect(popover(page)).toBeHidden()
+      await openText(page, calmText)
+      const calmLine = await lineAt(page, 0)
+      await expectNoPopoverOnHoverAndCaret(page, calmLine)
     })
 
     test('hover and caret share one active step: the last event wins and leaving a hovered line does not restore the caret line', async ({ page, request }) => {
