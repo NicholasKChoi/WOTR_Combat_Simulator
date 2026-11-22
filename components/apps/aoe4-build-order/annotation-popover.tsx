@@ -13,15 +13,23 @@ interface Position {
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max))
 
-function place(anchor: DOMRect, popover: DOMRect): Position {
-    const viewport = document.documentElement
+type Rect = Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom' | 'width' | 'height'>
+
+export interface PlacementRects {
+    anchor: Rect
+    textarea: Rect
+    popover: Rect
+    viewport: { width: number; height: number }
+}
+
+export function placePopover({ anchor, textarea, popover, viewport }: PlacementRects): Position {
+    const maxLeft = viewport.width - popover.width - VIEWPORT_MARGIN_PX
+    const maxTop = viewport.height - popover.height - VIEWPORT_MARGIN_PX
+    const beside = textarea.right + ANCHOR_GAP_PX
+    if (beside <= maxLeft) return { left: beside, top: clamp(anchor.top, VIEWPORT_MARGIN_PX, maxTop) }
     const below = anchor.bottom + ANCHOR_GAP_PX
-    const fitsBelow = below + popover.height <= viewport.clientHeight - VIEWPORT_MARGIN_PX
-    const top = fitsBelow ? below : anchor.top - ANCHOR_GAP_PX - popover.height
-    return {
-        left: clamp(anchor.left, VIEWPORT_MARGIN_PX, viewport.clientWidth - popover.width - VIEWPORT_MARGIN_PX),
-        top: clamp(top, VIEWPORT_MARGIN_PX, viewport.clientHeight - popover.height - VIEWPORT_MARGIN_PX),
-    }
+    const top = below <= maxTop ? below : anchor.top - ANCHOR_GAP_PX - popover.height
+    return { left: clamp(anchor.left, VIEWPORT_MARGIN_PX, maxLeft), top: clamp(top, VIEWPORT_MARGIN_PX, maxTop) }
 }
 
 export function PopoverLines({ text }: { text: string }) {
@@ -36,13 +44,29 @@ export function PopoverLines({ text }: { text: string }) {
 
 // Rendered through a portal: the annotation column clips its children, and the editor's
 // inline-size container would become the containing block of a fixed child.
-export function AnnotationPopover({ anchor, text }: { anchor: RefObject<HTMLElement | null>; text: string }) {
+export function AnnotationPopover({
+    anchor,
+    textarea,
+    text,
+}: {
+    anchor: RefObject<HTMLElement | null>
+    textarea: RefObject<HTMLElement | null>
+    text: string
+}) {
     const popoverRef = useRef<HTMLDivElement>(null)
     const [position, setPosition] = useState<Position | null>(null)
     useLayoutEffect(() => {
         const update = () => {
-            if (anchor.current !== null && popoverRef.current !== null) {
-                setPosition(place(anchor.current.getBoundingClientRect(), popoverRef.current.getBoundingClientRect()))
+            if (anchor.current !== null && textarea.current !== null && popoverRef.current !== null) {
+                const { clientWidth, clientHeight } = document.documentElement
+                setPosition(
+                    placePopover({
+                        anchor: anchor.current.getBoundingClientRect(),
+                        textarea: textarea.current.getBoundingClientRect(),
+                        popover: popoverRef.current.getBoundingClientRect(),
+                        viewport: { width: clientWidth, height: clientHeight },
+                    }),
+                )
             }
         }
         update()
@@ -52,7 +76,7 @@ export function AnnotationPopover({ anchor, text }: { anchor: RefObject<HTMLElem
             window.removeEventListener('scroll', update, true)
             window.removeEventListener('resize', update)
         }
-    }, [anchor, text])
+    }, [anchor, textarea, text])
     return createPortal(
         <div
             ref={popoverRef}

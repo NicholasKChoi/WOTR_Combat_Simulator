@@ -1,11 +1,11 @@
 import cn from 'classnames'
-import { useEffect, useRef, type SyntheticEvent } from 'react'
+import { useEffect, useRef, type RefObject, type SyntheticEvent } from 'react'
 
 import type { BuildOrderLines } from '../../../lib/aoe4-build-order/model'
 import annotationStyles from './step-annotation.module.css'
 import { KIND_CLASS, StepTimes, annotationToneClass } from './step-annotation'
 import { AnnotationPopover } from './annotation-popover'
-import { annotationsByLine, gutterDetailText, type BuildAnnotations, type StepAnnotation } from './step-annotations'
+import { annotationsByLine, gutterDetailText, hasPopover, type BuildAnnotations, type StepAnnotation } from './step-annotations'
 import { lineCount } from './text-lines'
 import styles from './workbench.module.css'
 
@@ -26,10 +26,11 @@ interface AnnotationLineProps {
     annotation: StepAnnotation | null
     stale: boolean
     active: boolean
+    textarea: RefObject<HTMLTextAreaElement | null>
     onActiveStepChange: (runStep: number | null) => void
 }
 
-function AnnotationLine({ line, annotation, stale, active, onActiveStepChange }: AnnotationLineProps) {
+function AnnotationLine({ line, annotation, stale, active, textarea, onActiveStepChange }: AnnotationLineProps) {
     const run = annotation?.run ?? null
     const lineRef = useRef<HTMLLIElement>(null)
     return (
@@ -48,7 +49,9 @@ function AnnotationLine({ line, annotation, stale, active, onActiveStepChange }:
             onPointerLeave={() => onActiveStepChange(null)}
         >
             {run === null ? null : <StepTimes run={run} labelled={false} />}
-            {annotation !== null && run !== null && active ? <AnnotationPopover anchor={lineRef} text={gutterDetailText(annotation)} /> : null}
+            {annotation !== null && run !== null && active && hasPopover(run) ? (
+                <AnnotationPopover anchor={lineRef} textarea={textarea} text={gutterDetailText(annotation)} />
+            ) : null}
         </li>
     )
 }
@@ -91,6 +94,7 @@ export function BuildTextEditor({ text, onChange, errorLines, annotations, lines
                                     annotation={annotation}
                                     stale={annotations.stale}
                                     active={activeStep !== null && runStep === activeStep}
+                                    textarea={textareaRef}
                                     onActiveStepChange={onActiveStepChange}
                                 />
                             )

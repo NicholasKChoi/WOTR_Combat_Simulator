@@ -1,10 +1,10 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { SimulationResult, StepTiming } from '../lib/aoe4-build-order/model'
 import { listBuilds } from '../lib/aoe4-build-order/builds'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { waitDetailText } from '../lib/aoe4-build-order/wait-detail'
 import { formatBuildOrderText, parseBuildOrderText } from '../lib/aoe4-build-order/parse-text'
-import { STEP_KINDS, formatStepTime } from '../components/apps/aoe4-build-order/step-annotations'
+import { STEP_KINDS, formatStepTime, hasPopover } from '../components/apps/aoe4-build-order/step-annotations'
 import { MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, buildOrderFrom, expectNoRun, holdNextSimulate, legendOutsideHelp, openHelp, openPage, showView, simulateOk, waitForRun } from './helpers'
 
 const LONG_WAIT_SECONDS = 60
@@ -193,6 +193,12 @@ test.describe('AoE4 step annotations in the text view', () => {
       return line
     }
 
+    async function popoverSteps(request: APIRequestContext, text = DEFAULT_TEXT) {
+      const result = await simulateOk<SimulationResult>(request, buildOrderFrom(text), DURATION)
+      expect(result.steps.every((s) => s.copy === 1)).toBe(true)
+      return result.steps.filter(hasPopover).map((s) => s.step)
+    }
+
     async function caretTo(page: Page, line: Locator) {
       const target = Number(await line.getAttribute('data-line'))
       const textarea = page.getByTestId('build-order-text')
@@ -201,27 +207,31 @@ test.describe('AoE4 step annotations in the text view', () => {
       for (let i = 1; i < target; i++) await page.keyboard.press('ArrowDown')
     }
 
-    test('hovering a completed no-wait step and a not-reached step shows the popover at once, and leaving hides it', async ({ page, request }) => {
+    test('hovering a not-reached step shows the popover at once and leaving hides it; a completed no-wait step shows none on hover or caret', async ({ page, request }) => {
       const result = await simulateOk<SimulationResult>(request, buildOrderFrom(DEFAULT_TEXT), DURATION)
       const calm = result.steps.find((s) => s.status === 'completed' && s.waitSeconds === 0)!
       const unreached = result.steps.find((s) => s.status === 'not-reached')!
       expect(calm).toBeDefined()
       expect(unreached).toBeDefined()
       await openText(page)
-      const cases = [
-        { timing: calm, text: 'Waited 0:00. Blocked by: nothing' },
-        { timing: unreached, text: /^Still waiting\. Blocked by: not reached \(/ },
-      ]
-      for (const { timing, text } of cases) {
-        const line = await lineAt(page, timing.step)
-        await expect(line).toHaveAttribute('data-status', timing.status)
-        await expect(popover(page)).toBeHidden()
-        await line.hover()
-        await expect(popover(page)).toBeVisible()
-        await expect(popover(page)).toHaveText(text)
-        await page.mouse.move(0, 0)
-        await expect(popover(page)).toBeHidden()
-      }
+      const calmLine = await lineAt(page, calm.step)
+      await expect(calmLine).toHaveAttribute('data-status', 'completed')
+      await calmLine.hover()
+      await expect(calmLine).toHaveAttribute('data-gutter-active', 'true')
+      await expect(popover(page)).toHaveCount(0)
+      await page.mouse.move(0, 0)
+      await caretTo(page, calmLine)
+      await expect(calmLine).toHaveAttribute('data-gutter-active', 'true')
+      await expect(popover(page)).toHaveCount(0)
+      await page.getByTestId('build-order-text').blur()
+      const line = await lineAt(page, unreached.step)
+      await expect(line).toHaveAttribute('data-status', 'not-reached')
+      await expect(popover(page)).toBeHidden()
+      await line.hover()
+      await expect(popover(page)).toBeVisible()
+      await expect(popover(page)).toHaveText(/^Still waiting\. Blocked by: not reached \(/)
+      await page.mouse.move(0, 0)
+      await expect(popover(page)).toBeHidden()
     })
 
     test('the start line has no run and shows no popover', async ({ page }) => {
@@ -233,8 +243,9 @@ test.describe('AoE4 step annotations in the text view', () => {
       await expect(popover(page)).toHaveCount(0)
     })
 
-    test('blank, comment and unparseable lines show no popover on hover or caret', async ({ page }) => {
+    test('blank, comment and unparseable lines show no popover on hover or caret', async ({ page, request }) => {
       const text = ['start 6 sheep -> sheep', '', '# a comment', 'build barracks with 9 from sheep', 'build barracks with 9 from sheep'].join('\n')
+      expect(await popoverSteps(request, ['start 6 sheep -> sheep', 'build barracks with 9 from sheep'].join('\n'))).toEqual([0])
       await openText(page, text)
       await page.getByTestId('build-order-text').fill(text.replace('\nbuild barracks with 9 from sheep\n', '\nnot a step at all\n'))
       const lines = page.getByTestId('build-order-line-annotation')
@@ -251,10 +262,11 @@ test.describe('AoE4 step annotations in the text view', () => {
       await expect(popover(page)).toHaveCount(1)
     })
 
-    test('the caret alone shows the popover for its step line, moves with the caret and hides off a run line or on blur', async ({ page }) => {
+    test('the caret alone shows the popover for its step line, moves with the caret and hides off a run line or on blur', async ({ page, request }) => {
+      const [firstStep, secondStep] = await popoverSteps(request)
       await openText(page)
-      const first = await lineAt(page, 0)
-      const second = await lineAt(page, 1)
+      const first = await lineAt(page, firstStep)
+      const second = await lineAt(page, secondStep)
       await expect(popover(page)).toBeHidden()
       await caretTo(page, first)
       await expect(popover(page)).toHaveCount(1)
@@ -272,10 +284,15 @@ test.describe('AoE4 step annotations in the text view', () => {
       await expect(popover(page)).toHaveCount(0)
     })
 
-    test('hover and caret share one active step: the last event wins and leaving a hovered line does not restore the caret line', async ({ page }) => {
+    test('hover and caret share one active step: the last event wins and leaving a hovered line does not restore the caret line', async ({ page, request }) => {
+      const steps = await popoverSteps(request)
+      const aStep = steps.find((step) => steps.includes(step + 1))!
+      const bStep = steps.find((step) => step !== aStep && step !== aStep + 1)!
+      expect(aStep).toBeDefined()
+      expect(bStep).toBeDefined()
       await openText(page)
-      const a = await lineAt(page, 0)
-      const b = await lineAt(page, 2)
+      const a = await lineAt(page, aStep)
+      const b = await lineAt(page, bStep)
       const lines = page.getByTestId('build-order-line-annotation')
       await caretTo(page, a)
       await expect(popover(page)).toHaveCount(1)
@@ -292,13 +309,13 @@ test.describe('AoE4 step annotations in the text view', () => {
     })
 
     for (const viewport of [MIN_SUPPORTED_VIEWPORT, WIDE_VIEWPORT]) {
-      test(`the popover lies inside the ${viewport.width}px viewport and is not clipped, for the first and the last line`, async ({ page }) => {
+      test(`the popover lies inside the ${viewport.width}px viewport and is not clipped, for the first and the last line`, async ({ page, request }) => {
+        const steps = await popoverSteps(request)
         await page.setViewportSize(viewport)
         await openText(page)
-        const count = await runLines(page).count()
-        for (const index of [0, count - 1]) {
+        for (const index of [steps[0], steps[steps.length - 1]]) {
           const line = runLines(page).nth(index)
-          await line.evaluate((el, block) => el.scrollIntoView({ block, behavior: 'instant' }), index === 0 ? ('start' as const) : ('end' as const))
+          await line.evaluate((el, block) => el.scrollIntoView({ block, behavior: 'instant' }), index === steps[0] ? ('start' as const) : ('end' as const))
           await line.hover()
           await expect(popover(page)).toBeVisible()
           await expect
@@ -317,6 +334,34 @@ test.describe('AoE4 step annotations in the text view', () => {
           await page.mouse.move(0, 0)
         }
       })
+    }
+
+    for (const viewport of [MIN_SUPPORTED_VIEWPORT, WIDE_VIEWPORT]) {
+      for (const how of ['hover', 'caret'] as const) {
+        test(`the popover opens beside the textarea, level with a mid-list line, at ${viewport.width}px by ${how}`, async ({ page, request }) => {
+          const steps = await popoverSteps(request)
+          expect(steps.length).toBeGreaterThan(2)
+          await page.setViewportSize(viewport)
+          await openText(page)
+          const line = await lineAt(page, steps[Math.floor(steps.length / 2)])
+          if (how === 'hover') await line.hover()
+          else await caretTo(page, line)
+          await line.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
+          await expect(popover(page)).toBeVisible()
+          await expect
+            .poll(() =>
+              page.evaluate(() => {
+                const box = (el: Element | null) => el!.getBoundingClientRect()
+                const p = box(document.querySelector('[data-testid="build-order-annotation-popover"]'))
+                const t = box(document.querySelector('[data-testid="build-order-text"]'))
+                const l = box(document.querySelector('[data-testid="build-order-line-annotation"][data-gutter-active="true"]'))
+                const apart = p.left >= t.right || p.right <= t.left || p.top >= t.bottom || p.bottom <= t.top
+                return { rightOfTextarea: p.left >= t.right, apart, levelWithLine: Math.abs(p.top - l.top) <= 1 }
+              }),
+            )
+            .toEqual({ rightOfTextarea: true, apart: true, levelWithLine: true })
+        })
+      }
     }
   })
 
