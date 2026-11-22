@@ -64,4 +64,9 @@ describe('placePopover', () => {
         const input = rects({ textarea: rect(100, 200, 900, 400), anchor: rect(40, 760, 60, 20) })
         expect(placePopover(input).top).toBe(760 - 4 - 60)
     })
+
+    it('clamps a fallback popover to the top margin when it fits neither below nor above the anchor', () => {
+        const input = rects({ textarea: rect(100, 20, 900, 60), anchor: rect(40, 30, 60, 20), viewport: { width: 1200, height: 100 } })
+        expect(placePopover(input).top).toBe(8)
+    })
 })
