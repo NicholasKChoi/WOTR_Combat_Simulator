@@ -24,17 +24,6 @@ Detail goes in the research report. Each item has this shape:
 
 next: Q153
 
-## Q151: Run the M12 retro, then start M13 (AoE4 overlay import/export)
-kind: handoff
-blocks: none
-options: A) Done | B) Not now
-recommendation: A: retro is interactive; run /code-factory:manage strategy-game-sim retro in a session, then drive starts M13 from the (milestone) backlog item
-thread: 1573786140819857599
-
-M12 is complete (all criteria done). The retro never runs in a drive pass, and the next milestone waits on it. Run it from a terminal in the code repo.
-
-### Answer
-
 ## Q152: Start M13: AoE4 overlay import/export with these five criteria?
 kind: confirmation
 blocks: M13 (AoE4 overlay import/export: bring a community build in, tak…)
