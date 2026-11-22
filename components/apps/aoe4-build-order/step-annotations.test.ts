@@ -14,6 +14,7 @@ import {
     formatStepTime,
     groupBySource,
     gutterDetailText,
+    hasPopover,
     sourceSpan,
     stepKind,
     stepSpan,
@@ -557,5 +558,33 @@ describe('alignment with a repeated source', () => {
         const first = out?.steps[0]
         expect(first?.copies).toHaveLength(2)
         expect(first?.run).toMatchObject({ runStep: 0, startedAt: 1, completedAt: 15 })
+    })
+})
+
+describe('hasPopover', () => {
+    it.each([
+        ['completed', 0, false],
+        ['completed', 5, true],
+        ['in-progress', 0, true],
+        ['waiting', 0, true],
+        ['not-reached', 0, true],
+        ['in-progress', 5, true],
+        ['waiting', 5, true],
+    ] as const)('%s with %i waited seconds shows a popover: %s', (status, waitSeconds, expected) => {
+        expect(hasPopover(stepRunOf({ status, waitSeconds }))).toBe(expected)
+    })
+
+    it('is false for a repeated step whose copies all completed with no wait', () => {
+        expect(hasPopover(combineRuns([stepRunOf(), stepRunOf()]))).toBe(false)
+    })
+
+    it('is true for a repeated step when one completed copy waited, though the first did not', () => {
+        const [first, second] = [stepRunOf(), stepRunOf({ waitSeconds: 7 })]
+        expect(hasPopover(first)).toBe(false)
+        expect(hasPopover(combineRuns([first, second]))).toBe(true)
+    })
+
+    it('is true for a repeated step with a no-wait completed copy and a copy still in progress', () => {
+        expect(hasPopover(combineRuns([stepRunOf(), stepRunOf({ status: 'in-progress', completedAt: null })]))).toBe(true)
     })
 })

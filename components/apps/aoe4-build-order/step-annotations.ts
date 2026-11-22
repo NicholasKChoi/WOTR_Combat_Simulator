@@ -46,6 +46,8 @@ export const STILL_WAITING = 'still waiting'
 export const waitedText = (run: Pick<StepRun, 'status' | 'waitSeconds'>): string =>
     run.status === 'waiting' || run.status === 'not-reached' ? STILL_WAITING : formatMinSec(run.waitSeconds)
 
+export const hasPopover = (run: Pick<StepRun, 'status' | 'waitSeconds'>): boolean => !(run.status === 'completed' && run.waitSeconds === 0)
+
 export const annotationDetailText = (run: Pick<StepRun, 'status' | 'waitSeconds' | 'blockedBy'>): string => {
     const waited = waitedText(run)
     return `${waited === STILL_WAITING ? 'Still waiting' : `Waited ${waited}`}. Blocked by: ${run.blockedBy === '' ? 'nothing' : run.blockedBy}`
