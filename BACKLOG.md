@@ -27,3 +27,5 @@ pull from here; triage moves an item into a milestone or deletes it.
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 
 - (milestone) AoE4: import a build from, and export one to, the community overlay/guide format (AoE4_Overlay / aoe4guides JSON). Recommended: milestone, priority medium. The sim reads only its own JSON and paste format; first ticket should fetch a real RTS_Overlay export before designing the mapping. (discovery milestone 2026-11-20, standard; discovery/milestone-20261120-1.md)
+
+- `CONTEXT.md`: add a "## Test layers" section after the Design docs section, text verbatim from projects/strategy-game-sim/reports/retro-20261121.md pattern 5 (Proposal (repo)). Says what unit (vitest, Node, renderToStaticMarkup only) and acceptance (Playwright) layers can observe, and that a reload does not keep editor text. Evidence: SGS-198, 206, 210, 211, 212 wrote criteria/tests for a layer that could not see them. (retro 2026-11-21, high)
