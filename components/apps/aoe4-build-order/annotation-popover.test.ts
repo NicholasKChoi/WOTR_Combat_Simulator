@@ -46,27 +46,29 @@ describe('placePopover', () => {
         expect(placed.left + input.popover.width).toBeLessThanOrEqual(input.viewport.width)
     })
 
-    it('keeps a fallback popover inside the viewport when the anchor is near the right edge', () => {
-        const input = rects({ textarea: rect(100, 200, 1000, 400), anchor: rect(1150, 300, 40, 20) })
-        expect(placePopover(input)).toEqual({ left: 1200 - 200 - 8, top: 324 })
-    })
-
-    it('clamps a beside placement vertically when the anchor is near the viewport bottom', () => {
-        const input = rects({ anchor: rect(40, 780, 60, 20) })
-        expect(placePopover(input)).toEqual({ left: input.textarea.right + 4, top: 800 - 60 - 8 })
-    })
-
-    it('clamps a beside placement vertically when the anchor is above the viewport top margin', () => {
-        expect(placePopover(rects({ anchor: rect(40, -10, 60, 20) })).top).toBe(8)
-    })
-
-    it('puts a fallback popover above the anchor when it does not fit below', () => {
-        const input = rects({ textarea: rect(100, 200, 900, 400), anchor: rect(40, 760, 60, 20) })
-        expect(placePopover(input).top).toBe(760 - 4 - 60)
-    })
-
-    it('clamps a fallback popover to the top margin when it fits neither below nor above the anchor', () => {
-        const input = rects({ textarea: rect(100, 20, 900, 60), anchor: rect(40, 30, 60, 20), viewport: { width: 1200, height: 100 } })
-        expect(placePopover(input).top).toBe(8)
+    it.each<[string, Partial<PlacementRects>, { left?: number; top?: number }]>([
+        [
+            'keeps a fallback popover inside the viewport when the anchor is near the right edge',
+            { textarea: rect(100, 200, 1000, 400), anchor: rect(1150, 300, 40, 20) },
+            { left: 1200 - 200 - 8, top: 324 },
+        ],
+        [
+            'clamps a beside placement vertically when the anchor is near the viewport bottom',
+            { anchor: rect(40, 780, 60, 20) },
+            { left: 600 + 4, top: 800 - 60 - 8 },
+        ],
+        ['clamps a beside placement vertically when the anchor is above the viewport top margin', { anchor: rect(40, -10, 60, 20) }, { top: 8 }],
+        [
+            'puts a fallback popover above the anchor when it does not fit below',
+            { textarea: rect(100, 200, 900, 400), anchor: rect(40, 760, 60, 20) },
+            { top: 760 - 4 - 60 },
+        ],
+        [
+            'clamps a fallback popover to the top margin when it fits neither below nor above the anchor',
+            { textarea: rect(100, 20, 900, 60), anchor: rect(40, 30, 60, 20), viewport: { width: 1200, height: 100 } },
+            { top: 8 },
+        ],
+    ])('%s', (_, overrides, expected) => {
+        expect(placePopover(rects(overrides))).toMatchObject(expected)
     })
 })
