@@ -293,3 +293,29 @@ Drafted 2026-11-18 from the two owner feature requests of 2026-11-13 (BACKLOG); 
 Repeat touches the build schema and the simulator's step offering (critical path `simulate.ts`): existing
 builds and saved links must keep parsing and simulating to the same result. Rename touches the Blob
 named-build seam (`named-builds-routes.ts`): keep the compare-and-swap save rules and edit-secret handling.
+
+## M13: AoE4 population past the 200 cap: production continues, and the charts mark when 200 was reached
+
+**Outcome:** Production is no longer blocked at 200 population, because real games keep producing as units die in combat and the simulator has no combat losses. The population chart marks the instant 200 was first reached, so the cap stays visible.
+
+### Exit criteria
+
+Drafted 2026-11-23 from the BACKLOG item "let population go past the 200 cap" (owner via session, 2026-11-21); confirmed by the owner when M13 starts. Left for later milestones: overlay import/export (held, Q152), sim accuracy and gather rates, patch tracking, English tech gaps, spread of outcomes.
+
+| id | criterion | kind | covered by | status |
+|----|-----------|------|------------|--------|
+| M13.1 | The simulator no longer stops production at `data.base.maxPopCap` (200): units and houses past 200 follow the rule the design settles on, and builds that never reach 200 simulate to the same result as before | code | | open |
+| M13.2 | The first instant population reaches 200 is still recorded as `populationCapReachedAt`, and the population chart marks it (a marker or line) and the results text still says when 200 was reached | code | | open |
+| M13.3 | `docs/aoe4-build-order*.md`, `ARCHITECTURE.md` and `docs/api/openapi.json` describe the changes; unit tests cover a build that crosses 200, and Playwright covers the chart marker | code | | open |
+| M13.4 | Owner checks the changes on the PR previews and then production | evidence | | open |
+
+### Delivery sequence
+
+1. Settle the rule for supply and houses past 200 (design).
+2. Simulator and house planning change.
+3. Chart marker and results text.
+4. Docs and acceptance specs.
+
+### Safety and contracts
+
+Touches simulation rules (`simulate.ts`, `houses.ts`; critical path, high risk): builds that stay under 200 and saved links must keep the same results. `SIM_INPUT_BOUNDS` in `schema.ts` are request-size caps, not the pop cap, and stay.
