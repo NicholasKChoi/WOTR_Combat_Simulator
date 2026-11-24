@@ -22,7 +22,7 @@ maxOpenQuestions: 5               # board items open at once; board.py queues th
                                   #   none or 0: no cap
 questionBot: auto                 # auto: the manager, file, and drive start the bot; manual: the owner runs
                                   #   the bot and none of those commands starts it
-designQuestions: board            # board: milestone stages 0 criteria to 2b design questions ask per
+designQuestions: chat             # board: milestone stages 0 criteria to 2b design questions ask per
                                   #   questionBoard; chat: they ask in chat, and a drive stops before them
 
 strongModelTriggers:                # docs, data snapshots, dependency/config upgrades, dead-code deletion, UI styling, test-only: not triggers alone
