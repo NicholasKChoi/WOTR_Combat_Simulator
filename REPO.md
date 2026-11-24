@@ -6,7 +6,7 @@ host: github.com                  # gh repo view
 repo: NicholasKChoi/WOTR_Combat_Simulator   # gh repo view
 baseBranch: main                  # gh repo view defaultBranchRef
 stateBranch: code-factory-state
-stateVersion: 10                  # last migration applied; set by init and /code-factory:upgrade
+stateVersion: 11                  # last migration applied; set by init and /code-factory:upgrade
 pushState: true
 worktreeRoot: worktrees
 upgrade:
