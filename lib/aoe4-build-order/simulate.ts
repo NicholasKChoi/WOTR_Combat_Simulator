@@ -112,6 +112,8 @@ export interface EngineState extends EffectState {
   readonly spent: Record<SpendCategory, number>;
   // Popcap of spawned, living villagers and units; paid units still in production are in population only.
   spawnedPopulation: number;
+  // Instant spawnedPopulation first reached data.base.maxPopCap.
+  populationCapReachedAt: number | null;
   // Unit entry id -> spawned units at that entry's tier; starting units are not in it. changes is in time
   // order, so the units at time t are the sum of the deltas at or before t.
   readonly spawned: Map<string, SpawnedUnits>;
@@ -145,8 +147,6 @@ interface ScheduledEvent {
 
 interface Engine extends EngineState {
   readonly gathered: Resources;
-  // Instant spawnedPopulation first reached data.base.maxPopCap.
-  populationCapReachedAt: number | null;
   // Sorted by time; ties keep schedule order.
   readonly events: ScheduledEvent[];
   // First non-reaction step not yet started; every earlier non-reaction step has started.
@@ -354,17 +354,25 @@ function completeIfUncarried(state: EngineState, step: number | null): void {
   markCompleted(state, step);
 }
 
-function noteCapReached(engine: Engine): void {
-  if (engine.populationCapReachedAt === null && engine.spawnedPopulation >= engine.data.base.maxPopCap.value) {
-    engine.populationCapReachedAt = engine.time;
+function noteCapReached(state: EngineState): void {
+  if (state.populationCapReachedAt === null && state.spawnedPopulation >= state.data.base.maxPopCap.value) {
+    state.populationCapReachedAt = state.time;
   }
+}
+
+/** Whether supply has room for `popcap` more population; always true once the population cap has been reached with supply at the cap (Model rules). */
+export function hasPopulationRoom(state: EngineState, popcap: number): boolean {
+  if (state.populationCapReachedAt != null && state.supply >= state.data.base.maxPopCap.value) {
+    return true;
+  }
+  return state.population + popcap <= state.supply;
 }
 
 function spawnUnit(state: EngineState, entry: SnapshotEntry, at: BuildingInstance): void {
   const resolved = resolveUnitEntry(entry.baseId, state);
   recordUnits(state, resolved && resolved.age >= entry.age ? resolved : entry, 1);
   state.spawnedPopulation += entry.costs.popcap;
-  noteCapReached(state as Engine);
+  noteCapReached(state);
   if (entry.baseId !== VILLAGER_ID) {
     return;
   }
@@ -409,7 +417,7 @@ const produce: StepHandler<'produce'> = (step, index, state) => {
     return { started: false, waitingOn: 'prerequisite', detail: buildingWait(state, [step.producer], step.instance ?? null) };
   }
   const popcap = targets.length * entry.costs.popcap;
-  if (state.population + popcap > state.supply) {
+  if (!hasPopulationRoom(state, popcap)) {
     return { started: false, waitingOn: 'population', detail: populationWait(state, popcap) };
   }
   const total = costOf(entry, targets.length);
@@ -613,7 +621,7 @@ function applyDueEvents(engine: Engine): void {
 function payOrder(engine: Engine, instance: BuildingInstance): void {
   const order = instance.order!;
   const entry = resolveUnitEntry(order.unit, engine);
-  if (!entry || entry.age > engine.age || defaultVillagersDone(engine, order) || engine.population + entry.costs.popcap > engine.supply) {
+  if (!entry || entry.age > engine.age || defaultVillagersDone(engine, order) || !hasPopulationRoom(engine, entry.costs.popcap)) {
     return;
   }
   // A non-villager payment leaves the step reserve and the house hold of each resource the unit costs. Villager

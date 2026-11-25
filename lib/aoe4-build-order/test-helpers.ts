@@ -78,9 +78,17 @@ export function noneNegative(result: SimulationResult): void {
     Object.values(result.floating).forEach((values) => values.forEach((v) => expect(v).toBeGreaterThanOrEqual(0)))
 }
 
-export function housesDone(): { done: number[]; rules: CivRules } {
+// The completion time of each house and the supply just after it.
+export function housesDone(): { done: number[]; supplies: number[]; rules: CivRules } {
     const done: number[] = []
-    return { done, rules: { onBuildingComplete: (_state, ctx) => void (ctx.baseId === 'house' && done.push(ctx.time)) } }
+    const supplies: number[] = []
+    const onBuildingComplete: CivRules['onBuildingComplete'] = (state, ctx) => {
+        if (ctx.baseId === 'house') {
+            done.push(ctx.time)
+            supplies.push(state.supply)
+        }
+    }
+    return { done, supplies, rules: { onBuildingComplete } }
 }
 
 export function sampleIndex(result: SimulationResult, t: number): number {

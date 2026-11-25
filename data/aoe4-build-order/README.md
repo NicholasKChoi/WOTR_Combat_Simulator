@@ -88,10 +88,12 @@ engine or the build is tuned, and the page shows them for any run.
 - `english-spear-longbow-maa-crossbow` "ENG Spear/Longbow into MAA/Crossbow", hand-authored for this
   simulator (no guide). Feudal through the Council Hall, spearmen and longbowmen from barracks and archery
   ranges, Castle through the King's Palace, then men-at-arms and crossbowmen. Villager production is
-  continuous from the Town Center and, once built, the King's Palace, up to the simulator's 100-villager
-  target. A blacksmith at 950 s researches the four Feudal attack and armor upgrades, one after the other,
-  and at 1000 s both villager producers rally to gold so the income past the 200 population cap goes into
-  upgrades. Omitted: the Castle blacksmith upgrades `wedge-rivets`, `balanced-projectiles`,
+  continuous from the Town Center, whose `produce villager` step is not capped and keeps making villagers
+  past the population cap, and, once built, from the King's Palace, whose default order stops at the
+  simulator's 100-villager target. A blacksmith at 950 s researches the four Feudal attack and armor
+  upgrades, one after the other. No rally sends villagers to gold after 700 s, so the villagers made past the
+  population cap go to wood and never reach a gold deposit that has run out; the gold gatherers placed by
+  700 s run `gold`, `gold#2` and `gold#3` out at about 20, 32 and 44 minutes. Omitted: the Castle blacksmith upgrades `wedge-rivets`, `balanced-projectiles`,
   `decarbonization` and `insulated-helm`. A research waits for a free blacksmith and holds back every later
   step while it waits, so four more 60 s researches would leave the last steps unstarted at 1200 s.
 
@@ -168,8 +170,9 @@ engine or the build is tuned, and the page shows them for any run.
   `fitted-leatherwork`; at 900 s five farms built from wood (returning to wood) for the sheep gatherers, then
   `fertilization`, `veteran-longbowmen`, `veteran-spearmen` and the Castle blacksmith tech `decarbonization`,
   then `lumber-preservation`, `textiles`, `specialized-pick` and two more wood-to-farm farms, then the Castle
-  blacksmith techs `insulated-helm`, `balanced-projectiles` and `wedge-rivets`. Past the population cap these techs spend part
-  of the economy's income, and the rest floats. The gold reaction `gold` to `gold#2` is the first reaction step;
+  blacksmith techs `insulated-helm`, `balanced-projectiles` and `wedge-rivets`. Past the population cap these techs and the
+  continuous longbowman and spearman production, which goes on past the cap, spend part of the economy's
+  income, and the rest floats. The gold reaction `gold` to `gold#2` is the first reaction step;
   `gold#3`, `gold#4` and `gold#5` each move to the next deposit, `gold#5` to wood, and the last reaction moves
   the sheep gatherers to the farms built at 900 s.
 

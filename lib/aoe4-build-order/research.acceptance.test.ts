@@ -162,7 +162,7 @@ describe('the Knight/Longbow build converts its longbowmen when veteran longbowm
         expect(lower[after]).toBe(0)
         expect(upper[after]).toBe(20)
         expect(lower.slice(after).every((c) => c === 0)).toBe(true)
-        expect(upper[upper.length - 1]).toBe(71)
+        expect(upper[upper.length - 1]).toBe(143)
     })
 
     it('changes nothing but the tier split of unitsProduced, whose per-unit sum is the units produced', () => {

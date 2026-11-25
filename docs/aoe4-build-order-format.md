@@ -412,9 +412,12 @@ A `SimulationResult` holds:
   `buildings` every construction including auto-houses, `research` every technology.
 - `spawnedPopulation`: the population (summed `popcap`) of the villagers and units that have spawned, including the start villagers and
   start units and villagers still walking or idle. A paid unit still in its production queue is not counted
-  until it spawns, unlike the supply-check population, which counts it at payment.
+  until it spawns, unlike the supply-check population, which counts it at payment. It may exceed the
+  population cap once the cap has been reached, since production then continues with supply at the cap
+  ([Houses and supply](aoe4-build-order.md#model-rules)).
 - `populationCapReachedAt`: the instant `spawnedPopulation` first reaches the population cap (`0` when the
-  start already does), or `null`. It is a spawn instant, not rounded to a sample time.
+  start already does), or `null`. It is a spawn instant, not rounded to a sample time, and keeps that first
+  instant when later spawns take `spawnedPopulation` past the cap.
 - `steps`: one `StepTiming` per step after repeats, in that order (a step with `repeat` n gives n consecutive
   entries), with `step` (its index in this list), `source` (the index of the submitted step it copies in
   `buildOrder.steps`), `copy` (1..n within that source; 1 for a step without `repeat`), `status`, `armedAt`, `startedAt`, `completedAt`,
@@ -496,7 +499,8 @@ stateDiagram-v2
 A reaction skips the earlier-step condition: it is `not-reached` only while its node has not run out, and
 otherwise follows the same states.
 
-A step waits while it cannot be paid, while supply has no room, while the unit's entry is above the
+A step waits while it cannot be paid, while supply has no room (only before the population limit lifts,
+[Houses and supply](aoe4-build-order.md#model-rules)), while the unit's entry is above the
 current age, or while no building instance it targets exists. A `produce` or `research` step also waits
 while the building instances it needs are busy ([Queues](aoe4-build-order.md#model-rules)). A `build` step also waits while its
 building's entry is above the current age or while fewer than `builders` villagers are at `from`, gathering
@@ -510,7 +514,7 @@ the first check that fails, with the detail of that check:
 |---|---|---|
 | `prerequisite` | `produce`: the unit's entry is above the current age, or no targeted instance exists, or a targeted instance is not free. `build`: the building's entry is above the current age. `research`: every tier of the tech is above the current age, or no producing instance exists, or no candidate instance is free. An action with no handler always reports it, with a `null` detail; every `BuildStep` action has a handler, so every second in `waitBreakdown` has a detail | `age`, `building` (a missing building) or `building-busy` (a busy one) |
 | `villagers` | `build`: fewer than `builders` villagers gather at `from` or idle there. `move` with a number `count`: fewer than `count` do. `move` with `count: all` never waits and never reports it | `villagers` |
-| `population` | `produce`: the population after paying would pass supply | `population` |
+| `population` | `produce`: the population after paying would pass supply. Only before the population limit lifts; after it no step waits on `population` | `population` |
 | `resources` | every earlier check passes but the bank is short of the step's cost, plus a due auto-house's hold on the resources it spends, except for an explicit `build house` step ([Houses and supply](aoe4-build-order.md#model-rules)) | `resources` |
 
 The order is an age, then a missing building (both `prerequisite`; a `produce` whose unit is above the age
@@ -534,7 +538,7 @@ none), and every count is a whole number:
 | `building` | `buildings` (at least one `{ baseId, name }`), `instance` (number or `null`) | no targeted instance exists. `produce` names its producer and its `instance`; `research` names `at`, else every `producedBy` building in snapshot order, with `instance: null` |
 | `building-busy` | `buildings`, `instance`, `every` (boolean) | a targeted instance is not free. `produce` names its producer and its `instance`; `every` is `true` only for a `produce` with no `instance` on two or more instances, which waits for all of them. `research` names the candidate buildings that have an instance, in candidate order, with `instance: null` and `every: false` |
 | `villagers` | `node`, `needed`, `available` | the villagers the step needs at `node` and those gathering or idle there |
-| `population` | `needed`, `used`, `supply` | the population of one unit per target, the population used and the supply at the offer |
+| `population` | `needed`, `used`, `supply` | the population of one unit per target, the population used and the supply at the offer; only before the population limit lifts |
 | `resources` | `short` (at least one resource) | the amount missing of each resource short of the need the check used (the cost plus the auto-house hold where it applies), rounded up; a covered resource is absent |
 
 `waitDetails` holds one `StepWaitEntry` (`detail`, `seconds`) per target, in the order each was first
