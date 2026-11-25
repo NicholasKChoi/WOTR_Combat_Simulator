@@ -35,6 +35,7 @@ const AOE4_SCHEMA_NAMES = [
   'NamedBuild',
   'NodeDepletion',
   'NodeRef',
+  'RenameNamedBuildRequest',
   'ResourceKind',
   'SaveBuildRequest',
   'SaveBuildResponse',
