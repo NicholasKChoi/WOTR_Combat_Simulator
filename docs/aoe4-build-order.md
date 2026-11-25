@@ -370,9 +370,9 @@ and as the bank grows and steps spend it a house can stop being due and become d
 
 The population limit (a unit is paid only while supply has room for it) lifts for the rest of the run at the
 first instant the spawned population (`spawnedPopulation`) has reached `maxPopCap` while supply is at
-`maxPopCap`. From then on a `produce` step and an order payment skip the supply check and go on to their
-resource, building and busy checks, so no step waits on `population` and population grows past the cap
-while supply stays at it and no house is planned. The units past the cap stand in for combat losses the
+`maxPopCap`. From then on a `produce` step and an order payment skip only the supply check; every other
+check still applies, so no step waits on `population` and population grows past the cap while supply stays
+at it and no house is planned. The units past the cap stand in for combat losses the
 simulator does not model. Before that instant the rule is unchanged: paid units still in production count
 toward the supply check but not toward the spawned population, so production waits on supply until a spawn
 brings the spawned population to the cap. That spawn lifts the limit within its own instant, so the

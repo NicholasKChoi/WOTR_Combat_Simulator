@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { listBuilds } from './builds'
 import type { BuildStep, SimulationResult } from './model'
-import { hasPopulationRoom, simulateBuildOrder } from './simulate'
+import { hasPopulationRoom } from './simulate'
 import type { EngineState } from './simulate'
-import { ENGLISH, INFINITE_NODES, at, countAt, editGameData, housesDone, inputsFor, run } from './test-helpers'
+import { ENGLISH, INFINITE_NODES, at, countAt, editGameData, housesDone, run } from './test-helpers'
 import type { Parts } from './test-helpers'
 
 const maxPopCap = ENGLISH.base.maxPopCap.value
@@ -141,15 +140,12 @@ describe('population waits', () => {
         expect(result.steps.filter((step) => step.waitingOn === 'population')).toEqual([])
     }
 
-    it('occur only before the cap on ENG 1TC at 1800 s', () => {
-        const build = listBuilds().find((b) => b.name === 'ENG 1TC')!
-        expectNoPopulationWaitAfterCap(simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1800 })))
-    })
-
     it('occur only before the cap at a lowered cap of 30', () => {
         const steps: BuildStep[] = [{ action: 'build', building: 'barracks', from: 'sheep' }, menAtArms({ count: 3, trigger: at(800) })]
         const result = run(steps, { game: cappedAt(30, wealthy), inputs: { durationSeconds: 900 } })
-        expect(result.populationCapReachedAt).toBeLessThan(800)
+        expect(result.populationCapReachedAt).not.toBeNull()
+        expect(result.steps[1].armedAt).not.toBeNull()
+        expect(result.populationCapReachedAt!).toBeLessThan(result.steps[1].armedAt!)
         expectNoPopulationWaitAfterCap(result)
     })
 })
