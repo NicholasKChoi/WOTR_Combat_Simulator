@@ -289,6 +289,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                                         fill: TIME_MARK_COLOR,
                                                         fontSize: LABEL_FONT_SIZE,
                                                         offset: 0,
+                                                        dy: -4,
                                                     }}
                                                 />
                                             ) : null}
