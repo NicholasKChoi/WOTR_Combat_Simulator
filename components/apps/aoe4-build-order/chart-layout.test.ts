@@ -93,7 +93,7 @@ describe('moveChart', () => {
 
     it.each([
         ['up', units],
-        ['down', population],
+        ['down', 'chart-population'],
     ] as const)('returns an equal layout for %s at the end', (direction, id) => {
         expect(moveChart(DEFAULT_CHART_LAYOUT, id, direction)).toEqual(DEFAULT_CHART_LAYOUT)
     })
@@ -122,7 +122,7 @@ describe('moveChartByKey', () => {
 
     it.each([
         ['up', units],
-        ['down', population],
+        ['down', 'chart-population'],
     ] as const)('returns null for %s at the end', (direction, id) => {
         expect(moveChartByKey(DEFAULT_CHART_LAYOUT, id, direction)).toBeNull()
     })
