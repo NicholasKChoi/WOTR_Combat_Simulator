@@ -70,3 +70,23 @@ none
 - Underspecified: the UI doc's "the other two charts have none" view-toggle sentence was missing from Scope's doc list; the `chart-layout.test.ts` rule said other tests keep expectations though many four-id cases cannot; the acceptance example list omitted four specs.
 - Changed: Scope's doc list, the unit-test rule (now cases built from the four-id list or with floating last move to five-chart order, with examples), the acceptance examples, and the docs criterion (tagged respec 1 in Scope).
 - Branch work: none yet.
+
+## Rework 1 - 2026-11-24 (review)
+
+Gate that bounced it: review (reports/SGS-216-review-6.md), tip `91c8dca60e406e38b3775027aa0409c0f6196a5b`. No earlier gate has passed this branch (acceptance-test has not run).
+
+### Findings
+
+1. `components/apps/aoe4-build-order/line-chart.tsx:286-292`: the population cap label sits on the x-axis line (label box 775.8 to 788.8 at 1200 px, axis line at 785.8), so the line is drawn through the text.
+2. `docs/aoe4-build-order-ui.md:544`: the sentence says the label goes left only when it "would pass the plot's right edge", but the code tests an estimated width (8 px per character, `estimateLabelWidth`, `line-chart.tsx:288`), wider than the drawn text.
+3. `components/apps/aoe4-build-order/result-series.test.ts:414-416`: "is null when the cap was not reached" has no failing break; the `!at` break still returns `null`.
+4. `components/apps/aoe4-build-order/chart-layout.test.ts:88-93` and `:122-127`: the `['down', population]` rows have no failing break (the "id dropped" break leaves them passing), and the record names no changed row item by item.
+5. Edited acceptance specs `aoe4-chart-layout`, `aoe4-chart-row-feedback`, `aoe4-chart-views`, `aoe4-results-split`, `aoe4-build-order-step-band` have no mutation record.
+
+### Required fixes
+
+- [x] Add `dy: -4` to the `label` object of the time-mark `ReferenceLine` in `line-chart.tsx`, beside `offset: 0`; do not use `offset`. Re-check at 1200, 1280 and 1800 px that the label box bottom is above the x-axis line's y.
+- [x] In `docs/aoe4-build-order-ui.md:544` replace only the clause about the label side with exactly: "the label to the right of the line unless its estimated width (8 px per character, wider than the drawn text) would pass the plot's right edge, and then to its left".
+- [x] Run and record a break for "is null when the cap was not reached": in `result-series.ts:137` change `run.populationCapReachedAt === null ?` to `run.populationCapReachedAt === undefined ?`; confirm it fails on `toBeNull()`.
+- [x] Record the "id prepended" break (`chart-layout.ts:3` with `'chart-population'` first) failing each of the two `['down', population]` rows. In the report name each changed row of `chart-layout.test.ts` with the break it failed on: "round-trips a valid layout unchanged", "drops unknown and duplicate ids ...", "drops key-results and unknown ids from order", the six `moveChart` swap rows, the `moveChartByKey` second-move test, the six `moveChartTo` rows, and "normalises a stored layout that misses an id".
+- [x] In a `mutate-sgs-216` scratch (with `commands.acceptanceSetup`), run each edited acceptance spec file alone under these breaks and record which items fail: (a) `results.tsx:125` `layout.order.map(` to `layout.order.filter((id) => id !== 'chart-population').map(` (expect alignment count, `expectLayout` lists, last-chart ArrowDown row, slot-4 rows, y-label entry, five-chart titles); (b) `use-chart-drag.ts:19` `latest.current.order.flatMap(` to `latest.current.order.slice(0, -1).flatMap(` (expect the new slot row and `below the last chart`); (c) `results.tsx:87` `of ${layout.order.length}` to `of 4` (expect the status-text assertion). Rewrite or delete any item no break fails. Ids reordered or dropped in `chart-layout.ts` are not a valid break, since the specs take ids from `RESULT_CHART_IDS`.

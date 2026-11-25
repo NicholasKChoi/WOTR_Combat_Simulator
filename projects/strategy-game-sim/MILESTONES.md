@@ -304,7 +304,7 @@ Drafted 2026-11-23 from the BACKLOG item "let population go past the 200 cap" (o
 
 | id | criterion | kind | covered by | status |
 |----|-----------|------|------------|--------|
-| M13.1 | The simulator no longer stops production at `data.base.maxPopCap` (200): units and houses past 200 follow the rule the design settles on, and builds that never reach 200 simulate to the same result as before | code | SGS-215 | open |
+| M13.1 | The simulator no longer stops production at `data.base.maxPopCap` (200): units and houses past 200 follow the rule the design settles on, and builds that never reach 200 simulate to the same result as before | code | SGS-215 | done |
 | M13.2 | The first instant population reaches 200 is still recorded as `populationCapReachedAt`, and the population chart marks it (a marker or line) and the results text still says when 200 was reached | code | SGS-216, 217 | open |
 | M13.3 | `docs/aoe4-build-order*.md`, `ARCHITECTURE.md` and `docs/api/openapi.json` describe the changes; unit tests cover a build that crosses 200, and Playwright covers the chart marker | code | SGS-215, 216, 217 | open |
 | M13.4 | Owner checks the changes on the PR previews and then production | evidence | | open |
