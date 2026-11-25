@@ -4,7 +4,7 @@ import { markerLabel } from '../components/apps/aoe4-build-order/chart-markers'
 import type { SimulationResult } from '../lib/aoe4-build-order/model'
 import { CHART_IDS, MIN_SUPPORTED_VIEWPORT, SPLIT_VIEWPORT, WIDE_VIEWPORT, openPage, showView, waitForRun } from './helpers'
 
-const [UNITS, RATES, GATHERED, FLOATING] = CHART_IDS
+const [UNITS, RATES, GATHERED, FLOATING, POPULATION] = CHART_IDS
 const DEFAULT_ORDER: readonly string[] = CHART_IDS
 
 const chart = (page: Page, id: string) => page.getByTestId(id)
@@ -73,7 +73,7 @@ test.describe('AoE4 chart collapse and reorder', () => {
     for (const name of ['chart-collapse', 'chart-drag-handle'] as const) await expect(control(page, RATES, name)).toBeVisible()
     await expect(villagers).toBeVisible()
     await expectLayout(page, DEFAULT_ORDER, [RATES])
-    for (const id of [UNITS, GATHERED, FLOATING]) await expect(chart(page, id).getByTestId('chart-body')).toBeVisible()
+    for (const id of [UNITS, GATHERED, FLOATING, POPULATION]) await expect(chart(page, id).getByTestId('chart-body')).toBeVisible()
 
     await control(page, RATES, 'chart-collapse').click()
     await expect(body).toBeVisible()
@@ -138,9 +138,9 @@ test.describe('AoE4 chart collapse and reorder', () => {
     await expect(status(page)).toHaveText('')
     await control(page, UNITS, 'chart-drag-handle').focus()
     const positions = [
-      [[RATES, UNITS, GATHERED, FLOATING], '2'],
-      [[RATES, GATHERED, UNITS, FLOATING], '3'],
-      [[RATES, GATHERED, FLOATING, UNITS], '4'],
+      [[RATES, UNITS, GATHERED, FLOATING, POPULATION], '2'],
+      [[RATES, GATHERED, UNITS, FLOATING, POPULATION], '3'],
+      [[RATES, GATHERED, FLOATING, UNITS, POPULATION], '4'],
     ] as const
     for (const [order, position] of positions) {
       await page.keyboard.press('ArrowDown')
@@ -154,12 +154,12 @@ test.describe('AoE4 chart collapse and reorder', () => {
     await openResults(page)
     await control(page, GATHERED, 'chart-drag-handle').focus()
     await page.keyboard.press('ArrowUp')
-    await expectLayout(page, [UNITS, GATHERED, RATES, FLOATING])
+    await expectLayout(page, [UNITS, GATHERED, RATES, FLOATING, POPULATION])
     await expect(status(page)).toHaveText(/Gathered resources.*\b2\b/)
     await expect.poll(async () => [await activeTestId(page), await activeChart(page)]).toEqual(['chart-drag-handle', GATHERED])
   })
 
-  for (const [id, key] of [[UNITS, 'ArrowUp'], [FLOATING, 'ArrowDown']] as const) {
+  for (const [id, key] of [[UNITS, 'ArrowUp'], [POPULATION, 'ArrowDown']] as const) {
     test(`${key} on the ${id === UNITS ? 'first' : 'last'} chart changes nothing, keeps focus and does not scroll the page`, async ({ page }) => {
       await openResults(page)
       const handle = control(page, id, 'chart-drag-handle')
@@ -194,13 +194,13 @@ test.describe('AoE4 chart collapse and reorder', () => {
     await openResults(page)
     await control(page, UNITS, 'chart-drag-handle').focus()
     await page.keyboard.press('ArrowDown')
-    await expectLayout(page, [RATES, UNITS, GATHERED, FLOATING])
+    await expectLayout(page, [RATES, UNITS, GATHERED, FLOATING, POPULATION])
     await expect(status(page)).toHaveText(/Units produced/)
     const announced = await status(page).textContent()
     await control(page, RATES, 'chart-drag-handle').focus()
     await page.keyboard.press('ArrowUp')
     await expect(status(page)).toHaveText(announced!)
-    await expectLayout(page, [RATES, UNITS, GATHERED, FLOATING])
+    await expectLayout(page, [RATES, UNITS, GATHERED, FLOATING, POPULATION])
   })
 
   for (const key of ['Enter', 'Home', 'End', ' ']) {
@@ -218,7 +218,7 @@ test.describe('AoE4 chart collapse and reorder', () => {
     await openResults(page)
     await control(page, FLOATING, 'chart-collapse').click()
     await control(page, RATES, 'chart-drag-handle').press('ArrowUp')
-    const order = [RATES, UNITS, GATHERED, FLOATING]
+    const order = [RATES, UNITS, GATHERED, FLOATING, POPULATION]
     await expectLayout(page, order, [FLOATING])
     const written = await stored(page)
     expect(JSON.parse(written!)).toEqual({ version: 1, order, collapsed: [FLOATING] })
@@ -234,7 +234,7 @@ test.describe('AoE4 chart collapse and reorder', () => {
   const storedCases: Array<[string, string, readonly string[]]> = [
     ['unknown ids only', JSON.stringify({ version: 1, order: ['a', 'b'], collapsed: ['c'] }), DEFAULT_ORDER],
     ['not JSON', '{nope', DEFAULT_ORDER],
-    ['a layout missing one id', JSON.stringify({ version: 1, order: [FLOATING, RATES, UNITS], collapsed: [] }), [FLOATING, RATES, UNITS, GATHERED]],
+    ['a layout missing ids', JSON.stringify({ version: 1, order: [FLOATING, RATES, UNITS], collapsed: [] }), [FLOATING, RATES, UNITS, GATHERED, POPULATION]],
   ]
   for (const [label, value, order] of storedCases) {
     test(`a stored value of ${label} normalises with no error`, async ({ page }) => {
@@ -258,7 +258,7 @@ test.describe('AoE4 chart collapse and reorder', () => {
     await openResults(page)
     await control(page, RATES, 'chart-collapse').click()
     await control(page, RATES, 'chart-drag-handle').press('ArrowUp')
-    await expectLayout(page, [RATES, UNITS, GATHERED, FLOATING], [RATES])
+    await expectLayout(page, [RATES, UNITS, GATHERED, FLOATING, POPULATION], [RATES])
     await expectNoAlert(page, errors)
   })
 })
@@ -312,7 +312,7 @@ test.describe('AoE4 chart table alignment', () => {
           collapsedHeightsMatch: headers.filter((h) => h.collapsed).every((h) => Math.abs(h.groupHeight - h.headerHeight) <= 1),
           scrolls: [tableScroll, columnScroll, pageScroll].map((extra) => extra <= 0),
         }
-      }).toEqual({ count: 4, cells: [4, 4, 4, 4], aligned: true, overflowing: [0, 0, 0, 0], collapsedHeightsMatch: true, scrolls: [true, true, true] })
+      }).toEqual({ count: 5, cells: [4, 4, 4, 4, 4], aligned: true, overflowing: [0, 0, 0, 0, 0], collapsedHeightsMatch: true, scrolls: [true, true, true] })
     })
   }
 })
@@ -342,17 +342,17 @@ test.describe('AoE4 chart drag reorder', () => {
     return x
   }
 
-  test('dragging the first chart below the third gives second, third, first, fourth, with the order unchanged until the drop', async ({ page }) => {
+  test('dragging the first chart below the third gives second, third, first, fourth, fifth, with the order unchanged until the drop', async ({ page }) => {
     await openResults(page)
     await startDrag(page, UNITS, GATHERED)
     await expect(chart(page, UNITS)).toHaveAttribute('data-dragging', 'true')
     await expectLayout(page, DEFAULT_ORDER)
     await page.mouse.up()
-    await expectLayout(page, [RATES, GATHERED, UNITS, FLOATING])
+    await expectLayout(page, [RATES, GATHERED, UNITS, FLOATING, POPULATION])
     await expect(chart(page, UNITS)).not.toHaveAttribute('data-dragging', 'true')
     await expect(status(page)).toHaveText(/Units produced.*\b3\b/)
     await expect(control(page, UNITS, 'chart-drag-handle')).toBeFocused()
-    expect(JSON.parse((await stored(page))!).order).toEqual([RATES, GATHERED, UNITS, FLOATING])
+    expect(JSON.parse((await stored(page))!).order).toEqual([RATES, GATHERED, UNITS, FLOATING, POPULATION])
   })
 
   test('arrow keys pressed while the pointer is held, before and after the 4px threshold, change nothing and the drop lands by pointer height', async ({ page }) => {
@@ -373,10 +373,10 @@ test.describe('AoE4 chart drag reorder', () => {
     await expect(status(page)).toHaveText('')
     await page.mouse.move(x, boxes[GATHERED].bottom + 2, { steps: 10 })
     await page.mouse.up()
-    await expectLayout(page, [RATES, GATHERED, UNITS, FLOATING])
+    await expectLayout(page, [RATES, GATHERED, UNITS, FLOATING, POPULATION])
     await expect(status(page)).toHaveText(/Units produced.*\b3\b/)
     await page.keyboard.press('ArrowUp')
-    await expectLayout(page, [RATES, UNITS, GATHERED, FLOATING])
+    await expectLayout(page, [RATES, UNITS, GATHERED, FLOATING, POPULATION])
   })
 
   test('a press and release with under 4px of movement changes nothing', async ({ page }) => {
@@ -465,7 +465,7 @@ test.describe('AoE4 chart drag reorder', () => {
     await startDrag(page, UNITS, GATHERED)
     await expect(chart(page, UNITS)).toHaveAttribute('data-dragging', 'true')
     await page.mouse.up()
-    await expectLayout(page, [RATES, GATHERED, UNITS, FLOATING], [UNITS])
+    await expectLayout(page, [RATES, GATHERED, UNITS, FLOATING, POPULATION], [UNITS])
   })
 })
 
@@ -528,7 +528,7 @@ test.describe('AoE4 chart layout with the build view', () => {
     await control(page, GATHERED, 'chart-collapse').click()
     await control(page, UNITS, 'chart-drag-handle').press('ArrowDown')
     await control(page, FLOATING, 'chart-drag-handle').press('ArrowUp')
-    await expectLayout(page, [RATES, UNITS, FLOATING, GATHERED], [GATHERED])
+    await expectLayout(page, [RATES, UNITS, FLOATING, GATHERED, POPULATION], [GATHERED])
     await expect(chart(page, GATHERED).getByTestId('chart-body')).toBeHidden()
     await expect(page.getByTestId('step-row').first()).toBeVisible()
 

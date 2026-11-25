@@ -5,6 +5,7 @@ import {
     MARKER_COLORS,
     MARKER_KIND_LABELS,
     type PlacedMarker,
+    TIME_MARK_COLOR,
     activeMarkerKind,
     ageUpMarkers,
     labelKindOf,
@@ -12,6 +13,8 @@ import {
     liveMarkerKind,
     markerLabel,
     placeMarkers,
+    timeMarkLabel,
+    timeMarkLabelPosition,
     visibleMarkers,
 } from './chart-markers'
 
@@ -173,5 +176,37 @@ describe('marker labelling', () => {
         ['age-up hidden and economy hovered', ['age-up'], 'economy', null, 'economy'],
     ])('labelKindOf: %s', (_name, hidden, hover, focus, expected) => {
         expect(labelKindOf(markers, new Set(hidden), hover, focus)).toBe(expected)
+    })
+})
+
+describe('time mark', () => {
+    it('keeps its color readable on white and apart from the marker colors and the series palette', () => {
+        expect(TIME_MARK_COLOR).toBe('#a52a2a')
+        expect(contrast(TIME_MARK_COLOR, '#ffffff')).toBeGreaterThanOrEqual(3)
+        expect(Object.values(MARKER_COLORS)).not.toContain(TIME_MARK_COLOR)
+        expect(PALETTE).not.toContain(TIME_MARK_COLOR)
+    })
+
+    it.each([0, 59, 1095, 3725])('labels the mark with the m:ss a marker of the same time gets, at %i s', (at) => {
+        const marker = markerLabel({ kind: 'other', label: 'Population cap', at })
+        expect(timeMarkLabel({ at, label: 'Population cap' })).toBe(marker)
+    })
+
+    it('reads Population cap 18:15 for a cap at 1095 s', () => {
+        expect(timeMarkLabel({ at: 1095, label: 'Population cap' })).toBe('Population cap 18:15')
+    })
+
+    // The label spans 100 / 500 of the 1000 s plot, which is 200 s.
+    it.each([
+        ['at 0', 0, 0, 'insideBottomLeft'],
+        ['well before the end', 400, 0, 'insideBottomLeft'],
+        ['a label that ends exactly at the end', 800, 0, 'insideBottomLeft'],
+        ['a label that passes the end', 801, 0, 'insideBottomRight'],
+        ['at the end', 1000, 0, 'insideBottomRight'],
+        ['a window origin of 200 (at 900)', 900, 200, 'insideBottomLeft'],
+        ['a window origin of 0 (at 900)', 900, 0, 'insideBottomRight'],
+        ['a label that ends exactly at the end of a window', 1000, 200, 'insideBottomLeft'],
+    ] as const)('places the label for %s', (_label, at, origin, position) => {
+        expect(timeMarkLabelPosition(at, 1000, 500, 100, origin)).toBe(position)
     })
 })

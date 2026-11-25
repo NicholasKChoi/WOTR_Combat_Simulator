@@ -36,7 +36,7 @@ test.describe('AoE4 results take the full width', () => {
     })
   }
 
-  test('the four charts are the row groups of the chart table, in order, and wrap no column', async ({ page }) => {
+  test('the five charts are the row groups of the chart table, in order, and wrap no column', async ({ page }) => {
     await page.setViewportSize(WIDE_VIEWPORT)
     await openResults(page)
     const groups = await page.getByTestId('chart-table').evaluate((table) => [...table.children].map((child) => `${child.tagName}:${child.getAttribute('data-testid')}`))

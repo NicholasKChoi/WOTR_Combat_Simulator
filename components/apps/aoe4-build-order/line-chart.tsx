@@ -18,7 +18,20 @@ import {
     type ChartRow,
     wholeNumberAxis,
 } from './chart-rows'
-import { MARKER_COLORS, type MarkerView, ageUpMarkers, estimateLabelWidth, labelledMarkers, markerLabel, placeMarkers, visibleMarkers } from './chart-markers'
+import {
+    type ChartTimeMark,
+    MARKER_COLORS,
+    type MarkerView,
+    TIME_MARK_COLOR,
+    ageUpMarkers,
+    estimateLabelWidth,
+    labelledMarkers,
+    markerLabel,
+    placeMarkers,
+    timeMarkLabel,
+    timeMarkLabelPosition,
+    visibleMarkers,
+} from './chart-markers'
 import { type ChartControls, ChartHeaderRow } from './chart-header'
 import { PinnedLegend, SeriesLegend, pinnedLegendShown } from './chart-legend'
 import { ChartZoomBar } from './chart-zoom-bar'
@@ -56,6 +69,9 @@ function readGridBox(plot: HTMLElement | null): PlotBox | null {
     return rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : null
 }
 
+export const timeMarkDrawn = (mark: ChartTimeMark | null, shown: TimeWindow, zoomed: boolean): mark is ChartTimeMark =>
+    mark !== null && (!zoomed || inWindow(mark.at, shown))
+
 // A band drawn over a window: its overlap with the window when it spans time, its own time when it is one point, null when it falls outside.
 export function bandIn(band: StepSpan, shown: TimeWindow): StepSpan | null {
     if (band.from === band.to) return inWindow(band.from, shown) ? band : null
@@ -81,12 +97,13 @@ interface SeriesChartProps {
     markerView?: MarkerView
     upgradeDots?: readonly UpgradeDot[]
     pinnedUpgradeDots?: readonly UpgradeDot[]
+    timeMark?: ChartTimeMark | null
 }
 
 const trueCountFormatter: TooltipProps<number | string | readonly (number | string)[], number | string>['formatter'] = (value, _name, item) =>
     item.payload && typeof item.dataKey === 'string' ? trueCount(item.payload as ChartRow, item.dataKey) : formatChartValue(value)
 
-export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout, sectionRef, offsetLines = false, markerView = NO_MARKER_VIEW, upgradeDots = [], pinnedUpgradeDots = [] }: SeriesChartProps) {
+export function SeriesChart({ testId, title, yLabel, times, series, pinned, markers = [], pinnedMarkers = [], highlight = null, headerControls, layout, sectionRef, offsetLines = false, markerView = NO_MARKER_VIEW, upgradeDots = [], pinnedUpgradeDots = [], timeMark = null }: SeriesChartProps) {
     const [hidden, setHidden] = useState<Set<string>>(new Set())
     const [chartWidth, setChartWidth] = useState<number | null>(null)
     const end = Math.max(1, ...times, ...(pinned?.times ?? []))
@@ -136,6 +153,7 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
             : placeMarkers(labelled, shown.to - shown.from, plotWidth, (label) => labelWidths.get(label) ?? estimateLabelWidth(label), shown.from)
     const rows = placed.reduce((max, p) => Math.max(max, p.row + 1), 0)
     const placedByMarker = new Map(placed.map((p) => [p.marker, p]))
+    const drawnTimeMark = timeMarkDrawn(timeMark, shown, zoomed) ? timeMark : null
     const bodyId = `${testId}-body`
     const allRows = offsetLines ? toOffsetChartRows(times, series, pinned, hidden) : toChartRows(times, series, pinned)
     const chartRows = zoomed ? rowsInWindow(allRows, shown) : allRows
@@ -257,6 +275,23 @@ export function SeriesChart({ testId, title, yLabel, times, series, pinned, mark
                                                     </ReferenceLine>
                                                 )
                                             })}
+                                            {drawnTimeMark ? (
+                                                <ReferenceLine
+                                                    x={drawnTimeMark.at}
+                                                    stroke={TIME_MARK_COLOR}
+                                                    strokeWidth={2}
+                                                    data-testid="chart-time-mark"
+                                                    data-label={drawnTimeMark.label}
+                                                    data-at={drawnTimeMark.at}
+                                                    label={{
+                                                        value: timeMarkLabel(drawnTimeMark),
+                                                        position: timeMarkLabelPosition(drawnTimeMark.at, shown.to - shown.from, plotWidth, estimateLabelWidth(timeMarkLabel(drawnTimeMark)), shown.from),
+                                                        fill: TIME_MARK_COLOR,
+                                                        fontSize: LABEL_FONT_SIZE,
+                                                        offset: 0,
+                                                    }}
+                                                />
+                                            ) : null}
                                             {pinnedAgeUps.map((marker) => (
                                                 <ReferenceLine
                                                     key={`pinned:${marker.label}:${marker.at}`}

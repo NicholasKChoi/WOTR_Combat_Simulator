@@ -109,7 +109,7 @@ canonical text (`formatBuildStep`) and by submitted step, not by result entry (a
 bottom match the shown run's steps, and every step between them has no times. Editing one step leaves the other steps their
 times; choosing another build in the select, or opening one, leaves no step any times. A step with no times still shows its kind. The kind comes from the step alone: a `build` of a landmark is Age up (so a landmark of a later age than the current one still reads Age up), any other `build` is Building, a `research` is Research, a `produce` of a villager is Villager and of any other unit is Military, and a `move`, `rally` or `pause` is Economy; the colours are blue for age up, cyan for research, red for military, green for villager, grey for building and light grey for economy. The kind colour is independent of the warning background.
 
-A 200 draws four line charts, each with a series legend titled "Series" (one toggle button per series):
+A 200 draws five line charts, each with a series legend titled "Series" (one toggle button per series):
 
 | chart | series keys | series names |
 |---|---|---|
@@ -117,9 +117,10 @@ A 200 draws four line charts, each with a series legend titled "Series" (one tog
 | Gather rates (Rate view) | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Gathered resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
 | Floating resources | `food`, `wood`, `gold`, `stone` | `Food`, `Wood`, `Gold`, `Stone` |
+| Population | `population` (the run's `spawnedPopulation`) | `Population` |
 
 The table lists each chart's default view. Gather rates and Units produced each have a two-option view toggle
-(`chart-view-toggle`, buttons `chart-view-option` with `aria-pressed`); the other two charts have none. Gather rates offers
+(`chart-view-toggle`, buttons `chart-view-option` with `aria-pressed`); the other three charts, Population included, have none. Gather rates offers
 Rate (the default, `gatherRates`, y axis label `Per minute`) and Villagers (`gatherers`, keys and names as the resource rows, y axis
 label `Villagers`). Units produced offers Units (the default, y axis label `Count`) and Buildings (each `productionBuildings`
 entry, key `baseId`, name `name`, in result order, y axis label `Buildings`). The choice is not stored and resets on reload. The
@@ -127,13 +128,15 @@ pinned run follows the view, drawn from its own `gatherers`, unit lines or `prod
 only the pinned run has gets only a dashed line.
 In the Buildings view each line is drawn at or a small amount above its true count (a different amount per visible building, none for the first, the same at every time, always below half a building), so buildings with equal counts do not draw on top of each other; the y axis shows whole numbers only and the tooltip shows each building's true count. A pinned building's line is drawn at the same offset as the current line with its key, and a building hidden in the legend takes no offset.
 
+Population chart: the Population chart (`chart-population`, y axis label `Population`) draws one line, `spawnedPopulation`. It also draws one population cap mark (`chart-time-mark`, with `data-at` and `data-label`) when the current run's `populationCapReachedAt` is not `null` (an `at` of 0 counts as reached): a solid 2 px `#a52a2a` vertical line at that time, labelled at the bottom of the plot `Population cap <m:ss>` (for example `Population cap 18:15`), the label to the right of the line unless it would pass the plot's right edge, and then to its left. No other chart draws a mark, and a run whose cap is not reached draws none. The mark is for the current run only: a pinned run draws no mark, and the Key results `pop-cap` row keeps showing the pinned run's time. The mark is not a marker kind and not an entry of the marker control, so it is not in the Markers legend, and it is not focusable.
+
 Upgrade dots: in the Units view only, each unit line that the run produced carries one filled dot (`chart-upgrade-dot`) for each upgrade of that line the run researched, which is each `markers` entry whose `unit` names the line (`veteran-spearmen` for the Spearman line). The dot sits on the line at its value at the marker's time, with the marker's label and time as its hover title, in the line's colour with a white outline and above the lines, so two upgrades at one instant draw two dots at one point. An upgrade of a line the run never produced has no dot, judged per run. With a pinned run, each of its upgrades of a line it produced is a dashed ring (`chart-pinned-upgrade-dot`, white fill, dashed outline in the pinned line's colour, titled `<label> (pinned) <m:ss>`) on the pinned dashed line, so a line only the pinned run has gets its rings; where a ring and a dot share a point both show, the ring around the dot. Each dot and each ring also shows its tier name as visible text beside it (`chart-upgrade-tier` for a dot, `chart-pinned-upgrade-tier` for a ring, the ring's text fainter, both in the line's colour): the upgrade id's first word with its first letter upper-cased when the id has more hyphen-separated words than the unit's id (`Veteran` for `veteran-longbowmen`, `Early` for `early-men-at-arms`), and `Upgrade` otherwise (`men-at-arms`). The text sits to the right of its dot, or to its left when it would cross the plot's right edge; tier texts on one chart (of dots and rings alike) whose boxes would overlap where each sits alone, whether their dots share a point or only lie a few pixels apart, are moved apart into a stack of one row each around their dots' mean height, the higher dot's text on top, and a text or stack stays inside the plot's top and bottom edges. A text is drawn exactly when its dot or ring is. Hiding a line in the series legend hides its dots and rings, and showing it brings them back. The marker control's `Unit tier` item hides only that kind's vertical lines, not the dots, and a pinned run's upgrades draw no vertical line. A dot or ring outside a zoom window is not drawn, and the Buildings view draws none.
 
 Each series' line carries its key as `data-series` (a pinned run's line carries `pinned:<key>`). Clicking a legend item hides that series (the item is dimmed) and clicking
 it again restores it; the item's `aria-pressed` is `"true"` while its series is shown and `"false"` while it is hidden, the same meaning as the marker control's; the legend has one item per series, named without a suffix: with a pinned run, an item for a series in both runs hides and restores both its lines, and a series only the pinned run has is listed once, with a dashed swatch. The tooltip lists only the current run's series; pinned lines and markers are not in it. Each chart also draws the result's `markers` as solid vertical lines in their kind colour. By default only `age-up` markers carry a
 text label `<label> <m:ss>` (for example `Castle 13:24`) above the plot, stacked in rows by their measured width so each stays
 readable. A marker without a text label stays a line and shows `<label> <m:ss>` as a hover title. Tooltip values are shown rounded to
-at most 1 decimal place. Charts have no marker legend of their own; the marker control below is the only one.
+at most 1 decimal place. Charts have no marker legend of their own; the marker control below is the only one. The population cap mark is not a marker: hiding every kind in the control, hovering or focusing an entry, a pinned run or a run with no markers leaves it drawn where it was.
 
 Marker control: one control titled "Markers" sits above the chart table, shared by all the charts, inside `results-last-good` so it dims with them. It stays at the top of the Results column's view while that column scrolls, drawn over the charts beneath it, so it works against every chart and not only the first; only this control sticks, and each chart's own legends and zoom bar scroll with their chart. Tabbing to or scrolling to a chart control keeps it clear of the stuck control, and a run with no markers draws no control and leaves no space for one. It lists one
 entry per marker kind present in the shown run's markers, in the order `Age-up` (`#b8860b`), `Economy` (`#008080`), `Unit tier` (`#c43bb0`), `Blacksmith` (`#5f7d8c`)
@@ -175,23 +178,23 @@ line (`chart-drop-indicator`) marks the slot the chart will land in (also its ow
 drop, which places the chart where the pointer's height puts it among the other charts. Escape or a cancelled pointer ends the
 drag with no change, and a touch drag that starts on the handle does not scroll the page. A collapsed chart reorders like an expanded one. After a
 move that changes the order, the moved chart's handle has focus and a visually hidden status (`chart-order-status`) names the chart
-and its new position out of four; ArrowUp on the first chart and ArrowDown on the last change nothing and announce nothing. A
+and its new position out of five; ArrowUp on the first chart and ArrowDown on the last change nothing and announce nothing. A
 visually hidden help text (`chart-reorder-help`) describes the handle's drag and arrow-key use. The default order is Units produced, Gather rates,
-Gathered resources, Floating resources, all expanded. The layout is kept in `localStorage` under `aoe4-build-order.chart-layout`
+Gathered resources, Floating resources, Population, all expanded. The layout is kept in `localStorage` under `aoe4-build-order.chart-layout`
 as `{ version, order, collapsed }` and applied after the page loads, so the first paint is the default layout. `collapsed`
 holds chart ids and, when the key results panel is collapsed, `key-results`; `order` holds chart ids only. A stored value
 that is not valid JSON or has another version gives the default layout; unknown and duplicate ids are dropped and a missing id
-is appended to the order. Loading the page writes nothing: with nothing stored the key stays unset until a chart or the key
+is appended to the order (a stored layout that lacks the Population chart gets it appended last). Loading the page writes nothing: with nothing stored the key stays unset until a chart or the key
 results panel is moved or collapsed. When the store is unavailable or blocked, the layout lasts for the page session and no error is shown.
 
 Zoom: each chart has its own time window, which starts as the whole game. Pressing the primary mouse button inside a chart's plot area (the grid, not the axes, the
-marker label rows, the legends or the zoom bar) and dragging selects a stretch of time. Nothing happens until the pointer has moved 4 px; then a grey
+marker label rows, the legends or the zoom bar; the population cap mark's bottom label is inside the grid, so a press on it starts a selection) and dragging selects a stretch of time. Nothing happens until the pointer has moved 4 px; then a grey
 band (`chart-zoom-selection`) follows the pointer, and on release the chart zooms to the selected seconds, rounded to whole seconds. A selection shorter than 30 s, or one
 that spans the whole game, changes nothing, and the band is gone after every release. Selecting inside a zoomed chart zooms further, and Reset still returns to the whole
 game, not to the previous window. Escape, a cancelled pointer or a lost pointer capture during a selection removes the band and keeps the window. A collapsed chart has no plot to select in.
 
 While a chart is zoomed its x axis spans the window and its lines draw only the samples in it, reaching both edges; the y axis fits them. A marker, upgrade dot, pinned
-upgrade dot or pinned age-up outside the window is not drawn, marker labels are placed within the window, and the highlighted step span is cut to the window (and absent when it
+upgrade dot or pinned age-up outside the window is not drawn, the population cap mark is drawn only while its time is inside the window (both edges included) and its label side is judged against the window, marker labels are placed within the window, and the highlighted step span is cut to the window (and absent when it
 lies wholly outside). The chart's row group carries `data-zoom-from` and `data-zoom-to` in whole seconds. A zoom bar (`chart-zoom-bar`) appears above the plot only
 while the chart is zoomed. It shows the range as `<m:ss> to <m:ss>` (`chart-zoom-range`), the buttons `Show earlier in <title> chart` and `Show later in <title> chart`
 (`chart-zoom-pan-earlier`, `chart-zoom-pan-later`) and `Reset zoom` (`chart-zoom-reset`, named `Reset <title> chart zoom`). A pan button moves the window by half its length. At the

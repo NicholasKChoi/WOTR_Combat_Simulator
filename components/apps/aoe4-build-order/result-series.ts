@@ -1,5 +1,6 @@
 import { RESOURCE_KINDS, type ResourceKind, type SimulationResult } from '../../../lib/aoe4-build-order/model'
 import { type ChartSeries, type PinnedSeries, isLineHidden, valueAt } from './chart-rows'
+import type { ChartTimeMark } from './chart-markers'
 import type { TimeWindow } from './chart-zoom'
 import type { GatherRatesView, UnitsProducedView } from './chart-view-toggle'
 
@@ -129,6 +130,11 @@ export function resourceSeries(byResource: Record<ResourceKind, number[]>): Char
         values: byResource[kind],
     }))
 }
+
+export const populationSeries = (run: SimulationResult): ChartSeries[] => [{ key: 'population', name: 'Population', values: run.spawnedPopulation }]
+
+export const populationCapMark = (run: SimulationResult): ChartTimeMark | null =>
+    run.populationCapReachedAt === null ? null : { at: run.populationCapReachedAt, label: 'Population cap' }
 
 export function buildingSeries(result: SimulationResult): ChartSeries[] {
     return result.productionBuildings.map((b) => ({ key: b.baseId, name: b.name, values: b.counts }))
