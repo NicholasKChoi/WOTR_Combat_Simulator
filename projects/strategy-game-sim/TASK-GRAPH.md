@@ -99,6 +99,6 @@ Statuses: `draft` → `spec_ready` → `ready` → `in_progress` → `needs_revi
 | SGS-211 | Repeat in the paste text (xN) and the step table Repeat field, with the page spec | M12 | M12.1,M12.3 | aoe4-build-order | standard | SGS-208,SGS-210 | | sgs-211-repeat-paste-text-and-table-field | c6e5c14bfbce8a9291e7db0341c81ee32116481b | integrated | | 221 | tickets/SGS-211-repeat-paste-text-and-table-field.md |
 | SGS-212 | Rename UI: Rename button, shared name form, library and My builds update | M12 | M12.2,M12.3 | | standard | SGS-209 | | sgs-212-rename-ui-saved-builds | 9a9a464f0ad915c4f6fb9bc5b85ad30df34e538c | integrated | 1 | 220 | tickets/SGS-212-rename-ui-saved-builds.md |
 | SGS-213 | AoE4 step popover beside the text; none for no-wait steps | none | none | | standard | | | sgs-213-step-popover-beside-text | | integrated | 1 | 222 | tickets/SGS-213-step-popover-beside-text-and-skips-no-wait.md |
-| SGS-216 | Population chart with the population cap mark | M13 | M13.2,M13.3 | | standard | | | | | draft | | | tickets/SGS-216-population-chart-cap-mark.md |
-| SGS-215 | Production continues past the population cap | M13 | M13.1,M13.3 | | high | | | | | draft | | | tickets/SGS-215-production-past-population-cap.md |
-| SGS-217 | Playwright spec for the Population chart and its cap mark | M13 | M13.2,M13.3 | | low | SGS-216 | | | | draft | | | tickets/SGS-217-population-cap-spec.md |
+| SGS-216 | Population chart with the population cap mark | M13 | M13.2,M13.3 | | standard | | | sgs-216-population-chart-cap-mark | | needs_review | | | tickets/SGS-216-population-chart-cap-mark.md |
+| SGS-215 | Production continues past the population cap | M13 | M13.1,M13.3 | | high | | | sgs-215-production-past-population-cap | | needs_spec | | | tickets/SGS-215-production-past-population-cap.md |
+| SGS-217 | Playwright spec for the Population chart and its cap mark | M13 | M13.2,M13.3 | | low | SGS-216 | | | | spec_ready | | | tickets/SGS-217-population-cap-spec.md |
