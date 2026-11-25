@@ -4,7 +4,7 @@ import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
 import { type PinnedSeries, toChartRows } from './chart-rows'
 import type { TimeWindow } from './chart-zoom'
 import { loadGameData } from '../../../lib/aoe4-build-order/data'
-import { type TierTextBounds, type TierTextDot, type TierTextSlot, boxesIntersect, buildingSeries, gatherRatesSeries, placeTierText, resourceSeries, tierTextBox, tierTextSlots, unitLineSeries, unitUpgradeDots, unitsProducedSeries, upgradeTierName, visibleUpgradeDots, type UpgradeDot } from './result-series'
+import { type TierTextBounds, type TierTextDot, type TierTextSlot, boxesIntersect, buildingSeries, gatherRatesSeries, placeTierText, populationCapMark, populationSeries, resourceSeries, tierTextBox, tierTextSlots, unitLineSeries, unitUpgradeDots, unitsProducedSeries, upgradeTierName, visibleUpgradeDots, type UpgradeDot } from './result-series'
 
 function result(): SimulationResult {
     return {
@@ -330,5 +330,22 @@ describe('unitsProducedSeries', () => {
     it('reads only the run it is given', () => {
         const other: SimulationResult = { ...result(), productionBuildings: [{ baseId: 'stable', name: 'Stable', counts: [0, 0, 1] }] }
         expect(unitsProducedSeries('buildings', other).map((s) => s.key)).toEqual(['stable'])
+    })
+})
+
+describe('populationSeries', () => {
+    it('gives one Population series whose values are spawnedPopulation', () => {
+        const input = { ...result(), spawnedPopulation: [6, 31, 77] }
+        expect(populationSeries(input)).toEqual([{ key: 'population', name: 'Population', values: [6, 31, 77] }])
+    })
+})
+
+describe('populationCapMark', () => {
+    it('is null when the cap was not reached', () => {
+        expect(populationCapMark({ ...result(), populationCapReachedAt: null })).toBeNull()
+    })
+
+    it.each([1095, 0])('marks a cap reached at %i s', (at) => {
+        expect(populationCapMark({ ...result(), populationCapReachedAt: at })).toEqual({ at, label: 'Population cap' })
     })
 })

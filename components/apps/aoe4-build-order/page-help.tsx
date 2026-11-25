@@ -102,6 +102,10 @@ export function PageHelp() {
                             it: a filled upgrade dot belongs to the current run and a dashed ring belongs to the pinned run.
                         </p>
                         <p>
+                            The Population chart draws the population over time. Its red vertical line shows when the population cap was reached, and the line is not a
+                            marker, so the Markers list cannot switch it off. A pinned build gets no such line.
+                        </p>
+                        <p>
                             Drag across a chart to zoom to that stretch of the game, and Shift and drag to pan. While a chart is zoomed, Show earlier and Show later
                             pan it, and Reset zoom returns to the whole game. Each chart zooms on its own.
                         </p>

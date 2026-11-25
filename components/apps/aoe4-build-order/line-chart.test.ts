@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import type { ChartMarker } from '../../../lib/aoe4-build-order/model'
-import { SeriesChart, bandIn } from './line-chart'
+import { SeriesChart, bandIn, timeMarkDrawn } from './line-chart'
 
 const render = (series: Parameters<typeof SeriesChart>[0]['series'], markers?: ChartMarker[], pinnedMarkers?: ChartMarker[]) =>
     renderToString(
@@ -195,5 +195,25 @@ describe('bandIn', () => {
         ['a point outside is absent', { from: 201, to: 201 }, null],
     ])('%s', (_name, band, expected) => {
         expect(bandIn(band, shown)).toEqual(expected)
+    })
+})
+
+describe('timeMarkDrawn', () => {
+    const shown = { from: 100, to: 200 }
+    const markAt = (at: number) => ({ at, label: 'Population cap' })
+    it.each([
+        ['before the window', 99, true, false],
+        ['on the start edge', 100, true, true],
+        ['inside the window', 150, true, true],
+        ['on the end edge', 200, true, true],
+        ['after the window', 201, true, false],
+        ['outside the window while not zoomed', 50, false, true],
+    ])('a mark %s is drawn: %s', (_name, at, zoomed, expected) => {
+        expect(timeMarkDrawn(markAt(at), shown, zoomed)).toBe(expected)
+    })
+
+    it('draws no mark when there is none, zoomed or not', () => {
+        expect(timeMarkDrawn(null, shown, false)).toBe(false)
+        expect(timeMarkDrawn(null, shown, true)).toBe(false)
     })
 })

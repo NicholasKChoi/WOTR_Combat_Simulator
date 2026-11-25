@@ -7,13 +7,13 @@ import { InfoMessages, WarningMessages } from './message-lists'
 import { sourceSpan } from './step-annotations'
 import { SeriesChart } from './line-chart'
 import { MarkerControl } from './chart-legend'
-import { type MarkerView, labelKindOf, liveMarkerKind } from './chart-markers'
+import { type ChartTimeMark, type MarkerView, labelKindOf, liveMarkerKind } from './chart-markers'
 import { type ChartSeries, toggleHidden } from './chart-rows'
 import { useChartDrag } from './use-chart-drag'
 import type { ChartId } from './chart-layout'
 import type { ChartLayoutControls } from './use-chart-layout'
 import { ChartViewToggle, type ChartView, type GatherRatesView, type UnitsProducedView } from './chart-view-toggle'
-import { gatherRatesSeries, resourceSeries, unitUpgradeDots, unitsProducedSeries } from './result-series'
+import { gatherRatesSeries, populationCapMark, populationSeries, resourceSeries, unitUpgradeDots, unitsProducedSeries } from './result-series'
 import styles from './workbench.module.css'
 import resultStyles from './results.module.css'
 
@@ -64,7 +64,7 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
         if (id) container.current?.querySelector<HTMLButtonElement>(`[data-testid="${id}"] [data-testid="chart-drag-handle"]`)?.focus()
     }, [layout.order])
 
-    const charts: Record<ChartId, { title: string; yLabel: string; series: (run: SimulationResult) => ChartSeries[]; headerControls?: ReactNode }> = {
+    const charts: Record<ChartId, { title: string; yLabel: string; series: (run: SimulationResult) => ChartSeries[]; headerControls?: ReactNode; timeMark?: (run: SimulationResult) => ChartTimeMark | null }> = {
         'chart-units-produced': {
             title: 'Units produced',
             yLabel: unitsProducedView === 'buildings' ? 'Buildings' : 'Count',
@@ -79,6 +79,7 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
         },
         'chart-gathered-resources': { title: 'Gathered resources', yLabel: 'Resources', series: (run) => resourceSeries(run.gathered) },
         'chart-floating-resources': { title: 'Floating resources', yLabel: 'Resources', series: (run) => resourceSeries(run.floating) },
+        'chart-population': { title: 'Population', yLabel: 'Population', series: populationSeries, timeMark: populationCapMark },
     }
 
     const announceMove = (id: ChartId, toIndex: number) => {
@@ -140,6 +141,7 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
                                 upgradeDots={unitDots?.current}
                                 pinnedUpgradeDots={unitDots?.pinned}
                                 headerControls={chart.headerControls}
+                                timeMark={chart.timeMark?.(result) ?? null}
                                 offsetLines={id === 'chart-units-produced' && unitsProducedView === 'buildings'}
                                 sectionRef={drag.sectionRef(id)}
                                 layout={{

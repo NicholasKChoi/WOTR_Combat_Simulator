@@ -35,6 +35,21 @@ export interface PlacedMarker {
 
 export const estimateLabelWidth = (label: string): number => label.length * LABEL_CHAR_PX
 
+export interface ChartTimeMark {
+    at: number
+    label: string
+}
+
+export const TIME_MARK_COLOR = '#a52a2a'
+
+export const timeMarkLabel = (mark: ChartTimeMark): string => `${mark.label} ${formatMinSec(mark.at)}`
+
+// `end` is the shown span in seconds and `origin` the time at its left edge, as for placeMarkers. The label sits right of
+// its line (insideBottomLeft) when it ends by the plot end, else left of it.
+export function timeMarkLabelPosition(at: number, end: number, plotWidth: number, labelWidth: number, origin = 0): 'insideBottomLeft' | 'insideBottomRight' {
+    return at - origin + (labelWidth * end) / plotWidth <= end ? 'insideBottomLeft' : 'insideBottomRight'
+}
+
 // Labels are stacked in rows: a marker takes the first row whose last label ends before this one starts, so
 // markers close in time never share a row. A label that fits on neither side of its line is pinned to the
 // plot's left edge (dx shifts it there) so it never covers the Y-axis ticks. `end` is the plot's span in seconds and

@@ -74,7 +74,7 @@ test.describe('AoE4 step span band on the charts', () => {
     await expect(bands(page)).toHaveCount(0)
   })
 
-  test('hovering a step shades exactly its span on each of the four charts, to the run end when in progress', async ({ page }) => {
+  test('hovering a step shades exactly its span on each of the five charts, to the run end when in progress', async ({ page }) => {
     const result = await runDefault(page)
     const completed = result.steps.find((s) => s.status === 'completed' && s.startedAt! < s.completedAt!)!
     const inProgress = result.steps.find((s) => s.status === 'in-progress' && s.startedAt! > 0)!

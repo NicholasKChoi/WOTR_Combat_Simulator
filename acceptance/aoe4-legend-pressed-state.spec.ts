@@ -22,7 +22,7 @@ async function openWithMarkers(page: Page) {
 }
 
 test.describe('AoE4 legend pressed state', () => {
-  for (const id of CHART_IDS) {
+  for (const id of CHART_IDS.filter((chart) => chart !== 'chart-population')) {
     test(`${id}: hiding a series item reads false and dimmed while the others read true, and clicking again restores it`, async ({ page }) => {
       await openWithMarkers(page)
       const items = seriesItems(page, id)

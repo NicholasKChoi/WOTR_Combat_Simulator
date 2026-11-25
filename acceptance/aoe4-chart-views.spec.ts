@@ -17,6 +17,7 @@ const DEFAULT_Y_LABELS: Record<string, string> = {
   [RATES]: 'Per minute',
   'chart-gathered-resources': 'Resources',
   'chart-floating-resources': 'Resources',
+  'chart-population': 'Population',
 }
 
 async function runOk(page: Page, text: string): Promise<SimulationResult> {

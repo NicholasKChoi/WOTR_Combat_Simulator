@@ -44,4 +44,13 @@ describe('PageHelp markup', () => {
         expect(sections[3]).toContain('data-testid="help-warn-tint"')
         expect(dialog.split('help-warn-tint')).toHaveLength(2)
     })
+
+    it('names the Population chart and its cap line in the Charts section', () => {
+        const charts = sections.find((section) => section.includes('id="help-charts"')) ?? ''
+        const text = charts.replace(/<[^>]*>/g, '').replace(/&#x27;|&apos;/g, "'")
+        expect(text).toMatch(/Population chart/)
+        expect(text).toMatch(/population cap was reached/)
+        expect(text).toMatch(/Markers list cannot switch it off/)
+        expect(text).toMatch(/pinned build gets no such line/)
+    })
 })

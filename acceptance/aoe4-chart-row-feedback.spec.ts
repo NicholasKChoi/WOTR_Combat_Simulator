@@ -2,12 +2,13 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { CHART_LAYOUT_STORAGE_KEY } from '../components/apps/aoe4-build-order/chart-layout'
 import { CHART_IDS, openPage } from './helpers'
 
-const [UNITS, RATES, GATHERED, FLOATING] = CHART_IDS
+const [UNITS, RATES, GATHERED, FLOATING, POPULATION] = CHART_IDS
 const TITLES: Record<string, string> = {
   [UNITS]: 'Units produced',
   [RATES]: 'Gather rates',
   [GATHERED]: 'Gathered resources',
   [FLOATING]: 'Floating resources',
+  [POPULATION]: 'Population',
 }
 
 const TINT_FLOOR = 1.1
@@ -356,9 +357,9 @@ test.describe('AoE4 chart drag feedback', () => {
     await expect
       .poll(async () => {
         const now = await readBoxes(page)
-        return { indicator: now.indicator !== null, table: now.table, others: [RATES, GATHERED, FLOATING].map((id) => now.groups[id]) }
+        return { indicator: now.indicator !== null, table: now.table, others: [RATES, GATHERED, FLOATING, POPULATION].map((id) => now.groups[id]) }
       })
-      .toEqual({ indicator: true, table: before.table, others: [RATES, GATHERED, FLOATING].map((id) => before.groups[id]) })
+      .toEqual({ indicator: true, table: before.table, others: [RATES, GATHERED, FLOATING, POPULATION].map((id) => before.groups[id]) })
     await page.keyboard.press('Escape')
     await expect
       .poll(async () => {
@@ -379,12 +380,13 @@ test.describe('AoE4 chart drop indicator', () => {
     const before = await readBoxes(page)
     const { x } = await pressHandle(page, UNITS)
 
-    // Slots among the three other charts: 0 above Gather rates, 1 between Gather rates and Gathered, 2 between Gathered and Floating, 3 below Floating.
+    // Slots among the four other charts: 0 above Gather rates, 1 between Gather rates and Gathered, 2 between Gathered and Floating, 3 between Floating and Population, 4 below Population.
     for (const [pointerY, slot] of [
       [before.groups[GATHERED].bottom + 2, 2],
       [before.groups[GATHERED].top + 3, 1],
       [before.groups[RATES].top + 5, 0],
       [before.groups[FLOATING].bottom + 4, 3],
+      [before.groups[POPULATION].bottom + 4, 4],
     ] as const) {
       await page.mouse.move(x, pointerY, { steps: 6 })
       await expect
@@ -413,7 +415,7 @@ test.describe('AoE4 chart drop indicator', () => {
   const DROP_CASES: { name: string; dragged: string; collapse?: string[]; pointerY: (boxes: Boxes, startY: number) => number; slot: number }[] = [
     { name: 'past the middle of the third chart', dragged: UNITS, pointerY: (b) => b.groups[GATHERED].bottom + 2, slot: 2 },
     { name: 'above the first chart', dragged: GATHERED, pointerY: (b) => b.groups[UNITS].top - 4, slot: 0 },
-    { name: 'below the last chart', dragged: UNITS, pointerY: (b) => b.groups[FLOATING].bottom + 4, slot: 3 },
+    { name: 'below the last chart', dragged: UNITS, pointerY: (b) => b.groups[POPULATION].bottom + 4, slot: 4 },
     { name: 'inside the chart own rows', dragged: UNITS, pointerY: (_b, startY) => startY + 20, slot: 0 },
     { name: 'between two collapsed charts', dragged: UNITS, collapse: [RATES, GATHERED], pointerY: (b) => b.groups[RATES].bottom + 1, slot: 1 },
   ]
@@ -443,7 +445,7 @@ test.describe('AoE4 chart drop indicator', () => {
       if (slot === startIndex) {
         await expect(status(page)).toHaveText('')
       } else {
-        await expect(status(page)).toHaveText(`${TITLES[dragged]} moved to position ${slot + 1} of 4`)
+        await expect(status(page)).toHaveText(`${TITLES[dragged]} moved to position ${slot + 1} of ${CHART_IDS.length}`)
         const layout = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!) as { order: string[] }, CHART_LAYOUT_STORAGE_KEY)
         expect(layout.order).toEqual(expected)
       }
@@ -483,7 +485,7 @@ test.describe('AoE4 chart header tint during and after a drag', () => {
     await expect(chart(page, UNITS)).toHaveAttribute('data-dragging', 'true')
     await expect.poll(() => tintedRows(page, resting)).toEqual([])
     await page.mouse.up()
-    await expect.poll(() => readOrder(page)).toEqual([RATES, GATHERED, UNITS, FLOATING])
+    await expect.poll(() => readOrder(page)).toEqual([RATES, GATHERED, UNITS, FLOATING, POPULATION])
     await expect(handle(page, UNITS)).toBeFocused()
     await page.mouse.move(OFF_TABLE.x, OFF_TABLE.y)
     await expect.poll(() => tintedRows(page, resting)).toEqual([])

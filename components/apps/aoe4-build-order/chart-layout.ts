@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const RESULT_CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources'] as const
+export const RESULT_CHART_IDS = ['chart-units-produced', 'chart-gather-rates', 'chart-gathered-resources', 'chart-floating-resources', 'chart-population'] as const
 export type ChartId = (typeof RESULT_CHART_IDS)[number]
 export const KEY_RESULTS_PANEL_ID = 'key-results' as const
 export type LayoutPanelId = ChartId | typeof KEY_RESULTS_PANEL_ID

@@ -15,9 +15,9 @@ import {
 } from './chart-layout'
 import { fakeStorage, throwingStorage } from './storage-test-helpers'
 
-const [units, rates, gathered, floating] = RESULT_CHART_IDS
+const [units, rates, gathered, floating, population] = RESULT_CHART_IDS
 
-const custom: ChartLayout = { version: 1, order: [floating, units, rates, gathered], collapsed: [rates, floating] }
+const custom: ChartLayout = { version: 1, order: [floating, units, rates, gathered, population], collapsed: [rates, floating] }
 
 describe('normalizeChartLayout', () => {
     it('round-trips a valid layout unchanged', () => {
@@ -36,7 +36,7 @@ describe('normalizeChartLayout', () => {
 
     it('drops unknown and duplicate ids from order and appends missing ids in default order', () => {
         const layout = normalizeChartLayout({ version: 1, order: [floating, 'bogus', floating, rates], collapsed: [] })
-        expect(layout.order).toEqual([floating, rates, units, gathered])
+        expect(layout.order).toEqual([floating, rates, units, gathered, population])
     })
 
     it('keeps each valid collapsed id once', () => {
@@ -51,12 +51,26 @@ describe('normalizeChartLayout', () => {
 
     it('drops key-results and unknown ids from order', () => {
         const layout = normalizeChartLayout({ version: 1, order: [KEY_RESULTS_PANEL_ID, floating, 'bogus'], collapsed: [] })
-        expect(layout.order).toEqual([floating, units, rates, gathered])
+        expect(layout.order).toEqual([floating, units, rates, gathered, population])
     })
 
-    it('reads an M8-shaped value unchanged', () => {
+    it('reads an M8-shaped four-chart value with the Population chart appended and its collapsed kept', () => {
         const m8 = { version: 1, order: [rates, units, gathered, floating], collapsed: [gathered] }
-        expect(normalizeChartLayout(m8)).toEqual(m8)
+        expect(normalizeChartLayout(m8)).toEqual({ ...m8, order: [...m8.order, population] })
+    })
+
+    it('ends the default layout with the Population chart, expanded', () => {
+        expect(RESULT_CHART_IDS[RESULT_CHART_IDS.length - 1]).toBe('chart-population')
+        expect(DEFAULT_CHART_LAYOUT.order.at(-1)).toBe(population)
+        expect(DEFAULT_CHART_LAYOUT.collapsed).not.toContain(population)
+    })
+
+    it.each([
+        ['listed first', [population, units, rates, gathered, floating], []],
+        ['listed in the middle', [units, population, rates, gathered, floating], []],
+        ['listed collapsed', [units, rates, gathered, floating, population], [population]],
+    ])('keeps the Population chart where a stored layout has it, %s', (_label, order, collapsed) => {
+        expect(normalizeChartLayout({ version: 1, order, collapsed })).toEqual({ version: 1, order, collapsed })
     })
 
     it('does not hand out the default layout arrays', () => {
@@ -67,17 +81,19 @@ describe('normalizeChartLayout', () => {
 
 describe('moveChart', () => {
     it.each([
-        ['up', rates, [rates, units, gathered, floating]],
-        ['down', units, [rates, units, gathered, floating]],
-        ['down', gathered, [units, rates, floating, gathered]],
-        ['up', floating, [units, rates, floating, gathered]],
+        ['up', rates, [rates, units, gathered, floating, population]],
+        ['down', units, [rates, units, gathered, floating, population]],
+        ['down', gathered, [units, rates, floating, gathered, population]],
+        ['up', floating, [units, rates, floating, gathered, population]],
+        ['down', floating, [units, rates, gathered, population, floating]],
+        ['up', population, [units, rates, gathered, population, floating]],
     ] as const)('swaps %s with the neighbour', (direction, id, order) => {
         expect(moveChart(DEFAULT_CHART_LAYOUT, id, direction).order).toEqual(order)
     })
 
     it.each([
         ['up', units],
-        ['down', floating],
+        ['down', 'chart-population'],
     ] as const)('returns an equal layout for %s at the end', (direction, id) => {
         expect(moveChart(DEFAULT_CHART_LAYOUT, id, direction)).toEqual(DEFAULT_CHART_LAYOUT)
     })
@@ -95,7 +111,7 @@ describe('moveChartByKey', () => {
         const first = moveChartByKey(DEFAULT_CHART_LAYOUT, units, 'down')
         const second = moveChartByKey(first!.layout, units, 'down')
         expect(first!.toIndex).toBe(1)
-        expect(second).toEqual({ layout: expect.objectContaining({ order: [rates, gathered, units, floating] }), toIndex: 2 })
+        expect(second).toEqual({ layout: expect.objectContaining({ order: [rates, gathered, units, floating, population] }), toIndex: 2 })
     })
 
     it('returns null when the second of two moves would pass the end', () => {
@@ -106,7 +122,7 @@ describe('moveChartByKey', () => {
 
     it.each([
         ['up', units],
-        ['down', floating],
+        ['down', 'chart-population'],
     ] as const)('returns null for %s at the end', (direction, id) => {
         expect(moveChartByKey(DEFAULT_CHART_LAYOUT, id, direction)).toBeNull()
     })
@@ -114,12 +130,12 @@ describe('moveChartByKey', () => {
 
 describe('moveChartTo', () => {
     it.each([
-        ['the first index', gathered, 0, [gathered, units, rates, floating]],
-        ['the last index', units, 3, [rates, gathered, floating, units]],
-        ['a middle index', units, 2, [rates, gathered, units, floating]],
-        ['its current index', rates, 1, [units, rates, gathered, floating]],
-        ['an index below 0', floating, -1, [floating, units, rates, gathered]],
-        ['an index above the last', units, 9, [rates, gathered, floating, units]],
+        ['the first index', gathered, 0, [gathered, units, rates, floating, population]],
+        ['the last index', units, 4, [rates, gathered, floating, population, units]],
+        ['a middle index', units, 2, [rates, gathered, units, floating, population]],
+        ['its current index', rates, 1, [units, rates, gathered, floating, population]],
+        ['an index below 0', population, -1, [population, units, rates, gathered, floating]],
+        ['an index above the last', units, 9, [rates, gathered, floating, population, units]],
     ] as const)('moves to %s', (_label, id, toIndex, order) => {
         expect(moveChartTo(DEFAULT_CHART_LAYOUT, id, toIndex).order).toEqual(order)
     })
@@ -189,7 +205,7 @@ describe('chart layout storage', () => {
 
     it('normalises a stored layout that misses an id', () => {
         const raw = JSON.stringify({ version: 1, order: [rates, units, gathered], collapsed: [] })
-        expect(readChartLayout(fakeStorage({ [CHART_LAYOUT_STORAGE_KEY]: raw })).order).toEqual([rates, units, gathered, floating])
+        expect(readChartLayout(fakeStorage({ [CHART_LAYOUT_STORAGE_KEY]: raw })).order).toEqual([rates, units, gathered, floating, population])
     })
 
     it.each([

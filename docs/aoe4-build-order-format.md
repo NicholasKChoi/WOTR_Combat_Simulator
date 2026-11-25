@@ -230,6 +230,7 @@ flowchart LR
   result --> rates["graph: gather rates"]
   result --> gathered["graph: gathered resources"]
   result --> floating["graph: floating resources"]
+  result --> population["graph: population"]
 ```
 
 ## Route
@@ -471,9 +472,9 @@ A `SimulationResult` holds:
   `farm-idle`, then `step-stuck` by step index in `steps`. See
   [Severity](aoe4-build-order.md#severity).
 
-The page draws four graphs over time from it, with the chart markers (see the [page doc](aoe4-build-order-ui.md#page); the warnings are lists beside them): units produced (one
-line per unit line, or per production building), gather rates, gathered resources, and floating resources. `spent` and `populationCapReachedAt` feed the compare
-table, and `spawnedPopulation` has no graph.
+The page draws five graphs over time from it, with the chart markers (see the [page doc](aoe4-build-order-ui.md#page); the warnings are lists beside them): units produced (one
+line per unit line, or per production building), gather rates, gathered resources, floating resources, and population (`spawnedPopulation`, with a vertical mark at `populationCapReachedAt` when it is not `null`). `spent` and `populationCapReachedAt` also feed the compare
+table.
 
 The life of one non-reaction step is shown below. The diagram is conceptual: its states are not values in
 the result. At the horizon each state maps to a `StepTiming.status`:
