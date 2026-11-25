@@ -139,7 +139,7 @@ test.describe('spawnedPopulation and populationCapReachedAt', () => {
     expect(long.times[first - 1]).toBeLessThan(reached)
     expect(long.times[first]).toBeGreaterThanOrEqual(reached)
     expect(long.spawnedPopulation[first - 1]).toBeLessThan(200)
-    expect(last(long.spawnedPopulation)).toBe(200)
+    expect(last(long.spawnedPopulation)).toBe(406)
 
     const longer = await simulate(request, { buildOrder: english1tc, inputs: { durationSeconds: 3600 } })
     expect(longer.populationCapReachedAt).toBe(reached)

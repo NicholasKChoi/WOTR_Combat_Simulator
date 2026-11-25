@@ -114,11 +114,38 @@ describe('auto-houses with other house steps', () => {
 describe('prebuilt builds at 1800 s', () => {
     // Digests of spawnedPopulation, spent, steps, populationCapReachedAt, depletions and markers at 1800 s.
     it.each([
-        ['ENG 1TC', 'ebe79d4a4c219f04'],
-        ['ENG Spear/Longbow into MAA/Crossbow', 'f3b256384c4bcf0f'],
+        ['ENG 1TC', '97bf145f743ff06b'],
+        ['ENG Spear/Longbow into MAA/Crossbow', '0732dbf8f9a2b5d8'],
     ])('%s timeline matches the pinned digest', (name, pinned) => {
         const build = listBuilds().find((b) => b.name === name)!
         const result = simulateBuildOrder(build, ENGLISH, inputsFor(ENGLISH, { durationSeconds: 1800 }))
         expect(digestTimeline(result)).toBe(pinned)
+    })
+})
+
+describe('prebuilt builds before the population cap', () => {
+    const simulate = (name: string, durationSeconds: number) =>
+        simulateBuildOrder(listBuilds().find((b) => b.name === name)!, ENGLISH, inputsFor(ENGLISH, { durationSeconds }))
+
+    // By 1090 s paid units still in production fill supply at the cap, so a limit lifted on supply alone changes it.
+    it.each([
+        [1060, 'bc6d3b97d709cf02'],
+        [1090, '8cdc9dac19376b0f'],
+    ])('ENG 1TC at %i s, short of the cap, matches the timeline from before the limit lifted', (durationSeconds, pinned) => {
+        const result = simulate('ENG 1TC', durationSeconds)
+        expect(result.populationCapReachedAt).toBeNull()
+        expect(digestTimeline(result)).toBe(pinned)
+    })
+
+    // Spear/Longbow is left out: its gold rallies were retuned for production past the cap.
+    it.each([
+        ['ENG 1TC', 1094.9413171060362, '75c39cbfd688e42a'],
+        ['ENG 1TC Council Hall', 1158.2043721756909, '8a940a7a15538c4f'],
+        ["ENG Knight/Longbow (King's Palace)", 1247.0055555555555, 'd4acfe9d43a88bf0'],
+    ])('%s matches the timeline from before the limit lifted up to its cap instant', (name, reachedAt, pinned) => {
+        expect(simulate(name, 1800).populationCapReachedAt).toBe(reachedAt)
+        const below = simulate(name, Math.floor(reachedAt))
+        expect(below.populationCapReachedAt).toBeNull()
+        expect(digestTimeline(below)).toBe(pinned)
     })
 })

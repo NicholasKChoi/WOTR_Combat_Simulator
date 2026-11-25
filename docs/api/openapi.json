@@ -4843,7 +4843,7 @@
               "type": "integer",
               "minimum": 0
             },
-            "description": "Popcap of spawned villagers and units at each sample, start population included; paid units still in production are not counted."
+            "description": "Popcap of spawned villagers and units at each sample, start population included; paid units still in production are not counted. May exceed the population cap once it has been reached, since production then continues with supply at the cap."
           },
           "populationCapReachedAt": {
             "type": [
@@ -5414,7 +5414,7 @@
           },
           {
             "type": "object",
-            "description": "Too little supply for the units the step pays.",
+            "description": "Too little supply for the units the step pays. Occurs only before the population limit lifts (the population cap reached with supply at the cap).",
             "required": [
               "kind",
               "needed",

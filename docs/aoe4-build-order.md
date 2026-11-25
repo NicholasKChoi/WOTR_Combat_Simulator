@@ -62,7 +62,7 @@ not a route bound.
 | `repeat` (`build`, `move`) | int | 1..200 | once |
 | `durationSeconds` | int | 60..3600 | 1200 |
 | `Trigger.seconds` | int | 0..3600 (the largest `durationSeconds`) | |
-| `Trigger.count` (villagers) | int | 1..200 (the population cap) | |
+| `Trigger.count` (villagers) | int | 1..200 (a request cap) | |
 | `Trigger.atLeast` (bank) | int | 0..100,000 | |
 | `produce.count`, `move.count` | int (`move.count` also `"all"`) | 1..200 | continuous (produce) |
 | `builders`, `houseBuilders` | int | 1..200 | 1 |
@@ -192,7 +192,8 @@ times, apart from each `steps` entry's `source` and `copy` and the `step-stuck` 
 resources reserves its cost; a reaction never reserves. A producer's order skips paying its next unit if
 that would drop any resource the unit costs below the reserving step's cost of that resource. Villager
 payments ignore the reserve, so villager production never stops for a waiting step; the step's start is
-pushed back by the food the villagers spend instead. A step waiting on supply, on an age or on a building
+pushed back by the food the villagers spend instead. A step waiting on supply (which happens only before the
+population limit lifts, Houses and supply), on an age or on a building
 instance that does not exist reserves nothing; a step waiting for a busy building reserves its cost, and
 an instance it holds (Queues) pays nothing for its order. At one instant, steps start before orders pay,
 so a step wins a tie with an order payment: an instance whose unit or research ends at that instant is
@@ -214,13 +215,15 @@ next villager only while the villagers alive plus the villagers paid and in prod
 `villagerTarget` (100); a `produce villager` step is not capped. A `pause` on a villager producer
 therefore holds it only once that many villagers exist. On any other producer, a counted `produce` that
 spawns its last unit leaves the order empty. Only a research resumes the instance's own order. A unit is paid before it is queued: its resource cost and its population are taken
-together, and only when every resource covers its cost and supply has room for it. Each instance runs its
+together, and only when every resource covers its cost and supply has room for it (until the population limit
+lifts, after which supply is not checked; Houses and supply). Each instance runs its
 paid units first in, first out, one at a time. An order pays its next unit only when its instance has no
 paid unit or research left and is not held.
 
 A `produce` step targets every instance of its producer that exists when it is offered, or only instance
 `instance` when that is given. It checks, in order: the unit is known and at or below the current age, a
-targeted instance exists, supply has room for one unit per target, resources cover one unit per target,
+targeted instance exists, supply has room for one unit per target (checked only before the population limit
+lifts, as one check for all targets), resources cover one unit per target,
 and every target is free. It starts only when every target is free at one offer; it then pays its first
 unit on every target and replaces each target's order. With `instance: k` it waits only for instance k.
 While the step that blocks later steps waits for busy targets, it holds the targets that are already free:
@@ -346,7 +349,8 @@ starts and completes at that instant and moves nobody, so a second `move all` fr
 same instant is a no-op.
 
 **Houses and supply.** `supply` in `rules/english.json` gives the supply each building provides; total
-supply is capped at `maxPopCap`, 200. With `autoHouses` on (the default), the simulator builds houses on
+supply is capped at `maxPopCap`, 200, and never rises past it; production continues past it under the
+population limit below. With `autoHouses` on (the default), the simulator builds houses on
 its own so supply does not block production. The planner projects the population one window ahead. The
 window is the lead, the builders' walk to the site plus the house build time with `houseBuilders` builders,
 plus the gather time of one house's cost: for each resource of the cost, what the bank lacks divided by that
@@ -363,6 +367,20 @@ finish within the window (one finishing exactly at the window counts), so a long
 does not hold houses back. Every building under construction still counts toward `maxPopCap`, so planning
 stops once supply plus the supply of all of them reaches 200. A house can be due before its cost is banked,
 and as the bank grows and steps spend it a house can stop being due and become due again.
+
+The population limit (a unit is paid only while supply has room for it) lifts for the rest of the run at the
+first instant the spawned population (`spawnedPopulation`) has reached `maxPopCap` while supply is at
+`maxPopCap`. From then on a `produce` step and an order payment skip the supply check and go on to their
+resource, building and busy checks, so no step waits on `population` and population grows past the cap
+while supply stays at it and no house is planned. The units past the cap stand in for combat losses the
+simulator does not model. Before that instant the rule is unchanged: paid units still in production count
+toward the supply check but not toward the spawned population, so production waits on supply until a spawn
+brings the spawned population to the cap. That spawn lifts the limit within its own instant, so the
+instant's second step offer and its order payments already see it. When the start population is already at
+or past the cap (`populationCapReachedAt` is 0) but supply is below it, the supply check still applies,
+auto-houses build up to the cap, and the limit lifts at the instant supply reaches it; without houses to
+bring supply to the cap it never lifts. A `produce villager` step keeps producing past the cap; the default
+villager order still stops at `villagerTarget`.
 
 The planner runs three times in an instant: after run-outs and before the first step offer, after the
 instant's events and before the second step offer, and after production starts. Each run starts every due
@@ -385,7 +403,8 @@ names). The source is chosen by its gatherers only, so idle villagers alone neve
 farm, the builders are taken from the villagers waiting idle there first, then from its gatherers. They walk
 `inputs.walkSeconds / moveSpeedMultiplier` each way and return to the node they came from; returning to a
 node that ran out meanwhile, or to a farm with every farm taken, leaves them idle there. A house pays its whole cost (all four resources) when it starts. A house waits only when no node
-has enough gatherers or a resource of its cost is short; supply may block production meanwhile, and its hold
+has enough gatherers or a resource of its cost is short; before the population limit lifts, supply may block
+production meanwhile, and its hold
 may block steps and orders. While no node has enough gatherers but at least `houseBuilders` villagers are
 gathering, walking or building, the hold stays and the house starts at the instant a node has enough. Auto-houses
 are not order payments: they ignore a waiting step's resource reservation, and never take a resource below
@@ -394,8 +413,8 @@ zero.
 With `autoHouses` on, auto-houses plan from the start whether or not the order has `build house` steps.
 Explicit `build house` steps start as ordered and add houses on top. Whichever kind it is, a house under
 construction that finishes within the window counts toward the planner's headroom, so an explicit step that
-starts after auto-houses already cover the demand adds a surplus house. With `autoHouses: false` no auto-house is built, and production blocks
-at supply until a `build house` step adds more. No warning reports production held at the supply limit.
+starts after auto-houses already cover the demand adds a surplus house. With `autoHouses: false` no auto-house is built, and before the population
+limit lifts production blocks at supply until a `build house` step adds more. No warning reports production held at the supply limit.
 
 **Farms and mill coverage.** A farm costs its snapshot cost. The simulation lets one villager gather per
 built farm (one per instance of `gatherNodes.farm.createdBy`, starting farms included), with no input to turn
@@ -440,7 +459,8 @@ The English farm bonus near a mill is four rows, one per age, with the wiki valu
   `forestry-1`) are rejected with a clear error;
 - unit veterancy upgrades, researched at their building from data, which move the units already spawned
   and every later one to the upgraded tier; the units-produced graph shows tiers apart;
-- houses, starting state and the population cap;
+- houses, starting state and the population cap, where supply stops and past which production continues
+  once the cap is reached;
 - depletion of finite nodes (Depletion), on by default: the six finite nodes start at the `rules/base.json`
   amounts, a `null` override keeps a node infinite, and `farm` and `wood` never run out.
 

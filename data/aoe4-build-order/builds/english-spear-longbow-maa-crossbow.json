@@ -513,20 +513,6 @@
     },
     {
       "trigger": {
-        "kind": "time",
-        "seconds": 1000
-      },
-      "action": "rally",
-      "producer": "capital-town-center",
-      "to": "gold"
-    },
-    {
-      "action": "rally",
-      "producer": "kings-palace",
-      "to": "gold"
-    },
-    {
-      "trigger": {
         "kind": "depleted",
         "node": "gold"
       },

@@ -7,6 +7,7 @@ import type { CivData, GameData } from './data'
 import { effectiveGatherRate } from './gather'
 import type { BuildStart, BuildStep, GatherNodeId, SimInputs, SimulationResult, StepTiming } from './model'
 import { FINITE_GATHER_NODES } from './model'
+import { SIM_INPUT_BOUNDS } from './schema'
 import { SAMPLE_SECONDS, accrueWait, addBuildingInstance, simulateBuildOrder, stepHandlers } from './simulate'
 import type { BuildingInstance, EngineState, RallySource, StepStart } from './simulate'
 import { ENGLISH, INFINITE_NODES, at, buildOrder, countAt, editGameData, inputsFor, noAutoVillagers, run, sampleIndex, series, withHandler } from './test-helpers'
@@ -807,6 +808,22 @@ describe('performance', () => {
         expect(result.steps.every((s) => s.status !== 'waiting')).toBe(true)
         expect(countAt(result, 'villager', 3600)).toBe(3600 / 20)
     })
+
+    it('runs an hour of continuous production past the population cap in under two seconds', () => {
+        const steps: BuildStep[] = [
+            { action: 'produce', producer: 'capital-town-center', unit: 'villager' },
+            { trigger: at(240), action: 'rally', producer: 'capital-town-center', to: 'wood' },
+            { trigger: at(480), action: 'rally', producer: 'capital-town-center', to: 'gold' },
+            { trigger: at(600), action: 'rally', producer: 'capital-town-center', to: 'sheep' },
+            { action: 'build', building: 'barracks', from: 'wood', repeat: 10 },
+            { trigger: at(900), action: 'produce', producer: 'barracks', unit: 'man-at-arms' },
+        ]
+        const started = performance.now()
+        const result = run(steps, { inputs: { durationSeconds: SIM_INPUT_BOUNDS.durationSeconds.max, nodeAmounts: INFINITE_NODES } })
+        const elapsed = performance.now() - started
+        expect(result.spawnedPopulation[result.spawnedPopulation.length - 1]).toBeGreaterThan(data.base.maxPopCap.value)
+        expect(elapsed).toBeLessThan(2000)
+    })
 })
 
 const COMMENTS_STRINGS_AND_REGEXES = /\/\*[\s\S]*?\*\/|\/\/.*$|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`|\/\^.*?\$\//gm
@@ -836,10 +853,10 @@ describe('source shape', () => {
     it('exports exactly the seam names', () => {
         const names = (file: string) => [...source(file).matchAll(/^export (?:const|function|interface|type) (\w+)/gm)].map((m) => m[1]).sort()
         expect(names('simulate.ts')).toEqual(
-            ['BuildingInstance', 'EngineState', 'PaidItem', 'ProductionOrder', 'RallySource', 'SAMPLE_SECONDS', 'StepHandler', 'StepStart', 'accrueWait', 'addBuildingInstance', 'assignGatherers', 'simulateBuildOrder', 'stepHandlers', 'triggerHolds', 'triggerWakeAt'].sort(),
+            ['BuildingInstance', 'EngineState', 'PaidItem', 'ProductionOrder', 'RallySource', 'SAMPLE_SECONDS', 'StepHandler', 'StepStart', 'accrueWait', 'addBuildingInstance', 'assignGatherers', 'hasPopulationRoom', 'simulateBuildOrder', 'stepHandlers', 'triggerHolds', 'triggerWakeAt'].sort(),
         )
         expect(names('civ-rules.ts')).toEqual(['CivRuleContext', 'CivRules', 'NO_CIV_RULES', 'civRules'].sort())
-        expect(source('simulate.ts').match(/^export /gm)).toHaveLength(15)
+        expect(source('simulate.ts').match(/^export /gm)).toHaveLength(16)
         expect(source('civ-rules.ts').match(/^export /gm)).toHaveLength(4)
     })
 
