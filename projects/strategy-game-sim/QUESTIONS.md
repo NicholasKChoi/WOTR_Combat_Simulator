@@ -23,16 +23,3 @@ Detail goes in the research report. Each item has this shape:
     <the owner's answer; empty while open>
 
 next: Q156
-
-## Q155: M13.4: check the Population cap mark and past-200 production on the preview/production
-kind: handoff
-blocks: M13.4 (Owner checks the changes on the PR previews and then produc…)
-options: A) Done | B) Not now
-recommendation: A: once checked
-thread: 1574988784494182532
-
-M13 code is merged (SGS-215, 216, 217). M13.4 needs your eyes; nothing else is waiting on it.
-- Open the AoE4 build order page, run a build past 200 population, and confirm the Population chart shows a 'Population cap m:ss' mark.
-- Then check production after the deploy.
-
-### Answer

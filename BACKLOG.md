@@ -27,3 +27,5 @@ pull from here; triage moves an item into a milestone or deletes it.
   the model is off. Recommended: milestone (defer), priority low. (discovery milestone 2026-11-13, discovery/milestone-20261113-1.md)
 
 - (held: owner Q152 2026-11-22, criteria drafted in projects/strategy-game-sim/reports/m13-held.md) AoE4: import a build from, and export one to, the community overlay/guide format (AoE4_Overlay / aoe4guides JSON). Recommended: milestone, priority medium. The sim reads only its own JSON and paste format; first ticket should fetch a real RTS_Overlay export before designing the mapping. (discovery milestone 2026-11-20, standard; discovery/milestone-20261120-1.md)
+
+- (standalone chore) Priority: medium. **AoE4: show the population cap mark on the units produced chart too.** Owner answer to Q155 (2026-11-24): the "Population cap m:ss" mark added by SGS-216/217 appears only on the Population chart; show it on the units produced chart as well. Files: components/apps/aoe4-build-order/ (chart components), docs/aoe4-build-order.md. Source: owner, Q155.
