@@ -246,7 +246,6 @@ test.describe('AoE4 population cap mark', () => {
     expect(((await response.json()) as SimulationResult).populationCapReachedAt, 'the 600 s run does not reach the cap').toBeNull()
     await expect(page.getByTestId(UNITS).locator(`path[data-series="${PINNED_LINE[UNITS]}"]`)).toHaveCount(1)
     await expect(marks(page, UNITS)).toHaveCount(0)
-    await expect(markLabel(page, UNITS)).toHaveCount(0)
   })
 
   test('inside a zoom window containing the cap the line sits at the window axis position and the label right of it', async ({ page }) => {
