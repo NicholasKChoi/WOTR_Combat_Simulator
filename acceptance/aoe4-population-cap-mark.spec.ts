@@ -8,6 +8,7 @@ const POPULATION = 'chart-population'
 const UNITS = 'chart-units-produced'
 const UPGRADE_BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
 const MARKED_CHARTS = [UNITS, POPULATION]
+const PINNED_LINE = { [UNITS]: 'pinned:villager', [POPULATION]: 'pinned:population' }
 const SHORT_RUN_SECONDS = '600'
 const LONG_RUN_SECONDS = '1800'
 const NEAR_LONG_RUN_SECONDS = '1790'
@@ -114,15 +115,15 @@ test.describe('AoE4 population cap mark', () => {
       expect(kinds.length, 'the build has marker kinds to hide').toBeGreaterThan(1)
       await items.first().hover()
       await expect(mark).toHaveCount(1)
-      expect(await mark.evaluate((el) => el.getBoundingClientRect().left)).toBe(before)
+      await expect.poll(() => mark.evaluate((el) => el.getBoundingClientRect().left)).toBe(before)
       for (const kind of kinds) await page.locator(`[data-testid="chart-marker-legend-item"][data-kind="${kind}"]`).click()
       await expect(page.getByTestId(id).getByTestId('chart-marker')).toHaveCount(0)
       await expect(mark).toHaveCount(1)
       await page.getByTestId('pin-run').click()
-      await expect(page.getByTestId(id).locator('path[data-series^="pinned:"]').first()).toBeVisible()
+      await expect(page.getByTestId(id).locator(`path[data-series="${PINNED_LINE[id]}"]`)).toHaveCount(1)
       await expect(mark).toHaveCount(1)
       await expect(markLabel(page, id)).toHaveText('Population cap 18:15')
-      expect(await mark.evaluate((el) => el.getBoundingClientRect().left)).toBe(before)
+      await expect.poll(() => mark.evaluate((el) => el.getBoundingClientRect().left)).toBe(before)
     })
   }
 
