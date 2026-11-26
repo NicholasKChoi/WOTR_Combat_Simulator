@@ -28,5 +28,4 @@ pull from here; triage moves an item into a milestone or deletes it.
 
 - (held: owner Q152 2026-11-22, criteria drafted in projects/strategy-game-sim/reports/m13-held.md) AoE4: import a build from, and export one to, the community overlay/guide format (AoE4_Overlay / aoe4guides JSON). Recommended: milestone, priority medium. The sim reads only its own JSON and paste format; first ticket should fetch a real RTS_Overlay export before designing the mapping. (discovery milestone 2026-11-20, standard; discovery/milestone-20261120-1.md)
 
-- Storage should support saving a named combination (set) of 1–3 related builds, so a user can save and reload a group of builds together and compare them side by side. (owner via session, 2026-11-25)
-- [follow-up SGS-219] `timeMarkDrawn` in lib/aoe4-build-order line-chart (its in-window rule) is masked in the browser: recharts discards out-of-domain ReferenceLines, so removing the rule alone fails no test; only the unit test in `line-chart.test.ts` pins it. Evidence: reports/SGS-219-implementer-7.md.
+- (milestone) Storage should support saving a named combination (set) of 1–3 related builds, so a user can save and reload a group of builds together and compare them side by side. (owner via session, 2026-11-25)
