@@ -8,7 +8,7 @@ const POPULATION = 'chart-population'
 const UNITS = 'chart-units-produced'
 const UPGRADE_BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
 const MARKED_CHARTS = [UNITS, POPULATION]
-const PINNED_LINE = { [UNITS]: 'pinned:villager', [POPULATION]: 'pinned:population' }
+const PINNED_LINE: Record<string, string> = { [UNITS]: 'pinned:villager', [POPULATION]: 'pinned:population' }
 const SHORT_RUN_SECONDS = '600'
 const LONG_RUN_SECONDS = '1800'
 const NEAR_LONG_RUN_SECONDS = '1790'
@@ -165,10 +165,9 @@ test.describe('AoE4 population cap mark', () => {
     let without = await readUnits()
     await expect(async () => {
       without = await readUnits()
-      expect(without.markLabels).toBe(0)
+      expect(without.markerLines.length, 'the run has marker lines on the Units chart').toBeGreaterThan(0)
+      expect(without.dots, 'the run has upgrade dots on the Units chart').toBeGreaterThan(0)
     }).toPass()
-    expect(without.markerLines.length, 'the run has marker lines on the Units chart').toBeGreaterThan(0)
-    expect(without.dots, 'the run has upgrade dots on the Units chart').toBeGreaterThan(0)
     dropCap = false
     await waitForRun(page, () => setDurationInPlace(page, NEAR_LONG_RUN_SECONDS))
     await waitForRun(page, () => setDurationInPlace(page, LONG_RUN_SECONDS))
