@@ -473,7 +473,7 @@ A `SimulationResult` holds:
   [Severity](aoe4-build-order.md#severity).
 
 The page draws five graphs over time from it, with the chart markers (see the [page doc](aoe4-build-order-ui.md#page); the warnings are lists beside them): units produced (one
-line per unit line, or per production building), gather rates, gathered resources, floating resources, and population (`spawnedPopulation`, with a vertical mark at `populationCapReachedAt` when it is not `null`). `spent` and `populationCapReachedAt` also feed the compare
+line per unit line, or per production building, with a vertical mark at `populationCapReachedAt` when it is not `null`), gather rates, gathered resources, floating resources, and population (`spawnedPopulation`, with a vertical mark at `populationCapReachedAt` when it is not `null`). `spent` and `populationCapReachedAt` also feed the compare
 table.
 
 The life of one non-reaction step is shown below. The diagram is conceptual: its states are not values in

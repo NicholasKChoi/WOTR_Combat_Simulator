@@ -52,5 +52,6 @@ describe('PageHelp markup', () => {
         expect(text).toMatch(/population cap was reached/)
         expect(text).toMatch(/Markers list cannot switch it off/)
         expect(text).toMatch(/pinned build gets no such line/)
+        expect(text).toMatch(/Units chart draws one unit line[^]*also draws the red vertical line/)
     })
 })

@@ -2,16 +2,22 @@ import { test, expect, type Page } from '@playwright/test'
 import { estimateLabelWidth, timeMarkLabel } from '../components/apps/aoe4-build-order/chart-markers'
 import { formatMinSec } from '../lib/aoe4-build-order/format-time'
 import { CHART_MARKER_KINDS, type SimulationResult } from '../lib/aoe4-build-order/model'
-import { CHART_IDS, WIDE_VIEWPORT, bodyDuration, openPage, plotPoint, setDurationInPlace, waitForRun } from './helpers'
+import { CHART_IDS, SIMULATE_PATH, WIDE_VIEWPORT, bodyDuration, openPage, plotPoint, setDurationInPlace, waitForRun } from './helpers'
 
 const POPULATION = 'chart-population'
+const UNITS = 'chart-units-produced'
+const UPGRADE_BUILD_LABEL = "ENG Knight/Longbow (King's Palace)"
+const MARKED_CHARTS = [UNITS, POPULATION]
+const PINNED_LINE: Record<string, string> = { [UNITS]: 'pinned:villager', [POPULATION]: 'pinned:population' }
 const SHORT_RUN_SECONDS = '600'
+const LONG_RUN_SECONDS = '1800'
+const NEAR_LONG_RUN_SECONDS = '1790'
 
 test.describe.configure({ timeout: 90_000 })
 test.use({ viewport: WIDE_VIEWPORT })
 
 const marks = (page: Page, id: string) => page.getByTestId(id).getByTestId('chart-time-mark')
-const markLabel = (page: Page) => page.getByTestId(POPULATION).locator('svg text.recharts-label', { hasText: 'Population cap' })
+const markLabel = (page: Page, id = POPULATION) => page.getByTestId(id).locator('svg text.recharts-label', { hasText: 'Population cap' })
 
 async function setup(page: Page): Promise<SimulationResult> {
   const response = await waitForRun(page, () => openPage(page))
@@ -22,14 +28,14 @@ async function setup(page: Page): Promise<SimulationResult> {
   return result
 }
 
-async function zoomTo(page: Page, from: number, to: number) {
-  const start = await plotPoint(page, POPULATION, from)
+async function zoomTo(page: Page, from: number, to: number, id = POPULATION) {
+  const start = await plotPoint(page, id, from)
   await page.mouse.move(start.x, start.y)
   await page.mouse.down()
-  const end = await plotPoint(page, POPULATION, to)
+  const end = await plotPoint(page, id, to)
   await page.mouse.move(end.x, end.y, { steps: 5 })
   await page.mouse.up()
-  await expect(page.getByTestId(POPULATION)).toHaveAttribute('data-zoom-from', /\d+/)
+  await expect(page.getByTestId(id)).toHaveAttribute('data-zoom-from', /\d+/)
 }
 
 const POSITION_TOLERANCE_PX = 1.5
@@ -63,17 +69,19 @@ const zoomWindow = (page: Page) =>
 const axisX = (layout: MarkLayout, at: number, from: number, to: number) => layout.grid.left + (layout.grid.width * (at - from)) / (to - from)
 
 test.describe('AoE4 population cap mark', () => {
-  test('the Population chart is the last chart and carries exactly one mark at the API cap time, labelled with its m:ss', async ({ page }) => {
+  test('Population and Units produced each carry exactly one mark at the API cap time, labelled with its m:ss, and no other chart carries one', async ({ page }) => {
     const result = await setup(page)
     expect(CHART_IDS.at(-1)).toBe(POPULATION)
     await expect(page.getByTestId(POPULATION)).toBeVisible()
-    await expect(marks(page, POPULATION)).toHaveCount(1)
-    await expect(marks(page, POPULATION)).toHaveAttribute('data-at', String(result.populationCapReachedAt))
-    await expect(marks(page, POPULATION)).toHaveAttribute('data-label', 'Population cap')
-    await expect(markLabel(page)).toHaveText('Population cap 18:15')
-    await expect(marks(page, POPULATION)).toHaveAttribute('stroke', '#a52a2a')
-    await expect(marks(page, POPULATION)).toHaveAttribute('stroke-width', '2')
-    for (const id of CHART_IDS.filter((chart) => chart !== POPULATION)) await expect(marks(page, id)).toHaveCount(0)
+    for (const id of MARKED_CHARTS) {
+      await expect(marks(page, id)).toHaveCount(1)
+      await expect(marks(page, id)).toHaveAttribute('data-at', String(result.populationCapReachedAt))
+      await expect(marks(page, id)).toHaveAttribute('data-label', 'Population cap')
+      await expect(markLabel(page, id)).toHaveText('Population cap 18:15')
+      await expect(marks(page, id)).toHaveAttribute('stroke', '#a52a2a')
+      await expect(marks(page, id)).toHaveAttribute('stroke-width', '2')
+    }
+    for (const id of CHART_IDS.filter((chart) => !MARKED_CHARTS.includes(chart))) await expect(marks(page, id)).toHaveCount(0)
     await expect(page.getByTestId(POPULATION).locator('path[data-series="population"]')).toHaveCount(1)
   })
 
@@ -83,26 +91,96 @@ test.describe('AoE4 population cap mark', () => {
     await expect(page.getByTestId(POPULATION)).toBeVisible()
     for (const id of CHART_IDS) await expect(marks(page, id)).toHaveCount(0)
     await waitForRun(page, () => setDurationInPlace(page, '1200'))
-    await expect(marks(page, POPULATION)).toHaveCount(1)
+    for (const id of MARKED_CHARTS) await expect(marks(page, id)).toHaveCount(1)
   })
 
-  test('hiding every marker kind, pinning a run and hovering a marker entry leave the mark drawn where it was', async ({ page }) => {
+  test('the Units produced chart draws the mark in both its Units and Buildings views', async ({ page }) => {
+    const result = await setup(page)
+    for (const view of ['buildings', 'units']) {
+      await page.getByTestId(UNITS).locator(`[data-testid="chart-view-option"][data-view="${view}"]`).click()
+      await expect(page.getByTestId(UNITS).locator(`[data-testid="chart-view-option"][data-view="${view}"]`)).toHaveAttribute('aria-pressed', 'true')
+      await expect(marks(page, UNITS)).toHaveCount(1)
+      await expect(marks(page, UNITS)).toHaveAttribute('data-at', String(result.populationCapReachedAt))
+      await expect(markLabel(page, UNITS)).toHaveText('Population cap 18:15')
+    }
+  })
+
+  for (const id of MARKED_CHARTS) {
+    test(`on ${id}, hiding every marker kind, hovering an entry and pinning a run leave the one mark drawn where it was`, async ({ page }) => {
+      await setup(page)
+      const mark = marks(page, id)
+      const before = await mark.evaluate((el) => el.getBoundingClientRect().left)
+      const items = page.getByTestId('chart-marker-legend-item')
+      const kinds = await items.evaluateAll((els) => els.map((el) => el.getAttribute('data-kind')))
+      expect(kinds.length, 'the build has marker kinds to hide').toBeGreaterThan(1)
+      await items.first().hover()
+      await expect(mark).toHaveCount(1)
+      await expect.poll(() => mark.evaluate((el) => el.getBoundingClientRect().left)).toBe(before)
+      for (const kind of kinds) await page.locator(`[data-testid="chart-marker-legend-item"][data-kind="${kind}"]`).click()
+      await expect(page.getByTestId(id).getByTestId('chart-marker')).toHaveCount(0)
+      await expect(mark).toHaveCount(1)
+      await page.getByTestId('pin-run').click()
+      await expect(page.getByTestId(id).locator(`path[data-series="${PINNED_LINE[id]}"]`)).toHaveCount(1)
+      await expect(mark).toHaveCount(1)
+      await expect(markLabel(page, id)).toHaveText('Population cap 18:15')
+      await expect.poll(() => mark.evaluate((el) => el.getBoundingClientRect().left)).toBe(before)
+    })
+  }
+
+  test('zooming the Units produced chart past the mark hides it there and leaves the Population chart mark, and a reset brings it back', async ({ page }) => {
     await setup(page)
-    const mark = marks(page, POPULATION)
-    const before = await mark.evaluate((el) => el.getBoundingClientRect().left)
-    const items = page.getByTestId('chart-marker-legend-item')
-    const kinds = await items.evaluateAll((els) => els.map((el) => el.getAttribute('data-kind')))
-    expect(kinds.length, 'the build has marker kinds to hide').toBeGreaterThan(1)
-    await items.first().hover()
-    await expect(mark).toHaveCount(1)
-    expect(await mark.evaluate((el) => el.getBoundingClientRect().left)).toBe(before)
-    for (const kind of kinds) await page.locator(`[data-testid="chart-marker-legend-item"][data-kind="${kind}"]`).click()
-    await expect(page.getByTestId(POPULATION).getByTestId('chart-marker')).toHaveCount(0)
-    await expect(mark).toHaveCount(1)
-    await page.getByTestId('pin-run').click()
-    await expect(page.getByTestId(POPULATION).locator('path[data-series="pinned:population"]')).toHaveCount(1)
-    await expect(mark).toHaveCount(1)
-    await expect(markLabel(page)).toHaveText('Population cap 18:15')
+    await zoomTo(page, 0.1, 0.3, UNITS)
+    await expect(marks(page, UNITS)).toHaveCount(0)
+    await expect(page.getByTestId(POPULATION)).not.toHaveAttribute('data-zoom-from', /.*/)
+    await expect(marks(page, POPULATION)).toHaveCount(1)
+    await page.getByTestId(UNITS).getByTestId('chart-zoom-reset').click()
+    await expect(marks(page, UNITS)).toHaveCount(1)
+  })
+
+  test('the Units produced mark adds only its own label: marker label rows, marker lines, series paths and upgrade dots equal the same run without it', async ({ page }) => {
+    await setup(page)
+    let dropCap = false
+    await page.route(`**${SIMULATE_PATH}`, async (route) => {
+      const body = (await (await route.fetch()).json()) as SimulationResult
+      await route.fulfill({ status: 200, json: dropCap ? { ...body, populationCapReachedAt: null } : body })
+    })
+    await waitForRun(page, () => page.getByTestId('build-order-select').selectOption({ label: UPGRADE_BUILD_LABEL }))
+    const readUnits = () =>
+      page.getByTestId(UNITS).evaluate((el) => {
+        const all = (selector: string) => [...el.querySelectorAll(selector)]
+        return {
+          rows: Number(el.getAttribute('data-label-rows')),
+          markerLines: all('[data-testid="chart-marker"]').map((line) => line.getAttribute('data-at')),
+          paths: all('path[data-series]').map((path) => `${path.getAttribute('data-series')} ${path.getAttribute('d')}`),
+          dots: all('[data-testid="chart-upgrade-dot"]').length,
+          labels: all('text.recharts-label')
+            .map((text) => text.textContent)
+            .filter((text) => !text?.startsWith('Population cap')),
+          markLabels: all('text.recharts-label').filter((text) => text.textContent?.startsWith('Population cap')).length,
+        }
+      })
+    dropCap = true
+    await waitForRun(page, () => setDurationInPlace(page, LONG_RUN_SECONDS))
+    await expect(marks(page, UNITS)).toHaveCount(0)
+    let without = await readUnits()
+    await expect(async () => {
+      without = await readUnits()
+      expect(without.markerLines.length, 'the run has marker lines on the Units chart').toBeGreaterThan(0)
+      expect(without.dots, 'the run has upgrade dots on the Units chart').toBeGreaterThan(0)
+    }).toPass()
+    dropCap = false
+    await waitForRun(page, () => setDurationInPlace(page, NEAR_LONG_RUN_SECONDS))
+    await waitForRun(page, () => setDurationInPlace(page, LONG_RUN_SECONDS))
+    await expect(marks(page, UNITS)).toHaveCount(1)
+    await expect(async () => {
+      const withMark = await readUnits()
+      expect(withMark.markLabels).toBe(1)
+      expect(withMark.rows).toBe(without.rows)
+      expect(withMark.markerLines).toEqual(without.markerLines)
+      expect(withMark.paths).toEqual(without.paths)
+      expect(withMark.dots).toBe(without.dots)
+      expect(withMark.labels).toEqual(without.labels)
+    }).toPass()
   })
 
   test('the mark is drawn while its time is inside the zoom window and not once the window ends before it', async ({ page }) => {
@@ -157,6 +235,17 @@ test.describe('AoE4 population cap mark', () => {
     const cells = page.locator('[data-testid="compare-row"][data-key="pop-cap"] td')
     await expect(cells.nth(1)).toHaveText(formatMinSec(pinned.populationCapReachedAt!))
     await expect(cells.nth(2)).toHaveText('not reached')
+  })
+
+  test('a pinned run that reached the cap adds no mark to the Units produced chart when the current run did not', async ({ page }) => {
+    await setup(page)
+    await page.getByTestId('pin-run').click()
+    await expect(page.getByTestId(UNITS).locator(`path[data-series="${PINNED_LINE[UNITS]}"]`)).toHaveCount(1)
+    await expect(marks(page, UNITS)).toHaveCount(1)
+    const response = await waitForRun(page, () => setDurationInPlace(page, SHORT_RUN_SECONDS))
+    expect(((await response.json()) as SimulationResult).populationCapReachedAt, 'the 600 s run does not reach the cap').toBeNull()
+    await expect(page.getByTestId(UNITS).locator(`path[data-series="${PINNED_LINE[UNITS]}"]`)).toHaveCount(1)
+    await expect(marks(page, UNITS)).toHaveCount(0)
   })
 
   test('inside a zoom window containing the cap the line sits at the window axis position and the label right of it', async ({ page }) => {

@@ -99,10 +99,11 @@ export function PageHelp() {
                         </p>
                         <p>
                             The Units chart draws one unit line for each kind of unit. An upgrade dot on a unit line marks when an upgrade lands and names its tier beside
-                            it: a filled upgrade dot belongs to the current run and a dashed ring belongs to the pinned run.
+                            it: a filled upgrade dot belongs to the current run and a dashed ring belongs to the pinned run. It also draws the red vertical line described
+                            below for the population cap.
                         </p>
                         <p>
-                            The Population chart draws the population over time. Its red vertical line shows when the population cap was reached, and the line is not a
+                            The Population chart draws the population over time. Its red vertical line shows when the population cap was reached, the same line the Units chart draws, and the line is not a
                             marker, so the Markers list cannot switch it off. A pinned build gets no such line.
                         </p>
                         <p>

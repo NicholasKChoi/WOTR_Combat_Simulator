@@ -70,6 +70,7 @@ export function Results({ result, pinned, activeStep, dimmed, describedByStatus,
             yLabel: unitsProducedView === 'buildings' ? 'Buildings' : 'Count',
             series: (run) => unitsProducedSeries(unitsProducedView, run),
             headerControls: <ChartViewToggle name="Units produced" views={UNITS_PRODUCED_VIEWS} value={unitsProducedView} onChange={setUnitsProducedView} />,
+            timeMark: populationCapMark,
         },
         'chart-gather-rates': {
             title: 'Gather rates',
