@@ -237,6 +237,18 @@ test.describe('AoE4 population cap mark', () => {
     await expect(cells.nth(2)).toHaveText('not reached')
   })
 
+  test('a pinned run that reached the cap adds no mark to the Units produced chart when the current run did not', async ({ page }) => {
+    await setup(page)
+    await page.getByTestId('pin-run').click()
+    await expect(page.getByTestId(UNITS).locator(`path[data-series="${PINNED_LINE[UNITS]}"]`)).toHaveCount(1)
+    await expect(marks(page, UNITS)).toHaveCount(1)
+    const response = await waitForRun(page, () => setDurationInPlace(page, SHORT_RUN_SECONDS))
+    expect(((await response.json()) as SimulationResult).populationCapReachedAt, 'the 600 s run does not reach the cap').toBeNull()
+    await expect(page.getByTestId(UNITS).locator(`path[data-series="${PINNED_LINE[UNITS]}"]`)).toHaveCount(1)
+    await expect(marks(page, UNITS)).toHaveCount(0)
+    await expect(markLabel(page, UNITS)).toHaveCount(0)
+  })
+
   test('inside a zoom window containing the cap the line sits at the window axis position and the label right of it', async ({ page }) => {
     const result = await setup(page)
     const cap = result.populationCapReachedAt!
