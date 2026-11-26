@@ -22,4 +22,17 @@ Detail goes in the research report. Each item has this shape:
     ### Answer
     <the owner's answer; empty while open>
 
-next: Q156
+next: Q157
+
+## Q156: SGS-219 follow-up: keep or drop the timeMarkDrawn test-coverage note?
+kind: decision
+blocks: none
+options: A) Keep defects only (drops this nit) | B) Triage it on its own | C) Drop all
+recommendation: A: it is a nit, nothing wrong today
+priority: low
+thread: 1575329167552024586
+
+SGS-219 left one follow-up in the backlog: the in-window rule in timeMarkDrawn (line chart) is hidden in the browser because recharts drops out-of-domain reference lines, so only a unit test pins it. It harms nothing now.
+- Nit: no behavior is wrong; a test-coverage note only.
+
+### Answer
